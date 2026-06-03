@@ -142,7 +142,7 @@ function SPVManagementPage() {
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-600">Company Name *</label>
-        <input type="text" value={data.name} onChange={(e) => setData({ ...data, name: e.target.value })} placeholder="e.g. PropInvest SPV 001 (Pty) Ltd" className="w-full rounded-lg border p-2 border-navy-700 bg-navy-800/50" />
+        <input type="text" value={data.name} onChange={(e) => setData({ ...data, name: e.target.value })} placeholder="e.g. Investprop SPV 001 (Pty) Ltd" className="w-full rounded-lg border p-2 border-navy-700 bg-navy-800/50" />
       </div>
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-600">CIPC Registration No.</label>

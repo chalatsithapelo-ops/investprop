@@ -495,7 +495,7 @@ enum DevelopmentType {
 
 model SPV {
   id                Int          @id @default(autoincrement())
-  name              String       // e.g. "PropInvest SPV 001 (Pty) Ltd"
+  name              String       // e.g. "Investprop SPV 001 (Pty) Ltd"
   registrationNumber String?     // CIPC registration number
   taxNumber         String?      // SARS tax number
   status            SPVStatus    @default(PENDING_REGISTRATION)
