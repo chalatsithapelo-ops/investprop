@@ -10,6 +10,23 @@ async function main() {
   console.log("Seeding demo data...");
   const password = await bcryptjs.hash("password123", 10);
 
+  // Platform Admin — uses ADMIN_PASSWORD from env (rotate on first deploy)
+  const adminPw = process.env.ADMIN_PASSWORD || "admin";
+  const adminHash = await bcryptjs.hash(adminPw, 10);
+  await db.user.upsert({
+    where: { email: "admin@investprop.io" },
+    update: { password: adminHash, role: "ADMIN", emailVerified: true },
+    create: {
+      email: "admin@investprop.io",
+      password: adminHash,
+      name: "Platform Admin",
+      role: "ADMIN",
+      emailVerified: true,
+      updatedAt: new Date(),
+    },
+  });
+  console.log("Admin user upserted: admin@investprop.io (password from ADMIN_PASSWORD env)");
+
   // Dev Manager (matches login page tile)
   const manager = await db.user.upsert({
     where: { email: "devmanager@demo.com" },

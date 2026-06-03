@@ -1294,6 +1294,7 @@ enum UserRole {
   PROJECT_MANAGER
   PROPERTY_OWNER
   CONTRACTOR
+  ADMIN
 }
 
 // ─── Owner Sale Proposals ───────────────────────────────────────
