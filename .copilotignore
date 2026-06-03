@@ -1,0 +1,6 @@
+src/generated/
+**/generated/
+*.gen.ts
+pnpm-lock.yaml
+app.config.timestamp_*
+*.dll.node

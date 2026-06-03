@@ -1,0 +1,22 @@
+{
+  "files.watcherExclude": {
+    "**/generated/**": true
+  },
+  "search.exclude": {
+    "**/generated/**": true
+  },
+  "files.exclude": {
+    "**/generated/prisma/runtime/**": true,
+    "**/generated/prisma/query_engine*": true,
+    "**/generated/prisma/*.js": true
+  },
+  "files.readonlyInclude": {
+    "**/generated/**": true
+  },
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "prettier.configPath": "prettier.config.mjs",
+  "editor.tabSize": 2,
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true
+}

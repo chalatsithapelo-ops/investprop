@@ -1,0 +1,10 @@
+SELECT 'User' as tbl, COUNT(*) FROM "User"
+UNION ALL SELECT 'Property', COUNT(*) FROM "Property"
+UNION ALL SELECT 'DistressedListing', COUNT(*) FROM "DistressedListing"
+UNION ALL SELECT 'InvestorContribution', COUNT(*) FROM "InvestorContribution"
+UNION ALL SELECT 'PropertyFlip', COUNT(*) FROM "PropertyFlip"
+UNION ALL SELECT 'RentalBond', COUNT(*) FROM "RentalBond"
+UNION ALL SELECT 'PropertyDevelopment', COUNT(*) FROM "PropertyDevelopment"
+UNION ALL SELECT 'LegalDocument', COUNT(*) FROM "LegalDocument"
+UNION ALL SELECT 'Distribution', COUNT(*) FROM "Distribution"
+ORDER BY 1;

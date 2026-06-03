@@ -1,0 +1,414 @@
+﻿
+> property-investment-app@ test C:\Users\Thapelo\Downloads\Property Investment App\Property Investment App
+> vitest "--run"
+
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/Thapelo/Downloads/Property Investment App/Property Investment App[39m
+
+ [31mΓ¥»[39m src/tests/financial-calculations.test.ts [2m([22m[2m14 tests[22m[2m | [22m[31m13 failed[39m[2m)[22m[90m 55[2mms[22m[39m
+[31m   [31m├ù[31m Financial Calculations[2m > [22mcalculateRentalROI[2m > [22mshould calculate correct ROI for rental property[90m 14[2mms[22m[31m[39m
+[31m     ΓåÆ calculateRentalROI is not a function[39m
+[31m   [31m├ù[31m Financial Calculations[2m > [22mcalculateRentalROI[2m > [22mshould handle zero down payment[90m 2[2mms[22m[31m[39m
+[31m     ΓåÆ calculateRentalROI is not a function[39m
+[31m   [31m├ù[31m Financial Calculations[2m > [22mcalculateRentalROI[2m > [22mshould handle negative cash flow[90m 2[2mms[22m[31m[39m
+[31m     ΓåÆ calculateRentalROI is not a function[39m
+[31m   [31m├ù[31m Financial Calculations[2m > [22mcalculateFlipProfit[2m > [22mshould calculate correct profit for property flip[90m 10[2mms[22m[31m[39m
+[31m     ΓåÆ expected undefined to be 80000 // Object.is equality[39m
+[31m   [31m├ù[31m Financial Calculations[2m > [22mcalculateFlipProfit[2m > [22mshould handle losing scenario[90m 4[2mms[22m[31m[39m
+[31m     ΓåÆ actual value must be number or bigint, received "undefined"[39m
+[31m   [31m├ù[31m Financial Calculations[2m > [22mcalculateDevelopmentROI[2m > [22mshould calculate correct ROI for development project[90m 3[2mms[22m[31m[39m
+[31m     ΓåÆ expected undefined to be 700000 // Object.is equality[39m
+[31m   [31m├ù[31m Financial Calculations[2m > [22mcalculateDevelopmentROI[2m > [22mshould handle break-even scenario[90m 2[2mms[22m[31m[39m
+[31m     ΓåÆ expected undefined to be +0 // Object.is equality[39m
+[31m   [31m├ù[31m Financial Calculations[2m > [22mcalculateMortgagePayment[2m > [22mshould calculate correct monthly mortgage payment[90m 2[2mms[22m[31m[39m
+[31m     ΓåÆ calculateMortgagePayment is not a function[39m
+[31m   [31m├ù[31m Financial Calculations[2m > [22mcalculateMortgagePayment[2m > [22mshould handle zero interest rate[90m 1[2mms[22m[31m[39m
+[31m     ΓåÆ calculateMortgagePayment is not a function[39m
+[31m   [31m├ù[31m Financial Calculations[2m > [22mcalculateMortgagePayment[2m > [22mshould handle short-term loan[90m 1[2mms[22m[31m[39m
+[31m     ΓåÆ calculateMortgagePayment is not a function[39m
+[31m   [31m├ù[31m Financial Calculations[2m > [22mcalculateCapRate[2m > [22mshould calculate correct capitalization rate[90m 4[2mms[22m[31m[39m
+[31m     ΓåÆ expected +0 to be 5 // Object.is equality[39m
+[31m   [31m├ù[31m Financial Calculations[2m > [22mcalculateCapRate[2m > [22mshould handle high NOI[90m 1[2mms[22m[31m[39m
+[31m     ΓåÆ expected +0 to be 12 // Object.is equality[39m
+[31m   [31m├ù[31m Financial Calculations[2m > [22mcalculateCapRate[2m > [22mshould handle negative NOI[90m 2[2mms[22m[31m[39m
+[31m     ΓåÆ expected +0 to be -1 // Object.is equality[39m
+ [32mΓ£ô[39m src/server/utils/tests/rate-limiter.test.ts [2m([22m[2m11 tests[22m[2m)[22m[90m 176[2mms[22m[39m
+ [31mΓ¥»[39m src/server/utils/tests/tokens.test.ts [2m([22m[2m14 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[90m 80[2mms[22m[39m
+[31m   [31m├ù[31m Token Utils[2m > [22mgenerateRefreshToken[2m > [22mshould generate different tokens for same user at different times[90m 15[2mms[22m[31m[39m
+[31m     ΓåÆ expected 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ΓÇª' not to be 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ΓÇª' // Object.is equality[39m
+ [31mΓ¥»[39m src/server/trpc/tests/auth-helpers.test.ts [2m([22m[2m0 test[22m[2m)[22m
+
+node.exe : [31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1m[7m Failed Suites 1 
+[27m[22mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+At C:\Users\Thapelo\AppData\Roaming\npm\pnpm.ps1:24 char:5
++     & "node$exe"  "$basedir/node_modules/pnpm/bin/pnpm.cjs" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([31mΓÄ»ΓÄ»ΓÄ»Γ...»ΓÄ»ΓÄ»ΓÄ»[39m 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+[31m[1m[7m FAIL [27m[22m[39m 
+src/server/trpc/tests/auth-helpers.test.ts[2m [ 
+src/server/trpc/tests/auth-helpers.test.ts ][22m
+[31m[1mZodError[22m: [
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "undefined",
+    "path": [
+      "DATABASE_URL"
+    ],
+    "message": "Required"
+  },
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "undefined",
+    "path": [
+      "JWT_SECRET"
+    ],
+    "message": "Required"
+  },
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "undefined",
+    "path": [
+      "JWT_REFRESH_SECRET"
+    ],
+    "message": "Required"
+  }
+][39m
+[90m [2mΓ¥»[22m Object.get error [as error] ../../Property%20Investment%20Ap
+p/Property%20Investment%20App/node_modules/.pnpm/zod@3.25.67/node_modules/zod/d
+ist/esm/v3/types.js:[2m39:31[22m[39m
+[90m [2mΓ¥»[22m ZodObject.parse ../../Property%20Investment%20App/Property%2
+0Investment%20App/node_modules/.pnpm/zod@3.25.67/node_modules/zod/dist/esm/v3/t
+ypes.js:[2m114:22[22m[39m
+[36m [2mΓ¥»[22m src/server/env.ts:[2m29:30[22m[39m
+    [90m 27| [39m})[33m;[39m
+    [90m 28| [39m
+    [90m 29| [39m[35mexport[39m [35mconst[39m env [33m=[39m 
+envSchema[33m.[39m[34mparse[39m(process[33m.[39menv)[33m;[39m
+    [90m   | [39m                             [31m^[39m
+    [90m 30| [39m
+[90m [2mΓ¥»[22m src/server/db.ts:[2m2:31[22m[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[
+1/15]ΓÄ»[22m[39m
+
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1m[7m Failed Tests 14 
+[27m[22mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+
+[31m[1m[7m FAIL [27m[22m[39m 
+src/tests/financial-calculations.test.ts[2m > [22mFinancial Calculations[2m 
+> [22mcalculateRentalROI[2m > [22mshould calculate correct ROI for rental 
+property
+[31m[1mTypeError[22m: calculateRentalROI is not a function[39m
+[36m [2mΓ¥»[22m src/tests/financial-calculations.test.ts:[2m13:22[22m[39m
+    [90m 11| [39m  
+[34mdescribe[39m([32m'calculateRentalROI'[39m[33m,[39m () [33m=>[39m {
+    [90m 12| [39m    [34mit[39m([32m'should calculate correct ROI for 
+rental property'[39m[33m,[39m () [33m=>[39m {
+    [90m 13| [39m      [35mconst[39m result [33m=[39m 
+[34mcalculateRentalROI[39m({
+    [90m   | [39m                     [31m^[39m
+    [90m 14| [39m        purchasePrice[33m:[39m [34m500000[39m[33m,[39m
+    [90m 15| [39m        downPayment[33m:[39m [34m100000[39m[33m,[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[
+2/15]ΓÄ»[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m 
+src/tests/financial-calculations.test.ts[2m > [22mFinancial Calculations[2m 
+> [22mcalculateRentalROI[2m > [22mshould handle zero down payment
+[31m[1mTypeError[22m: calculateRentalROI is not a function[39m
+[36m [2mΓ¥»[22m src/tests/financial-calculations.test.ts:[2m29:22[22m[39m
+    [90m 27| [39m
+    [90m 28| [39m    [34mit[39m([32m'should handle zero down 
+payment'[39m[33m,[39m () [33m=>[39m {
+    [90m 29| [39m      [35mconst[39m result [33m=[39m 
+[34mcalculateRentalROI[39m({
+    [90m   | [39m                     [31m^[39m
+    [90m 30| [39m        purchasePrice[33m:[39m [34m500000[39m[33m,[39m
+    [90m 31| [39m        downPayment[33m:[39m [34m0[39m[33m,[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[
+3/15]ΓÄ»[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m 
+src/tests/financial-calculations.test.ts[2m > [22mFinancial Calculations[2m 
+> [22mcalculateRentalROI[2m > [22mshould handle negative cash flow
+[31m[1mTypeError[22m: calculateRentalROI is not a function[39m
+[36m [2mΓ¥»[22m src/tests/financial-calculations.test.ts:[2m43:22[22m[39m
+    [90m 41| [39m
+    [90m 42| [39m    [34mit[39m([32m'should handle negative cash 
+flow'[39m[33m,[39m () [33m=>[39m {
+    [90m 43| [39m      [35mconst[39m result [33m=[39m 
+[34mcalculateRentalROI[39m({
+    [90m   | [39m                     [31m^[39m
+    [90m 44| [39m        purchasePrice[33m:[39m [34m500000[39m[33m,[39m
+    [90m 45| [39m        downPayment[33m:[39m [34m100000[39m[33m,[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[
+4/15]ΓÄ»[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m 
+src/tests/financial-calculations.test.ts[2m > [22mFinancial Calculations[2m 
+> [22mcalculateFlipProfit[2m > [22mshould calculate correct profit for 
+property flip
+[31m[1mAssertionError[22m: expected undefined to be 80000 // Object.is 
+equality[39m
+
+[32m- Expected:[39m 
+80000
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2mΓ¥»[22m src/tests/financial-calculations.test.ts:[2m67:29[22m[39m
+    [90m 65| [39m      })[33m;[39m
+    [90m 66| [39m
+    [90m 67| [39m      [34mexpect[39m(result[33m.[39mprofit)[33m.[39m[
+34mtoBe[39m([34m80000[39m)[33m;[39m [90m// 450000 - 300000 - 50000 - 
+[39mΓÇª
+    [90m   | [39m                            [31m^[39m
+    [90m 68| [39m      [34mexpect[39m(result[33m.[39mroi)[33m.[39m[34m
+toBeCloseTo[39m([34m21.62[39m[33m,[39m [34m1[39m)[33m;[39m [90m// 
+(80000 / 370000) * [39mΓÇª
+    [90m 69| [39m      [34mexpect[39m(result[33m.[39mtotalInvestment)[33
+m.[39m[34mtoBe[39m([34m370000[39m)[33m;[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[
+5/15]ΓÄ»[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m 
+src/tests/financial-calculations.test.ts[2m > [22mFinancial Calculations[2m 
+> [22mcalculateFlipProfit[2m > [22mshould handle losing scenario
+[31m[1mTypeError[22m: actual value must be number or bigint, received 
+"undefined"[39m
+[36m [2mΓ¥»[22m src/tests/financial-calculations.test.ts:[2m81:29[22m[39m
+    [90m 79| [39m      })[33m;[39m
+    [90m 80| [39m
+    [90m 81| [39m      [34mexpect[39m(result[33m.[39mprofit)[33m.[39m[
+34mtoBeLessThan[39m([34m0[39m)[33m;[39m
+    [90m   | [39m                            [31m^[39m
+    [90m 82| [39m      [34mexpect[39m(result[33m.[39mroi)[33m.[39m[34m
+toBeLessThan[39m([34m0[39m)[33m;[39m
+    [90m 83| [39m    })[33m;[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[
+6/15]ΓÄ»[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m 
+src/tests/financial-calculations.test.ts[2m > [22mFinancial Calculations[2m 
+> [22mcalculateDevelopmentROI[2m > [22mshould calculate correct ROI for 
+development project
+[31m[1mAssertionError[22m: expected undefined to be 700000 // Object.is 
+equality[39m
+
+[32m- Expected:[39m 
+700000
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2mΓ¥»[22m src/tests/financial-calculations.test.ts:[2m97:29[22m[39m
+    [90m 95| [39m      })[33m;[39m
+    [90m 96| [39m
+    [90m 97| [39m      [34mexpect[39m(result[33m.[39mprofit)[33m.[39m[
+34mtoBe[39m([34m700000[39m)[33m;[39m [90m// 3500000 - 2800000[39m
+    [90m   | [39m                            [31m^[39m
+    [90m 98| [39m      [34mexpect[39m(result[33m.[39mroi)[33m.[39m[34m
+toBeCloseTo[39m([34m25[39m[33m,[39m [34m0[39m)[33m;[39m [90m// 
+(700000 / 2800000) * 1[39mΓÇª
+    [90m 99| [39m      [34mexpect[39m(result[33m.[39mtotalCost)[33m.[39
+m[34mtoBe[39m([34m2800000[39m)[33m;[39m
+
+[2m Test Files [22m [1m[31m3 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (4)[39m
+[2m      Tests [22m [1m[31m14 failed[39m[22m[2m | [22m[1m[32m25 passed[39m[22m[90m (39)[39m
+[2m   Start at [22m 14:11:40
+[2m   Duration [22m 1.75s[2m (transform 520ms, setup 245ms, collect 787ms, tests 311ms, environment 3ms, prepare 1.78s)[22m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[
+7/15]ΓÄ»[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m 
+src/tests/financial-calculations.test.ts[2m > [22mFinancial Calculations[2m 
+> [22mcalculateDevelopmentROI[2m > [22mshould handle break-even scenario
+[31m[1mAssertionError[22m: expected undefined to be +0 // Object.is 
+equality[39m
+
+[32m- Expected:[39m 
+0
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2mΓ¥»[22m 
+src/tests/financial-calculations.test.ts:[2m112:29[22m[39m
+    [90m110| [39m      })[33m;[39m
+    [90m111| [39m
+    [90m112| [39m      [34mexpect[39m(result[33m.[39mprofit)[33m.[39m[
+34mtoBe[39m([34m0[39m)[33m;[39m
+    [90m   | [39m                            [31m^[39m
+    [90m113| [39m      [34mexpect[39m(result[33m.[39mroi)[33m.[39m[34m
+toBe[39m([34m0[39m)[33m;[39m
+    [90m114| [39m    })[33m;[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[
+8/15]ΓÄ»[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m 
+src/tests/financial-calculations.test.ts[2m > [22mFinancial Calculations[2m 
+> [22mcalculateMortgagePayment[2m > [22mshould calculate correct monthly 
+mortgage payment
+[31m[1mTypeError[22m: calculateMortgagePayment is not a function[39m
+[36m [2mΓ¥»[22m 
+src/tests/financial-calculations.test.ts:[2m119:23[22m[39m
+    [90m117| [39m  
+[34mdescribe[39m([32m'calculateMortgagePayment'[39m[33m,[39m () 
+[33m=>[39m {
+    [90m118| [39m    [34mit[39m([32m'should calculate correct monthly 
+mortgage payment'[39m[33m,[39m () [33m=>[39m {
+    [90m119| [39m      [35mconst[39m payment [33m=[39m 
+[34mcalculateMortgagePayment[39m({
+    [90m   | [39m                      [31m^[39m
+    [90m120| [39m        principal[33m:[39m [34m400000[39m[33m,[39m
+    [90m121| [39m        annualRate[33m:[39m [34m6[39m[33m,[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[
+9/15]ΓÄ»[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m 
+src/tests/financial-calculations.test.ts[2m > [22mFinancial Calculations[2m 
+> [22mcalculateMortgagePayment[2m > [22mshould handle zero interest rate
+[31m[1mTypeError[22m: calculateMortgagePayment is not a function[39m
+[36m [2mΓ¥»[22m 
+src/tests/financial-calculations.test.ts:[2m129:23[22m[39m
+    [90m127| [39m
+    [90m128| [39m    [34mit[39m([32m'should handle zero interest 
+rate'[39m[33m,[39m () [33m=>[39m {
+    [90m129| [39m      [35mconst[39m payment [33m=[39m 
+[34mcalculateMortgagePayment[39m({
+    [90m   | [39m                      [31m^[39m
+    [90m130| [39m        principal[33m:[39m [34m400000[39m[33m,[39m
+    [90m131| [39m        annualRate[33m:[39m [34m0[39m[33m,[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[10/
+15]ΓÄ»[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m 
+src/tests/financial-calculations.test.ts[2m > [22mFinancial Calculations[2m 
+> [22mcalculateMortgagePayment[2m > [22mshould handle short-term loan
+[31m[1mTypeError[22m: calculateMortgagePayment is not a function[39m
+[36m [2mΓ¥»[22m 
+src/tests/financial-calculations.test.ts:[2m139:23[22m[39m
+    [90m137| [39m
+    [90m138| [39m    [34mit[39m([32m'should handle short-term 
+loan'[39m[33m,[39m () [33m=>[39m {
+    [90m139| [39m      [35mconst[39m payment [33m=[39m 
+[34mcalculateMortgagePayment[39m({
+    [90m   | [39m                      [31m^[39m
+    [90m140| [39m        principal[33m:[39m [34m100000[39m[33m,[39m
+    [90m141| [39m        annualRate[33m:[39m [34m5[39m[33m,[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[11/
+15]ΓÄ»[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m 
+src/tests/financial-calculations.test.ts[2m > [22mFinancial Calculations[2m 
+> [22mcalculateCapRate[2m > [22mshould calculate correct capitalization rate
+[31m[1mAssertionError[22m: expected +0 to be 5 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 5[39m
+[31m+ 0[39m
+
+[36m [2mΓ¥»[22m 
+src/tests/financial-calculations.test.ts:[2m156:23[22m[39m
+    [90m154| [39m      })[33m;[39m
+    [90m155| [39m
+    [90m156| [39m      
+[34mexpect[39m(capRate)[33m.[39m[34mtoBe[39m([34m5[39m)[33m;[39m 
+[90m// (50000 / 1000000) * 100[39m
+    [90m   | [39m                      [31m^[39m
+    [90m157| [39m    })[33m;[39m
+    [90m158| [39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[12/
+15]ΓÄ»[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m 
+src/tests/financial-calculations.test.ts[2m > [22mFinancial Calculations[2m 
+> [22mcalculateCapRate[2m > [22mshould handle high NOI
+[31m[1mAssertionError[22m: expected +0 to be 12 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 12[39m
+[31m+ 0[39m
+
+[36m [2mΓ¥»[22m 
+src/tests/financial-calculations.test.ts:[2m165:23[22m[39m
+    [90m163| [39m      })[33m;[39m
+    [90m164| [39m
+    [90m165| [39m      
+[34mexpect[39m(capRate)[33m.[39m[34mtoBe[39m([34m12[39m)[33m;[39m
+    [90m   | [39m                      [31m^[39m
+    [90m166| [39m    })[33m;[39m
+    [90m167| [39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[13/
+15]ΓÄ»[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m 
+src/tests/financial-calculations.test.ts[2m > [22mFinancial Calculations[2m 
+> [22mcalculateCapRate[2m > [22mshould handle negative NOI
+[31m[1mAssertionError[22m: expected +0 to be -1 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- -1[39m
+[31m+ 0[39m
+
+[36m [2mΓ¥»[22m 
+src/tests/financial-calculations.test.ts:[2m183:23[22m[39m
+    [90m181| [39m      })[33m;[39m
+    [90m182| [39m
+    [90m183| [39m      [34mexpect[39m(capRate)[33m.[39m[34mtoBe[39m([3
+3m-[39m[34m1[39m)[33m;[39m
+    [90m   | [39m                      [31m^[39m
+    [90m184| [39m    })[33m;[39m
+    [90m185| [39m  })[33m;[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[14/
+15]ΓÄ»[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/server/utils/tests/tokens.test.ts[2m > 
+[22mToken Utils[2m > [22mgenerateRefreshToken[2m > [22mshould generate 
+different tokens for same user at different times
+[31m[1mAssertionError[22m: expected 
+'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ΓÇª' not to be 
+'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ΓÇª' // Object.is equality[39m
+[36m [2mΓ¥»[22m src/server/utils/tests/tokens.test.ts:[2m47:26[22m[39m
+    [90m 45| [39m      [35mconst[39m token1 [33m=[39m 
+[34mgenerateRefreshToken[39m(mockUserId)[33m.[39mtoken[33m;[39m
+    [90m 46| [39m      [35mconst[39m token2 [33m=[39m 
+[34mgenerateRefreshToken[39m(mockUserId)[33m.[39mtoken[33m;[39m
+    [90m 47| [39m      [34mexpect[39m(token1)[33m.[39mnot[33m.[39m[34m
+toBe[39m(token2)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m 48| [39m    })[33m;[39m
+    [90m 49| [39m  })[33m;[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[15/
+15]ΓÄ»[22m[39m
+
+ΓÇëELIFECYCLEΓÇë Test failed. See above for more details.
+

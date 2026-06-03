@@ -1,0 +1,34 @@
+# Caddyfile — auto HTTPS via Let's Encrypt
+# Replace ADMIN_EMAIL in compose env if you want custom ACME contact.
+
+{
+    email {$ACME_EMAIL:admin@investprop.io}
+}
+
+investprop.io, www.investprop.io {
+    encode zstd gzip
+    reverse_proxy app:8010 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+        -Server
+    }
+
+    @static {
+        path *.js *.css *.png *.jpg *.jpeg *.gif *.svg *.ico *.woff *.woff2 *.webp
+    }
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
+    log {
+        output stdout
+        format console
+    }
+}

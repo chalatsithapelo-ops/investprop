@@ -1,0 +1,14 @@
+﻿
+> property-investment-app@ dev C:\Users\Thapelo\Downloads\Property Investment App\Property Investment App
+> vinxi dev
+
+[2m[34mvinxi[39m[22m [2m[33mv0.5.3[39m[22m
+[2m[34mvinxi[39m[22m [2m[32mstarting dev server[39m[22m
+
+ΓÖ╗∩╕Å  Generating routes...
+Γ£à Processed routes in 1221ms
+
+[32m  Γ₧£ Local:   [39m [36m[4mhttp://localhost:[1m3000[22m/[24m[39m
+[90m  Γ₧£ Network:  use [37m--host[90m to expose[39m
+
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 4294967295.

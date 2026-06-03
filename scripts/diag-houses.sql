@@ -1,0 +1,1 @@
+SELECT id, source, title, "propertyType", "askingPrice", LEFT("description", 100) AS desc FROM "DistressedListing" WHERE status='ACTIVE' AND "propertyType" IN ('HOUSE','RESIDENTIAL') ORDER BY RANDOM() LIMIT 25;

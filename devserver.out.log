@@ -1,0 +1,1485 @@
+
+> property-investment-app@ predev C:\Users\Thapelo\Downloads\Property Investment App\Property Investment App
+> tsr generate
+
+
+♻️  Generating routes...
+✅ Processed routes in 1676ms
+
+> property-investment-app@ dev C:\Users\Thapelo\Downloads\Property Investment App\Property Investment App
+> set PORT=8010 && vinxi dev --port 8010
+
+[2m[34mvinxi[39m[22m [2m[33mv0.5.3[39m[22m
+[2m[34mvinxi[39m[22m [2m[32mstarting dev server[39m[22m
+
+♻️  Generating routes...
+✅ Processed routes in 1300ms
+
+[32m  ➜ Local:   [39m [36m[4mhttp://localhost:[1m8010[22m/[24m[39m
+[90m  ➜ Network:  use [37m--host[90m to expose[39m
+
+[browser] [10:24:33 PM] [debug] [vite] connected. (http://localhost:8010/properties/new?type=flip)
+[browser] [10:24:39 PM] [info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold (http://localhost:8010/properties/new?type=flip)
+[browser] [10:24:41 PM] [log] %c >> query #1 %cgetNotifications%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/properties/new?type=flip)
+    Extra data: [
+      {
+        "input": {
+          "page": 1,
+          "limit": 5
+        },
+        "context": {}
+      }
+    ]
+[browser] [10:24:41 PM] [log] %c >> query #2 %cgetTemplates%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/properties/new?type=flip)
+    Extra data: [
+      {
+        "input": {
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDU3MzksImV4cCI6MTc3MDQwNjYzOX0.881ILV7DCq4wK_IGdIljh-nOzkK-csJZPk2EwC8tMuk",
+          "propertyType": "flip"
+        },
+        "context": {}
+      }
+    ]
+[browser] [10:24:44 PM] [debug] [vite] connected. (http://localhost:8010/login)
+[browser] [10:24:44 PM] [info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold (http://localhost:8010/login)
+[browser] [10:25:02 PM] [log] %c >> mutation #1 %clogin%c %O 
+    background-color: #c5a3fc;
+    color: black;
+    padding: 2px;
+   
+    background-color: #c5a3fc;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #c5a3fc;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/login)
+    Extra data: [
+      {
+        "input": {
+          "email": "devmanager@demo.com",
+          "password": "password123"
+        },
+        "context": {}
+      }
+    ]
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."email" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query INSERT INTO "public"."RefreshToken" ("token","userId","expiresAt","createdAt") VALUES ($1,$2,$3,$4) RETURNING "public"."RefreshToken"."id", "public"."RefreshToken"."token", "public"."RefreshToken"."userId", "public"."RefreshToken"."expiresAt", "public"."RefreshToken"."revokedAt", "public"."RefreshToken"."createdAt"
+[browser] [10:25:04 PM] [log] %c << mutation #1 %clogin%c %O 
+    background-color: #904dfc;
+    color: white;
+    padding: 2px;
+   
+    background-color: #904dfc;
+    color: white;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #904dfc;
+    color: white;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/login)
+    Extra data: [
+      {
+        "input": {
+          "email": "devmanager@demo.com",
+          "password": "password123"
+        },
+        "result": {
+          "context": {
+            "response": {}
+          },
+          "result": {
+            "data": {
+              "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MDQxMDQwNH0.oV8ERLapt9Ob7ki89YPkaAX8SYpROxbxh_N-WuS7NOw",
+              "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJyZWZyZXNoIiwidG9rZW5WZXJzaW9uIjowLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MTAxNDMwNH0.8xLw1rycDZCsTe5U5P9R9uwjhIlejBsf0cM-ZW-lbzA",
+              "user": {
+                "id": 2,
+                "email": "devmanager@demo.com",
+                "name": "Sarah Development",
+                "role": "DEVELOPMENT_MANAGER"
+              }
+            }
+          }
+        },
+        "elapsedMs": 2485,
+        "context": {}
+      }
+    ]
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Notification"."id", "public"."Notification"."userId", "public"."Notification"."title", "public"."Notification"."message", "public"."Notification"."type", "public"."Notification"."category", "public"."Notification"."relatedId", "public"."Notification"."read", "public"."Notification"."createdAt" FROM "public"."Notification" WHERE "public"."Notification"."userId" = $1 ORDER BY "public"."Notification"."createdAt" DESC LIMIT $2 OFFSET $3
+[browser] [10:25:05 PM] [log] %c >> query #2 %cgetNotifications%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/dashboard)
+    Extra data: [
+      {
+        "input": {
+          "page": 1,
+          "limit": 5
+        },
+        "context": {}
+      }
+    ]
+[browser] [10:25:05 PM] [log] %c >> query #3 %cgetGlobalInvestorMetrics%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/dashboard)
+    Extra data: [
+      {
+        "input": {
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MDQxMDQwNH0.oV8ERLapt9Ob7ki89YPkaAX8SYpROxbxh_N-WuS7NOw"
+        },
+        "context": {}
+      }
+    ]
+[browser] [10:25:05 PM] [log] %c >> query #4 %cgetProperties%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/dashboard)
+    Extra data: [
+      {
+        "input": {
+          "type": "all",
+          "limit": 6
+        },
+        "context": {}
+      }
+    ]
+prisma:query SELECT COUNT(*) AS "_count._all" FROM (SELECT "public"."Notification"."id" FROM "public"."Notification" WHERE "public"."Notification"."userId" = $1 OFFSET $2) AS "sub"
+prisma:query SELECT COUNT(*) AS "_count._all" FROM (SELECT "public"."Notification"."id" FROM "public"."Notification" WHERE ("public"."Notification"."userId" = $1 AND "public"."Notification"."read" = $2) OFFSET $3) AS "sub"
+prisma:error 
+Invalid `prisma.property.findMany()` invocation:
+
+{
+  take: 7,
+  skip: 0,
+  cursor: undefined,
+  orderBy: {
+    createdAt: "desc"
+  },
+  where: {},
+  include: {
+    user: {
+    ~~~~
+      select: {
+        name: true,
+        role: true
+      }
+    },
+    propertyFlip: true,
+    rentalBond: true,
+    propertyDevelopment: true,
+?   AIAnalysis?: true,
+?   BudgetEntry?: true,
+?   InvestorContribution?: true,
+?   Milestone?: true,
+?   User?: true,
+?   PropertyDevelopment?: true,
+?   PropertyFlip?: true,
+?   RentalBond?: true,
+?   RiskEntry?: true
+  }
+}
+
+Unknown field `user` for include statement on model `Property`. Available options are marked with ?.
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[browser] [10:25:07 PM] [log] %c << query #2 %cgetNotifications%c %O 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+   
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/dashboard)
+    Extra data: [
+      {
+        "input": {
+          "page": 1,
+          "limit": 5
+        },
+        "result": {
+          "context": {
+            "response": {}
+          },
+          "result": {
+            "data": {
+              "notifications": [],
+              "unreadCount": 0,
+              "pagination": {
+                "page": 1,
+                "limit": 5,
+                "total": 0,
+                "totalPages": 0
+              }
+            }
+          }
+        },
+        "elapsedMs": 2147,
+        "context": {}
+      }
+    ]
+prisma:error 
+Invalid `prisma.investorContribution.findMany()` invocation:
+
+{
+  include: {
+    investor: {
+    ~~~~~~~~
+      select: {
+        id: true,
+        name: true,
+        email: true
+      }
+    },
+    property: {
+      select: {
+        id: true,
+        title: true
+      }
+    },
+?   User?: true,
+?   Property?: true
+  },
+  orderBy: {
+    contributionDate: "desc"
+  }
+}
+
+Unknown field `investor` for include statement on model `InvestorContribution`. Available options are marked with ?.
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:error 
+Invalid `prisma.property.findMany()` invocation:
+
+{
+  take: 7,
+  skip: 0,
+  cursor: undefined,
+  orderBy: {
+    createdAt: "desc"
+  },
+  where: {},
+  include: {
+    user: {
+    ~~~~
+      select: {
+        name: true,
+        role: true
+      }
+    },
+    propertyFlip: true,
+    rentalBond: true,
+    propertyDevelopment: true,
+?   AIAnalysis?: true,
+?   BudgetEntry?: true,
+?   InvestorContribution?: true,
+?   Milestone?: true,
+?   User?: true,
+?   PropertyDevelopment?: true,
+?   PropertyFlip?: true,
+?   RentalBond?: true,
+?   RiskEntry?: true
+  }
+}
+
+Unknown field `user` for include statement on model `Property`. Available options are marked with ?.
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:error 
+Invalid `prisma.investorContribution.findMany()` invocation:
+
+{
+  include: {
+    investor: {
+    ~~~~~~~~
+      select: {
+        id: true,
+        name: true,
+        email: true
+      }
+    },
+    property: {
+      select: {
+        id: true,
+        title: true
+      }
+    },
+?   User?: true,
+?   Property?: true
+  },
+  orderBy: {
+    contributionDate: "desc"
+  }
+}
+
+Unknown field `investor` for include statement on model `InvestorContribution`. Available options are marked with ?.
+[browser] [10:25:08 PM] [log] %c >> query #5 %cgetProperties%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/dashboard)
+    Extra data: [
+      {
+        "input": {
+          "type": "all",
+          "limit": 6
+        },
+        "context": {}
+      }
+    ]
+[browser] [10:25:08 PM] [log] %c >> query #6 %cgetGlobalInvestorMetrics%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/dashboard)
+    Extra data: [
+      {
+        "input": {
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MDQxMDQwNH0.oV8ERLapt9Ob7ki89YPkaAX8SYpROxbxh_N-WuS7NOw"
+        },
+        "context": {}
+      }
+    ]
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:error 
+Invalid `prisma.property.findMany()` invocation:
+
+{
+  take: 7,
+  skip: 0,
+  cursor: undefined,
+  orderBy: {
+    createdAt: "desc"
+  },
+  where: {},
+  include: {
+    user: {
+    ~~~~
+      select: {
+        name: true,
+        role: true
+      }
+    },
+    propertyFlip: true,
+    rentalBond: true,
+    propertyDevelopment: true,
+?   AIAnalysis?: true,
+?   BudgetEntry?: true,
+?   InvestorContribution?: true,
+?   Milestone?: true,
+?   User?: true,
+?   PropertyDevelopment?: true,
+?   PropertyFlip?: true,
+?   RentalBond?: true,
+?   RiskEntry?: true
+  }
+}
+
+Unknown field `user` for include statement on model `Property`. Available options are marked with ?.
+[browser] [10:25:10 PM] [log] %c >> query #7 %cgetProperties%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/dashboard)
+    Extra data: [
+      {
+        "input": {
+          "type": "all",
+          "limit": 6
+        },
+        "context": {}
+      }
+    ]
+[browser] [10:25:10 PM] [log] %c >> query #8 %cgetGlobalInvestorMetrics%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/dashboard)
+    Extra data: [
+      {
+        "input": {
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MDQxMDQwNH0.oV8ERLapt9Ob7ki89YPkaAX8SYpROxbxh_N-WuS7NOw"
+        },
+        "context": {}
+      }
+    ]
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:error 
+Invalid `prisma.investorContribution.findMany()` invocation:
+
+{
+  include: {
+    investor: {
+    ~~~~~~~~
+      select: {
+        id: true,
+        name: true,
+        email: true
+      }
+    },
+    property: {
+      select: {
+        id: true,
+        title: true
+      }
+    },
+?   User?: true,
+?   Property?: true
+  },
+  orderBy: {
+    contributionDate: "desc"
+  }
+}
+
+Unknown field `investor` for include statement on model `InvestorContribution`. Available options are marked with ?.
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:error 
+Invalid `prisma.property.findMany()` invocation:
+
+{
+  take: 51,
+  skip: 0,
+  cursor: undefined,
+  orderBy: {
+    createdAt: "desc"
+  },
+  where: {
+    propertyFlip: {
+    ~~~~~~~~~~~~
+      isNot: null
+    },
+?   AND?: PropertyWhereInput | PropertyWhereInput[],
+?   OR?: PropertyWhereInput[],
+?   NOT?: PropertyWhereInput | PropertyWhereInput[],
+?   id?: IntFilter | Int,
+?   title?: StringFilter | String,
+?   description?: StringFilter | String,
+?   address?: StringFilter | String,
+?   city?: StringFilter | String,
+?   state?: StringFilter | String,
+?   zipCode?: StringFilter | String,
+?   price?: FloatFilter | Float,
+?   imageUrl?: StringFilter | String,
+?   imageUrls?: JsonNullableFilter,
+?   status?: EnumPropertyStatusFilter | PropertyStatus,
+?   investmentStatus?: EnumInvestmentStatusFilter | InvestmentStatus,
+?   fundingGoal?: FloatFilter | Float,
+?   fundingRaised?: FloatFilter | Float,
+?   fundingClosingDate?: DateTimeNullableFilter | DateTime | Null,
+?   fundingBreakdown?: JsonNullableFilter,
+?   isPublished?: BoolFilter | Boolean,
+?   bedrooms?: IntNullableFilter | Int | Null,
+?   bathrooms?: IntNullableFilter | Int | Null,
+?   squareMeters?: IntNullableFilter | Int | Null,
+?   userId?: IntFilter | Int,
+?   createdAt?: DateTimeFilter | DateTime,
+?   AIAnalysis?: AIAnalysisListRelationFilter,
+?   BudgetEntry?: BudgetEntryListRelationFilter,
+?   InvestorContribution?: InvestorContributionListRelationFilter,
+?   Milestone?: MilestoneListRelationFilter,
+?   User?: UserScalarRelationFilter | UserWhereInput,
+?   PropertyDevelopment?: PropertyDevelopmentNullableScalarRelationFilter | PropertyDevelopmentWhereInput | Null,
+?   PropertyFlip?: PropertyFlipNullableScalarRelationFilter | PropertyFlipWhereInput | Null,
+?   RentalBond?: RentalBondNullableScalarRelationFilter | RentalBondWhereInput | Null,
+?   RiskEntry?: RiskEntryListRelationFilter
+  },
+  include: {
+    user: {
+      select: {
+        name: true,
+        role: true
+      }
+    },
+    propertyFlip: true,
+    rentalBond: false,
+    propertyDevelopment: false
+  }
+}
+
+Unknown argument `propertyFlip`. Did you mean `PropertyFlip`? Available options are marked with ?.
+prisma:query SELECT COUNT(*) AS "_count._all" FROM (SELECT "public"."Notification"."id" FROM "public"."Notification" WHERE ("public"."Notification"."userId" = $1 AND "public"."Notification"."read" = $2) OFFSET $3) AS "sub"
+prisma:query SELECT "public"."Notification"."id", "public"."Notification"."userId", "public"."Notification"."title", "public"."Notification"."message", "public"."Notification"."type", "public"."Notification"."category", "public"."Notification"."relatedId", "public"."Notification"."read", "public"."Notification"."createdAt" FROM "public"."Notification" WHERE "public"."Notification"."userId" = $1 ORDER BY "public"."Notification"."createdAt" DESC LIMIT $2 OFFSET $3
+prisma:query SELECT COUNT(*) AS "_count._all" FROM (SELECT "public"."Notification"."id" FROM "public"."Notification" WHERE "public"."Notification"."userId" = $1 OFFSET $2) AS "sub"
+[browser] [10:25:15 PM] [log] %c >> query #9 %cgetNotifications%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/flips)
+    Extra data: [
+      {
+        "input": {
+          "page": 1,
+          "limit": 5
+        },
+        "context": {}
+      }
+    ]
+[browser] [10:25:15 PM] [log] %c >> query #10 %cgetProperties%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/flips)
+    Extra data: [
+      {
+        "input": {
+          "type": "flip",
+          "limit": 50
+        },
+        "context": {}
+      }
+    ]
+[browser] [10:25:15 PM] [log] %c << query #9 %cgetNotifications%c %O 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+   
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/flips)
+    Extra data: [
+      {
+        "input": {
+          "page": 1,
+          "limit": 5
+        },
+        "result": {
+          "context": {
+            "response": {}
+          },
+          "result": {
+            "data": {
+              "notifications": [],
+              "unreadCount": 0,
+              "pagination": {
+                "page": 1,
+                "limit": 5,
+                "total": 0,
+                "totalPages": 0
+              }
+            }
+          }
+        },
+        "elapsedMs": 63,
+        "context": {}
+      }
+    ]
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:error 
+Invalid `prisma.property.findMany()` invocation:
+
+{
+  take: 51,
+  skip: 0,
+  cursor: undefined,
+  orderBy: {
+    createdAt: "desc"
+  },
+  where: {
+    propertyFlip: {
+    ~~~~~~~~~~~~
+      isNot: null
+    },
+?   AND?: PropertyWhereInput | PropertyWhereInput[],
+?   OR?: PropertyWhereInput[],
+?   NOT?: PropertyWhereInput | PropertyWhereInput[],
+?   id?: IntFilter | Int,
+?   title?: StringFilter | String,
+?   description?: StringFilter | String,
+?   address?: StringFilter | String,
+?   city?: StringFilter | String,
+?   state?: StringFilter | String,
+?   zipCode?: StringFilter | String,
+?   price?: FloatFilter | Float,
+?   imageUrl?: StringFilter | String,
+?   imageUrls?: JsonNullableFilter,
+?   status?: EnumPropertyStatusFilter | PropertyStatus,
+?   investmentStatus?: EnumInvestmentStatusFilter | InvestmentStatus,
+?   fundingGoal?: FloatFilter | Float,
+?   fundingRaised?: FloatFilter | Float,
+?   fundingClosingDate?: DateTimeNullableFilter | DateTime | Null,
+?   fundingBreakdown?: JsonNullableFilter,
+?   isPublished?: BoolFilter | Boolean,
+?   bedrooms?: IntNullableFilter | Int | Null,
+?   bathrooms?: IntNullableFilter | Int | Null,
+?   squareMeters?: IntNullableFilter | Int | Null,
+?   userId?: IntFilter | Int,
+?   createdAt?: DateTimeFilter | DateTime,
+?   AIAnalysis?: AIAnalysisListRelationFilter,
+?   BudgetEntry?: BudgetEntryListRelationFilter,
+?   InvestorContribution?: InvestorContributionListRelationFilter,
+?   Milestone?: MilestoneListRelationFilter,
+?   User?: UserScalarRelationFilter | UserWhereInput,
+?   PropertyDevelopment?: PropertyDevelopmentNullableScalarRelationFilter | PropertyDevelopmentWhereInput | Null,
+?   PropertyFlip?: PropertyFlipNullableScalarRelationFilter | PropertyFlipWhereInput | Null,
+?   RentalBond?: RentalBondNullableScalarRelationFilter | RentalBondWhereInput | Null,
+?   RiskEntry?: RiskEntryListRelationFilter
+  },
+  include: {
+    user: {
+      select: {
+        name: true,
+        role: true
+      }
+    },
+    propertyFlip: true,
+    rentalBond: false,
+    propertyDevelopment: false
+  }
+}
+
+Unknown argument `propertyFlip`. Did you mean `PropertyFlip`? Available options are marked with ?.
+[browser] [10:25:16 PM] [log] %c >> query #11 %cgetProperties%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/flips)
+    Extra data: [
+      {
+        "input": {
+          "type": "flip",
+          "limit": 50
+        },
+        "context": {}
+      }
+    ]
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:error 
+Invalid `prisma.property.findMany()` invocation:
+
+{
+  take: 51,
+  skip: 0,
+  cursor: undefined,
+  orderBy: {
+    createdAt: "desc"
+  },
+  where: {
+    propertyFlip: {
+    ~~~~~~~~~~~~
+      isNot: null
+    },
+?   AND?: PropertyWhereInput | PropertyWhereInput[],
+?   OR?: PropertyWhereInput[],
+?   NOT?: PropertyWhereInput | PropertyWhereInput[],
+?   id?: IntFilter | Int,
+?   title?: StringFilter | String,
+?   description?: StringFilter | String,
+?   address?: StringFilter | String,
+?   city?: StringFilter | String,
+?   state?: StringFilter | String,
+?   zipCode?: StringFilter | String,
+?   price?: FloatFilter | Float,
+?   imageUrl?: StringFilter | String,
+?   imageUrls?: JsonNullableFilter,
+?   status?: EnumPropertyStatusFilter | PropertyStatus,
+?   investmentStatus?: EnumInvestmentStatusFilter | InvestmentStatus,
+?   fundingGoal?: FloatFilter | Float,
+?   fundingRaised?: FloatFilter | Float,
+?   fundingClosingDate?: DateTimeNullableFilter | DateTime | Null,
+?   fundingBreakdown?: JsonNullableFilter,
+?   isPublished?: BoolFilter | Boolean,
+?   bedrooms?: IntNullableFilter | Int | Null,
+?   bathrooms?: IntNullableFilter | Int | Null,
+?   squareMeters?: IntNullableFilter | Int | Null,
+?   userId?: IntFilter | Int,
+?   createdAt?: DateTimeFilter | DateTime,
+?   AIAnalysis?: AIAnalysisListRelationFilter,
+?   BudgetEntry?: BudgetEntryListRelationFilter,
+?   InvestorContribution?: InvestorContributionListRelationFilter,
+?   Milestone?: MilestoneListRelationFilter,
+?   User?: UserScalarRelationFilter | UserWhereInput,
+?   PropertyDevelopment?: PropertyDevelopmentNullableScalarRelationFilter | PropertyDevelopmentWhereInput | Null,
+?   PropertyFlip?: PropertyFlipNullableScalarRelationFilter | PropertyFlipWhereInput | Null,
+?   RentalBond?: RentalBondNullableScalarRelationFilter | RentalBondWhereInput | Null,
+?   RiskEntry?: RiskEntryListRelationFilter
+  },
+  include: {
+    user: {
+      select: {
+        name: true,
+        role: true
+      }
+    },
+    propertyFlip: true,
+    rentalBond: false,
+    propertyDevelopment: false
+  }
+}
+
+Unknown argument `propertyFlip`. Did you mean `PropertyFlip`? Available options are marked with ?.
+[browser] [10:25:18 PM] [log] %c >> query #12 %cgetProperties%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/flips)
+    Extra data: [
+      {
+        "input": {
+          "type": "flip",
+          "limit": 50
+        },
+        "context": {}
+      }
+    ]
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT 1
+prisma:query SELECT 1
+prisma:query SELECT COUNT(*) AS "_count._all" FROM (SELECT "public"."Notification"."id" FROM "public"."Notification" WHERE "public"."Notification"."userId" = $1 OFFSET $2) AS "sub"
+prisma:query SELECT COUNT(*) AS "_count._all" FROM (SELECT "public"."Notification"."id" FROM "public"."Notification" WHERE ("public"."Notification"."userId" = $1 AND "public"."Notification"."read" = $2) OFFSET $3) AS "sub"
+prisma:query SELECT "public"."Notification"."id", "public"."Notification"."userId", "public"."Notification"."title", "public"."Notification"."message", "public"."Notification"."type", "public"."Notification"."category", "public"."Notification"."relatedId", "public"."Notification"."read", "public"."Notification"."createdAt" FROM "public"."Notification" WHERE "public"."Notification"."userId" = $1 ORDER BY "public"."Notification"."createdAt" DESC LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[browser] [10:25:22 PM] [log] %c >> query #13 %cgetNotifications%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/investments)
+    Extra data: [
+      {
+        "input": {
+          "page": 1,
+          "limit": 5
+        },
+        "context": {}
+      }
+    ]
+[browser] [10:25:22 PM] [log] %c >> query #14 %cgetInvestmentPackages%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/investments)
+    Extra data: [
+      {
+        "input": {
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MDQxMDQwNH0.oV8ERLapt9Ob7ki89YPkaAX8SYpROxbxh_N-WuS7NOw"
+        },
+        "context": {}
+      }
+    ]
+prisma:error 
+Invalid `prisma.property.findMany()` invocation:
+
+{
+  where: {
+    investmentStatus: {
+      in: [
+        "PLANNING",
+        "RAISING_FUNDS",
+        "FUNDED",
+        "PROJECT_STARTED"
+      ]
+    }
+  },
+  include: {
+    user: {
+    ~~~~
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true
+      }
+    },
+    propertyFlip: true,
+    rentalBond: true,
+    propertyDevelopment: true,
+    investorContributions: {
+      select: {
+        contributionAmount: true
+      }
+    },
+?   AIAnalysis?: true,
+?   BudgetEntry?: true,
+?   InvestorContribution?: true,
+?   Milestone?: true,
+?   User?: true,
+?   PropertyDevelopment?: true,
+?   PropertyFlip?: true,
+?   RentalBond?: true,
+?   RiskEntry?: true
+  },
+  orderBy: {
+    createdAt: "desc"
+  }
+}
+
+Unknown field `user` for include statement on model `Property`. Available options are marked with ?.
+[browser] [10:25:22 PM] [log] %c << query #13 %cgetNotifications%c %O 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+   
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/investments)
+    Extra data: [
+      {
+        "input": {
+          "page": 1,
+          "limit": 5
+        },
+        "result": {
+          "context": {
+            "response": {}
+          },
+          "result": {
+            "data": {
+              "notifications": [],
+              "unreadCount": 0,
+              "pagination": {
+                "page": 1,
+                "limit": 5,
+                "total": 0,
+                "totalPages": 0
+              }
+            }
+          }
+        },
+        "elapsedMs": 105,
+        "context": {}
+      }
+    ]
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:error 
+Invalid `prisma.property.findMany()` invocation:
+
+{
+  where: {
+    investmentStatus: {
+      in: [
+        "PLANNING",
+        "RAISING_FUNDS",
+        "FUNDED",
+        "PROJECT_STARTED"
+      ]
+    }
+  },
+  include: {
+    user: {
+    ~~~~
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true
+      }
+    },
+    propertyFlip: true,
+    rentalBond: true,
+    propertyDevelopment: true,
+    investorContributions: {
+      select: {
+        contributionAmount: true
+      }
+    },
+?   AIAnalysis?: true,
+?   BudgetEntry?: true,
+?   InvestorContribution?: true,
+?   Milestone?: true,
+?   User?: true,
+?   PropertyDevelopment?: true,
+?   PropertyFlip?: true,
+?   RentalBond?: true,
+?   RiskEntry?: true
+  },
+  orderBy: {
+    createdAt: "desc"
+  }
+}
+
+Unknown field `user` for include statement on model `Property`. Available options are marked with ?.
+[browser] [10:25:23 PM] [log] %c >> query #15 %cgetInvestmentPackages%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/investments)
+    Extra data: [
+      {
+        "input": {
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MDQxMDQwNH0.oV8ERLapt9Ob7ki89YPkaAX8SYpROxbxh_N-WuS7NOw"
+        },
+        "context": {}
+      }
+    ]
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:error 
+Invalid `prisma.property.findMany()` invocation:
+
+{
+  where: {
+    investmentStatus: {
+      in: [
+        "PLANNING",
+        "RAISING_FUNDS",
+        "FUNDED",
+        "PROJECT_STARTED"
+      ]
+    }
+  },
+  include: {
+    user: {
+    ~~~~
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true
+      }
+    },
+    propertyFlip: true,
+    rentalBond: true,
+    propertyDevelopment: true,
+    investorContributions: {
+      select: {
+        contributionAmount: true
+      }
+    },
+?   AIAnalysis?: true,
+?   BudgetEntry?: true,
+?   InvestorContribution?: true,
+?   Milestone?: true,
+?   User?: true,
+?   PropertyDevelopment?: true,
+?   PropertyFlip?: true,
+?   RentalBond?: true,
+?   RiskEntry?: true
+  },
+  orderBy: {
+    createdAt: "desc"
+  }
+}
+
+Unknown field `user` for include statement on model `Property`. Available options are marked with ?.
+[browser] [10:25:25 PM] [log] %c >> query #16 %cgetInvestmentPackages%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/investments)
+    Extra data: [
+      {
+        "input": {
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MDQxMDQwNH0.oV8ERLapt9Ob7ki89YPkaAX8SYpROxbxh_N-WuS7NOw"
+        },
+        "context": {}
+      }
+    ]
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT 1
+prisma:query SELECT 1
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT COUNT(*) AS "_count._all" FROM (SELECT "public"."Notification"."id" FROM "public"."Notification" WHERE ("public"."Notification"."userId" = $1 AND "public"."Notification"."read" = $2) OFFSET $3) AS "sub"
+prisma:query SELECT COUNT(*) AS "_count._all" FROM (SELECT "public"."Notification"."id" FROM "public"."Notification" WHERE "public"."Notification"."userId" = $1 OFFSET $2) AS "sub"
+prisma:query SELECT "public"."Notification"."id", "public"."Notification"."userId", "public"."Notification"."title", "public"."Notification"."message", "public"."Notification"."type", "public"."Notification"."category", "public"."Notification"."relatedId", "public"."Notification"."read", "public"."Notification"."createdAt" FROM "public"."Notification" WHERE "public"."Notification"."userId" = $1 ORDER BY "public"."Notification"."createdAt" DESC LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."PropertyTemplate"."id", "public"."PropertyTemplate"."name", "public"."PropertyTemplate"."propertyType", "public"."PropertyTemplate"."configuration", "public"."PropertyTemplate"."createdAt" FROM "public"."PropertyTemplate" WHERE ("public"."PropertyTemplate"."userId" = $1 AND "public"."PropertyTemplate"."propertyType" = $2) ORDER BY "public"."PropertyTemplate"."createdAt" DESC OFFSET $3
+[browser] [10:25:27 PM] [log] %c >> query #17 %cgetNotifications%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/properties/new?type=flip)
+    Extra data: [
+      {
+        "input": {
+          "page": 1,
+          "limit": 5
+        },
+        "context": {}
+      }
+    ]
+[browser] [10:25:27 PM] [log] %c >> query #18 %cgetTemplates%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/properties/new?type=flip)
+    Extra data: [
+      {
+        "input": {
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MDQxMDQwNH0.oV8ERLapt9Ob7ki89YPkaAX8SYpROxbxh_N-WuS7NOw",
+          "propertyType": "flip"
+        },
+        "context": {}
+      }
+    ]
+[browser] [10:25:27 PM] [log] %c << query #17 %cgetNotifications%c %O 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+   
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/properties/new?type=flip)
+    Extra data: [
+      {
+        "input": {
+          "page": 1,
+          "limit": 5
+        },
+        "result": {
+          "context": {
+            "response": {}
+          },
+          "result": {
+            "data": {
+              "notifications": [],
+              "unreadCount": 0,
+              "pagination": {
+                "page": 1,
+                "limit": 5,
+                "total": 0,
+                "totalPages": 0
+              }
+            }
+          }
+        },
+        "elapsedMs": 66,
+        "context": {}
+      }
+    ]
+[browser] [10:25:27 PM] [log] %c << query #18 %cgetTemplates%c %O 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+   
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/properties/new?type=flip)
+    Extra data: [
+      {
+        "input": {
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MDQxMDQwNH0.oV8ERLapt9Ob7ki89YPkaAX8SYpROxbxh_N-WuS7NOw",
+          "propertyType": "flip"
+        },
+        "result": {
+          "context": {
+            "response": {}
+          },
+          "result": {
+            "data": {
+              "templates": []
+            }
+          }
+        },
+        "elapsedMs": 75,
+        "context": {}
+      }
+    ]
+prisma:query SELECT 1
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[browser] [10:25:41 PM] [log] %c >> query #19 %cgetPresignedUploadUrl%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/properties/new?type=flip)
+    Extra data: [
+      {
+        "input": {
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MDQxMDQwNH0.oV8ERLapt9Ob7ki89YPkaAX8SYpROxbxh_N-WuS7NOw",
+          "fileName": "a8cc20_9eb12c95d72e49599945a28a764b207c.avif",
+          "fileType": "image/avif"
+        },
+        "context": {}
+      }
+    ]
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[browser] [10:25:41 PM] [log] %c >> query #20 %cgetPresignedUploadUrl%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/properties/new?type=flip)
+    Extra data: [
+      {
+        "input": {
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MDQxMDQwNH0.oV8ERLapt9Ob7ki89YPkaAX8SYpROxbxh_N-WuS7NOw",
+          "fileName": "a8cc20_73ba3835fdc44012ba384594f3742d15.avif",
+          "fileType": "image/avif"
+        },
+        "context": {}
+      }
+    ]
+[browser] [10:25:41 PM] [log] %c >> query #21 %cgetPresignedUploadUrl%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/properties/new?type=flip)
+    Extra data: [
+      {
+        "input": {
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MDQxMDQwNH0.oV8ERLapt9Ob7ki89YPkaAX8SYpROxbxh_N-WuS7NOw",
+          "fileName": "a8cc20_c7729bc86c4c4a169a214d543c08c07f.avif",
+          "fileType": "image/avif"
+        },
+        "context": {}
+      }
+    ]
+prisma:query SELECT 1
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[browser] [10:25:58 PM] [log] %c >> query #22 %cgetPresignedUploadUrl%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/properties/new?type=flip)
+    Extra data: [
+      {
+        "input": {
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MDQxMDQwNH0.oV8ERLapt9Ob7ki89YPkaAX8SYpROxbxh_N-WuS7NOw",
+          "fileName": "a8cc20_9eb12c95d72e49599945a28a764b207c.avif",
+          "fileType": "image/avif"
+        },
+        "context": {}
+      }
+    ]
+[2m10:33:26 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/server/trpc/root.ts[22m
+[2m10:33:26 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/server/trpc/root.ts[22m
+[2m10:33:26 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/PropertyForm.tsx, /src/styles.css[22m
+[2m10:33:26 PM[22m [36m[1m[vite][22m[39m [34m[2m(ssr)[22m[39m [32mpage reload [39m[2msrc/server/trpc/root.ts[22m
+[browser] [10:33:27 PM] [info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold (http://localhost:8010/properties/new?type=flip)
+[browser] [10:33:28 PM] [log] %c >> query #1 %cgetNotifications%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/properties/new?type=flip)
+    Extra data: [
+      {
+        "input": {
+          "page": 1,
+          "limit": 5
+        },
+        "context": {}
+      }
+    ]
+[browser] [10:33:28 PM] [log] %c >> query #2 %cgetTemplates%c %O 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+   
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #72e3ff;
+    color: black;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/properties/new?type=flip)
+    Extra data: [
+      {
+        "input": {
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MDQxMDQwNH0.oV8ERLapt9Ob7ki89YPkaAX8SYpROxbxh_N-WuS7NOw",
+          "propertyType": "flip"
+        },
+        "context": {}
+      }
+    ]
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Notification"."id", "public"."Notification"."userId", "public"."Notification"."title", "public"."Notification"."message", "public"."Notification"."type", "public"."Notification"."category", "public"."Notification"."relatedId", "public"."Notification"."read", "public"."Notification"."createdAt" FROM "public"."Notification" WHERE "public"."Notification"."userId" = $1 ORDER BY "public"."Notification"."createdAt" DESC LIMIT $2 OFFSET $3
+prisma:query SELECT COUNT(*) AS "_count._all" FROM (SELECT "public"."Notification"."id" FROM "public"."Notification" WHERE ("public"."Notification"."userId" = $1 AND "public"."Notification"."read" = $2) OFFSET $3) AS "sub"
+prisma:query SELECT COUNT(*) AS "_count._all" FROM (SELECT "public"."Notification"."id" FROM "public"."Notification" WHERE "public"."Notification"."userId" = $1 OFFSET $2) AS "sub"
+prisma:query SELECT "public"."User"."id", "public"."User"."email", "public"."User"."password", "public"."User"."name", "public"."User"."role"::text, "public"."User"."investorPreferences", "public"."User"."createdAt", "public"."User"."emailVerified", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."PropertyTemplate"."id", "public"."PropertyTemplate"."name", "public"."PropertyTemplate"."propertyType", "public"."PropertyTemplate"."configuration", "public"."PropertyTemplate"."createdAt" FROM "public"."PropertyTemplate" WHERE ("public"."PropertyTemplate"."userId" = $1 AND "public"."PropertyTemplate"."propertyType" = $2) ORDER BY "public"."PropertyTemplate"."createdAt" DESC OFFSET $3
+[browser] [10:33:32 PM] [log] %c << query #1 %cgetNotifications%c %O 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+   
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/properties/new?type=flip)
+    Extra data: [
+      {
+        "input": {
+          "page": 1,
+          "limit": 5
+        },
+        "result": {
+          "context": {
+            "response": {}
+          },
+          "result": {
+            "data": {
+              "notifications": [],
+              "unreadCount": 0,
+              "pagination": {
+                "page": 1,
+                "limit": 5,
+                "total": 0,
+                "totalPages": 0
+              }
+            }
+          }
+        },
+        "elapsedMs": 4220,
+        "context": {}
+      }
+    ]
+[browser] [10:33:32 PM] [log] %c << query #2 %cgetTemplates%c %O 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+   
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: normal; [extra#1] (http://localhost:8010/properties/new?type=flip)
+    Extra data: [
+      {
+        "input": {
+          "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzA0MDk1MDQsImV4cCI6MTc3MDQxMDQwNH0.oV8ERLapt9Ob7ki89YPkaAX8SYpROxbxh_N-WuS7NOw",
+          "propertyType": "flip"
+        },
+        "result": {
+          "context": {
+            "response": {}
+          },
+          "result": {
+            "data": {
+              "templates": []
+            }
+          }
+        },
+        "elapsedMs": 4250,
+        "context": {}
+      }
+    ]
+ ELIFECYCLE  Command failed with exit code 4294967295.

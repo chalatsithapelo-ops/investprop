@@ -1,0 +1,66 @@
+# syntax=docker/dockerfile:1.7
+# ---------- Stage 1: deps + build ----------
+FROM node:20-bookworm-slim AS build
+
+ENV PNPM_HOME=/root/.local/share/pnpm \
+    PATH=/root/.local/share/pnpm:$PATH \
+    DISABLE_OPENCOLLECTIVE=1 \
+    ADBLOCK=1 \
+    CI=1
+
+# OS deps for prisma engines + openssl
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      openssl ca-certificates curl python3 build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable && corepack prepare pnpm@10.5.2 --activate
+
+WORKDIR /app
+
+# Copy manifest first for cache
+COPY package.json pnpm-lock.yaml ./
+COPY prisma ./prisma
+
+# Install all deps (need devDeps for build)
+RUN pnpm install --frozen-lockfile
+
+# Copy source
+COPY . .
+
+# Build (vinxi build) — also generates prisma client + tanstack routes via postinstall hooks
+ENV NODE_ENV=production
+RUN pnpm build
+
+# Prune to production deps only (keeps @prisma/client + runtime)
+RUN pnpm prune --prod
+
+# ---------- Stage 2: runtime ----------
+FROM node:20-bookworm-slim AS runtime
+
+ENV NODE_ENV=production \
+    PORT=8010 \
+    HOST=0.0.0.0
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      openssl ca-certificates wget \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 1001 app \
+    && useradd --system --uid 1001 --gid app --home /app --shell /sbin/nologin app
+
+WORKDIR /app
+
+# Copy built artefacts + runtime deps
+COPY --from=build --chown=app:app /app/.output ./.output
+COPY --from=build --chown=app:app /app/node_modules ./node_modules
+COPY --from=build --chown=app:app /app/prisma ./prisma
+COPY --from=build --chown=app:app /app/package.json ./package.json
+
+USER app
+
+EXPOSE 8010
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:8010/ >/dev/null || exit 1
+
+# Run migrations on boot, then start the server
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node .output/server/index.mjs"]

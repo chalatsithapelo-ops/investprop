@@ -1,0 +1,60 @@
+
+> property-investment-app@ predev C:\Users\Thapelo\Downloads\Property Investment App\Property Investment App
+> tsr generate
+
+
+♻️  Generating routes...
+✅ Processed routes in 1124ms
+
+> property-investment-app@ dev C:\Users\Thapelo\Downloads\Property Investment App\Property Investment App
+> vinxi dev "--" "--port" "8010" "--host" "127.0.0.1"
+
+[2m[34mvinxi[39m[22m [2m[33mv0.5.3[39m[22m
+[2m[34mvinxi[39m[22m [2m[32mstarting dev server[39m[22m
+
+♻️  Generating routes...
+✅ Processed routes in 1658ms
+[get-port] Unable to find an available port (tried 3000 on any host). Using alternative port 3001.
+
+ 
+              █▀▀▀▀▀▀▀██▀██▀▀▀▀▀█▀▀▀▀▀▀▀█
+              █ █▀▀▀█ █ ▀▀  ▄▄  █ █▀▀▀█ █
+              █ █   █ █▀▄▄▄█▀█ ▄█ █   █ █
+              █ ▀▀▀▀▀ █ ▄▀▄▀▄ ▄ █ ▀▀▀▀▀ █
+              █▀▀█▀██▀▀▄▄▀█▄▀▄▄▄█▀▀▀█▀▀██
+              █▀▀▀▀▄▄▀▄ ▀ ▄██ █▀█ ▄███▀ █
+              ██▄█▀█▄▀▀████▀  ▄██ ▀▄▀█▀▀█
+              █▀▄▀█▄ ▀█   ▄ ▀▄█ ▄▄▀█▄ █ █
+              █▀ ▄▀▄▄▀██▀█▀ ▄ ▀    ▀ ▀▄██
+              █▀▀▀▀▀▀▀█ █▀██▄▀  █▀█ ▄▄▀ █
+              █ █▀▀▀█ ██  █ ▀█▄ ▀▀▀ ▄▄▀██
+              █ █   █ █▄ ▀██  ▄█ █▀ ▀ █▀█
+              █ ▀▀▀▀▀ █  ▀██  █ ▀█▀█▄█▀▀█
+              ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+ 
+[32m  ➜ Local:   [39m [36m[4mhttp://localhost:[1m3001[22m/[24m[39m
+[35m  ➜ Network: [39m [36m[4mhttp://172.30.112.1:[1m3001[22m/[24m[39m[90m [QR code][39m
+[35m  ➜ Network: [39m [36m[4mhttp://192.168.8.49:[1m3001[22m/[24m[39m
+
+ ELIFECYCLE  Command failed with exit code 4294967295.
+
+♻️  Regenerating routes...
+✅ Processed routes in 1345ms
+
+♻️  Regenerating routes...
+✅ Processed routes in 408ms
+
+♻️  Regenerating routes...
+✅ Processed routes in 233ms
+
+♻️  Regenerating routes...
+✅ Processed routes in 631ms
+
+♻️  Regenerating routes...
+✅ Processed routes in 467ms
+
+♻️  Regenerating routes...
+✅ Processed routes in 517ms
+
+♻️  Regenerating routes...
+✅ Processed routes in 550ms

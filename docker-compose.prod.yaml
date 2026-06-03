@@ -1,0 +1,129 @@
+name: investprop
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-investprop}
+      POSTGRES_USER: ${POSTGRES_USER:-investprop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-investprop} -d ${POSTGRES_DB:-investprop}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    image: investprop:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "8010"
+      HOST: 0.0.0.0
+      BASE_URL: ${BASE_URL}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-investprop}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-investprop}?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      EMAIL_SERVICE_API_KEY: ${EMAIL_SERVICE_API_KEY:-}
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-noreply@investprop.io}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Investprop}
+      PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY:-}
+      PAYSTACK_PUBLIC_KEY: ${PAYSTACK_PUBLIC_KEY:-}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio}
+      MINIO_PORT: ${MINIO_PORT:-9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-investprop}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_USE_SSL: "false"
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-property-images}
+    networks:
+      - internal
+    expose:
+      - "8010"
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-investprop}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - miniodata:/data
+    networks:
+      - internal
+    expose:
+      - "9000"
+      - "9001"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:-admin@investprop.io}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    networks:
+      - internal
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    networks:
+      - internal
+    entrypoint: >
+      sh -c '
+        echo "Backup sidecar started. Will run nightly at 02:00 UTC.";
+        while true; do
+          NOW=$$(date +%s);
+          NEXT=$$(date -d "tomorrow 02:00 UTC" +%s 2>/dev/null || date -d "02:00 UTC" +%s);
+          if [ "$$NEXT" -le "$$NOW" ]; then NEXT=$$((NEXT + 86400)); fi;
+          SLEEP=$$((NEXT - NOW));
+          echo "Sleeping $$SLEEP seconds until next backup...";
+          sleep $$SLEEP;
+          STAMP=$$(date -u +%Y%m%d_%H%M%S);
+          OUT=/backups/investprop_$$STAMP.sql.gz;
+          echo "Running backup -> $$OUT";
+          pg_dump -h postgres -U ${POSTGRES_USER:-investprop} ${POSTGRES_DB:-investprop} | gzip > $$OUT;
+          # Keep last 14 backups
+          ls -1t /backups/investprop_*.sql.gz | tail -n +15 | xargs -r rm -f;
+          echo "Backup complete.";
+        done
+      '
+
+volumes:
+  pgdata:
+  miniodata:
+  caddydata:
+  caddyconfig:
+
+networks:
+  internal:
+    driver: bridge
