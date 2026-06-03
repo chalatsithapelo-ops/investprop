@@ -8,16 +8,16 @@ const db = new PrismaClient();
 
 async function main() {
   console.log("Seeding demo data...");
-  const password = await bcryptjs.hash("Demo1234!", 10);
+  const password = await bcryptjs.hash("password123", 10);
 
-  // Manager
+  // Dev Manager (matches login page tile)
   const manager = await db.user.upsert({
-    where: { email: "manager@demo.local" },
-    update: {},
+    where: { email: "devmanager@demo.com" },
+    update: { password },
     create: {
-      email: "manager@demo.local",
+      email: "devmanager@demo.com",
       password,
-      name: "Demo Manager",
+      name: "Sarah Development",
       role: "DEVELOPMENT_MANAGER",
       emailVerified: true,
       updatedAt: new Date(),
@@ -32,14 +32,14 @@ async function main() {
 
   // Investors
   const investorRows = [
-    { email: "alice@demo.local", name: "Alice Investor" },
-    { email: "bob@demo.local", name: "Bob Investor" },
-    { email: "carol@demo.local", name: "Carol Investor" },
+    { email: "investor@demo.com", name: "John Investor" },
+    { email: "investor2@demo.com", name: "Naledi Mokoena" },
+    { email: "investor3@demo.com", name: "Thabo Ndlovu" },
   ];
   for (const i of investorRows) {
     const u = await db.user.upsert({
       where: { email: i.email },
-      update: {},
+      update: { password },
       create: {
         email: i.email,
         password,
@@ -57,6 +57,27 @@ async function main() {
         data: { investorCode: `IP-INV-${String(u.id).padStart(5, "0")}` },
       });
     }
+  }
+
+  // Other roles (matches login page tiles)
+  const otherRows = [
+    { email: "pm@demo.com", name: "Mike Projects", role: "PROJECT_MANAGER" },
+    { email: "owner@demo.com", name: "Olivia Owner", role: "PROPERTY_OWNER" },
+    { email: "contractor@demo.com", name: "Carlos Contractor", role: "CONTRACTOR" },
+  ];
+  for (const r of otherRows) {
+    await db.user.upsert({
+      where: { email: r.email },
+      update: { password },
+      create: {
+        email: r.email,
+        password,
+        name: r.name,
+        role: r.role,
+        emailVerified: true,
+        updatedAt: new Date(),
+      },
+    });
   }
 
   // Property 1: Flip
@@ -231,9 +252,10 @@ async function main() {
     });
   }
 
-  console.log("\n✓ Demo data ready");
-  console.log("  Manager:   manager@demo.local / Demo1234!");
-  console.log("  Investors: alice@demo.local, bob@demo.local, carol@demo.local / Demo1234!");
+  console.log("\n✓ Demo data ready (all passwords: password123)");
+  console.log("  Manager:   devmanager@demo.com");
+  console.log("  Investors: investor@demo.com, investor2@demo.com, investor3@demo.com");
+  console.log("  Other:     pm@demo.com, owner@demo.com, contractor@demo.com");
   console.log("  3 properties + 6 distressed listings");
 }
 
