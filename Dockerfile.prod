@@ -17,17 +17,14 @@ RUN corepack enable && corepack prepare pnpm@10.5.2 --activate
 
 WORKDIR /app
 
-# Copy manifest first for cache
-COPY package.json pnpm-lock.yaml ./
-COPY prisma ./prisma
-
-# Install all deps (need devDeps for build)
-RUN pnpm install --frozen-lockfile
-
-# Copy source
+# Copy full source first — postinstall runs `tsr generate` which scans src/routes,
+# so we cannot do a lockfile-only install layer.
 COPY . .
 
-# Build (vinxi build) — also generates prisma client + tanstack routes via postinstall hooks
+# Install all deps (need devDeps for build). Postinstall: prisma generate + tsr generate.
+RUN pnpm install --frozen-lockfile
+
+# Build (vinxi build)
 ENV NODE_ENV=production
 RUN pnpm build
 
