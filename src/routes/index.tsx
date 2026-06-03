@@ -38,6 +38,12 @@ function LandingPage() {
               Start Investing
             </Link>
             <Link
+              to="/sell-your-property"
+              className="inline-flex items-center rounded-lg border-2 border-gold-500 bg-white px-8 py-3.5 text-lg font-semibold text-gold-700 transition hover:bg-gold-50"
+            >
+              Sell or Partner With Us
+            </Link>
+            <Link
               to="/login"
               className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-8 py-3.5 text-lg font-semibold text-gray-700 transition hover:bg-gray-50"
             >

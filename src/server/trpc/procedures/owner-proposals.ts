@@ -27,6 +27,28 @@ export const submitSaleProposal = baseProcedure
       squareMeters: z.number().int().min(0).optional(),
       erfSize: z.number().min(0).optional(),
       imageUrls: z.array(z.string()).optional(),
+      documentUrls: z.array(z.object({
+        kind: z.enum(["TITLE_DEED", "ID", "RATES_ACCOUNT", "BOND_STATEMENT", "LEASE", "OTHER"]),
+        url: z.string(),
+        name: z.string(),
+      })).optional(),
+      engagementType: z.enum(["OUTRIGHT_SALE", "JOINT_VENTURE", "LEASE_BACK", "DEVELOPMENT_PARTNERSHIP"]).default("OUTRIGHT_SALE"),
+      titleDeedNumber: z.string().optional(),
+      erfNumber: z.string().optional(),
+      bondStatus: z.enum(["NONE", "EXISTING"]).default("NONE"),
+      bondOutstanding: z.number().min(0).optional(),
+      bondBank: z.string().optional(),
+      ratesStatus: z.enum(["CURRENT", "ARREARS"]).default("CURRENT"),
+      ratesArrears: z.number().min(0).optional(),
+      tenancyStatus: z.enum(["OWNER_OCCUPIED", "TENANTED", "VACANT"]).default("OWNER_OCCUPIED"),
+      monthlyRent: z.number().min(0).optional(),
+      leaseEndDate: z.string().optional(),
+      conditionRating: z.enum(["EXCELLENT", "GOOD", "FAIR", "NEEDS_RENOVATION", "DISTRESSED"]).default("GOOD"),
+      estimatedRenoCost: z.number().min(0).optional(),
+      coOwners: z.string().optional(),
+      popiaConsent: z.literal(true, {
+        errorMap: () => ({ message: "You must consent to POPIA processing of your information" }),
+      }),
       contactPhone: z.string().optional(),
       contactEmail: z.string().email().optional(),
     })
@@ -34,6 +56,17 @@ export const submitSaleProposal = baseProcedure
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
     requireRole(user, ["PROPERTY_OWNER"], "Only property owners can submit sale proposals");
+
+    // Cross-field validation
+    if (input.bondStatus === "EXISTING" && (!input.bondOutstanding || input.bondOutstanding <= 0)) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Please provide the outstanding bond balance" });
+    }
+    if (input.ratesStatus === "ARREARS" && (!input.ratesArrears || input.ratesArrears <= 0)) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Please provide the rates arrears amount" });
+    }
+    if (input.tenancyStatus === "TENANTED" && !input.monthlyRent) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Please provide the monthly rent for the tenanted property" });
+    }
 
     const proposal = await db.ownerSaleProposal.create({
       data: {
@@ -54,6 +87,22 @@ export const submitSaleProposal = baseProcedure
         squareMeters: input.squareMeters,
         erfSize: input.erfSize,
         imageUrls: input.imageUrls ?? [],
+        documentUrls: (input.documentUrls ?? []) as any,
+        engagementType: input.engagementType,
+        titleDeedNumber: input.titleDeedNumber,
+        erfNumber: input.erfNumber,
+        bondStatus: input.bondStatus,
+        bondOutstanding: input.bondOutstanding,
+        bondBank: input.bondBank,
+        ratesStatus: input.ratesStatus,
+        ratesArrears: input.ratesArrears,
+        tenancyStatus: input.tenancyStatus,
+        monthlyRent: input.monthlyRent,
+        leaseEndDate: input.leaseEndDate ? new Date(input.leaseEndDate) : null,
+        conditionRating: input.conditionRating,
+        estimatedRenoCost: input.estimatedRenoCost,
+        coOwners: input.coOwners,
+        popiaConsent: input.popiaConsent,
         contactPhone: input.contactPhone ?? user.email,
         contactEmail: input.contactEmail ?? user.email,
       },

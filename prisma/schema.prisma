@@ -1368,6 +1368,25 @@ model OwnerSaleProposal {
   squareMeters    Int?
   erfSize         Float?                  // in sqm
   imageUrls       Json?                   // Array of image URLs
+  documentUrls    Json?                   // Array of {kind: 'TITLE_DEED'|'ID'|'RATES_ACCOUNT'|'BOND_STATEMENT'|'LEASE'|'OTHER', url, name}
+  // ─── Phase 7: deal-critical disclosures ───
+  engagementType  EngagementType          @default(OUTRIGHT_SALE)
+  titleDeedNumber String?
+  erfNumber       String?
+  bondStatus      BondStatus              @default(NONE)
+  bondOutstanding Float?
+  bondBank        String?
+  ratesStatus     RatesStatus             @default(CURRENT)
+  ratesArrears    Float?
+  tenancyStatus   TenancyStatus           @default(OWNER_OCCUPIED)
+  monthlyRent     Float?
+  leaseEndDate    DateTime?
+  conditionRating PropertyCondition       @default(GOOD)
+  estimatedRenoCost Float?
+  coOwners        String?                 // Free-text list of additional registered owners
+  popiaConsent    Boolean                 @default(false)
+  counterOfferAmount Float?
+  counterOfferTerms  String?              @db.Text
   contactPhone    String?
   contactEmail    String?
   status          SaleProposalStatus      @default(PENDING)
@@ -1403,4 +1422,35 @@ enum SaleProposalStatus {
   ACCEPTED
   REJECTED
   WITHDRAWN
+}
+
+enum EngagementType {
+  OUTRIGHT_SALE             // We buy the property outright
+  JOINT_VENTURE             // Owner contributes property as equity into a JV / SPV
+  LEASE_BACK                // We buy and rent back to owner
+  DEVELOPMENT_PARTNERSHIP   // We develop together, share returns
+}
+
+enum BondStatus {
+  NONE
+  EXISTING
+}
+
+enum RatesStatus {
+  CURRENT
+  ARREARS
+}
+
+enum TenancyStatus {
+  OWNER_OCCUPIED
+  TENANTED
+  VACANT
+}
+
+enum PropertyCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  NEEDS_RENOVATION
+  DISTRESSED
 }

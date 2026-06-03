@@ -49,8 +49,10 @@ export const register = publicProcedure
     // Hash password
     const hashedPassword = await bcryptjs.hash(input.password, 10);
 
-    // Non-investor roles require admin approval before they can log in.
-    const requiresApproval = input.role !== "INVESTOR";
+    // Staff roles require admin approval before they can log in.
+    // INVESTOR and PROPERTY_OWNER are customer-facing self-service.
+    const STAFF_ROLES = new Set(["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"]);
+    const requiresApproval = STAFF_ROLES.has(input.role);
     const status = requiresApproval ? "PENDING_APPROVAL" : "ACTIVE";
 
     // Create user

@@ -90,3 +90,18 @@ Legend: ✅ done · 🟡 in-progress · ⬜ todo · ⏸ deferred (needs vendor/d
 ---
 
 _Last updated: 2026-06-03_
+
+## Phase 7 — Seller portal completeness (P0)
+- ✅ Public "Sell or Partner With Us" CTA on landing page
+- ✅ Public `/sell-your-property` info page (engagement options + process + compliance note)
+- ✅ Engagement type enum: OUTRIGHT_SALE / JOINT_VENTURE / LEASE_BACK / DEVELOPMENT_PARTNERSHIP
+- ✅ Legal & financial disclosures: title-deed no., erf no., bond status + outstanding + bank, rates status + arrears
+- ✅ Tenancy disclosure: owner-occupied / tenanted / vacant + monthly rent + lease end
+- ✅ Property condition rating + estimated renovation cost
+- ✅ Multi-image upload with delete + thumbnails
+- ✅ Document upload: title deed, ID, rates account, bond statement, lease, other
+- ✅ Co-owner free-text capture
+- ✅ POPIA consent checkbox (required to submit)
+- ✅ Cross-field validation in tRPC procedure (bond/rates/tenancy required-fields)
+- ✅ Loosened registration: PROPERTY_OWNER auto-ACTIVE (was PENDING_APPROVAL — friction blocker)
+- ✅ See `docs/PERSONA_AUDIT.md` for full 5-persona audit + Phases 8–14 backlog
