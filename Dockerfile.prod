@@ -50,6 +50,7 @@ WORKDIR /app
 COPY --from=build --chown=app:app /app/.output ./.output
 COPY --from=build --chown=app:app /app/node_modules ./node_modules
 COPY --from=build --chown=app:app /app/prisma ./prisma
+COPY --from=build --chown=app:app /app/scripts ./scripts
 COPY --from=build --chown=app:app /app/package.json ./package.json
 
 USER app
@@ -59,5 +60,6 @@ EXPOSE 8010
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD wget -qO- http://127.0.0.1:8010/ >/dev/null || exit 1
 
-# Run migrations on boot, then start the server
-CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node .output/server/index.mjs"]
+# Sync schema (db push) then start server. We use db push instead of migrate deploy
+# because this project doesn't use prisma migrations (schema.prisma is source of truth).
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js db push --skip-generate --accept-data-loss && node .output/server/index.mjs"]
