@@ -19,20 +19,27 @@ model AIAnalysis {
 }
 
 model AuditLog {
-  id        Int      @id @default(autoincrement())
-  userId    Int?
-  action    String
-  entity    String
-  entityId  Int?
-  changes   Json?
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
-  user      User?    @relation(fields: [userId], references: [id])
+  id           Int      @id @default(autoincrement())
+  userId       Int?
+  action       String
+  entity       String
+  entityId     Int?
+  changes      Json?
+  oldValue     Json?
+  newValue     Json?
+  status       String?  // SUCCESS | FAILED | DENIED
+  errorMessage String?
+  requestId    String?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  user         User?    @relation(fields: [userId], references: [id])
 
   @@index([createdAt])
   @@index([entity, entityId])
   @@index([userId])
+  @@index([action])
+  @@index([status])
 }
 
 model BudgetEntry {
@@ -86,6 +93,10 @@ model InvestorContribution {
   contributionDate     DateTime  @default(now())
   notes                String?
   reviewedAt           DateTime?
+  coolingOffExpiresAt  DateTime?
+  cancelledAt          DateTime?
+  cancelledReason      String?
+  deletedAt            DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime? @updatedAt
   investor             User      @relation(fields: [investorId], references: [id])
@@ -238,12 +249,13 @@ model Property {
   fundingBreakdown     Json?                  // Array of {category: string, amount: number, description: string}
   isPublished          Boolean                @default(false)
   minimumInvestment    Float                  @default(0) // Minimum investment amount in Rands
-  maxInvestors         Int?                   // Maximum number of investors (null = unlimited)
+  maxInvestors         Int                    @default(50) // Companies Act §96(1)(b) — max 50 unique investors per SPV
   expectedReturns      Float                  @default(0) // Expected return rate as percentage
   bedrooms             Int?
   bathrooms            Int?
   squareMeters         Int?
   userId               Int
+  deletedAt            DateTime?
   createdAt            DateTime               @default(now())
   aiAnalyses           AIAnalysis[]
   budgetEntries        BudgetEntry[]
@@ -626,6 +638,7 @@ model Distribution {
   id              Int                  @id @default(autoincrement())
   propertyId      Int
   type            DistributionType     // RENTAL_INCOME, SALE_PROCEEDS, DIVIDEND, INTEREST
+  taxClassification TaxClassification  @default(DIVIDEND)
   grossAmount     Float                // Total income before fees
   managementFee   Float                @default(0) // Platform fee deducted
   netAmount       Float                // Amount available for distribution
@@ -633,6 +646,7 @@ model Distribution {
   description     String?
   status          DistributionStatus   @default(PENDING)
   distributedAt   DateTime?
+  deletedAt       DateTime?
   createdAt       DateTime             @default(now())
   property        Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   payouts         DistributionPayout[]
@@ -654,12 +668,15 @@ model DistributionPayout {
   paymentRef      String?        // Bank/payment reference
   status          PayoutStatus   @default(PENDING)
   paidAt          DateTime?
+  reconciledAt    DateTime?
+  reconciliationNotes String?
   createdAt       DateTime       @default(now())
   distribution    Distribution   @relation(fields: [distributionId], references: [id], onDelete: Cascade)
   investor        User           @relation(fields: [investorId], references: [id])
 
   @@index([distributionId])
   @@index([investorId])
+  @@index([paymentRef])
 }
 
 // ─── Governance / Voting ────────────────────────────────────────
@@ -761,6 +778,21 @@ enum DistributionType {
   DIVIDEND
   INTEREST
   CAPITAL_RETURN
+}
+
+/**
+ * SARS tax classification for distributions.
+ * Drives the withholding-tax rate applied per payout.
+ * - DIVIDEND     20% (Dividends Tax)
+ * - RENTAL_INCOME 0% (taxed in investor's hands, IT3b)
+ * - INTEREST     0% (investor declares, IT3b)
+ * - CAPITAL_GAIN 0% (investor declares CGT)
+ */
+enum TaxClassification {
+  DIVIDEND
+  RENTAL_INCOME
+  INTEREST
+  CAPITAL_GAIN
 }
 
 enum DistributionStatus {

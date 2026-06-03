@@ -14,7 +14,11 @@ export const register = publicProcedure
   .input(
     z.object({
       email: z.string().email(),
-      password: z.string().min(6),
+      password: z
+        .string()
+        .min(8, "Password must be at least 8 characters")
+        .regex(/[A-Za-z]/, "Password must contain at least one letter")
+        .regex(/[0-9]/, "Password must contain at least one digit"),
       name: z.string().min(1),
       role: z.enum(["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER"]),
     })

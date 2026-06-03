@@ -13,6 +13,7 @@ export const createDistribution = baseProcedure
       authToken: z.string(),
       propertyId: z.number(),
       type: z.enum(["RENTAL_INCOME", "SALE_PROCEEDS", "DIVIDEND", "INTEREST", "CAPITAL_RETURN"]),
+      taxClassification: z.enum(["DIVIDEND", "RENTAL_INCOME", "INTEREST", "CAPITAL_GAIN"]).optional(),
       grossAmount: z.number().min(0),
       managementFeePercent: z.number().min(0).max(100).default(2),
       period: z.string().optional(),
@@ -68,11 +69,34 @@ export const createDistribution = baseProcedure
     const totalSharesOutstanding = holdings.reduce((s, h) => s + h.sharesOwned, 0);
 
     const result = await db.$transaction(async (tx) => {
+      // Resolve tax classification. Caller may override (e.g. SALE_PROCEEDS
+      // typically reclassified as CAPITAL_GAIN). Otherwise derive from `type`.
+      const derivedTax =
+        input.taxClassification ??
+        (input.type === "DIVIDEND"
+          ? "DIVIDEND"
+          : input.type === "RENTAL_INCOME"
+          ? "RENTAL_INCOME"
+          : input.type === "INTEREST"
+          ? "INTEREST"
+          : input.type === "SALE_PROCEEDS"
+          ? "CAPITAL_GAIN"
+          : "DIVIDEND");
+      // SARS withholding rates
+      const TAX_RATES: Record<string, number> = {
+        DIVIDEND: 0.20,
+        RENTAL_INCOME: 0,
+        INTEREST: 0,
+        CAPITAL_GAIN: 0,
+      };
+      const taxRate = TAX_RATES[derivedTax] ?? 0;
+
       // Create distribution record
       const distribution = await tx.distribution.create({
         data: {
           propertyId: input.propertyId,
           type: input.type,
+          taxClassification: derivedTax as any,
           grossAmount: input.grossAmount,
           managementFee,
           netAmount,
@@ -86,8 +110,8 @@ export const createDistribution = baseProcedure
       const payouts = holdings.map((h) => {
         const percentageShare = (h.sharesOwned / totalSharesOutstanding) * 100;
         const grossPayout = netAmount * (percentageShare / 100);
-        // Withhold 20% tax for SA dividend taxation (s64E Income Tax Act)
-        const taxWithheld = input.type === "DIVIDEND" ? grossPayout * 0.20 : 0;
+        // SARS withholding based on tax classification (DIVIDEND → 20% per s64E Income Tax Act)
+        const taxWithheld = grossPayout * taxRate;
         const netPayout = grossPayout - taxWithheld;
 
         return {

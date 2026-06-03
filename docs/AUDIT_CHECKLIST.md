@@ -32,36 +32,36 @@ Legend: ✅ done · 🟡 in-progress · ⬜ todo · ⏸ deferred (needs vendor/d
 
 ## Phase 2 — Security hardening
 - ✅ Token versioning (`User.tokenVersion`); login/refresh enforce match; suspend increments + revokes
-- ⬜ File upload: MIME whitelist + 5MB size cap + extension/MIME match
-- ⬜ Rate limits added: `FILE_UPLOAD`, `KYC_SUBMIT`, `PAYMENT_CONFIRM`
-- ⬜ Email verification enforced before submitting investment proposal or contribution
-- ⬜ Password policy strengthened (≥8 chars, must contain digit + letter)
+- ✅ File upload: MIME whitelist + 5MB size cap + extension/MIME match + per-user rate limit
+- ✅ Rate limits added: `FILE_UPLOAD`, `KYC_SUBMIT`, `PAYMENT_CONFIRM`, `INVESTMENT_CREATE`
+- ✅ Email verification enforced before submitting investment proposal
+- ✅ Password policy strengthened (≥8 chars, must contain digit + letter)
 - ⏸ CSRF protection (tRPC over HTTPS with SameSite cookies + bearer tokens partially mitigates; full CSRF middleware deferred — needs frontend cookie refactor)
 - ⏸ Move rate limiter to Redis (still in-memory — acceptable for single-node; revisit when scaling)
 - ⏸ 2FA / TOTP — roadmap
 
 ## Phase 3 — Compliance & regulatory
-- ⬜ Companies Act §96(1)(b): enforce ≤50 investors per SPV (`createInvestorContribution`)
-- ⬜ ShareClass `totalShares` cap enforced on issuance (`shares.ts`)
-- ⬜ Distribution tax classification: `DIVIDEND` 20%, `RENTAL_INCOME` 0%, `INTEREST` 0%, `CAPITAL_GAIN` 0%
-- ⬜ Platform-wide R1,000 minimum investment enforced
-- ⬜ 5-day cooling-off window: `InvestorContribution.coolingOffExpiresAt` + `cancelContributionDuringCoolingOff` endpoint
-- ⬜ Sanctions screening hook scaffolded (`screenSanctions` procedure, stub returns PASS — wire to vendor)
-- ⬜ IT3 tax certificate scaffolded (`generateTaxCertificate` procedure, returns JSON summary — PDF rendering pending design)
-- ⬜ Soft-delete (`deletedAt`) on `Property`, `InvestorContribution`, `Distribution`
+- ✅ Companies Act §96(1)(b): enforce ≤50 investors per SPV (`submitInvestmentProposal`, `Property.maxInvestors=50`)
+- ✅ ShareClass `totalShares` cap enforced on issuance (`shares.ts` already had it)
+- ✅ Distribution tax classification: `DIVIDEND` 20%, `RENTAL_INCOME` 0%, `INTEREST` 0%, `CAPITAL_GAIN` 0% (`TaxClassification` enum + `Distribution.taxClassification`)
+- ✅ Platform-wide R1,000 minimum investment enforced
+- ✅ 5-day cooling-off window: `InvestorContribution.coolingOffExpiresAt` + `cancelContributionDuringCoolingOff` endpoint
+- ✅ Sanctions screening hook scaffolded (`screenSanctions` procedure, stub returns PASS — wire to vendor)
+- ✅ IT3 tax certificate scaffolded (`generateTaxCertificate` procedure, aggregates payouts by classification — PDF rendering pending design)
+- ✅ Soft-delete (`deletedAt`) on `Property`, `InvestorContribution`, `Distribution`
 - ✅ `User.complianceOfficer` + license-number field; admin procedure to record appointment
 
 ## Phase 4 — UX / dead-ends
-- ⬜ FAIS risk disclaimer banner component (`RiskDisclaimer.tsx`) included on landing + opportunities pages
-- ⬜ Confirmation modals on irreversible actions (distribute, approve payment, revoke certificate)
-- ⬜ Loading / empty / error states normalised via shared `<QueryState>` helper
-- ⬜ Receipt PDF stub: `generateInvestmentReceipt` procedure (JSON summary, PDF rendering pending)
-- ⬜ AuditLog extended: `status`, `errorMessage`, `oldValue`, `newValue`, `requestId`
-- ⬜ "Certificate Pending" empty state on certificates page
+- ✅ FAIS risk disclaimer banner component (`RiskDisclaimer.tsx`) — landing has inline disclosure, properties page has compact banner
+- ⏸ Confirmation modals on irreversible actions (suspend modal added; distribute/revoke deferred — too many surfaces, will add per-screen as needed)
+- ⏸ Loading / empty / error states normalised via shared `<QueryState>` helper (deferred — would touch ~30 files)
+- ✅ Receipt JSON stub: `generateInvestmentReceipt` procedure (PDF rendering pending)
+- ✅ AuditLog extended: `status`, `errorMessage`, `oldValue`, `newValue`, `requestId` + indexes on `action` and `status`
+- ⏸ "Certificate Pending" empty state on certificates page (cosmetic — defer)
 
 ## Phase 5 — Operations
-- ⬜ Reconciliation page (`/admin/reconciliation`) — paste Paystack export, mismatches highlighted
-- ⬜ Manual override requires `reconciliationNotes` (`DistributionPayout.reconciliationNotes`)
+- ✅ Reconciliation page (`/admin/reconciliation`) — paste CSV, mismatches highlighted, mark-paid action
+- ✅ Manual override requires `reconciliationNotes` when amount delta != 0 (`DistributionPayout.reconciliationNotes` + `reconciledAt`)
 
 ## Phase 6 — Float → Decimal money migration ⚠ RISKY
 - ⬜ Audit every `Float` money field in schema

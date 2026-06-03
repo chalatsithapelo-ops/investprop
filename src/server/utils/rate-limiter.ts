@@ -109,6 +109,27 @@ export const RATE_LIMITS = {
     windowMs: 60 * 60 * 1000, // 1 hour
     maxRequests: 10, // 10 emails per hour
   },
+
+  // File uploads — strict
+  FILE_UPLOAD: {
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxRequests: 20, // 20 uploads / hour / user
+  },
+  // KYC submissions — very strict (per user)
+  KYC_SUBMIT: {
+    windowMs: 24 * 60 * 60 * 1000, // 24 hours
+    maxRequests: 5,
+  },
+  // Payment confirmation — limit replay attempts
+  PAYMENT_CONFIRM: {
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxRequests: 10,
+  },
+  // Investment creation — prevent spam
+  INVESTMENT_CREATE: {
+    windowMs: 60 * 60 * 1000,
+    maxRequests: 30,
+  },
 } as const;
 
 /**
