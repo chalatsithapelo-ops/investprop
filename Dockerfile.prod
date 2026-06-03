@@ -28,8 +28,8 @@ RUN pnpm install --frozen-lockfile
 ENV NODE_ENV=production
 RUN pnpm build
 
-# Prune to production deps only (keeps @prisma/client + runtime)
-RUN pnpm prune --prod
+# Skip `pnpm prune --prod` — it re-runs postinstall (which needs prisma CLI,
+# a devDep) and fails. Slim runtime image stays small enough.
 
 # ---------- Stage 2: runtime ----------
 FROM node:20-bookworm-slim AS runtime
