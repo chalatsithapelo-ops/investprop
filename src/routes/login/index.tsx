@@ -45,11 +45,11 @@ function LoginPage() {
         <div className="mb-8 text-center">
           <Link to="/" className="inline-block">
             <h1 className="text-3xl font-bold font-display">
-              <span className="text-gold-600">Prop</span>
-              <span className="text-gray-900">Vest</span>
+              <span className="text-gold-600">Invest</span>
+              <span className="text-gray-900">prop</span>
             </h1>
           </Link>
-          <p className="mt-2 text-sm text-gray-500">Investprop — secure property investment platform</p>
+          <p className="mt-2 text-sm text-gray-500">Secure property investment platform</p>
         </div>
 
         {/* Login Card */}
@@ -131,7 +131,6 @@ function LoginPage() {
               { email: 'investor@demo.com', role: 'Investor', color: 'bg-emerald-100 text-emerald-700' },
               { email: 'investor2@demo.com', role: 'Investor', color: 'bg-emerald-100 text-emerald-700' },
               { email: 'investor3@demo.com', role: 'Investor', color: 'bg-emerald-100 text-emerald-700' },
-              { email: 'devmanager@demo.com', role: 'Dev Manager', color: 'bg-blue-100 text-blue-700' },
               { email: 'pm@demo.com', role: 'Project Manager', color: 'bg-purple-100 text-purple-700' },
               { email: 'owner@demo.com', role: 'Property Owner', color: 'bg-amber-100 text-amber-700' },
               { email: 'contractor@demo.com', role: 'Contractor', color: 'bg-gray-100 text-gray-700' },

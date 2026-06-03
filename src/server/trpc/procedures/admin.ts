@@ -6,9 +6,10 @@ import { userEmailSchema, userNameSchema, userRoleSchema } from "~/server/utils/
 import bcryptjs from "bcryptjs";
 import { createAuditLog } from "./audit-log";
 
-// Admin procedures require DEVELOPMENT_MANAGER role
+// Admin procedures require ADMIN role (DEVELOPMENT_MANAGER kept for backward-compat with legacy data).
 const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  if (ctx.user.role !== "DEVELOPMENT_MANAGER") {
+  const allowed: string[] = ["ADMIN", "DEVELOPMENT_MANAGER"];
+  if (!allowed.includes(ctx.user.role)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
   return next({ ctx });
@@ -17,7 +18,7 @@ const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 export const getAllUsers = adminProcedure
   .input(
     z.object({
-      role: z.enum(["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "CONTRACTOR", "ALL"]).default("ALL"),
+      role: z.enum(["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "CONTRACTOR", "ADMIN", "ALL"]).default("ALL"),
       page: z.number().int().positive().default(1),
       limit: z.number().int().positive().max(100).default(20),
       search: z.string().optional(),
@@ -45,9 +46,13 @@ export const getAllUsers = adminProcedure
           email: true,
           name: true,
           role: true,
+          status: true,
           emailVerified: true,
           createdAt: true,
           updatedAt: true,
+          suspendedAt: true,
+          suspendedReason: true,
+          complianceOfficer: true,
           _count: {
             select: {
               properties: true,
@@ -261,6 +266,165 @@ export const resetUserPassword = adminProcedure
     );
 
     return { success: true, message: "Password reset successfully" };
+  });
+
+/**
+ * Admin: create a user directly (bypasses self-registration).
+ * Useful for onboarding managers / contractors without exposing the public register form.
+ * Newly created users are active immediately and emailVerified=true.
+ */
+export const createUser = adminProcedure
+  .input(
+    z.object({
+      email: userEmailSchema,
+      name: userNameSchema,
+      role: userRoleSchema,
+      password: z.string().min(8, "Password must be at least 8 characters"),
+      emailVerified: z.boolean().default(true),
+    })
+  )
+  .mutation(async ({ input, ctx }) => {
+    const existing = await db.user.findUnique({ where: { email: input.email } });
+    if (existing) {
+      throw new TRPCError({ code: "CONFLICT", message: "User with this email already exists" });
+    }
+    const hashed = await bcryptjs.hash(input.password, 10);
+    const user = await db.user.create({
+      data: {
+        email: input.email,
+        name: input.name,
+        role: input.role,
+        password: hashed,
+        emailVerified: input.emailVerified,
+        status: "ACTIVE",
+        approvedAt: new Date(),
+        approvedById: ctx.user.id,
+        updatedAt: new Date(),
+      },
+      select: { id: true, email: true, name: true, role: true, status: true },
+    });
+    await createAuditLog(ctx.user.id, "CREATE", "User", user.id, {
+      createdByAdmin: true,
+      email: user.email,
+      role: user.role,
+    });
+    return user;
+  });
+
+/**
+ * Admin: approve a PENDING_APPROVAL user so they can log in.
+ */
+export const approveUser = adminProcedure
+  .input(z.object({ userId: z.number() }))
+  .mutation(async ({ input, ctx }) => {
+    const u = await db.user.findUnique({ where: { id: input.userId } });
+    if (!u) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+    if (u.status === "ACTIVE") {
+      return { success: true, message: "User is already active" };
+    }
+    await db.user.update({
+      where: { id: input.userId },
+      data: {
+        status: "ACTIVE",
+        approvedAt: new Date(),
+        approvedById: ctx.user.id,
+        suspendedAt: null,
+        suspendedById: null,
+        suspendedReason: null,
+      },
+    });
+    await createAuditLog(ctx.user.id, "APPROVE", "User", input.userId, {
+      previousStatus: u.status,
+    });
+    return { success: true, message: "User approved" };
+  });
+
+/**
+ * Admin: suspend a user. Increments tokenVersion to invalidate all outstanding sessions.
+ */
+export const suspendUser = adminProcedure
+  .input(
+    z.object({
+      userId: z.number(),
+      reason: z.string().min(3, "Reason is required (min 3 chars)").max(500),
+    })
+  )
+  .mutation(async ({ input, ctx }) => {
+    const u = await db.user.findUnique({ where: { id: input.userId } });
+    if (!u) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+    if (u.id === ctx.user.id) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot suspend your own account" });
+    }
+    await db.$transaction([
+      db.user.update({
+        where: { id: input.userId },
+        data: {
+          status: "SUSPENDED",
+          suspendedAt: new Date(),
+          suspendedById: ctx.user.id,
+          suspendedReason: input.reason,
+          tokenVersion: { increment: 1 },
+        },
+      }),
+      db.refreshToken.updateMany({
+        where: { userId: input.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+    await createAuditLog(ctx.user.id, "SUSPEND", "User", input.userId, {
+      reason: input.reason,
+      previousStatus: u.status,
+    });
+    return { success: true, message: "User suspended" };
+  });
+
+/**
+ * Admin: re-activate a SUSPENDED user.
+ */
+export const unsuspendUser = adminProcedure
+  .input(z.object({ userId: z.number() }))
+  .mutation(async ({ input, ctx }) => {
+    const u = await db.user.findUnique({ where: { id: input.userId } });
+    if (!u) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+    await db.user.update({
+      where: { id: input.userId },
+      data: {
+        status: "ACTIVE",
+        suspendedAt: null,
+        suspendedById: null,
+        suspendedReason: null,
+      },
+    });
+    await createAuditLog(ctx.user.id, "UNSUSPEND", "User", input.userId, {
+      previousStatus: u.status,
+    });
+    return { success: true, message: "User reactivated" };
+  });
+
+/**
+ * Admin: appoint compliance officer (FSCA RE1/RE5).
+ */
+export const appointComplianceOfficer = adminProcedure
+  .input(
+    z.object({
+      userId: z.number(),
+      licenseNumber: z.string().min(3, "License number required"),
+    })
+  )
+  .mutation(async ({ input, ctx }) => {
+    const u = await db.user.findUnique({ where: { id: input.userId } });
+    if (!u) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+    await db.user.update({
+      where: { id: input.userId },
+      data: {
+        complianceOfficer: true,
+        complianceOfficerLicense: input.licenseNumber,
+      },
+    });
+    await createAuditLog(ctx.user.id, "APPOINT_COMPLIANCE_OFFICER", "User", input.userId, {
+      licenseNumber: input.licenseNumber,
+    });
+    return { success: true, message: "Compliance officer appointed" };
   });
 
 export const getSystemStats = adminProcedure

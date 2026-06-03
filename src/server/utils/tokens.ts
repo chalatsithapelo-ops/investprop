@@ -25,7 +25,8 @@ function getUserId(userOrId: number | UserLike): number {
 }
 
 /**
- * Generate an access token (short-lived: 15 minutes)
+ * Generate an access token (short-lived: 15 minutes).
+ * The frontend auto-refreshes via the refresh-token flow.
  */
 export function generateAccessToken(userId: number): string {
   const payload: AccessTokenPayload = {
@@ -34,7 +35,7 @@ export function generateAccessToken(userId: number): string {
   };
 
   return jwt.sign(payload, env.JWT_SECRET, {
-    expiresIn: "24h", // 24 hours
+    expiresIn: "15m",
   });
 }
 

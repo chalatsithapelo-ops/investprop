@@ -72,6 +72,8 @@ export function requireRole(
   allowedRoles: UserRole[],
   errorMessage?: string
 ): void {
+  // ADMIN is a super-role that bypasses every role check.
+  if (user.role === "ADMIN") return;
   if (!allowedRoles.includes(user.role)) {
     throw new TRPCError({
       code: "FORBIDDEN",

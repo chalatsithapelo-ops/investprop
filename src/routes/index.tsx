@@ -22,8 +22,13 @@ function LandingPage() {
           </h1>
           <p className="mx-auto mb-10 max-w-3xl text-lg text-gray-600 sm:text-xl">
             Investprop enables everyday South Africans to invest in premium real estate through
-            regulated SPV structures. Start building your property portfolio from as little as
-            R1,000.
+            dedicated SPV structures, with full transparency on each opportunity. Investment
+            from R1,000 per property.
+          </p>
+          <p className="mx-auto -mt-6 mb-10 max-w-3xl text-xs text-gray-400">
+            Investprop is a financial services platform currently preparing its FSCA licensing
+            application. We are not yet a licensed Financial Services Provider. All investments
+            carry risk and past performance does not guarantee future returns.
           </p>
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
@@ -83,31 +88,31 @@ function LandingPage() {
               </p>
             </div>
 
-            {/* CISCA Regulated */}
+            {/* Transparent Reporting */}
             <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:border-gold-300 hover:shadow-md">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gold-50">
                 <svg className="h-6 w-6 text-gold-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2a4 4 0 014-4h6m-4 6l4-4-4-4" />
                 </svg>
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-gray-900">CISCA Regulated</h3>
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">Transparent Reporting</h3>
               <p className="text-sm text-gray-500">
-                Fully compliant with the Collective Investment Schemes Control Act and FSCA
-                requirements.
+                Live distribution statements, share certificates, and downloadable tax records.
+                Every payout is auditable.
               </p>
             </div>
 
-            {/* Waterfall Returns */}
+            {/* Pro-rata Returns */}
             <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:border-gold-300 hover:shadow-md">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-gold-50">
                 <svg className="h-6 w-6 text-gold-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-gray-900">Waterfall Returns</h3>
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">Pro-rata Distributions</h3>
               <p className="text-sm text-gray-500">
-                Structured waterfall distribution model ensuring fair and transparent returns for
-                all investors.
+                Income and capital gains are distributed proportionally to your ownership stake
+                in each SPV, with withholding tax handled per SARS rules.
               </p>
             </div>
 
@@ -124,39 +129,6 @@ function LandingPage() {
                 reconciliation.
               </p>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Demo Login Credentials */}
-      <section className="px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-5xl">
-          <h2 className="mb-2 text-center text-2xl font-bold text-gray-900">Demo Accounts</h2>
-          <p className="mx-auto mb-8 max-w-xl text-center text-sm text-gray-500">
-            Use any of these accounts to explore Investprop. All accounts share the password below.
-          </p>
-          <div className="mb-6 rounded-lg border border-gold-300 bg-gold-50 px-4 py-3 text-center">
-            <span className="text-sm text-gray-600">Password for all accounts: </span>
-            <code className="rounded bg-white px-2 py-0.5 text-sm font-semibold text-gold-700 border border-gold-200">password123</code>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              { role: "Investor", email: "investor@demo.com", name: "John Investor", desc: "Browse opportunities, submit investment proposals, view portfolio" },
-              { role: "Investor 2", email: "investor2@demo.com", name: "Naledi Mokoena", desc: "Second investor account for testing multi-investor scenarios" },
-              { role: "Investor 3", email: "investor3@demo.com", name: "Thabo Ndlovu", desc: "Third investor account for testing" },
-              { role: "Dev Manager", email: "devmanager@demo.com", name: "Sarah Development", desc: "Create properties, manage funding, review proposals, view financials" },
-              { role: "Project Manager", email: "pm@demo.com", name: "Mike Projects", desc: "Manage milestones, budgets, progress submissions" },
-              { role: "Contractor", email: "contractor@demo.com", name: "Carlos Contractor", desc: "Submit progress updates with photos" },
-            ].map((account) => (
-              <div key={account.email} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="rounded-full bg-gold-50 px-2.5 py-0.5 text-xs font-semibold text-gold-700">{account.role}</span>
-                </div>
-                <p className="text-sm font-medium text-gray-900">{account.name}</p>
-                <p className="mt-0.5 font-mono text-xs text-gray-500">{account.email}</p>
-                <p className="mt-2 text-xs text-gray-400 leading-relaxed">{account.desc}</p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
@@ -188,10 +160,15 @@ function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-gray-200 px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl text-center text-sm text-gray-500">
-          <p>&copy; {new Date().getFullYear()} Investprop. All rights reserved.</p>
-          <p className="mt-1">
-            Investprop is a registered financial services provider regulated by the FSCA.
+        <div className="mx-auto max-w-3xl text-center text-xs text-gray-500">
+          <p className="text-sm">&copy; {new Date().getFullYear()} Investprop. All rights reserved.</p>
+          <p className="mt-3 leading-relaxed">
+            <strong>Risk warning &amp; disclosure.</strong> Investprop is a financial services
+            platform currently preparing its FSCA licensing application. We are not yet a
+            licensed Financial Services Provider under the Financial Advisory and Intermediary
+            Services Act (FAIS). Investments in property carry risk including loss of capital;
+            past performance is not indicative of future returns. Projected yields are estimates
+            only and not guaranteed. Investors should obtain independent financial advice.
           </p>
         </div>
       </footer>

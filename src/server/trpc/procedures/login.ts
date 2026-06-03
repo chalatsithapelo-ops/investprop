@@ -46,9 +46,27 @@ export const login = publicProcedure
       });
     }
 
+    // Account-status gating
+    if (user.status === "SUSPENDED") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          user.suspendedReason
+            ? `Your account has been suspended: ${user.suspendedReason}. Contact support@investprop.io.`
+            : "Your account has been suspended. Please contact support@investprop.io.",
+      });
+    }
+    if (user.status === "PENDING_APPROVAL") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Your account is awaiting administrator approval. You will receive an email once approved.",
+      });
+    }
+
     // Generate tokens
     const accessToken = generateAccessToken(user.id);
-    const refreshTokenData = generateRefreshToken(user.id);
+    const refreshTokenData = generateRefreshToken(user.id, user.tokenVersion);
 
     // Store refresh token in database
     await db.refreshToken.create({

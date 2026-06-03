@@ -59,7 +59,8 @@ const hasRole = (allowedRoles: UserRole[]) =>
       });
     }
 
-    if (!allowedRoles.includes(ctx.user.role)) {
+    // ADMIN is a super-role that bypasses every role check.
+    if (ctx.user.role !== "ADMIN" && !allowedRoles.includes(ctx.user.role)) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: `This action requires one of the following roles: ${allowedRoles.join(", ")}`,

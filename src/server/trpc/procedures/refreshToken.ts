@@ -64,6 +64,8 @@ export const refreshToken = publicProcedure
         email: true,
         name: true,
         role: true,
+        status: true,
+        tokenVersion: true,
       },
     });
 
@@ -74,9 +76,29 @@ export const refreshToken = publicProcedure
       });
     }
 
+    // Token-version check — incrementing User.tokenVersion invalidates every outstanding refresh token.
+    if (decoded.tokenVersion !== user.tokenVersion) {
+      await db.refreshToken.update({
+        where: { id: storedToken.id },
+        data: { revokedAt: new Date() },
+      });
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Session has been invalidated. Please log in again.",
+      });
+    }
+
+    // Account-status gating on refresh too — stops suspended/pending users from extending sessions.
+    if (user.status === "SUSPENDED") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Account suspended." });
+    }
+    if (user.status === "PENDING_APPROVAL") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Account pending approval." });
+    }
+
     // Generate new tokens
     const newAccessToken = generateAccessToken(user.id);
-    const newRefreshToken = generateRefreshToken(user.id);
+    const newRefreshToken = generateRefreshToken(user.id, user.tokenVersion);
 
     // Revoke old refresh token (refresh token rotation)
     await db.refreshToken.update({

@@ -53,7 +53,7 @@ import { sendVerificationEmail, verifyEmail } from "~/server/trpc/procedures/ema
 import { requestPasswordReset, resetPassword, validateResetToken } from "~/server/trpc/procedures/password-reset";
 import { getAuditLogs } from "~/server/trpc/procedures/audit-log";
 import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from "~/server/trpc/procedures/notifications";
-import { getAllUsers, getUserById, updateUser, deleteUser, resetUserPassword, getSystemStats } from "~/server/trpc/procedures/admin";
+import { getAllUsers, getUserById, updateUser, deleteUser, resetUserPassword, getSystemStats, createUser, approveUser, suspendUser, unsuspendUser, appointComplianceOfficer } from "~/server/trpc/procedures/admin";
 import { uploadFile } from "~/server/trpc/procedures/uploadFile";
 // SPV & Acquisition Pipeline
 import { getSPVs, getSPVById, createSPV, updateSPV, assignPropertyToSPV, removePropertyFromSPV } from "~/server/trpc/procedures/spv";
@@ -168,6 +168,11 @@ export const appRouter = createTRPCRouter({
   deleteUser,
   resetUserPassword,
   getSystemStats,
+  createUser,
+  approveUser,
+  suspendUser,
+  unsuspendUser,
+  appointComplianceOfficer,
   uploadFile,
   // SPV & Acquisition Pipeline
   getSPVs,

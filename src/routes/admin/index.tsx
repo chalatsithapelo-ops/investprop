@@ -29,6 +29,13 @@ function AdminPage() {
   const [resettingUser, setResettingUser] = useState<any>(null);
   const [newPassword, setNewPassword] = useState("");
   const [deletingUser, setDeletingUser] = useState<any>(null);
+  const [suspendingUser, setSuspendingUser] = useState<any>(null);
+  const [suspendReason, setSuspendReason] = useState("");
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserRole, setNewUserRole] = useState<string>("INVESTOR");
+  const [newUserPassword, setNewUserPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -36,7 +43,8 @@ function AdminPage() {
     if (!user || !authToken) navigate({ to: "/login" });
   }, [user, authToken, hasHydrated]);
 
-  const isManager = user?.role === "DEVELOPMENT_MANAGER";
+  const isManager = user?.role === "ADMIN" || user?.role === "DEVELOPMENT_MANAGER";
+  const isAdmin = user?.role === "ADMIN";
 
   const statsQuery = useQuery({
     ...trpc.getSystemStats.queryOptions({ authToken: authToken ?? "" }),
@@ -223,7 +231,7 @@ function AdminPage() {
         {/* Users Tab */}
         {tab === "users" && (
           <div>
-            <div className="mb-4">
+            <div className="mb-4 flex flex-wrap items-center gap-3">
               <input
                 type="text"
                 value={searchUser}
@@ -231,6 +239,12 @@ function AdminPage() {
                 placeholder="Search users..."
                 className="w-full max-w-md rounded-lg border border-navy-700 bg-navy-900 px-4 py-2 text-gray-900 placeholder-gray-500 focus:border-gold-500 focus:outline-none"
               />
+              <button
+                onClick={() => { setCreatingUser(true); setNewUserEmail(""); setNewUserName(""); setNewUserRole("INVESTOR"); setNewUserPassword(""); }}
+                className="rounded-lg bg-gold-600 px-4 py-2 text-sm font-semibold text-white hover:bg-gold-700"
+              >
+                + Create User
+              </button>
             </div>
             <div className="overflow-x-auto rounded-xl border border-navy-800/50">
               <table className="w-full">
@@ -261,7 +275,16 @@ function AdminPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">{u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-ZA") : "N/A"}</td>
                       <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-2 flex-wrap">
+                          {u.status === "PENDING_APPROVAL" && (
+                            <button onClick={async () => { try { await trpcClient.approveUser.mutate({ authToken: authToken!, userId: u.id }); toast.success("User approved"); queryClient.invalidateQueries({ queryKey: trpc.getAllUsers.queryKey() }); } catch (e: any) { toast.error(e.message); } }} className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2 py-1 text-xs text-white hover:bg-emerald-700 transition">Approve</button>
+                          )}
+                          {u.status === "SUSPENDED" && (
+                            <button onClick={async () => { try { await trpcClient.unsuspendUser.mutate({ authToken: authToken!, userId: u.id }); toast.success("User reactivated"); queryClient.invalidateQueries({ queryKey: trpc.getAllUsers.queryKey() }); } catch (e: any) { toast.error(e.message); } }} className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2 py-1 text-xs text-white hover:bg-emerald-700 transition">Unsuspend</button>
+                          )}
+                          {u.status === "ACTIVE" && u.id !== user?.id && (
+                            <button onClick={() => { setSuspendingUser(u); setSuspendReason(""); }} className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-orange-600 hover:bg-orange-50 transition">Suspend</button>
+                          )}
                           <button onClick={() => { setEditingUser(u); setEditName(u.name ?? ""); setEditEmail(u.email ?? ""); setEditRole(u.role ?? ""); }} className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 transition"><Pencil size={12} /> Edit</button>
                           <button onClick={() => { setResettingUser(u); setNewPassword(""); }} className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-amber-600 hover:bg-amber-50 transition"><KeyRound size={12} /> Reset PW</button>
                           {u.id !== user?.id && <button onClick={() => setDeletingUser(u)} className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50 transition"><Trash2 size={12} /> Delete</button>}
@@ -393,6 +416,111 @@ function AdminPage() {
               <button onClick={() => setDeletingUser(null)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
               <button onClick={handleDeleteUser} disabled={submitting} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50">
                 {submitting ? "Deleting..." : "Delete User"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Suspend User Modal */}
+      {suspendingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-full bg-orange-100 p-2"><AlertTriangle className="text-orange-600" size={20} /></div>
+              <h3 className="text-lg font-bold text-gray-900">Suspend User</h3>
+            </div>
+            <div className="mb-4 rounded-lg bg-orange-50 p-3">
+              <p className="text-sm font-medium text-orange-800">{suspendingUser.name ?? "N/A"}</p>
+              <p className="text-xs text-orange-600">{suspendingUser.email} &middot; {suspendingUser.role}</p>
+            </div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Reason (required, visible to user)</label>
+            <textarea
+              value={suspendReason}
+              onChange={(e) => setSuspendReason(e.target.value)}
+              rows={3}
+              placeholder="e.g. KYC failure, suspected fraud, manual hold pending review"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gold-500 focus:outline-none"
+            />
+            <p className="mt-2 text-xs text-gray-400">Suspension invalidates all of this user's active sessions.</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setSuspendingUser(null)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button
+                onClick={async () => {
+                  if (suspendReason.trim().length < 3) { toast.error("Please provide a reason"); return; }
+                  setSubmitting(true);
+                  try {
+                    await trpcClient.suspendUser.mutate({ authToken: authToken!, userId: suspendingUser.id, reason: suspendReason.trim() });
+                    toast.success("User suspended");
+                    setSuspendingUser(null);
+                    queryClient.invalidateQueries({ queryKey: trpc.getAllUsers.queryKey() });
+                  } catch (e: any) {
+                    toast.error(e.message ?? "Failed to suspend user");
+                  } finally { setSubmitting(false); }
+                }}
+                disabled={submitting}
+                className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-50"
+              >
+                {submitting ? "Suspending..." : "Suspend"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create User Modal */}
+      {creatingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">Create User</h3>
+              <button onClick={() => setCreatingUser(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
+                <input type="email" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="user@example.com" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Full name</label>
+                <input type="text" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="Jane Doe" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Role</label>
+                <select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white">
+                  <option value="INVESTOR">Investor</option>
+                  <option value="DEVELOPMENT_MANAGER">Development Manager</option>
+                  <option value="PROJECT_MANAGER">Project Manager</option>
+                  <option value="PROPERTY_OWNER">Property Owner</option>
+                  <option value="CONTRACTOR">Contractor</option>
+                  {isAdmin && <option value="ADMIN">Admin</option>}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Initial password (min 8 chars)</label>
+                <input type="text" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono" placeholder="At least 8 characters" />
+                <p className="mt-1 text-xs text-gray-400">User should change this on first login.</p>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setCreatingUser(false)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button
+                onClick={async () => {
+                  if (!newUserEmail || !newUserName || newUserPassword.length < 8) { toast.error("All fields required, password ≥ 8 chars"); return; }
+                  setSubmitting(true);
+                  try {
+                    await trpcClient.createUser.mutate({ authToken: authToken!, email: newUserEmail, name: newUserName, role: newUserRole as any, password: newUserPassword });
+                    toast.success("User created");
+                    setCreatingUser(false);
+                    queryClient.invalidateQueries({ queryKey: trpc.getAllUsers.queryKey() });
+                  } catch (e: any) {
+                    toast.error(e.message ?? "Failed to create user");
+                  } finally { setSubmitting(false); }
+                }}
+                disabled={submitting}
+                className="rounded-lg bg-gold-600 px-4 py-2 text-sm font-semibold text-white hover:bg-gold-700 disabled:opacity-50"
+              >
+                {submitting ? "Creating..." : "Create User"}
               </button>
             </div>
           </div>

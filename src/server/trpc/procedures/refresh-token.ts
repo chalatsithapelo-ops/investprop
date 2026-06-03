@@ -60,6 +60,9 @@ export const refreshTokenProcedure = publicProcedure
         email: true,
         name: true,
         role: true,
+        status: true,
+        tokenVersion: true,
+        suspendedReason: true,
       },
     });
 
@@ -70,9 +73,30 @@ export const refreshTokenProcedure = publicProcedure
       });
     }
 
+    // Token version mismatch → all sessions invalidated (e.g. after suspension or password reset)
+    if ((decoded as any).tokenVersion !== undefined && (decoded as any).tokenVersion !== user.tokenVersion) {
+      await db.refreshToken.update({ where: { id: storedToken.id }, data: { revokedAt: new Date() } });
+      throw new TRPCError({ code: "UNAUTHORIZED", message: "Session has been invalidated. Please log in again." });
+    }
+
+    if (user.status === "SUSPENDED") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: user.suspendedReason
+          ? `Account suspended: ${user.suspendedReason}`
+          : "Your account has been suspended. Please contact support.",
+      });
+    }
+    if (user.status === "PENDING_APPROVAL") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Your account is pending approval by an administrator.",
+      });
+    }
+
     // Generate new tokens
     const newAccessToken = generateAccessToken(user.id);
-    const newRefreshToken = generateRefreshToken(user.id);
+    const newRefreshToken = generateRefreshToken(user.id, user.tokenVersion);
 
     // Revoke old refresh token (refresh token rotation)
     await db.refreshToken.update({

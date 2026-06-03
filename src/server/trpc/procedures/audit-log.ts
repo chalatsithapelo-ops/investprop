@@ -43,7 +43,7 @@ export const getAuditLogs = protectedProcedure
   )
   .query(async ({ input, ctx }) => {
     // Only admins can view audit logs
-    if (ctx.user.role !== "DEVELOPMENT_MANAGER") {
+    if (ctx.user.role !== "ADMIN" && ctx.user.role !== "DEVELOPMENT_MANAGER") {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: "Only administrators can view audit logs",

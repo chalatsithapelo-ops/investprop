@@ -45,6 +45,10 @@ export const register = publicProcedure
     // Hash password
     const hashedPassword = await bcryptjs.hash(input.password, 10);
 
+    // Non-investor roles require admin approval before they can log in.
+    const requiresApproval = input.role !== "INVESTOR";
+    const status = requiresApproval ? "PENDING_APPROVAL" : "ACTIVE";
+
     // Create user
     const user = await db.user.create({
       data: {
@@ -52,6 +56,7 @@ export const register = publicProcedure
         password: hashedPassword,
         name: input.name,
         role: input.role,
+        status,
         updatedAt: new Date(),
       },
     });

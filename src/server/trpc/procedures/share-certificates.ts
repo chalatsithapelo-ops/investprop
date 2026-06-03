@@ -347,7 +347,7 @@ export const getCertificatePDFData = baseProcedure
   )
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
-    const isManager = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"].includes(user.role);
+    const isManager = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "ADMIN"].includes(user.role);
 
     const cert = await db.shareCertificate.findUnique({
       where: { id: input.certificateId },

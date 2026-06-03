@@ -432,6 +432,18 @@ model User {
   createdAt                                                 DateTime               @default(now())
   emailVerified                                             Boolean                @default(false)
   updatedAt                                                 DateTime               @default(now()) @updatedAt
+  // Account lifecycle
+  status                                                    UserStatus             @default(ACTIVE)
+  approvedAt                                                DateTime?
+  approvedById                                              Int?
+  suspendedAt                                               DateTime?
+  suspendedById                                             Int?
+  suspendedReason                                           String?
+  // Token versioning — incrementing invalidates all outstanding refresh tokens
+  tokenVersion                                              Int                    @default(0)
+  // Compliance officer record (FSCA RE1/RE5 licensing)
+  complianceOfficer                                         Boolean                @default(false)
+  complianceOfficerLicense                                  String?
   // FICA Verification
   ficaVerified                                              Boolean                @default(false)
   ficaVerifiedAt                                            DateTime?
@@ -1295,6 +1307,12 @@ enum UserRole {
   PROPERTY_OWNER
   CONTRACTOR
   ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING_APPROVAL
+  SUSPENDED
 }
 
 // ─── Owner Sale Proposals ───────────────────────────────────────
