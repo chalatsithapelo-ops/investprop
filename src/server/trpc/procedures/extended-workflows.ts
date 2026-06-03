@@ -153,75 +153,10 @@ export const generateLetterOfIntent = baseProcedure
   });
 
 /* ─── Phase 11: Contractor self-onboarding ──────────────────────────── */
-
-export const onboardContractorProfile = baseProcedure
-  .input(
-    z.object({
-      authToken: z.string(),
-      companyName: z.string().min(2),
-      tradingAs: z.string().optional(),
-      registrationNumber: z.string().optional(),
-      vatNumber: z.string().optional(),
-      beeLevel: z.string().optional(),
-      cidbGrade: z.string().optional(),
-      specialty: z.string().min(2),
-      phone: z.string().min(7),
-      address: z.string().optional(),
-      city: z.string().optional(),
-      province: z.string().optional(),
-      bankName: z.string().optional(),
-      bankAccountNumber: z.string().optional(),
-      bankBranchCode: z.string().optional(),
-      taxClearanceNumber: z.string().optional(),
-      taxClearanceExpiry: z.string().optional(),
-      publicLiabilityInsurer: z.string().optional(),
-      publicLiabilityCover: z.number().min(0).optional(),
-      publicLiabilityExpiry: z.string().optional(),
-      workersCompCoid: z.string().optional(),
-    })
-  )
-  .mutation(async ({ input }) => {
-    const user = await getAuthenticatedUser(input.authToken);
-    requireRole(user, ["CONTRACTOR"], "Only contractors can create a contractor profile");
-
-    const existing = await db.contractorProfile.findUnique({ where: { userId: user.id } });
-    if (existing) {
-      throw new TRPCError({ code: "CONFLICT", message: "Contractor profile already exists" });
-    }
-
-    const profile = await db.contractorProfile.create({
-      data: {
-        userId: user.id,
-        companyName: input.companyName,
-        tradingAs: input.tradingAs,
-        registrationNumber: input.registrationNumber,
-        vatNumber: input.vatNumber,
-        beeLevel: input.beeLevel,
-        cidbGrade: input.cidbGrade,
-        specialty: input.specialty,
-        phone: input.phone,
-        address: input.address,
-        city: input.city,
-        province: input.province,
-        bankName: input.bankName,
-        bankAccountNumber: input.bankAccountNumber,
-        bankBranchCode: input.bankBranchCode,
-        taxClearanceNumber: input.taxClearanceNumber,
-        taxClearanceExpiry: input.taxClearanceExpiry ? new Date(input.taxClearanceExpiry) : null,
-        publicLiabilityInsurer: input.publicLiabilityInsurer,
-        publicLiabilityCover: input.publicLiabilityCover,
-        publicLiabilityExpiry: input.publicLiabilityExpiry
-          ? new Date(input.publicLiabilityExpiry)
-          : null,
-        workersCompCoid: input.workersCompCoid,
-        profileStatus: "PENDING",
-      },
-    });
-
-    await createAuditLog(user.id, "CONTRACTOR_PROFILE_CREATE", "ContractorProfile", profile.id);
-
-    return { success: true, profile };
-  });
+// NOTE: The canonical contractor self-onboarding procedure is
+// `submitContractorSelfProfile` in `./contractor-management.ts`. The duplicate
+// `onboardContractorProfile` that previously lived here was removed (2026-06-04)
+// after E2E testing surfaced the overlap.
 
 /* ─── Phase 12: Work-order acceptance + variation ───────────────────── */
 
