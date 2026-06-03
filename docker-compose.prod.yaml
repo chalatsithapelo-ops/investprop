@@ -94,24 +94,34 @@ services:
         condition: service_healthy
     environment:
       PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER:-investprop}
+      POSTGRES_DB: ${POSTGRES_DB:-investprop}
     volumes:
       - ./backups:/backups
     networks:
       - internal
+    # BusyBox-compatible sleep loop (alpine's `date -d` does not accept GNU
+    # relative-date strings like "tomorrow 02:00 UTC"). We compute the seconds
+    # remaining until the next 02:00 UTC using only POSIX arithmetic.
     entrypoint: >
       sh -c '
         echo "Backup sidecar started. Will run nightly at 02:00 UTC.";
+        TARGET_HOUR=2;
         while true; do
-          NOW=$$(date +%s);
-          NEXT=$$(date -d "tomorrow 02:00 UTC" +%s 2>/dev/null || date -d "02:00 UTC" +%s);
-          if [ "$$NEXT" -le "$$NOW" ]; then NEXT=$$((NEXT + 86400)); fi;
-          SLEEP=$$((NEXT - NOW));
-          echo "Sleeping $$SLEEP seconds until next backup...";
+          NOW=$$(date -u +%s);
+          SECS_TODAY=$$((NOW % 86400));
+          TARGET_SECS=$$((TARGET_HOUR * 3600));
+          if [ "$$SECS_TODAY" -lt "$$TARGET_SECS" ]; then
+            SLEEP=$$((TARGET_SECS - SECS_TODAY));
+          else
+            SLEEP=$$((86400 - SECS_TODAY + TARGET_SECS));
+          fi;
+          echo "Sleeping $$SLEEP seconds until next backup (02:00 UTC)...";
           sleep $$SLEEP;
           STAMP=$$(date -u +%Y%m%d_%H%M%S);
           OUT=/backups/investprop_$$STAMP.sql.gz;
           echo "Running backup -> $$OUT";
-          pg_dump -h postgres -U ${POSTGRES_USER:-investprop} ${POSTGRES_DB:-investprop} | gzip > $$OUT;
+          pg_dump -h postgres -U $$POSTGRES_USER $$POSTGRES_DB | gzip > $$OUT;
           # Keep last 14 backups
           ls -1t /backups/investprop_*.sql.gz | tail -n +15 | xargs -r rm -f;
           echo "Backup complete.";
