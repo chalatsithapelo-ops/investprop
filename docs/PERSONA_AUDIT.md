@@ -1,6 +1,6 @@
 # Persona-Based Audit & Implementation Plan
 
-**Date:** 2026-06-03  
+**Date:** 2026-06-03
 **Scope:** Walk every flow in the shoes of every actor (Investor, Property Owner/Seller, Contractor, Development Manager, Admin) and list what is broken, illogical, missing, or non-compliant. Each item is tagged with a priority (P0/P1/P2) and rolled into a phased rollout.
 
 Legend: ✅ done · 🟡 in-progress · ⬜ todo · ⏸ deferred

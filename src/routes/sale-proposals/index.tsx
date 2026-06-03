@@ -56,6 +56,9 @@ function SaleProposalsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [reviewNotes, setReviewNotes] = useState<Record<number, string>>({});
+  const [counterOfferFor, setCounterOfferFor] = useState<any>(null);
+  const [counterAmount, setCounterAmount] = useState("");
+  const [counterTerms, setCounterTerms] = useState("");
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -95,6 +98,66 @@ function SaleProposalsPage() {
     },
     onError: (err: any) => toast.error(err.message ?? "Action failed"),
   });
+
+  const counterOfferMutation = useMutation({
+    mutationFn: (params: { proposalId: number; counterOfferAmount: number; counterOfferTerms: string }) =>
+      (trpcClient as any).counterOfferSaleProposal.mutate({
+        authToken: authToken ?? "",
+        ...params,
+      }),
+    onSuccess: () => {
+      toast.success("Counter-offer sent to owner");
+      setCounterOfferFor(null);
+      setCounterAmount("");
+      setCounterTerms("");
+      queryClient.invalidateQueries({ queryKey: trpc.getSaleProposals.queryKey() });
+    },
+    onError: (err: any) => toast.error(err.message ?? "Counter-offer failed"),
+  });
+
+  const downloadLOI = async (proposalId: number) => {
+    try {
+      const loi = await (trpcClient as any).generateLetterOfIntent.query({
+        authToken: authToken ?? "",
+        proposalId,
+      });
+      const text = [
+        `LETTER OF INTENT`,
+        `Reference: ${loi.reference}`,
+        `Date: ${loi.date}`,
+        ``,
+        `To: ${loi.to}`,
+        `Email: ${loi.ownerEmail}`,
+        ``,
+        `Property: ${loi.propertyAddress}`,
+        `Title Deed: ${loi.titleDeed}`,
+        `Erf Number: ${loi.erfNumber}`,
+        ``,
+        `Engagement: ${loi.engagementType}`,
+        `Sale Type: ${loi.saleType}`,
+        `Offer Amount: R${Number(loi.offerAmount).toLocaleString()}`,
+        ``,
+        `Terms:`,
+        loi.terms,
+        ``,
+        `Conditions:`,
+        ...loi.conditions.map((c: string, i: number) => `  ${i + 1}. ${c}`),
+        ``,
+        `Valid Until: ${loi.validUntil}`,
+        ``,
+        loi.disclaimer,
+      ].join("\n");
+      const blob = new Blob([text], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${loi.reference}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast.error(err.message ?? "Could not generate LOI");
+    }
+  };
 
   const data = proposalsQuery.data as any;
   const proposals = data?.proposals ?? [];
@@ -286,6 +349,58 @@ function SaleProposalsPage() {
                               </div>
                             )}
                           </div>
+
+                          {/* Phase 8 disclosures block */}
+                          <div className="rounded-lg border border-amber-200 bg-amber-50/40 p-3">
+                            <h4 className="text-xs font-semibold uppercase text-amber-700">
+                              Deal-Critical Disclosures
+                            </h4>
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+                              <Disclosure label="Engagement" value={proposal.engagementType} />
+                              <Disclosure label="Title Deed" value={proposal.titleDeedNumber} />
+                              <Disclosure label="Erf Number" value={proposal.erfNumber} />
+                              <Disclosure label="Bond" value={proposal.bondStatus} />
+                              {proposal.bondBank && (
+                                <Disclosure label="Bondholder" value={proposal.bondBank} />
+                              )}
+                              {proposal.bondOutstanding != null && (
+                                <Disclosure
+                                  label="Bond Outstanding"
+                                  value={`R${Number(proposal.bondOutstanding).toLocaleString()}`}
+                                />
+                              )}
+                              <Disclosure label="Rates" value={proposal.ratesStatus} />
+                              {proposal.ratesArrears != null && (
+                                <Disclosure
+                                  label="Rates Arrears"
+                                  value={`R${Number(proposal.ratesArrears).toLocaleString()}`}
+                                />
+                              )}
+                              <Disclosure label="Tenancy" value={proposal.tenancyStatus} />
+                              <Disclosure label="Condition" value={proposal.propertyCondition} />
+                              {proposal.schemeName && (
+                                <Disclosure label="Scheme" value={proposal.schemeName} />
+                              )}
+                              {proposal.monthlyLevy != null && (
+                                <Disclosure
+                                  label="Monthly Levy"
+                                  value={`R${Number(proposal.monthlyLevy).toLocaleString()}`}
+                                />
+                              )}
+                              <Disclosure label="Electrical CoC" value={proposal.electricalCoC} />
+                              <Disclosure label="Gas CoC" value={proposal.gasCoC} />
+                              <Disclosure label="Beetle" value={proposal.beetleCert} />
+                              <Disclosure label="Plumbing CoC" value={proposal.plumbingCoC} />
+                            </div>
+                            {proposal.counterOfferAmount != null && (
+                              <div className="mt-3 rounded border border-blue-300 bg-blue-50 p-2 text-xs text-blue-800">
+                                <strong>Counter-offer sent:</strong> R{Number(proposal.counterOfferAmount).toLocaleString()}
+                                {proposal.counterOfferTerms && (
+                                  <p className="mt-1">{proposal.counterOfferTerms}</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         {/* Sidebar */}
@@ -397,6 +512,25 @@ function SaleProposalsPage() {
                                   Decline
                                 </button>
                               </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    setCounterOfferFor(proposal);
+                                    setCounterAmount(String(proposal.askingPrice));
+                                    setCounterTerms("Cash offer subject to Investprop standard due diligence and FICA compliance.");
+                                  }}
+                                  className="flex-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+                                >
+                                  Counter-Offer
+                                </button>
+                                <button
+                                  onClick={() => downloadLOI(proposal.id)}
+                                  className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                                >
+                                  <FileText size={12} className="mr-1 inline" />
+                                  Draft LOI
+                                </button>
+                              </div>
                             </div>
                           )}
 
@@ -422,6 +556,78 @@ function SaleProposalsPage() {
           </div>
         )}
       </div>
+
+      {/* Counter-Offer Modal */}
+      {counterOfferFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Counter-Offer for "{counterOfferFor.title}"
+            </h3>
+            <p className="mt-1 text-xs text-gray-500">
+              Owner asking R{Number(counterOfferFor.askingPrice).toLocaleString()}
+              {counterOfferFor.marketValue && (
+                <> — market R{Number(counterOfferFor.marketValue).toLocaleString()}</>
+              )}
+            </p>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="text-xs font-medium text-gray-700">Counter Amount (ZAR)</label>
+                <input
+                  type="number"
+                  value={counterAmount}
+                  onChange={(e) => setCounterAmount(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-700">Terms / Conditions</label>
+                <textarea
+                  value={counterTerms}
+                  onChange={(e) => setCounterTerms(e.target.value)}
+                  rows={4}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setCounterOfferFor(null)}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() =>
+                  counterOfferMutation.mutate({
+                    proposalId: counterOfferFor.id,
+                    counterOfferAmount: Number(counterAmount),
+                    counterOfferTerms: counterTerms,
+                  })
+                }
+                disabled={
+                  counterOfferMutation.isPending ||
+                  !counterAmount ||
+                  counterTerms.length < 10
+                }
+                className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
+              >
+                {counterOfferMutation.isPending ? "Sending…" : "Send Counter-Offer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Disclosure({ label, value }: { label: string; value: string | number | null | undefined }) {
+  if (value == null || value === "") return null;
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="font-medium text-gray-800">{String(value)}</p>
     </div>
   );
 }

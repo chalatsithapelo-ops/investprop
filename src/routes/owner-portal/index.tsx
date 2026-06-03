@@ -96,6 +96,24 @@ function OwnerPortalPage() {
     onError: (err: any) => toast.error(err.message ?? "Failed to withdraw"),
   });
 
+  // Phase 8: respond to counter-offer
+  const respondCounterMutation = useMutation({
+    mutationFn: (params: { proposalId: number; action: "ACCEPT" | "REJECT" }) =>
+      (trpcClient as any).respondToCounterOffer.mutate({
+        authToken: authToken ?? "",
+        ...params,
+      }),
+    onSuccess: (_, vars) => {
+      toast.success(vars.action === "ACCEPT" ? "Counter-offer accepted" : "Counter-offer rejected");
+      queryClient.invalidateQueries({ queryKey: trpc.getMySaleProposals.queryKey() });
+    },
+    onError: (err: any) => toast.error(err.message ?? "Action failed"),
+  });
+
+  const counterOffered = proposals.filter(
+    (p: any) => p.counterOfferAmount != null && p.status === "UNDER_REVIEW"
+  );
+
   // Stats
   const pending = proposals.filter((p: any) => p.status === "PENDING" || p.status === "UNDER_REVIEW").length;
   const accepted = proposals.filter((p: any) => p.status === "ACCEPTED").length;
@@ -130,6 +148,54 @@ function OwnerPortalPage() {
             )}
           </button>
         </div>
+
+        {/* Phase 8: counter-offer banner */}
+        {counterOffered.length > 0 && (
+          <div className="mb-6 space-y-3">
+            {counterOffered.map((p: any) => (
+              <div
+                key={p.id}
+                className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-amber-900">
+                      Counter-offer received on "{p.title}"
+                    </h3>
+                    <p className="mt-1 text-sm text-amber-800">
+                      Investprop has offered{" "}
+                      <strong>R{Number(p.counterOfferAmount).toLocaleString()}</strong> (you asked
+                      R{Number(p.askingPrice).toLocaleString()}).
+                    </p>
+                    {p.counterOfferTerms && (
+                      <p className="mt-2 text-xs text-amber-700">{p.counterOfferTerms}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() =>
+                        respondCounterMutation.mutate({ proposalId: p.id, action: "ACCEPT" })
+                      }
+                      disabled={respondCounterMutation.isPending}
+                      className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600 disabled:opacity-50"
+                    >
+                      Accept Counter
+                    </button>
+                    <button
+                      onClick={() =>
+                        respondCounterMutation.mutate({ proposalId: p.id, action: "REJECT" })
+                      }
+                      disabled={respondCounterMutation.isPending}
+                      className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">

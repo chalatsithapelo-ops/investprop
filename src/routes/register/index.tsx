@@ -16,7 +16,7 @@ function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [role, setRole] = useState<'INVESTOR' | 'PROPERTY_OWNER'>('INVESTOR')
+  const [role, setRole] = useState<'INVESTOR' | 'PROPERTY_OWNER' | 'CONTRACTOR'>('INVESTOR')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -138,11 +138,11 @@ function RegisterPage() {
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 Account Type
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <button
                   type="button"
                   onClick={() => setRole('INVESTOR')}
-                  className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition ${
+                  className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
                     role === 'INVESTOR'
                       ? 'border-gold-500 bg-gold-50 text-gold-600'
                       : 'border-gray-300 bg-gray-50 text-gray-500 hover:border-gray-400'
@@ -153,13 +153,24 @@ function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setRole('PROPERTY_OWNER')}
-                  className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition ${
+                  className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
                     role === 'PROPERTY_OWNER'
                       ? 'border-gold-500 bg-gold-50 text-gold-600'
                       : 'border-gray-300 bg-gray-50 text-gray-500 hover:border-gray-400'
                   }`}
                 >
                   Property Owner
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole('CONTRACTOR')}
+                  className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
+                    role === 'CONTRACTOR'
+                      ? 'border-gold-500 bg-gold-50 text-gold-600'
+                      : 'border-gray-300 bg-gray-50 text-gray-500 hover:border-gray-400'
+                  }`}
+                >
+                  Contractor
                 </button>
               </div>
             </div>

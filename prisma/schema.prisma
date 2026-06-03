@@ -251,6 +251,9 @@ model Property {
   minimumInvestment    Float                  @default(0) // Minimum investment amount in Rands
   maxInvestors         Int                    @default(50) // Companies Act §96(1)(b) — max 50 unique investors per SPV
   expectedReturns      Float                  @default(0) // Expected return rate as percentage
+  // Phase 9: investor disclosures
+  riskRating           PropertyRiskRating     @default(MEDIUM)
+  documentsPackUrls    Json?                  // Array of {label, url} — MOI, valuation, SPV cert, sale agreement etc.
   bedrooms             Int?
   bathrooms            Int?
   squareMeters         Int?
@@ -506,6 +509,8 @@ model User {
   createdRFQs                                               RFQ[]
   issuedWorkOrders                                          WorkOrder[]          @relation("WorkOrderIssuedBy")
   ratedWorkOrders                                           WorkOrder[]          @relation("WorkOrderRatedBy")
+  proposedVariations                                        VariationOrder[]     @relation("VariationProposedBy")
+  approvedVariations                                        VariationOrder[]     @relation("VariationApprovedBy")
   workOrderUpdates                                          WorkOrderUpdate[]    @relation("WorkOrderUpdateSubmittedBy")
 }
 
@@ -1029,6 +1034,13 @@ model ContractorProfile {
   bankBranchCode    String?
   insuranceExpiry   DateTime?
   cidbGrade         String?   // CIDB grading (SA construction industry)
+  // Phase 11: contractor compliance
+  taxClearanceNumber String?  // SARS Tax Compliance Status PIN
+  taxClearanceExpiry DateTime?
+  publicLiabilityInsurer String?
+  publicLiabilityCover   Float?  // R-amount cover
+  publicLiabilityExpiry  DateTime?
+  workersCompCoid        String?  // COIDA registration number
   notes             String?
   profileStatus     String    @default("PENDING") // PENDING, APPROVED, REJECTED
   rejectionReason   String?
@@ -1119,6 +1131,13 @@ model WorkOrder {
   status              WorkOrderStatus  @default(ISSUED)
   notes               String?
   issuedById          Int
+  // Phase 12: acceptance + retention
+  acceptedAt          DateTime?
+  acceptedSignature   String?          // Typed full name as e-signature
+  retentionPercent    Float            @default(0)    // Typical 5-10% for SA construction
+  retentionAmount     Float            @default(0)
+  retentionReleasedAt DateTime?
+  hsFileUrl           String?          // Health-and-safety file (OHS Act §37(2))
   completionRating    Int?
   completionNotes     String?          @db.Text
   ratedById           Int?
@@ -1132,10 +1151,40 @@ model WorkOrder {
   ratedBy             User?            @relation("WorkOrderRatedBy", fields: [ratedById], references: [id])
   invoices            ContractorInvoice[]
   updates             WorkOrderUpdate[]
+  variations          VariationOrder[]
 
   @@index([propertyId])
   @@index([contractorProfileId])
   @@index([status])
+}
+
+// Phase 12 — Variation orders (scope/cost changes during a work order)
+model VariationOrder {
+  id              Int                  @id @default(autoincrement())
+  workOrderId     Int
+  number          String               // e.g. VO-001
+  description     String               @db.Text
+  costImpact      Float                // Positive = increase, negative = credit
+  timeImpactDays  Int                  @default(0)
+  status          VariationOrderStatus @default(PROPOSED)
+  proposedById    Int
+  approvedById    Int?
+  approvedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime             @default(now())
+  workOrder       WorkOrder            @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  proposedBy      User                 @relation("VariationProposedBy", fields: [proposedById], references: [id])
+  approvedBy      User?                @relation("VariationApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([workOrderId])
+  @@index([status])
+}
+
+enum VariationOrderStatus {
+  PROPOSED
+  APPROVED
+  REJECTED
+  WITHDRAWN
 }
 
 model WorkOrderUpdate {
@@ -1373,6 +1422,16 @@ model OwnerSaleProposal {
   engagementType  EngagementType          @default(OUTRIGHT_SALE)
   titleDeedNumber String?
   erfNumber       String?
+  // ─── Phase 8: extended disclosures ───
+  schemeName      String?                 // Sectional title scheme name
+  sectionNumber   String?                 // Section / unit number
+  bodyCorporate   String?                 // Body corporate name
+  monthlyLevy     Float?                  // Body corporate / HOA levy
+  specialLevies   String?                 @db.Text
+  electricalCoC   String?                 // VALID, EXPIRED, NONE — Electrical Certificate of Compliance
+  gasCoC          String?                 // VALID, NOT_APPLICABLE, NONE
+  beetleCert      String?                 // VALID, NOT_APPLICABLE, NONE (KZN/W.Cape)
+  plumbingCoC     String?                 // VALID, NONE (Cape Town)
   bondStatus      BondStatus              @default(NONE)
   bondOutstanding Float?
   bondBank        String?
@@ -1453,4 +1512,10 @@ enum PropertyCondition {
   FAIR
   NEEDS_RENOVATION
   DISTRESSED
+}
+
+enum PropertyRiskRating {
+  LOW
+  MEDIUM
+  HIGH
 }

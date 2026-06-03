@@ -154,6 +154,13 @@ export const mainNavigationLinks: NavigationLink[] = [
     description: "Verify investor identities and track FICA compliance status",
   },
   {
+    label: "Audit Log",
+    to: "/admin/audit-log",
+    icon: ShieldCheck,
+    roles: ["DEVELOPMENT_MANAGER", "ADMIN"],
+    description: "Immutable POPIA-grade trail of every privileged action",
+  },
+  {
     label: "SPV Management",
     to: "/spv-management",
     icon: Landmark,

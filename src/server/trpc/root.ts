@@ -103,6 +103,18 @@ import {
   getPendingContractorProfiles, approveContractorProfile, rejectContractorProfile,
   submitWorkOrderUpdate, getWorkOrderUpdates, rateWorkOrder,
 } from "~/server/trpc/procedures/contractor-management";
+import {
+  counterOfferSaleProposal,
+  respondToCounterOffer,
+  generateLetterOfIntent,
+  onboardContractorProfile,
+  acceptWorkOrder,
+  proposeVariation,
+  respondToVariation,
+  listAuditLog,
+  impersonateUser,
+  listCoolingOffContributions,
+} from "~/server/trpc/procedures/extended-workflows";
 
 export const appRouter = createTRPCRouter({
   register,
@@ -319,6 +331,17 @@ export const appRouter = createTRPCRouter({
   submitWorkOrderUpdate,
   getWorkOrderUpdates,
   rateWorkOrder,
+  // Phase 8-13 extended workflows
+  counterOfferSaleProposal,
+  respondToCounterOffer,
+  generateLetterOfIntent,
+  onboardContractorProfile,
+  acceptWorkOrder,
+  proposeVariation,
+  respondToVariation,
+  listAuditLog,
+  impersonateUser,
+  listCoolingOffContributions,
 });
 
 export type AppRouter = typeof appRouter;
