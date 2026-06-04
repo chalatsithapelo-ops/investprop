@@ -27,7 +27,7 @@ model AuditLog {
   changes      Json?
   oldValue     Json?
   newValue     Json?
-  status       String?  // SUCCESS | FAILED | DENIED
+  status       String? // SUCCESS | FAILED | DENIED
   errorMessage String?
   requestId    String?
   ipAddress    String?
@@ -72,17 +72,17 @@ model EmailVerification {
 }
 
 model InvestorContribution {
-  id                   Int       @id @default(autoincrement())
+  id                   Int               @id @default(autoincrement())
   propertyId           Int
   investorId           Int
   contributionAmount   Float
   expectedReturnRate   Float
   expectedReturnAmount Float
-  numberOfShares       Float?    // Number of shares this investment buys
-  sharePrice           Float?    // Price per share at time of investment
-  ownershipPercentage  Float?    // Ownership % of the property
-  status               String    @default("PENDING")
-  paymentStatus        String    @default("NOT_PAID")
+  numberOfShares       Float? // Number of shares this investment buys
+  sharePrice           Float? // Price per share at time of investment
+  ownershipPercentage  Float? // Ownership % of the property
+  status               String            @default("PENDING")
+  paymentStatus        String            @default("NOT_PAID")
   paymentMethod        String?
   proofOfPaymentUrl    String?
   paymentReference     String?
@@ -90,17 +90,17 @@ model InvestorContribution {
   paymentReviewedAt    DateTime?
   paymentReviewedBy    Int?
   paymentReviewNotes   String?
-  contributionDate     DateTime  @default(now())
+  contributionDate     DateTime          @default(now())
   notes                String?
   reviewedAt           DateTime?
   coolingOffExpiresAt  DateTime?
   cancelledAt          DateTime?
   cancelledReason      String?
   deletedAt            DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime? @updatedAt
-  investor             User      @relation(fields: [investorId], references: [id])
-  property             Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime?         @updatedAt
+  investor             User              @relation(fields: [investorId], references: [id])
+  property             Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   certificate          ShareCertificate?
 
   @@index([createdAt])
@@ -114,45 +114,45 @@ model InvestorContribution {
 // ─── Share Certificates ─────────────────────────────────────────
 
 model ShareCertificate {
-  id                    Int       @id @default(autoincrement())
-  certificateNumber     String    @unique        // Format: CERT-{propertyId}-{seq}-{year}
-  contributionId        Int       @unique
-  propertyId            Int
-  investorId            Int
+  id                  Int                  @id @default(autoincrement())
+  certificateNumber   String               @unique // Format: CERT-{propertyId}-{seq}-{year}
+  contributionId      Int                  @unique
+  propertyId          Int
+  investorId          Int
   // ── Public fields (visible to investor) ──────────────────────
-  investorName          String
-  propertyTitle         String
-  propertyAddress       String
-  numberOfShares        Float
-  sharePrice            Float
-  totalValue            Float
-  ownershipPercentage   Float
-  issueDate             DateTime  @default(now())
-  shareClassName        String    @default("Ordinary")
+  investorName        String
+  propertyTitle       String
+  propertyAddress     String
+  numberOfShares      Float
+  sharePrice          Float
+  totalValue          Float
+  ownershipPercentage Float
+  issueDate           DateTime             @default(now())
+  shareClassName      String               @default("Ordinary")
   // ── Security & validation (internal only) ────────────────────
-  validationHash        String    @unique        // SHA-256 hash of certificate data for tamper detection
-  internalFingerprint   String    @unique        // Secondary verification token (UUID v4)
-  issuedById            Int                      // Manager who approved the payment
-  isValid               Boolean   @default(true) // Can be revoked if fraud detected
-  revokedAt             DateTime?
-  revokedReason         String?
-  revokedById           Int?
+  validationHash      String               @unique // SHA-256 hash of certificate data for tamper detection
+  internalFingerprint String               @unique // Secondary verification token (UUID v4)
+  issuedById          Int // Manager who approved the payment
+  isValid             Boolean              @default(true) // Can be revoked if fraud detected
+  revokedAt           DateTime?
+  revokedReason       String?
+  revokedById         Int?
   // ── Internal tracking (never exposed to investor) ────────────
-  internalNotes         String?                  // Admin-only notes
-  fraudFlags            Int       @default(0)    // Fraud risk score (0 = clean)
-  verificationCount     Int       @default(0)    // How many times it has been verified
-  lastVerifiedAt        DateTime?
-  lastVerifiedById      Int?
-  ipAddressAtIssuance   String?                  // IP when payment was confirmed
-  auditTrail            Json?                    // Array of {action, userId, timestamp, details}
-  downloadCount         Int       @default(0)    // Tracks how many times PDF has been downloaded
-  downloadLog           Json?                    // Array of {copyNumber, downloadedBy, timestamp, documentSerial}
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @default(now()) @updatedAt
+  internalNotes       String? // Admin-only notes
+  fraudFlags          Int                  @default(0) // Fraud risk score (0 = clean)
+  verificationCount   Int                  @default(0) // How many times it has been verified
+  lastVerifiedAt      DateTime?
+  lastVerifiedById    Int?
+  ipAddressAtIssuance String? // IP when payment was confirmed
+  auditTrail          Json? // Array of {action, userId, timestamp, details}
+  downloadCount       Int                  @default(0) // Tracks how many times PDF has been downloaded
+  downloadLog         Json? // Array of {copyNumber, downloadedBy, timestamp, documentSerial}
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @default(now()) @updatedAt
   // ── Relations ────────────────────────────────────────────────
-  contribution          InvestorContribution @relation(fields: [contributionId], references: [id])
-  property              Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  investor              User                 @relation("InvestorCertificates", fields: [investorId], references: [id])
+  contribution        InvestorContribution @relation(fields: [contributionId], references: [id])
+  property            Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  investor            User                 @relation("InvestorCertificates", fields: [investorId], references: [id])
 
   @@index([propertyId])
   @@index([investorId])
@@ -212,77 +212,90 @@ model PasswordResetToken {
 }
 
 model ProgressSubmission {
-  id                                          Int                      @id @default(autoincrement())
-  milestoneId                                 Int
-  submittedById                               Int
-  description                                 String
-  imageUrls                                   Json
-  approvalStatus                              SubmissionApprovalStatus @default(PENDING)
-  rating                                      Int?
-  reviewedById                                Int?
-  reviewNotes                                 String?
-  reviewedAt                                  DateTime?
-  submittedAt                                 DateTime                 @default(now())
-  createdAt                                   DateTime                 @default(now())
-  updatedAt                                   DateTime                 @default(now()) @updatedAt
-  milestone                                   Milestone                @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
-  reviewedBy                                 User?                    @relation("ProgressSubmission_reviewedByIdToUser", fields: [reviewedById], references: [id])
-  submittedBy                                User                     @relation("ProgressSubmission_submittedByIdToUser", fields: [submittedById], references: [id])
+  id             Int                      @id @default(autoincrement())
+  milestoneId    Int
+  submittedById  Int
+  description    String
+  imageUrls      Json
+  approvalStatus SubmissionApprovalStatus @default(PENDING)
+  rating         Int?
+  reviewedById   Int?
+  reviewNotes    String?
+  reviewedAt     DateTime?
+  submittedAt    DateTime                 @default(now())
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @default(now()) @updatedAt
+  milestone      Milestone                @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  reviewedBy     User?                    @relation("ProgressSubmission_reviewedByIdToUser", fields: [reviewedById], references: [id])
+  submittedBy    User                     @relation("ProgressSubmission_submittedByIdToUser", fields: [submittedById], references: [id])
 }
 
 model Property {
-  id                   Int                    @id @default(autoincrement())
-  title                String
-  description          String
-  address              String
-  city                 String
-  state                String
-  zipCode              String
-  price                Float
-  imageUrl             String
-  imageUrls            Json?                  // Array of image URLs (multi-picture support)
-  status               PropertyStatus         @default(AVAILABLE)
-  investmentStatus     InvestmentStatus       @default(PLANNING)
-  fundingGoal          Float                  @default(0)
-  fundingRaised        Float                  @default(0)
-  fundingClosingDate   DateTime?
-  fundingBreakdown     Json?                  // Array of {category: string, amount: number, description: string}
-  isPublished          Boolean                @default(false)
-  minimumInvestment    Float                  @default(0) // Minimum investment amount in Rands
-  maxInvestors         Int                    @default(50) // Companies Act §96(1)(b) — max 50 unique investors per SPV
-  expectedReturns      Float                  @default(0) // Expected return rate as percentage
+  id                        Int                      @id @default(autoincrement())
+  title                     String
+  description               String
+  address                   String
+  city                      String
+  state                     String
+  zipCode                   String
+  price                     Float
+  imageUrl                  String
+  imageUrls                 Json? // Array of image URLs (multi-picture support)
+  status                    PropertyStatus           @default(AVAILABLE)
+  investmentStatus          InvestmentStatus         @default(PLANNING)
+  fundingGoal               Float                    @default(0)
+  fundingRaised             Float                    @default(0)
+  fundingClosingDate        DateTime?
+  fundingBreakdown          Json? // Array of {category: string, amount: number, description: string}
+  isPublished               Boolean                  @default(false)
+  minimumInvestment         Float                    @default(0) // Minimum investment amount in Rands
+  maxInvestors              Int                      @default(50) // Companies Act §96(1)(b) — max 50 unique investors per SPV
+  expectedReturns           Float                    @default(0) // Expected return rate as percentage
   // Phase 9: investor disclosures
-  riskRating           PropertyRiskRating     @default(MEDIUM)
-  documentsPackUrls    Json?                  // Array of {label, url} — MOI, valuation, SPV cert, sale agreement etc.
-  bedrooms             Int?
-  bathrooms            Int?
-  squareMeters         Int?
-  userId               Int
-  deletedAt            DateTime?
-  createdAt            DateTime               @default(now())
-  aiAnalyses           AIAnalysis[]
-  budgetEntries        BudgetEntry[]
-  investorContributions InvestorContribution[]
-  milestones           Milestone[]
-  user                 User                   @relation(fields: [userId], references: [id])
-  propertyDevelopment  PropertyDevelopment?
-  propertyFlip         PropertyFlip?
-  rentalBond           RentalBond?
-  riskEntries          RiskEntry[]
-  spv                  SPV?                   @relation(fields: [spvId], references: [id])
-  spvId                Int?
-  acquisition          Acquisition?
-  shareClasses         ShareClass[]
-  shareHoldings        ShareHolding[]
-  shareLedgerEntries   ShareLedgerEntry[]
-  distributions        Distribution[]
-  proposals            Proposal[]
-  kycDocuments         KYCDocument[]
-  legalDocuments       LegalDocument[]
-  financialEntries     PropertyFinancialEntry[]
-  shareCertificates    ShareCertificate[]
-  rfqs                 RFQ[]
-  workOrders           WorkOrder[]
+  riskRating                PropertyRiskRating       @default(MEDIUM)
+  documentsPackUrls         Json? // Array of {label, url} — MOI, valuation, SPV cert, sale agreement etc.
+  // AI Strategy: independent underwriting + caching
+  aiSummary                 String?                  @db.Text
+  aiConfidenceRating        String? // A | B | C | D | E (Investprop Confidence Rating)
+  aiConfidenceJustification String?                  @db.Text
+  aiRiskScore               Float? // 0-100 platform risk score (independent of sponsor)
+  aiUnderwriting            Json? // {comparables, stressTest, deviations, generatedAt}
+  aiUnderwrittenAt          DateTime?
+  aiListingScore            Int? // 0-100 listing quality (set by Listing Quality Coach)
+  aiListingFeedback         Json? // {strengths, weaknesses, suggestions}
+  bedrooms                  Int?
+  bathrooms                 Int?
+  squareMeters              Int?
+  userId                    Int
+  deletedAt                 DateTime?
+  createdAt                 DateTime                 @default(now())
+  aiAnalyses                AIAnalysis[]
+  budgetEntries             BudgetEntry[]
+  investorContributions     InvestorContribution[]
+  milestones                Milestone[]
+  user                      User                     @relation(fields: [userId], references: [id])
+  propertyDevelopment       PropertyDevelopment?
+  propertyFlip              PropertyFlip?
+  rentalBond                RentalBond?
+  riskEntries               RiskEntry[]
+  spv                       SPV?                     @relation(fields: [spvId], references: [id])
+  spvId                     Int?
+  acquisition               Acquisition?
+  shareClasses              ShareClass[]
+  shareHoldings             ShareHolding[]
+  shareLedgerEntries        ShareLedgerEntry[]
+  distributions             Distribution[]
+  proposals                 Proposal[]
+  kycDocuments              KYCDocument[]
+  legalDocuments            LegalDocument[]
+  financialEntries          PropertyFinancialEntry[]
+  shareCertificates         ShareCertificate[]
+  rfqs                      RFQ[]
+  workOrders                WorkOrder[]
+  chatMessages              PropertyChatMessage[]
+  photoChecks               ConstructionPhotoCheck[]
+  updateDrafts              InvestorUpdateDraft[]
+  distressPredictions       DistressPrediction[]
 
   @@index([createdAt])
   @@index([investmentStatus])
@@ -437,84 +450,89 @@ model RiskEntry {
 }
 
 model User {
-  id                                                        Int                    @id @default(autoincrement())
-  email                                                     String                 @unique
-  password                                                  String
-  name                                                      String
-  role                                                      UserRole
-  investorCode                                              String?                @unique // Unique investor ID e.g. IP-INV-00009
-  investorPreferences                                       Json?
-  createdAt                                                 DateTime               @default(now())
-  emailVerified                                             Boolean                @default(false)
-  updatedAt                                                 DateTime               @default(now()) @updatedAt
+  id                         Int                      @id @default(autoincrement())
+  email                      String                   @unique
+  password                   String
+  name                       String
+  role                       UserRole
+  investorCode               String?                  @unique // Unique investor ID e.g. IP-INV-00009
+  investorPreferences        Json?
+  createdAt                  DateTime                 @default(now())
+  emailVerified              Boolean                  @default(false)
+  updatedAt                  DateTime                 @default(now()) @updatedAt
   // Account lifecycle
-  status                                                    UserStatus             @default(ACTIVE)
-  approvedAt                                                DateTime?
-  approvedById                                              Int?
-  suspendedAt                                               DateTime?
-  suspendedById                                             Int?
-  suspendedReason                                           String?
+  status                     UserStatus               @default(ACTIVE)
+  approvedAt                 DateTime?
+  approvedById               Int?
+  suspendedAt                DateTime?
+  suspendedById              Int?
+  suspendedReason            String?
   // Token versioning — incrementing invalidates all outstanding refresh tokens
-  tokenVersion                                              Int                    @default(0)
+  tokenVersion               Int                      @default(0)
   // Compliance officer record (FSCA RE1/RE5 licensing)
-  complianceOfficer                                         Boolean                @default(false)
-  complianceOfficerLicense                                  String?
+  complianceOfficer          Boolean                  @default(false)
+  complianceOfficerLicense   String?
   // FICA Verification
-  ficaVerified                                              Boolean                @default(false)
-  ficaVerifiedAt                                            DateTime?
-  ficaVerifiedById                                          Int?
-  ficaExempt                                                Boolean                @default(false)  // e.g. investments under R20,000 threshold
-  ficaRejectedAt                                            DateTime?
-  ficaRejectedReason                                        String?
+  ficaVerified               Boolean                  @default(false)
+  ficaVerifiedAt             DateTime?
+  ficaVerifiedById           Int?
+  ficaExempt                 Boolean                  @default(false) // e.g. investments under R20,000 threshold
+  ficaRejectedAt             DateTime?
+  ficaRejectedReason         String?
   // KYC Profile (FICA personal details)
-  idNumber                                                  String?                // SA ID or passport number
-  dateOfBirth                                               DateTime?
-  phoneNumber                                               String?
-  residentialAddress                                        String?                // Full street address
-  city                                                      String?
-  province                                                  String?
-  postalCode                                                String?
-  taxNumber                                                 String?                // SARS tax reference (optional)
-  companyName                                               String?                // If investing via entity
-  companyRegNumber                                          String?                // CIPC registration number
-  kycSubmittedAt                                            DateTime?              // When the KYC form was submitted
+  idNumber                   String? // SA ID or passport number
+  dateOfBirth                DateTime?
+  phoneNumber                String?
+  residentialAddress         String? // Full street address
+  city                       String?
+  province                   String?
+  postalCode                 String?
+  taxNumber                  String? // SARS tax reference (optional)
+  companyName                String? // If investing via entity
+  companyRegNumber           String? // CIPC registration number
+  kycSubmittedAt             DateTime? // When the KYC form was submitted
   // Phase 10 — investor appropriateness questionnaire (FSCA suitability)
-  appropriatenessCompletedAt                                DateTime?
-  appropriatenessAssessment                                 Json?                  // {experience, income, netWorth, tolerance, ack flags, completedAt}
-  auditLogs                                                AuditLog[]
-  budgetEntries                                             BudgetEntry[]
-  emailVerifications                                        EmailVerification[]
-  investorContributions                                     InvestorContribution[]
-  notifications                                             Notification[]
-  passwordResetTokens                                       PasswordResetToken[]
-  reviewedSubmissions                                       ProgressSubmission[]   @relation("ProgressSubmission_reviewedByIdToUser")
-  submittedSubmissions                                      ProgressSubmission[]   @relation("ProgressSubmission_submittedByIdToUser")
-  properties                                                Property[]
-  propertyDevelopments                                      PropertyDevelopment[]
-  propertyFlips                                             PropertyFlip[]
-  propertyTemplates                                         PropertyTemplate[]
-  refreshTokens                                             RefreshToken[]
-  rentalBonds                                               RentalBond[]
-  riskEntries                                               RiskEntry[]
-  shareHoldings                                             ShareHolding[]
-  shareLedgerEntries                                        ShareLedgerEntry[]
-  kycDocuments                                              KYCDocument[]
-  votes                                                     Vote[]
-  spvDirectorships                                          SPV[]              @relation("SPVDirector")
-  financialEntries                                          PropertyFinancialEntry[]
-  shareOrders                                               ShareOrder[]
-  distributionPayouts                                       DistributionPayout[]
-  distressedListings                                        DistressedListing[]
-  ownerSaleProposals                                        OwnerSaleProposal[]  @relation("OwnerSaleProposals")
-  reviewedSaleProposals                                     OwnerSaleProposal[]  @relation("ReviewedSaleProposals")
-  shareCertificates                                         ShareCertificate[]   @relation("InvestorCertificates")
-  contractorProfile                                         ContractorProfile?
-  createdRFQs                                               RFQ[]
-  issuedWorkOrders                                          WorkOrder[]          @relation("WorkOrderIssuedBy")
-  ratedWorkOrders                                           WorkOrder[]          @relation("WorkOrderRatedBy")
-  proposedVariations                                        VariationOrder[]     @relation("VariationProposedBy")
-  approvedVariations                                        VariationOrder[]     @relation("VariationApprovedBy")
-  workOrderUpdates                                          WorkOrderUpdate[]    @relation("WorkOrderUpdateSubmittedBy")
+  appropriatenessCompletedAt DateTime?
+  appropriatenessAssessment  Json? // {experience, income, netWorth, tolerance, ack flags, completedAt}
+  // AI Strategy
+  chatMessages               PropertyChatMessage[]
+  portfolioInsights          PortfolioInsight[]
+  investorUpdateDraftsSent   InvestorUpdateDraft[]    @relation("InvestorUpdateSentBy")
+  aiUsageLogs                AIUsageLog[]
+  auditLogs                  AuditLog[]
+  budgetEntries              BudgetEntry[]
+  emailVerifications         EmailVerification[]
+  investorContributions      InvestorContribution[]
+  notifications              Notification[]
+  passwordResetTokens        PasswordResetToken[]
+  reviewedSubmissions        ProgressSubmission[]     @relation("ProgressSubmission_reviewedByIdToUser")
+  submittedSubmissions       ProgressSubmission[]     @relation("ProgressSubmission_submittedByIdToUser")
+  properties                 Property[]
+  propertyDevelopments       PropertyDevelopment[]
+  propertyFlips              PropertyFlip[]
+  propertyTemplates          PropertyTemplate[]
+  refreshTokens              RefreshToken[]
+  rentalBonds                RentalBond[]
+  riskEntries                RiskEntry[]
+  shareHoldings              ShareHolding[]
+  shareLedgerEntries         ShareLedgerEntry[]
+  kycDocuments               KYCDocument[]
+  votes                      Vote[]
+  spvDirectorships           SPV[]                    @relation("SPVDirector")
+  financialEntries           PropertyFinancialEntry[]
+  shareOrders                ShareOrder[]
+  distributionPayouts        DistributionPayout[]
+  distressedListings         DistressedListing[]
+  ownerSaleProposals         OwnerSaleProposal[]      @relation("OwnerSaleProposals")
+  reviewedSaleProposals      OwnerSaleProposal[]      @relation("ReviewedSaleProposals")
+  shareCertificates          ShareCertificate[]       @relation("InvestorCertificates")
+  contractorProfile          ContractorProfile?
+  createdRFQs                RFQ[]
+  issuedWorkOrders           WorkOrder[]              @relation("WorkOrderIssuedBy")
+  ratedWorkOrders            WorkOrder[]              @relation("WorkOrderRatedBy")
+  proposedVariations         VariationOrder[]         @relation("VariationProposedBy")
+  approvedVariations         VariationOrder[]         @relation("VariationApprovedBy")
+  workOrderUpdates           WorkOrderUpdate[]        @relation("WorkOrderUpdateSubmittedBy")
 }
 
 enum DevelopmentType {
@@ -526,53 +544,53 @@ enum DevelopmentType {
 // ─── SPV & Acquisition Pipeline ───────────────────────────────────
 
 model SPV {
-  id                Int          @id @default(autoincrement())
-  name              String       // e.g. "Investprop SPV 001 (Pty) Ltd"
-  registrationNumber String?     // CIPC registration number
-  taxNumber         String?      // SARS tax number
-  status            SPVStatus    @default(PENDING_REGISTRATION)
-  directorId        Int          // Platform user who is the director
-  registeredDate    DateTime?
-  bankAccountNumber String?
-  bankName          String?
-  bankBranchCode    String?
-  notes             String?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @default(now()) @updatedAt
-  director          User         @relation("SPVDirector", fields: [directorId], references: [id])
-  properties        Property[]
-  acquisitions      Acquisition[]
-  legalDocuments    LegalDocument[]
+  id                 Int             @id @default(autoincrement())
+  name               String // e.g. "Investprop SPV 001 (Pty) Ltd"
+  registrationNumber String? // CIPC registration number
+  taxNumber          String? // SARS tax number
+  status             SPVStatus       @default(PENDING_REGISTRATION)
+  directorId         Int // Platform user who is the director
+  registeredDate     DateTime?
+  bankAccountNumber  String?
+  bankName           String?
+  bankBranchCode     String?
+  notes              String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @default(now()) @updatedAt
+  director           User            @relation("SPVDirector", fields: [directorId], references: [id])
+  properties         Property[]
+  acquisitions       Acquisition[]
+  legalDocuments     LegalDocument[]
 
   @@index([status])
   @@index([directorId])
 }
 
 model Acquisition {
-  id                  Int                @id @default(autoincrement())
-  propertyId          Int                @unique
-  spvId               Int?
-  acquiredByName      String             // Name used at auction (personal or company)
-  acquiredByType      AcquiredByType     // PERSONAL, EXISTING_COMPANY, SPV
-  auctionDate         DateTime
-  auctionVenue        String?
-  auctionType         String?            // Sheriff, bank repo, private
-  depositAmount       Float
-  depositPaid         Boolean            @default(false)
-  purchasePrice       Float
-  transferDuty        Float              @default(0)
-  conveyancingFees    Float              @default(0)
-  cessionExecuted     Boolean            @default(false) // Has cession to SPV been done?
-  cessionDate         DateTime?
-  deedsOfficeRef      String?            // Deeds Office reference number
-  transferStatus      TransferStatus     @default(AUCTION_WON)
+  id                   Int            @id @default(autoincrement())
+  propertyId           Int            @unique
+  spvId                Int?
+  acquiredByName       String // Name used at auction (personal or company)
+  acquiredByType       AcquiredByType // PERSONAL, EXISTING_COMPANY, SPV
+  auctionDate          DateTime
+  auctionVenue         String?
+  auctionType          String? // Sheriff, bank repo, private
+  depositAmount        Float
+  depositPaid          Boolean        @default(false)
+  purchasePrice        Float
+  transferDuty         Float          @default(0)
+  conveyancingFees     Float          @default(0)
+  cessionExecuted      Boolean        @default(false) // Has cession to SPV been done?
+  cessionDate          DateTime?
+  deedsOfficeRef       String? // Deeds Office reference number
+  transferStatus       TransferStatus @default(AUCTION_WON)
   expectedTransferDate DateTime?
-  actualTransferDate  DateTime?
-  notes               String?
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @default(now()) @updatedAt
-  property            Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  spv                 SPV?               @relation(fields: [spvId], references: [id])
+  actualTransferDate   DateTime?
+  notes                String?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @default(now()) @updatedAt
+  property             Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  spv                  SPV?           @relation(fields: [spvId], references: [id])
 
   @@index([transferStatus])
   @@index([spvId])
@@ -581,38 +599,38 @@ model Acquisition {
 // ─── Fractional Ownership (Share Ledger) ─────────────────────────
 
 model ShareClass {
-  id                     Int            @id @default(autoincrement())
-  propertyId             Int
-  name                   String         @default("Ordinary") // "Ordinary", "Preference", etc.
-  totalShares            Int            // Total shares available for this class
-  pricePerShare          Float          // Price per share in Rands
-  minimumShares          Int            @default(1) // Minimum shares per purchase
-  minimumInvestmentAmount Float         @default(0) // Minimum investment in Rands (0 = no min)
-  maxInvestors           Int?           // Maximum number of investors allowed (null = unlimited)
-  createdAt              DateTime       @default(now())
-  property               Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  holdings               ShareHolding[]
-  ledgerEntries          ShareLedgerEntry[]
-  orders                 ShareOrder[]
-  trades                 ShareTrade[]
-  priceHistory           SharePriceHistory[]
+  id                      Int                 @id @default(autoincrement())
+  propertyId              Int
+  name                    String              @default("Ordinary") // "Ordinary", "Preference", etc.
+  totalShares             Int // Total shares available for this class
+  pricePerShare           Float // Price per share in Rands
+  minimumShares           Int                 @default(1) // Minimum shares per purchase
+  minimumInvestmentAmount Float               @default(0) // Minimum investment in Rands (0 = no min)
+  maxInvestors            Int? // Maximum number of investors allowed (null = unlimited)
+  createdAt               DateTime            @default(now())
+  property                Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  holdings                ShareHolding[]
+  ledgerEntries           ShareLedgerEntry[]
+  orders                  ShareOrder[]
+  trades                  ShareTrade[]
+  priceHistory            SharePriceHistory[]
 
   @@unique([propertyId, name])
   @@index([propertyId])
 }
 
 model ShareHolding {
-  id              Int            @id @default(autoincrement())
-  propertyId      Int
-  shareClassId    Int
-  investorId      Int
-  sharesOwned     Int
+  id                  Int        @id @default(autoincrement())
+  propertyId          Int
+  shareClassId        Int
+  investorId          Int
+  sharesOwned         Int
   averageCostPerShare Float
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @default(now()) @updatedAt
-  property        Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  shareClass      ShareClass     @relation(fields: [shareClassId], references: [id])
-  investor        User           @relation(fields: [investorId], references: [id])
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @default(now()) @updatedAt
+  property            Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  shareClass          ShareClass @relation(fields: [shareClassId], references: [id])
+  investor            User       @relation(fields: [investorId], references: [id])
 
   @@unique([shareClassId, investorId])
   @@index([propertyId])
@@ -620,20 +638,20 @@ model ShareHolding {
 }
 
 model ShareLedgerEntry {
-  id              Int              @id @default(autoincrement())
+  id              Int                  @id @default(autoincrement())
   propertyId      Int
   shareClassId    Int
   investorId      Int
   transactionType ShareTransactionType
-  shares          Int              // positive = buy/receive, negative = sell/transfer out
+  shares          Int // positive = buy/receive, negative = sell/transfer out
   pricePerShare   Float
   totalAmount     Float
-  reference       String?          // e.g. "Purchase", "Transfer from User X", "Distribution"
-  balanceAfter    Int              // Running balance of shares after this tx
-  createdAt       DateTime         @default(now())
-  property        Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  shareClass      ShareClass       @relation(fields: [shareClassId], references: [id])
-  investor        User             @relation(fields: [investorId], references: [id])
+  reference       String? // e.g. "Purchase", "Transfer from User X", "Distribution"
+  balanceAfter    Int // Running balance of shares after this tx
+  createdAt       DateTime             @default(now())
+  property        Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  shareClass      ShareClass           @relation(fields: [shareClassId], references: [id])
+  investor        User                 @relation(fields: [investorId], references: [id])
 
   @@index([propertyId])
   @@index([investorId])
@@ -643,21 +661,21 @@ model ShareLedgerEntry {
 // ─── Distribution Engine ────────────────────────────────────────
 
 model Distribution {
-  id              Int                  @id @default(autoincrement())
-  propertyId      Int
-  type            DistributionType     // RENTAL_INCOME, SALE_PROCEEDS, DIVIDEND, INTEREST
-  taxClassification TaxClassification  @default(DIVIDEND)
-  grossAmount     Float                // Total income before fees
-  managementFee   Float                @default(0) // Platform fee deducted
-  netAmount       Float                // Amount available for distribution
-  period          String?              // e.g. "2026-02" for monthly
-  description     String?
-  status          DistributionStatus   @default(PENDING)
-  distributedAt   DateTime?
-  deletedAt       DateTime?
-  createdAt       DateTime             @default(now())
-  property        Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  payouts         DistributionPayout[]
+  id                Int                  @id @default(autoincrement())
+  propertyId        Int
+  type              DistributionType // RENTAL_INCOME, SALE_PROCEEDS, DIVIDEND, INTEREST
+  taxClassification TaxClassification    @default(DIVIDEND)
+  grossAmount       Float // Total income before fees
+  managementFee     Float                @default(0) // Platform fee deducted
+  netAmount         Float // Amount available for distribution
+  period            String? // e.g. "2026-02" for monthly
+  description       String?
+  status            DistributionStatus   @default(PENDING)
+  distributedAt     DateTime?
+  deletedAt         DateTime?
+  createdAt         DateTime             @default(now())
+  property          Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  payouts           DistributionPayout[]
 
   @@index([propertyId])
   @@index([status])
@@ -665,22 +683,22 @@ model Distribution {
 }
 
 model DistributionPayout {
-  id              Int            @id @default(autoincrement())
-  distributionId  Int
-  investorId      Int
-  sharesAtTime    Int            // Snapshot of shares held at distribution time
-  percentageShare Float          // Their % of total shares
-  grossAmount     Float
-  taxWithheld     Float          @default(0)
-  netAmount       Float          // Amount paid to investor
-  paymentRef      String?        // Bank/payment reference
-  status          PayoutStatus   @default(PENDING)
-  paidAt          DateTime?
-  reconciledAt    DateTime?
+  id                  Int          @id @default(autoincrement())
+  distributionId      Int
+  investorId          Int
+  sharesAtTime        Int // Snapshot of shares held at distribution time
+  percentageShare     Float // Their % of total shares
+  grossAmount         Float
+  taxWithheld         Float        @default(0)
+  netAmount           Float // Amount paid to investor
+  paymentRef          String? // Bank/payment reference
+  status              PayoutStatus @default(PENDING)
+  paidAt              DateTime?
+  reconciledAt        DateTime?
   reconciliationNotes String?
-  createdAt       DateTime       @default(now())
-  distribution    Distribution   @relation(fields: [distributionId], references: [id], onDelete: Cascade)
-  investor        User           @relation(fields: [investorId], references: [id])
+  createdAt           DateTime     @default(now())
+  distribution        Distribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+  investor            User         @relation(fields: [investorId], references: [id])
 
   @@index([distributionId])
   @@index([investorId])
@@ -690,21 +708,21 @@ model DistributionPayout {
 // ─── Governance / Voting ────────────────────────────────────────
 
 model Proposal {
-  id              Int            @id @default(autoincrement())
-  propertyId      Int
-  title           String
-  description     String
-  proposalType    ProposalType   // SELL_PROPERTY, RENOVATE, CHANGE_TENANT, DISTRIBUTE, OTHER
-  requiredQuorum  Float          @default(51) // Percentage of shares needed to vote
-  requiredMajority Float         @default(51) // Percentage of votes needed to pass
-  status          ProposalStatus @default(OPEN)
-  deadline        DateTime
-  result          String?        // "PASSED", "FAILED", "QUORUM_NOT_MET"
-  createdById     Int
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @default(now()) @updatedAt
-  property        Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  votes           Vote[]
+  id               Int            @id @default(autoincrement())
+  propertyId       Int
+  title            String
+  description      String
+  proposalType     ProposalType // SELL_PROPERTY, RENOVATE, CHANGE_TENANT, DISTRIBUTE, OTHER
+  requiredQuorum   Float          @default(51) // Percentage of shares needed to vote
+  requiredMajority Float          @default(51) // Percentage of votes needed to pass
+  status           ProposalStatus @default(OPEN)
+  deadline         DateTime
+  result           String? // "PASSED", "FAILED", "QUORUM_NOT_MET"
+  createdById      Int
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @default(now()) @updatedAt
+  property         Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  votes            Vote[]
 
   @@index([propertyId])
   @@index([status])
@@ -712,14 +730,14 @@ model Proposal {
 }
 
 model Vote {
-  id          Int      @id @default(autoincrement())
-  proposalId  Int
-  investorId  Int
-  voteChoice  VoteChoice // YES, NO, ABSTAIN
-  sharesAtTime Int       // Weight of vote = shares held at time of voting
-  createdAt   DateTime @default(now())
-  proposal    Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  investor    User     @relation(fields: [investorId], references: [id])
+  id           Int        @id @default(autoincrement())
+  proposalId   Int
+  investorId   Int
+  voteChoice   VoteChoice // YES, NO, ABSTAIN
+  sharesAtTime Int // Weight of vote = shares held at time of voting
+  createdAt    DateTime   @default(now())
+  proposal     Proposal   @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  investor     User       @relation(fields: [investorId], references: [id])
 
   @@unique([proposalId, investorId])
   @@index([proposalId])
@@ -728,19 +746,19 @@ model Vote {
 // ─── KYC / FICA Compliance ──────────────────────────────────────
 
 model KYCDocument {
-  id            Int          @id @default(autoincrement())
-  investorId    Int
-  propertyId    Int?         // Optional: KYC can be property-specific or global
-  documentType  KYCDocType   // ID_DOCUMENT, PROOF_OF_ADDRESS, BANK_STATEMENT (Bank Confirmation Letter), TAX_NUMBER
-  documentUrl   String
-  status        KYCStatus    @default(PENDING)
-  reviewedById  Int?
-  reviewNotes   String?
-  expiresAt     DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @default(now()) @updatedAt
-  investor      User         @relation(fields: [investorId], references: [id])
-  property      Property?    @relation(fields: [propertyId], references: [id])
+  id           Int        @id @default(autoincrement())
+  investorId   Int
+  propertyId   Int? // Optional: KYC can be property-specific or global
+  documentType KYCDocType // ID_DOCUMENT, PROOF_OF_ADDRESS, BANK_STATEMENT (Bank Confirmation Letter), TAX_NUMBER
+  documentUrl  String
+  status       KYCStatus  @default(PENDING)
+  reviewedById Int?
+  reviewNotes  String?
+  expiresAt    DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @default(now()) @updatedAt
+  investor     User       @relation(fields: [investorId], references: [id])
+  property     Property?  @relation(fields: [propertyId], references: [id])
 
   @@index([investorId])
   @@index([status])
@@ -858,7 +876,7 @@ enum KYCStatus {
 // ─── Phase 2: Legal Document Enums ──────────────────────────────
 
 enum LegalDocType {
-  MOI                    // Memorandum of Incorporation
+  MOI // Memorandum of Incorporation
   SHAREHOLDER_AGREEMENT
   CESSION_OF_RIGHTS
   SHARE_CERTIFICATE
@@ -918,22 +936,27 @@ enum ShareOrderStatus {
 // ─── Phase 2: Legal Documents Model ─────────────────────────────
 
 model LegalDocument {
-  id              Int             @id @default(autoincrement())
-  propertyId      Int
-  spvId           Int?
-  documentType    LegalDocType
-  title           String
-  content         String          @db.Text // Generated document content (HTML/markdown)
-  documentUrl     String?         // Stored file URL if uploaded/signed
-  status          LegalDocStatus  @default(DRAFT)
-  generatedFor    Int?            // User ID this doc is for (e.g. share certificate for investor)
-  metadata        Json?           // Flexible: { signatories, shareCount, etc. }
-  signedAt        DateTime?
-  expiresAt       DateTime?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @default(now()) @updatedAt
-  property        Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  spv             SPV?            @relation(fields: [spvId], references: [id])
+  id             Int            @id @default(autoincrement())
+  propertyId     Int
+  spvId          Int?
+  documentType   LegalDocType
+  title          String
+  content        String         @db.Text // Generated document content (HTML/markdown)
+  documentUrl    String? // Stored file URL if uploaded/signed
+  status         LegalDocStatus @default(DRAFT)
+  generatedFor   Int? // User ID this doc is for (e.g. share certificate for investor)
+  metadata       Json? // Flexible: { signatories, shareCount, etc. }
+  signedAt       DateTime?
+  expiresAt      DateTime?
+  // AI Strategy 1.3 — plain-language summarisation
+  aiSummary      String?        @db.Text // 3-bullet plain-language summary
+  aiKeyClauses   Json? // [{clause, plainEnglish, severity}]
+  aiGlossary     Json? // [{term, definition}]
+  aiSummarisedAt DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @default(now()) @updatedAt
+  property       Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  spv            SPV?           @relation(fields: [spvId], references: [id])
 
   @@index([propertyId])
   @@index([documentType])
@@ -943,20 +966,20 @@ model LegalDocument {
 // ─── Phase 3: Property Financial Tracking ───────────────────────
 
 model PropertyFinancialEntry {
-  id              Int               @id @default(autoincrement())
-  propertyId      Int
-  type            FinancialEntryType
-  category        FinancialCategory
-  amount          Float
-  description     String
-  date            DateTime
-  reference       String?           // Invoice number, receipt reference, etc.
-  attachmentUrl   String?
-  recordedById    Int
-  period          String?           // e.g. "2026-02" for monthly reporting
-  createdAt       DateTime          @default(now())
-  property        Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  recordedBy      User              @relation(fields: [recordedById], references: [id])
+  id            Int                @id @default(autoincrement())
+  propertyId    Int
+  type          FinancialEntryType
+  category      FinancialCategory
+  amount        Float
+  description   String
+  date          DateTime
+  reference     String? // Invoice number, receipt reference, etc.
+  attachmentUrl String?
+  recordedById  Int
+  period        String? // e.g. "2026-02" for monthly reporting
+  createdAt     DateTime           @default(now())
+  property      Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  recordedBy    User               @relation(fields: [recordedById], references: [id])
 
   @@index([propertyId])
   @@index([type])
@@ -967,52 +990,52 @@ model PropertyFinancialEntry {
 // ─── Phase 7: Share Marketplace ─────────────────────────────────
 
 model ShareOrder {
-  id              Int              @id @default(autoincrement())
-  shareClassId    Int
-  investorId      Int
-  side            ShareOrderSide   // BUY or SELL
-  quantity        Int              // Number of shares
-  filledQuantity  Int              @default(0)
-  pricePerShare   Float            // Asking/bid price
-  status          ShareOrderStatus @default(OPEN)
-  expiresAt       DateTime?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @default(now()) @updatedAt
-  shareClass      ShareClass       @relation(fields: [shareClassId], references: [id])
-  investor        User             @relation(fields: [investorId], references: [id])
-  trades          ShareTrade[]     @relation("OrderAsTaker")
-  makerTrades     ShareTrade[]     @relation("OrderAsMaker")
+  id             Int              @id @default(autoincrement())
+  shareClassId   Int
+  investorId     Int
+  side           ShareOrderSide // BUY or SELL
+  quantity       Int // Number of shares
+  filledQuantity Int              @default(0)
+  pricePerShare  Float // Asking/bid price
+  status         ShareOrderStatus @default(OPEN)
+  expiresAt      DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @default(now()) @updatedAt
+  shareClass     ShareClass       @relation(fields: [shareClassId], references: [id])
+  investor       User             @relation(fields: [investorId], references: [id])
+  trades         ShareTrade[]     @relation("OrderAsTaker")
+  makerTrades    ShareTrade[]     @relation("OrderAsMaker")
 
   @@index([shareClassId, side, status])
   @@index([investorId])
 }
 
 model ShareTrade {
-  id              Int      @id @default(autoincrement())
-  shareClassId    Int
-  buyOrderId      Int
-  sellOrderId     Int
-  buyerId         Int
-  sellerId        Int
-  quantity        Int
-  pricePerShare   Float
-  totalAmount     Float
-  executedAt      DateTime @default(now())
-  shareClass      ShareClass @relation(fields: [shareClassId], references: [id])
-  buyOrder        ShareOrder @relation("OrderAsTaker", fields: [buyOrderId], references: [id])
-  sellOrder       ShareOrder @relation("OrderAsMaker", fields: [sellOrderId], references: [id])
+  id            Int        @id @default(autoincrement())
+  shareClassId  Int
+  buyOrderId    Int
+  sellOrderId   Int
+  buyerId       Int
+  sellerId      Int
+  quantity      Int
+  pricePerShare Float
+  totalAmount   Float
+  executedAt    DateTime   @default(now())
+  shareClass    ShareClass @relation(fields: [shareClassId], references: [id])
+  buyOrder      ShareOrder @relation("OrderAsTaker", fields: [buyOrderId], references: [id])
+  sellOrder     ShareOrder @relation("OrderAsMaker", fields: [sellOrderId], references: [id])
 
   @@index([shareClassId])
   @@index([executedAt])
 }
 
 model SharePriceHistory {
-  id              Int      @id @default(autoincrement())
-  shareClassId    Int
-  price           Float
-  volume          Int      @default(0) // shares traded in period
-  recordedAt      DateTime @default(now())
-  shareClass      ShareClass @relation(fields: [shareClassId], references: [id])
+  id           Int        @id @default(autoincrement())
+  shareClassId Int
+  price        Float
+  volume       Int        @default(0) // shares traded in period
+  recordedAt   DateTime   @default(now())
+  shareClass   ShareClass @relation(fields: [shareClassId], references: [id])
 
   @@index([shareClassId, recordedAt])
 }
@@ -1020,41 +1043,41 @@ model SharePriceHistory {
 // ─── Contractor Management ──────────────────────────────────────
 
 model ContractorProfile {
-  id                Int       @id @default(autoincrement())
-  userId            Int       @unique
-  companyName       String
-  tradingAs         String?
-  registrationNumber String?  // CIPC registration
-  vatNumber         String?
-  beeLevel          String?   // B-BBEE level
-  specialty         String    // e.g. "General Building", "Plumbing", "Electrical"
-  phone             String
-  address           String?
-  city              String?
-  province          String?
-  bankName          String?
-  bankAccountNumber String?
-  bankBranchCode    String?
-  insuranceExpiry   DateTime?
-  cidbGrade         String?   // CIDB grading (SA construction industry)
+  id                     Int                  @id @default(autoincrement())
+  userId                 Int                  @unique
+  companyName            String
+  tradingAs              String?
+  registrationNumber     String? // CIPC registration
+  vatNumber              String?
+  beeLevel               String? // B-BBEE level
+  specialty              String // e.g. "General Building", "Plumbing", "Electrical"
+  phone                  String
+  address                String?
+  city                   String?
+  province               String?
+  bankName               String?
+  bankAccountNumber      String?
+  bankBranchCode         String?
+  insuranceExpiry        DateTime?
+  cidbGrade              String? // CIDB grading (SA construction industry)
   // Phase 11: contractor compliance
-  taxClearanceNumber String?  // SARS Tax Compliance Status PIN
-  taxClearanceExpiry DateTime?
+  taxClearanceNumber     String? // SARS Tax Compliance Status PIN
+  taxClearanceExpiry     DateTime?
   publicLiabilityInsurer String?
-  publicLiabilityCover   Float?  // R-amount cover
+  publicLiabilityCover   Float? // R-amount cover
   publicLiabilityExpiry  DateTime?
-  workersCompCoid        String?  // COIDA registration number
-  notes             String?
-  profileStatus     String    @default("PENDING") // PENDING, APPROVED, REJECTED
-  rejectionReason   String?
-  isActive          Boolean   @default(true)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @default(now()) @updatedAt
-  user              User      @relation(fields: [userId], references: [id])
-  rfqResponses      RFQResponse[]
-  workOrders        WorkOrder[]
-  contractorInvoices ContractorInvoice[]
-  documents         ContractorDocument[]
+  workersCompCoid        String? // COIDA registration number
+  notes                  String?
+  profileStatus          String               @default("PENDING") // PENDING, APPROVED, REJECTED
+  rejectionReason        String?
+  isActive               Boolean              @default(true)
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @default(now()) @updatedAt
+  user                   User                 @relation(fields: [userId], references: [id])
+  rfqResponses           RFQResponse[]
+  workOrders             WorkOrder[]
+  contractorInvoices     ContractorInvoice[]
+  documents              ContractorDocument[]
 
   @@index([specialty])
   @@index([isActive])
@@ -1062,36 +1085,36 @@ model ContractorProfile {
 }
 
 model ContractorDocument {
-  id                  Int       @id @default(autoincrement())
+  id                  Int               @id @default(autoincrement())
   contractorProfileId Int
-  documentType        String    // CIPC_REGISTRATION, BEE_CERTIFICATE, CIDB_CERTIFICATE, TAX_CLEARANCE, INSURANCE, PROOF_OF_BANKING, OTHER
+  documentType        String // CIPC_REGISTRATION, BEE_CERTIFICATE, CIDB_CERTIFICATE, TAX_CLEARANCE, INSURANCE, PROOF_OF_BANKING, OTHER
   documentName        String
   documentUrl         String
-  createdAt           DateTime  @default(now())
+  createdAt           DateTime          @default(now())
   contractorProfile   ContractorProfile @relation(fields: [contractorProfileId], references: [id])
 
   @@index([contractorProfileId])
 }
 
 model RFQ {
-  id                Int         @id @default(autoincrement())
-  propertyId        Int
-  milestoneId       Int?
-  title             String
-  scopeOfWork       String      @db.Text
-  estimatedBudget   Float?
-  deadline          DateTime    // Deadline for quotes
-  status            RFQStatus   @default(OPEN)
-  imageUrls         Json?       // Scope photos
-  attachmentUrls    Json?       // PDF specs etc.
-  createdById       Int
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @default(now()) @updatedAt
-  property          Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  milestone         Milestone?  @relation(fields: [milestoneId], references: [id])
-  createdBy         User        @relation(fields: [createdById], references: [id])
-  responses         RFQResponse[]
-  workOrder         WorkOrder?
+  id              Int           @id @default(autoincrement())
+  propertyId      Int
+  milestoneId     Int?
+  title           String
+  scopeOfWork     String        @db.Text
+  estimatedBudget Float?
+  deadline        DateTime // Deadline for quotes
+  status          RFQStatus     @default(OPEN)
+  imageUrls       Json? // Scope photos
+  attachmentUrls  Json? // PDF specs etc.
+  createdById     Int
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @default(now()) @updatedAt
+  property        Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  milestone       Milestone?    @relation(fields: [milestoneId], references: [id])
+  createdBy       User          @relation(fields: [createdById], references: [id])
+  responses       RFQResponse[]
+  workOrder       WorkOrder?
 
   @@index([propertyId])
   @@index([status])
@@ -1103,9 +1126,9 @@ model RFQResponse {
   rfqId               Int
   contractorProfileId Int
   quotedAmount        Float
-  proposedTimeline    String?           // e.g. "4 weeks"
+  proposedTimeline    String? // e.g. "4 weeks"
   notes               String?           @db.Text
-  attachmentUrls      Json?             // Quote PDFs
+  attachmentUrls      Json? // Quote PDFs
   status              RFQResponseStatus @default(SUBMITTED)
   reviewNotes         String?
   reviewedById        Int?
@@ -1121,37 +1144,37 @@ model RFQResponse {
 }
 
 model WorkOrder {
-  id                  Int              @id @default(autoincrement())
-  rfqId               Int?             @unique
+  id                  Int                 @id @default(autoincrement())
+  rfqId               Int?                @unique
   propertyId          Int
   contractorProfileId Int
   title               String
-  description         String           @db.Text
+  description         String              @db.Text
   agreedAmount        Float
   startDate           DateTime
   expectedEndDate     DateTime
   actualEndDate       DateTime?
-  status              WorkOrderStatus  @default(ISSUED)
+  status              WorkOrderStatus     @default(ISSUED)
   notes               String?
   issuedById          Int
   // Phase 12: acceptance + retention
   acceptedAt          DateTime?
-  acceptedSignature   String?          // Typed full name as e-signature
-  retentionPercent    Float            @default(0)    // Typical 5-10% for SA construction
-  retentionAmount     Float            @default(0)
+  acceptedSignature   String? // Typed full name as e-signature
+  retentionPercent    Float               @default(0) // Typical 5-10% for SA construction
+  retentionAmount     Float               @default(0)
   retentionReleasedAt DateTime?
-  hsFileUrl           String?          // Health-and-safety file (OHS Act §37(2))
+  hsFileUrl           String? // Health-and-safety file (OHS Act §37(2))
   completionRating    Int?
-  completionNotes     String?          @db.Text
+  completionNotes     String?             @db.Text
   ratedById           Int?
   ratedAt             DateTime?
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @default(now()) @updatedAt
-  rfq                 RFQ?             @relation(fields: [rfqId], references: [id])
-  property            Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  contractorProfile   ContractorProfile @relation(fields: [contractorProfileId], references: [id])
-  issuedBy            User             @relation("WorkOrderIssuedBy", fields: [issuedById], references: [id])
-  ratedBy             User?            @relation("WorkOrderRatedBy", fields: [ratedById], references: [id])
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @default(now()) @updatedAt
+  rfq                 RFQ?                @relation(fields: [rfqId], references: [id])
+  property            Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  contractorProfile   ContractorProfile   @relation(fields: [contractorProfileId], references: [id])
+  issuedBy            User                @relation("WorkOrderIssuedBy", fields: [issuedById], references: [id])
+  ratedBy             User?               @relation("WorkOrderRatedBy", fields: [ratedById], references: [id])
   invoices            ContractorInvoice[]
   updates             WorkOrderUpdate[]
   variations          VariationOrder[]
@@ -1165,9 +1188,9 @@ model WorkOrder {
 model VariationOrder {
   id              Int                  @id @default(autoincrement())
   workOrderId     Int
-  number          String               // e.g. VO-001
+  number          String // e.g. VO-001
   description     String               @db.Text
-  costImpact      Float                // Positive = increase, negative = credit
+  costImpact      Float // Positive = increase, negative = credit
   timeImpactDays  Int                  @default(0)
   status          VariationOrderStatus @default(PROPOSED)
   proposedById    Int
@@ -1191,39 +1214,39 @@ enum VariationOrderStatus {
 }
 
 model WorkOrderUpdate {
-  id              Int       @id @default(autoincrement())
-  workOrderId     Int
-  submittedById   Int
-  description     String    @db.Text
-  imageUrls       Json?
-  createdAt       DateTime  @default(now())
-  workOrder       WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  submittedBy     User      @relation("WorkOrderUpdateSubmittedBy", fields: [submittedById], references: [id])
+  id            Int       @id @default(autoincrement())
+  workOrderId   Int
+  submittedById Int
+  description   String    @db.Text
+  imageUrls     Json?
+  createdAt     DateTime  @default(now())
+  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  submittedBy   User      @relation("WorkOrderUpdateSubmittedBy", fields: [submittedById], references: [id])
 
   @@index([workOrderId])
 }
 
 model ContractorInvoice {
-  id                  Int                    @id @default(autoincrement())
+  id                  Int                     @id @default(autoincrement())
   workOrderId         Int
   contractorProfileId Int
   invoiceNumber       String
   amount              Float
-  taxAmount           Float                  @default(0)
+  taxAmount           Float                   @default(0)
   totalAmount         Float
   description         String
-  attachmentUrl       String?                // Invoice PDF
+  attachmentUrl       String? // Invoice PDF
   status              ContractorInvoiceStatus @default(SUBMITTED)
-  submittedAt         DateTime               @default(now())
+  submittedAt         DateTime                @default(now())
   reviewedById        Int?
   reviewedAt          DateTime?
   reviewNotes         String?
   paidAt              DateTime?
   paymentReference    String?
-  createdAt           DateTime               @default(now())
-  updatedAt           DateTime               @default(now()) @updatedAt
-  workOrder           WorkOrder              @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  contractorProfile   ContractorProfile      @relation(fields: [contractorProfileId], references: [id])
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @default(now()) @updatedAt
+  workOrder           WorkOrder               @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  contractorProfile   ContractorProfile       @relation(fields: [contractorProfileId], references: [id])
 
   @@index([workOrderId])
   @@index([contractorProfileId])
@@ -1266,43 +1289,43 @@ enum ContractorInvoiceStatus {
 // ─── Distressed Property Finder ─────────────────────────────────
 
 model DistressedListing {
-  id              Int      @id @default(autoincrement())
-  externalId      String?  // ID from source website
-  source          String   // e.g. "property24", "fnb_repos", "bidx1"
-  sourceUrl       String?  // original listing URL
-  title           String
-  description     String?
-  propertyType    String   // HOUSE, TOWNHOUSE, etc.
-  address         String?
-  suburb          String?
-  city            String   @default("Unknown")
-  province        String   @default("Gauteng")
-  marketValue     Float?   // estimated market value
-  askingPrice     Float    // auction reserve / asking price
-  discount        Float?   // percentage below market
-  bedrooms        Int?
-  bathrooms       Int?
-  erfSize         Float?   // in sqm
-  floorSize       Float?   // in sqm
-  imageUrl        String?
+  id            Int                     @id @default(autoincrement())
+  externalId    String? // ID from source website
+  source        String // e.g. "property24", "fnb_repos", "bidx1"
+  sourceUrl     String? // original listing URL
+  title         String
+  description   String?
+  propertyType  String // HOUSE, TOWNHOUSE, etc.
+  address       String?
+  suburb        String?
+  city          String                  @default("Unknown")
+  province      String                  @default("Gauteng")
+  marketValue   Float? // estimated market value
+  askingPrice   Float // auction reserve / asking price
+  discount      Float? // percentage below market
+  bedrooms      Int?
+  bathrooms     Int?
+  erfSize       Float? // in sqm
+  floorSize     Float? // in sqm
+  imageUrl      String?
   // Auction details
-  auctionDate     DateTime?
-  auctionTime     String?   // e.g. "10:00 AM"
-  auctionVenue    String?
-  auctionType     String?   // SHERIFF, BANK_REPO, LIQUIDATION, ONLINE
-  auctioneer      String?
-  noReserve       Boolean  @default(false) // sold without reserve price
-  caseNumber      String?  // court case number (e.g. "2874/2023")
-  courtDivision   String?  // e.g. "HIGH COURT GAUTENG DIVISION, PRETORIA"
+  auctionDate   DateTime?
+  auctionTime   String? // e.g. "10:00 AM"
+  auctionVenue  String?
+  auctionType   String? // SHERIFF, BANK_REPO, LIQUIDATION, ONLINE
+  auctioneer    String?
+  noReserve     Boolean                 @default(false) // sold without reserve price
+  caseNumber    String? // court case number (e.g. "2874/2023")
+  courtDivision String? // e.g. "HIGH COURT GAUTENG DIVISION, PRETORIA"
   // Status tracking
-  status          DistressedListingStatus @default(ACTIVE)
-  isFavourited    Boolean  @default(false)
-  notes           String?
-  addedById       Int?
-  addedBy         User?    @relation(fields: [addedById], references: [id])
-  lastScrapedAt   DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  status        DistressedListingStatus @default(ACTIVE)
+  isFavourited  Boolean                 @default(false)
+  notes         String?
+  addedById     Int?
+  addedBy       User?                   @relation(fields: [addedById], references: [id])
+  lastScrapedAt DateTime?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
 
   @@unique([source, externalId])
   @@index([province, city])
@@ -1313,11 +1336,11 @@ model DistressedListing {
 }
 
 model DistressedScrapeLog {
-  id          Int      @id @default(autoincrement())
-  source      String
-  status      String   // SUCCESS, PARTIAL, FAILED
-  listingsFound Int    @default(0)
-  newListings   Int    @default(0)
+  id            Int      @id @default(autoincrement())
+  source        String
+  status        String // SUCCESS, PARTIAL, FAILED
+  listingsFound Int      @default(0)
+  newListings   Int      @default(0)
   errorMessage  String?
   durationMs    Int?
   scrapedAt     DateTime @default(now())
@@ -1402,63 +1425,63 @@ enum UserStatus {
 // ─── Owner Sale Proposals ───────────────────────────────────────
 
 model OwnerSaleProposal {
-  id              Int                     @id @default(autoincrement())
-  ownerId         Int
-  title           String
-  description     String                  @db.Text
-  address         String
-  city            String
-  province        String                  @default("Gauteng")
-  propertyType    String                  // HOUSE, TOWNHOUSE, APARTMENT, COMMERCIAL, LAND, etc.
-  askingPrice     Float
-  marketValue     Float?                  // Estimated market value
-  urgencyLevel    SaleUrgency             @default(STANDARD)
-  saleType        SaleType                // CASH, BOND, INSTALLMENT
-  reason          String?                 @db.Text  // Why selling (distressed, relocation, etc.)
-  bedrooms        Int?
-  bathrooms       Int?
-  squareMeters    Int?
-  erfSize         Float?                  // in sqm
-  imageUrls       Json?                   // Array of image URLs
-  documentUrls    Json?                   // Array of {kind: 'TITLE_DEED'|'ID'|'RATES_ACCOUNT'|'BOND_STATEMENT'|'LEASE'|'OTHER', url, name}
+  id                 Int                @id @default(autoincrement())
+  ownerId            Int
+  title              String
+  description        String             @db.Text
+  address            String
+  city               String
+  province           String             @default("Gauteng")
+  propertyType       String // HOUSE, TOWNHOUSE, APARTMENT, COMMERCIAL, LAND, etc.
+  askingPrice        Float
+  marketValue        Float? // Estimated market value
+  urgencyLevel       SaleUrgency        @default(STANDARD)
+  saleType           SaleType // CASH, BOND, INSTALLMENT
+  reason             String?            @db.Text // Why selling (distressed, relocation, etc.)
+  bedrooms           Int?
+  bathrooms          Int?
+  squareMeters       Int?
+  erfSize            Float? // in sqm
+  imageUrls          Json? // Array of image URLs
+  documentUrls       Json? // Array of {kind: 'TITLE_DEED'|'ID'|'RATES_ACCOUNT'|'BOND_STATEMENT'|'LEASE'|'OTHER', url, name}
   // ─── Phase 7: deal-critical disclosures ───
-  engagementType  EngagementType          @default(OUTRIGHT_SALE)
-  titleDeedNumber String?
-  erfNumber       String?
+  engagementType     EngagementType     @default(OUTRIGHT_SALE)
+  titleDeedNumber    String?
+  erfNumber          String?
   // ─── Phase 8: extended disclosures ───
-  schemeName      String?                 // Sectional title scheme name
-  sectionNumber   String?                 // Section / unit number
-  bodyCorporate   String?                 // Body corporate name
-  monthlyLevy     Float?                  // Body corporate / HOA levy
-  specialLevies   String?                 @db.Text
-  electricalCoC   String?                 // VALID, EXPIRED, NONE — Electrical Certificate of Compliance
-  gasCoC          String?                 // VALID, NOT_APPLICABLE, NONE
-  beetleCert      String?                 // VALID, NOT_APPLICABLE, NONE (KZN/W.Cape)
-  plumbingCoC     String?                 // VALID, NONE (Cape Town)
-  bondStatus      BondStatus              @default(NONE)
-  bondOutstanding Float?
-  bondBank        String?
-  ratesStatus     RatesStatus             @default(CURRENT)
-  ratesArrears    Float?
-  tenancyStatus   TenancyStatus           @default(OWNER_OCCUPIED)
-  monthlyRent     Float?
-  leaseEndDate    DateTime?
-  conditionRating PropertyCondition       @default(GOOD)
-  estimatedRenoCost Float?
-  coOwners        String?                 // Free-text list of additional registered owners
-  popiaConsent    Boolean                 @default(false)
+  schemeName         String? // Sectional title scheme name
+  sectionNumber      String? // Section / unit number
+  bodyCorporate      String? // Body corporate name
+  monthlyLevy        Float? // Body corporate / HOA levy
+  specialLevies      String?            @db.Text
+  electricalCoC      String? // VALID, EXPIRED, NONE — Electrical Certificate of Compliance
+  gasCoC             String? // VALID, NOT_APPLICABLE, NONE
+  beetleCert         String? // VALID, NOT_APPLICABLE, NONE (KZN/W.Cape)
+  plumbingCoC        String? // VALID, NONE (Cape Town)
+  bondStatus         BondStatus         @default(NONE)
+  bondOutstanding    Float?
+  bondBank           String?
+  ratesStatus        RatesStatus        @default(CURRENT)
+  ratesArrears       Float?
+  tenancyStatus      TenancyStatus      @default(OWNER_OCCUPIED)
+  monthlyRent        Float?
+  leaseEndDate       DateTime?
+  conditionRating    PropertyCondition  @default(GOOD)
+  estimatedRenoCost  Float?
+  coOwners           String? // Free-text list of additional registered owners
+  popiaConsent       Boolean            @default(false)
   counterOfferAmount Float?
-  counterOfferTerms  String?              @db.Text
-  contactPhone    String?
-  contactEmail    String?
-  status          SaleProposalStatus      @default(PENDING)
-  reviewedById    Int?
-  reviewNotes     String?
-  reviewedAt      DateTime?
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @default(now()) @updatedAt
-  owner           User                    @relation("OwnerSaleProposals", fields: [ownerId], references: [id])
-  reviewedBy      User?                   @relation("ReviewedSaleProposals", fields: [reviewedById], references: [id])
+  counterOfferTerms  String?            @db.Text
+  contactPhone       String?
+  contactEmail       String?
+  status             SaleProposalStatus @default(PENDING)
+  reviewedById       Int?
+  reviewNotes        String?
+  reviewedAt         DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @default(now()) @updatedAt
+  owner              User               @relation("OwnerSaleProposals", fields: [ownerId], references: [id])
+  reviewedBy         User?              @relation("ReviewedSaleProposals", fields: [reviewedById], references: [id])
 
   @@index([ownerId])
   @@index([status])
@@ -1467,9 +1490,9 @@ model OwnerSaleProposal {
 }
 
 enum SaleUrgency {
-  URGENT          // Distressed / immediate sale needed
-  HIGH            // Within 1-2 months
-  STANDARD        // Normal timeline
+  URGENT // Distressed / immediate sale needed
+  HIGH // Within 1-2 months
+  STANDARD // Normal timeline
 }
 
 enum SaleType {
@@ -1487,10 +1510,10 @@ enum SaleProposalStatus {
 }
 
 enum EngagementType {
-  OUTRIGHT_SALE             // We buy the property outright
-  JOINT_VENTURE             // Owner contributes property as equity into a JV / SPV
-  LEASE_BACK                // We buy and rent back to owner
-  DEVELOPMENT_PARTNERSHIP   // We develop together, share returns
+  OUTRIGHT_SALE // We buy the property outright
+  JOINT_VENTURE // Owner contributes property as equity into a JV / SPV
+  LEASE_BACK // We buy and rent back to owner
+  DEVELOPMENT_PARTNERSHIP // We develop together, share returns
 }
 
 enum BondStatus {
@@ -1521,4 +1544,106 @@ enum PropertyRiskRating {
   LOW
   MEDIUM
   HIGH
+}
+
+// ---------------------------------------------------------------
+// AI Strategy models (Tier 1 � Tier 3)
+// ---------------------------------------------------------------
+
+model AIUsageLog {
+  id               Int      @id @default(autoincrement())
+  userId           Int?
+  feature          String // chat | underwriting | doc-summary | listing-coach | portfolio | photo-check | distress | sponsor-track | update-draft | analyze-property
+  model            String // e.g. openai/gpt-4o-mini
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  costUsd          Float    @default(0)
+  latencyMs        Int      @default(0)
+  status           String   @default("OK") // OK | ERROR | RATE_LIMITED
+  errorMessage     String?
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  user             User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([feature])
+  @@index([createdAt])
+}
+
+model PropertyChatMessage {
+  id         Int      @id @default(autoincrement())
+  propertyId Int
+  userId     Int
+  role       String // user | assistant | system
+  content    String   @db.Text
+  createdAt  DateTime @default(now())
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, userId, createdAt])
+}
+
+model PortfolioInsight {
+  id          Int       @id @default(autoincrement())
+  investorId  Int
+  period      String // YYYY-MM
+  summary     String    @db.Text
+  insights    Json // [{type, severity, message, action?}]
+  generatedAt DateTime  @default(now())
+  dismissedAt DateTime?
+  investor    User      @relation(fields: [investorId], references: [id], onDelete: Cascade)
+
+  @@unique([investorId, period])
+  @@index([investorId, generatedAt])
+}
+
+model ConstructionPhotoCheck {
+  id            Int      @id @default(autoincrement())
+  propertyId    Int
+  milestoneId   Int?
+  submissionId  Int?
+  photoUrls     Json // string[]
+  expectedState String   @db.Text // what milestone claims
+  verdict       String // GREEN | AMBER | RED
+  confidence    Float    @default(0) // 0..1
+  narrative     String   @db.Text
+  flags         Json? // [{category, description}]
+  generatedAt   DateTime @default(now())
+  property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, generatedAt])
+  @@index([milestoneId])
+}
+
+model InvestorUpdateDraft {
+  id          Int       @id @default(autoincrement())
+  propertyId  Int
+  period      String // YYYY-MM
+  subject     String
+  bodyHtml    String    @db.Text
+  bodyText    String    @db.Text
+  status      String    @default("DRAFT") // DRAFT | SENT | CANCELLED
+  sentAt      DateTime?
+  sentById    Int?
+  generatedAt DateTime  @default(now())
+  property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  sentBy      User?     @relation("InvestorUpdateSentBy", fields: [sentById], references: [id])
+
+  @@unique([propertyId, period])
+  @@index([propertyId, status])
+}
+
+model DistressPrediction {
+  id          Int      @id @default(autoincrement())
+  propertyId  Int
+  score       Float // 0..100, higher = more distressed risk
+  band        String // LOW | MODERATE | ELEVATED | HIGH
+  drivers     Json // [{factor, weight, value, narrative}]
+  narrative   String   @db.Text
+  generatedAt DateTime @default(now())
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, generatedAt])
+  @@index([band])
 }

@@ -128,6 +128,20 @@ import {
   popiaSubjectAccessExport,
   listMyDocuments,
 } from "~/server/trpc/procedures/investor-admin-extras";
+// AI Strategy — Tier 1
+import { propertyChatHistory, chatAboutProperty, clearPropertyChat } from "~/server/trpc/procedures/ai-copilot";
+import { getMatchScore, getMatchScoresBatch } from "~/server/trpc/procedures/ai-match-score";
+import { summariseLegalDocument, getLegalDocumentSummary } from "~/server/trpc/procedures/ai-doc-summary";
+import { coachListing, getListingCoachResult } from "~/server/trpc/procedures/ai-listing-coach";
+// AI Strategy — Tier 2
+import { runUnderwriting, getUnderwriting } from "~/server/trpc/procedures/ai-underwriting";
+import { verifyConstructionPhotos, getPhotoChecks } from "~/server/trpc/procedures/ai-photo-check";
+import { generatePortfolioInsight, getPortfolioInsight, dismissPortfolioInsight } from "~/server/trpc/procedures/ai-portfolio-advisor";
+import { generateInvestorUpdate, updateInvestorDraft, sendInvestorUpdate, listInvestorUpdates } from "~/server/trpc/procedures/ai-investor-updates";
+// AI Strategy — Tier 3
+import { startOnboardingSession, continueOnboardingSession } from "~/server/trpc/procedures/ai-onboarding";
+import { predictDistress, getLatestDistress, listDistressedPortfolio } from "~/server/trpc/procedures/ai-distress";
+import { getSponsorTrackRecord } from "~/server/trpc/procedures/ai-sponsor-track";
 
 export const appRouter = createTRPCRouter({
   register,
@@ -367,6 +381,35 @@ export const appRouter = createTRPCRouter({
   bulkSuspendUsers,
   popiaSubjectAccessExport,
   listMyDocuments,
+  // AI Strategy — Tier 1
+  propertyChatHistory,
+  chatAboutProperty,
+  clearPropertyChat,
+  getMatchScore,
+  getMatchScoresBatch,
+  summariseLegalDocument,
+  getLegalDocumentSummary,
+  coachListing,
+  getListingCoachResult,
+  // AI Strategy — Tier 2
+  runUnderwriting,
+  getUnderwriting,
+  verifyConstructionPhotos,
+  getPhotoChecks,
+  generatePortfolioInsight,
+  getPortfolioInsight,
+  dismissPortfolioInsight,
+  generateInvestorUpdate,
+  updateInvestorDraft,
+  sendInvestorUpdate,
+  listInvestorUpdates,
+  // AI Strategy — Tier 3
+  startOnboardingSession,
+  continueOnboardingSession,
+  predictDistress,
+  getLatestDistress,
+  listDistressedPortfolio,
+  getSponsorTrackRecord,
 });
 
 export type AppRouter = typeof appRouter;
