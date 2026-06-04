@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { minioClient, minioBaseUrl } from "~/server/minio";
+import { minioClient, minioPresignClient, minioPublicBaseUrl } from "~/server/minio";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { env } from "~/server/env";
@@ -52,7 +52,7 @@ export const getPresignedUploadUrl = baseProcedure
     // Generate presigned URL for PUT operation (expires in 5 minutes)
     let presignedUrl: string;
     try {
-      presignedUrl = await minioClient.presignedPutObject(
+      presignedUrl = await minioPresignClient.presignedPutObject(
         bucketName,
         objectName,
         5 * 60 // 5 minutes
@@ -67,7 +67,7 @@ export const getPresignedUploadUrl = baseProcedure
     }
 
     // Construct the final public URL
-    const publicUrl = `${minioBaseUrl}/${bucketName}/${objectName}`;
+    const publicUrl = `${minioPublicBaseUrl}/${bucketName}/${objectName}`;
 
     return {
       presignedUrl,

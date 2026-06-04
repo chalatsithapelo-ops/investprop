@@ -17,6 +17,16 @@ const envSchema = z.object({
     .transform((v) => v === "true")
     .default("false"),
   MINIO_BUCKET_NAME: z.string().default("property-images"),
+  // Publicly-reachable host for presigned URLs and publicUrl (browser-facing).
+  // When set, the server-side minio client still talks to MINIO_ENDPOINT internally,
+  // but presigned URLs and stored publicUrls use this host. Must NOT include a path.
+  // Example: "investprop.io" with MINIO_PUBLIC_USE_SSL=true.
+  MINIO_PUBLIC_HOST: z.string().optional(),
+  MINIO_PUBLIC_PORT: z.coerce.number().int().positive().optional(),
+  MINIO_PUBLIC_USE_SSL: z
+    .enum(["true", "false"])
+    .transform((v) => v === "true")
+    .optional(),
   EMAIL_SERVICE_API_KEY: z.string().optional(),
   EMAIL_FROM_ADDRESS: z.string().optional(),
   EMAIL_FROM_NAME: z.string().optional(),

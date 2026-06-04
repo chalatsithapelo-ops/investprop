@@ -7,11 +7,23 @@
 
 investprop.io, www.investprop.io {
     encode zstd gzip
-    reverse_proxy app:8010 {
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
+
+    # MinIO public bucket access — presigned URLs and direct object GETs.
+    # Caddy preserves the Host header so MinIO's signature verification passes.
+    @minio path /property-images/*
+    handle @minio {
+        reverse_proxy minio:9000 {
+            header_up Host {host}
+        }
+    }
+
+    handle {
+        reverse_proxy app:8010 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
     }
 
     header {

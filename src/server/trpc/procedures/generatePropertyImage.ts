@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { experimental_generateImage as generateImage } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { minioClient, minioBaseUrl } from "~/server/minio";
+import { minioClient, minioPublicBaseUrl } from "~/server/minio";
 import { baseProcedure } from "~/server/trpc/main";
 import { env } from "~/server/env";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
@@ -83,7 +83,7 @@ export const generatePropertyImage = baseProcedure
       );
 
       // Construct public URL
-      const publicUrl = `${minioBaseUrl}/${bucketName}/${objectName}`;
+      const publicUrl = `${minioPublicBaseUrl}/${bucketName}/${objectName}`;
 
       return {
         imageUrl: publicUrl,

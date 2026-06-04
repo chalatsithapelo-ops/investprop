@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { minioClient, minioBaseUrl } from "~/server/minio";
+import { minioClient, minioPublicBaseUrl } from "~/server/minio";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { checkRateLimit, RATE_LIMITS } from "~/server/utils/rate-limiter";
@@ -134,7 +134,7 @@ export const uploadFile = baseProcedure
         "Content-Type": input.fileType || "application/octet-stream",
       });
 
-      const publicUrl = `${minioBaseUrl}/${bucketName}/${objectName}`;
+      const publicUrl = `${minioPublicBaseUrl}/${bucketName}/${objectName}`;
       return { publicUrl, objectName };
     } catch (minioError) {
       console.warn("MinIO upload failed, falling back to local filesystem:", minioError);

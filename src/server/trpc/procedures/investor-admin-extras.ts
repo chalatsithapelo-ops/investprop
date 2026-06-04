@@ -246,7 +246,9 @@ export const getSystemHealth = baseProcedure
     ] = await Promise.all([
       db.user.count(),
       db.user.count({ where: { createdAt: { gte: since24h } } }),
-      db.property.count({ where: { investmentStatus: "IN_MARKET", deletedAt: null } }),
+      db.property.count({
+        where: { investmentStatus: { in: ["RAISING_FUNDS", "PROJECT_STARTED"] }, deletedAt: null },
+      }),
       db.investorContribution.count({ where: { status: "PENDING", deletedAt: null } }),
       db.investorContribution.count({ where: { paymentStatus: "PAYMENT_PENDING" } }),
       db.user.count({ where: { kycSubmittedAt: { not: null }, ficaVerified: false } }),
