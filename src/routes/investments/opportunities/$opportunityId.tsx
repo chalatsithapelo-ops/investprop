@@ -22,6 +22,8 @@ import {
   Building2,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
+import { AICopilotChat } from "~/components/AICopilotChat";
+import { AIMatchBadge } from "~/components/AIMatchBadge";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 import { calculateFlipMetrics, calculateRentalMetrics, calculateDevelopmentMetrics } from "~/financial-calculations";
@@ -793,6 +795,8 @@ function OpportunityDetailPage() {
 
           {/* Right Column — Investment Form */}
           <div className="space-y-6">
+            <AIMatchBadge propertyId={Number(opportunityId)} />
+            <AICopilotChat propertyId={Number(opportunityId)} />
             {isInvestor && (
               <div className="sticky top-8 space-y-4">
                 {/* Payment Reminder Banner — for approved but unpaid investments */}

@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { DollarSign, TrendingUp, Settings, Target, ArrowRight, Award } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
+import { AIPortfolioInsight } from "~/components/AIPortfolioInsight";
 import { useAuthStore } from "~/stores/authStore";
 
 export const Route = createFileRoute("/investments/")({
@@ -111,6 +112,13 @@ function InvestmentsHubPage() {
             </div>
           </div>
         </div>
+
+        {/* AI Portfolio brief (investor only) */}
+        {role === "INVESTOR" && (
+          <div className="mb-8">
+            <AIPortfolioInsight />
+          </div>
+        )}
 
         {/* Navigation Cards */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">

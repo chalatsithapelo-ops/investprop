@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Building, MapPin, TrendingUp } from "lucide-react";
 import { RiskBadge } from "./RiskBadge";
+import { AIMatchBadge } from "./AIMatchBadge";
 
 type PropertyCardProps = {
   property: {
@@ -65,6 +66,9 @@ export function PropertyCard({ property }: PropertyCardProps) {
             <RiskBadge rating={property.riskRating as any} />
           </span>
         )}
+        <span className="absolute bottom-3 left-3">
+          <AIMatchBadge propertyId={property.id} compact />
+        </span>
       </div>
       <div className="p-5">
         <h3 className="mb-1 text-lg font-bold text-gray-900 line-clamp-1">
