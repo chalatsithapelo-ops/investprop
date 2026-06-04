@@ -271,6 +271,13 @@ export const getWorkOrders = baseProcedure
           take: 1,
           include: { submittedBy: { select: { id: true, name: true } } },
         },
+        variations: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            proposedBy: { select: { id: true, name: true } },
+            approvedBy: { select: { id: true, name: true } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });

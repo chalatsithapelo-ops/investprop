@@ -140,11 +140,28 @@ function PortfolioPage() {
                     <th className="py-3 pr-4 text-left text-sm font-medium text-gray-500">Property</th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">Shares Owned</th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">Share %</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">Invested</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">Expected Return</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">Actual to date</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">Variance</th>
                     <th className="pl-4 py-3 text-right text-sm font-medium text-gray-500">Current Value</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {holdingsArr.map((holding: any, idx: number) => (
+                  {holdingsArr.map((holding: any, idx: number) => {
+                    const invested = Number(holding.totalInvested ?? holding.contributionAmount ?? holding.invested ?? 0);
+                    const expected = Number(
+                      holding.expectedReturnAmount ??
+                        holding.expectedReturn ??
+                        (invested * Number(holding.expectedReturnRate ?? holding.expectedROI ?? 0)) / 100,
+                    );
+                    const propId = holding.propertyId ?? holding.property?.id;
+                    const actual = distributionsArr
+                      .filter((d: any) => (d.propertyId ?? d.property?.id) === propId)
+                      .reduce((s: number, d: any) => s + Number(d.amount ?? 0), 0);
+                    const variance = actual - expected;
+                    const variancePct = expected > 0 ? (variance / expected) * 100 : null;
+                    return (
                     <tr key={holding.id ?? idx} className="border-b border-navy-800/50">
                       <td className="py-4 pr-4">
                         <div className="flex items-center gap-3">
@@ -169,11 +186,29 @@ function PortfolioPage() {
                           {Number(holding.sharePercentage ?? holding.percentage ?? 0).toFixed(1)}%
                         </span>
                       </td>
+                      <td className="px-4 py-4 text-right text-sm text-gray-700">
+                        R{invested.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-4 text-right text-sm text-gray-700">
+                        R{expected.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-4 text-right text-sm text-emerald-600">
+                        R{actual.toLocaleString()}
+                      </td>
+                      <td className={`px-4 py-4 text-right text-sm font-medium ${variance >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                        {variance >= 0 ? "+" : "−"}R{Math.abs(variance).toLocaleString()}
+                        {variancePct !== null && (
+                          <span className="ml-1 text-xs text-gray-500">
+                            ({variance >= 0 ? "+" : ""}{variancePct.toFixed(0)}%)
+                          </span>
+                        )}
+                      </td>
                       <td className="py-4 pl-4 text-right font-semibold text-emerald-600">
                         R{Number(holding.currentValue ?? holding.value ?? 0).toLocaleString()}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import {
   Building,
   DollarSign,
@@ -12,8 +13,10 @@ import {
   Clock,
   CheckCircle,
   FileText,
+  LineChart,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
+import { CoolingOffBanner } from "~/components/CoolingOffBanner";
 import { useTRPC } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 
@@ -37,6 +40,36 @@ function MyContributionsPage() {
     ...trpc.getMyContributions.queryOptions({ authToken: authToken ?? "" }),
     enabled: !!authToken,
   });
+
+  const qc = useQueryClient();
+  const cancelMut = useMutation(
+    trpc.cancelContributionDuringCoolingOff.mutationOptions({
+      onSuccess: () => {
+        toast.success("Investment cancelled. Refund will be processed within 7 business days.");
+        qc.invalidateQueries();
+      },
+      onError: (e) => toast.error(e.message),
+    })
+  );
+
+  const refundMut = useMutation(
+    trpc.requestRefund.mutationOptions({
+      onSuccess: () => {
+        toast.success("Refund request submitted. The team has been notified.");
+        qc.invalidateQueries();
+      },
+      onError: (e) => toast.error(e.message),
+    })
+  );
+
+  const requestRefundFor = (id: number) => {
+    const reason = window.prompt("Please briefly state the reason for the refund request (min 10 chars):");
+    if (!reason || reason.trim().length < 10) {
+      if (reason !== null) toast.error("Reason must be at least 10 characters");
+      return;
+    }
+    refundMut.mutate({ authToken: authToken ?? "", contributionId: id, reason });
+  };
 
   const data = contributionsQuery.data as any;
   const contributions = data?.contributions ?? data ?? [];
@@ -135,6 +168,18 @@ function MyContributionsPage() {
     <div className="min-h-screen bg-navy-950">
       <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <CoolingOffBanner
+          contributions={contributionsArr.map((c: any) => ({
+            id: c.id,
+            contributionAmount: Number(c.amount ?? c.invested ?? c.contributionAmount ?? 0),
+            coolingOffExpiresAt: c.coolingOffExpiresAt,
+            property: c.property,
+          }))}
+          onCancel={(id) =>
+            cancelMut.mutate({ authToken: authToken ?? "", contributionId: id })
+          }
+          cancelling={cancelMut.isPending}
+        />
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3">
@@ -313,6 +358,26 @@ function MyContributionsPage() {
                             <CreditCard size={12} /> Make Payment
                           </Link>
                         )}
+                        {contribution.paymentStatus === "POP_REJECTED" && (
+                          <Link
+                            to="/investments/payments"
+                            className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                            title="Submit corrected proof of payment"
+                          >
+                            <FileText size={12} /> Resubmit POP
+                          </Link>
+                        )}
+                        {["PAID", "PROCESSING", "POP_SUBMITTED"].includes(contribution.paymentStatus) && status !== "REFUNDED" && status !== "REFUND_REQUESTED" && (
+                          <button
+                            type="button"
+                            onClick={() => requestRefundFor(contribution.id)}
+                            disabled={refundMut.isPending}
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                            title="Request a refund"
+                          >
+                            Refund
+                          </button>
+                        )}
                         {propertyId && (
                           <Link
                             to={`/investments/opportunities/${propertyId}`}
@@ -350,6 +415,12 @@ function MyContributionsPage() {
                         )}
                       </div>
                     )}
+
+                    {/* Distribution forecast toggle (Phase 10) */}
+                    <DistributionForecastInline
+                      contributionId={contribution.id}
+                      authToken={authToken ?? ""}
+                    />
                   </div>
                 );
               })}
@@ -357,6 +428,82 @@ function MyContributionsPage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function DistributionForecastInline({
+  contributionId,
+  authToken,
+}: {
+  contributionId: number;
+  authToken: string;
+}) {
+  const trpc = useTRPC();
+  const [open, setOpen] = useState(false);
+  const forecastQuery = useQuery({
+    ...trpc.getDistributionForecast.queryOptions({ authToken, contributionId }),
+    enabled: open && !!authToken,
+  });
+
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-gold-500 hover:text-gold-400"
+      >
+        <LineChart size={13} />
+        {open ? "Hide" : "Show"} 5-year distribution forecast
+      </button>
+      {open && (
+        <div className="mt-2 rounded-lg border border-navy-800/50 bg-navy-900/40 p-3">
+          {forecastQuery.isLoading && (
+            <p className="text-xs text-gray-500">Loading forecast…</p>
+          )}
+          {forecastQuery.isError && (
+            <p className="text-xs text-red-500">Failed to load forecast.</p>
+          )}
+          {forecastQuery.data && (
+            <>
+              <div className="mb-2 text-xs text-gray-500">
+                Principal R
+                {Number(forecastQuery.data.principal).toLocaleString()} @{" "}
+                {Number(forecastQuery.data.annualRate).toFixed(2)}% p.a.
+              </div>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-navy-800/50 text-left text-gray-500">
+                    <th className="py-1 pr-2 font-medium">Year</th>
+                    <th className="py-1 pr-2 font-medium">Annual</th>
+                    <th className="py-1 pr-2 font-medium">Cumulative</th>
+                    <th className="py-1 font-medium">Total value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {forecastQuery.data.projections.map((p: any) => (
+                    <tr key={p.year} className="border-b border-navy-800/30">
+                      <td className="py-1 pr-2 text-gray-700">{p.year}</td>
+                      <td className="py-1 pr-2 text-gray-700">
+                        R{Number(p.annualDistribution).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </td>
+                      <td className="py-1 pr-2 text-gray-700">
+                        R{Number(p.cumulativeDistribution).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </td>
+                      <td className="py-1 text-emerald-600">
+                        R{Number(p.totalValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="mt-2 text-[10px] italic text-gray-500">
+                {forecastQuery.data.disclaimer}
+              </p>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

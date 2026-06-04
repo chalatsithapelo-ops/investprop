@@ -30,6 +30,9 @@ import {
   Award,
   Users,
   HardHat,
+  Activity,
+  Database,
+  GitBranch,
 } from "lucide-react";
 
 /**
@@ -159,6 +162,41 @@ export const mainNavigationLinks: NavigationLink[] = [
     icon: ShieldCheck,
     roles: ["DEVELOPMENT_MANAGER", "ADMIN"],
     description: "Immutable POPIA-grade trail of every privileged action",
+  },
+  {
+    label: "System Health",
+    to: "/admin/system-health",
+    icon: Activity,
+    roles: ["ADMIN"],
+    description: "Live system metrics, queue depths and recent activity",
+  },
+  {
+    label: "Bulk Operations",
+    to: "/admin/bulk-ops",
+    icon: Users,
+    roles: ["ADMIN"],
+    description: "Approve or suspend multiple users at once",
+  },
+  {
+    label: "Variations",
+    to: "/admin/variations",
+    icon: GitBranch,
+    roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "ADMIN"],
+    description: "Review and approve contractor variation orders",
+  },
+  {
+    label: "POPIA Subject Access",
+    to: "/admin/popia-sar",
+    icon: Database,
+    roles: ["ADMIN"],
+    description: "Export a user's full data record for POPIA SAR requests",
+  },
+  {
+    label: "Document Vault",
+    to: "/document-vault",
+    icon: FolderOpen,
+    roles: ["INVESTOR", "PROPERTY_OWNER"],
+    description: "All your share certificates, receipts and legal documents",
   },
   {
     label: "SPV Management",

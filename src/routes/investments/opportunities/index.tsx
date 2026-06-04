@@ -12,6 +12,7 @@ import {
 import { Navbar } from "~/components/Navbar";
 import { useTRPC } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import { RiskBadge } from "~/components/RiskBadge";
 
 export const Route = createFileRoute("/investments/opportunities/")({
   component: InvestmentOpportunitiesPage,
@@ -203,6 +204,9 @@ function InvestmentOpportunitiesPage() {
                         {opp.propertyType}
                       </span>
                     )}
+                    <span className="absolute right-3 top-3">
+                      <RiskBadge rating={opp.riskRating ?? "MEDIUM"} />
+                    </span>
                   </div>
 
                   {/* Content */}

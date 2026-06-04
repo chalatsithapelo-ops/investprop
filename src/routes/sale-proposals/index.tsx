@@ -24,6 +24,7 @@ import {
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import { downloadLOI as downloadLOIPdf, downloadOTP as downloadOTPPdf } from "~/utils/generate-investor-pdf";
 
 export const Route = createFileRoute("/sale-proposals/")({
   component: SaleProposalsPage,
@@ -121,41 +122,55 @@ function SaleProposalsPage() {
         authToken: authToken ?? "",
         proposalId,
       });
-      const text = [
-        `LETTER OF INTENT`,
-        `Reference: ${loi.reference}`,
-        `Date: ${loi.date}`,
-        ``,
-        `To: ${loi.to}`,
-        `Email: ${loi.ownerEmail}`,
-        ``,
-        `Property: ${loi.propertyAddress}`,
-        `Title Deed: ${loi.titleDeed}`,
-        `Erf Number: ${loi.erfNumber}`,
-        ``,
-        `Engagement: ${loi.engagementType}`,
-        `Sale Type: ${loi.saleType}`,
-        `Offer Amount: R${Number(loi.offerAmount).toLocaleString()}`,
-        ``,
-        `Terms:`,
-        loi.terms,
-        ``,
-        `Conditions:`,
-        ...loi.conditions.map((c: string, i: number) => `  ${i + 1}. ${c}`),
-        ``,
-        `Valid Until: ${loi.validUntil}`,
-        ``,
-        loi.disclaimer,
-      ].join("\n");
-      const blob = new Blob([text], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${loi.reference}.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadLOIPdf({
+        proposalId,
+        propertyAddress: loi.propertyAddress,
+        sellerName: loi.to,
+        sellerEmail: loi.ownerEmail,
+        offerAmount: Number(loi.offerAmount) || 0,
+        engagementType:
+          loi.engagementType === "JOINT_VENTURE"
+            ? "JOINT_VENTURE"
+            : loi.engagementType === "SECTIONAL_SALE"
+              ? "SECTIONAL_SALE"
+              : "OUTRIGHT_PURCHASE",
+        counterOfferAmount: loi.counterOfferAmount ? Number(loi.counterOfferAmount) : null,
+        counterOfferTerms: loi.counterOfferTerms ?? null,
+        managerName: loi.managerName,
+        signedDate: loi.date ? new Date(loi.date) : new Date(),
+      });
     } catch (err: any) {
       toast.error(err.message ?? "Could not generate LOI");
+    }
+  };
+
+  const downloadOTP = async (proposal: any) => {
+    try {
+      const loi = await (trpcClient as any).generateLetterOfIntent.query({
+        authToken: authToken ?? "",
+        proposalId: proposal.id,
+      });
+      const purchasePrice =
+        Number(proposal.counterOfferAmount) ||
+        Number(loi.counterOfferAmount) ||
+        Number(loi.offerAmount) ||
+        Number(proposal.askingPrice) ||
+        0;
+      downloadOTPPdf({
+        proposalId: proposal.id,
+        propertyTitle: proposal.propertyTitle ?? loi.propertyAddress ?? "Property",
+        propertyAddress: loi.propertyAddress ?? proposal.propertyAddress ?? "",
+        sellerName: loi.to ?? proposal.ownerName ?? "Seller",
+        sellerEmail: loi.ownerEmail ?? proposal.ownerEmail ?? "",
+        sellerIdNumber: proposal.ownerIdNumber,
+        purchasePrice,
+        depositAmount: Math.round(purchasePrice * 0.1),
+        managerName: loi.managerName,
+        signedDate: new Date(),
+      });
+      toast.success("OTP downloaded");
+    } catch (err: any) {
+      toast.error(err.message ?? "Could not generate OTP");
     }
   };
 
@@ -529,6 +544,30 @@ function SaleProposalsPage() {
                                 >
                                   <FileText size={12} className="mr-1 inline" />
                                   Draft LOI
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* OTP button (accepted proposals) */}
+                          {proposal.status === "ACCEPTED" && (
+                            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                              <p className="mb-2 text-xs font-medium text-emerald-900">
+                                Proposal accepted — issue binding Offer to Purchase
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => downloadOTP(proposal)}
+                                  className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                                >
+                                  <FileText size={12} className="mr-1 inline" />
+                                  Download OTP (PDF)
+                                </button>
+                                <button
+                                  onClick={() => downloadLOI(proposal.id)}
+                                  className="flex-1 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                                >
+                                  Re-download LOI
                                 </button>
                               </div>
                             </div>

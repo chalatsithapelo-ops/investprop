@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Building, MapPin, TrendingUp } from "lucide-react";
+import { RiskBadge } from "./RiskBadge";
 
 type PropertyCardProps = {
   property: {
@@ -15,6 +16,7 @@ type PropertyCardProps = {
     fundingGoal?: number;
     currentFunding?: number;
     expectedROI?: number;
+    riskRating?: string;
   };
 };
 
@@ -56,6 +58,11 @@ export function PropertyCard({ property }: PropertyCardProps) {
             className={`absolute top-3 right-3 rounded-full px-3 py-1 text-xs font-bold ${statusColors[property.status] ?? "bg-gray-100 text-gray-500"}`}
           >
             {property.status.replace(/_/g, " ")}
+          </span>
+        )}
+        {property.riskRating && (
+          <span className="absolute top-3 left-3">
+            <RiskBadge rating={property.riskRating as any} />
           </span>
         )}
       </div>

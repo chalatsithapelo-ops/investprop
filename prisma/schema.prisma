@@ -478,6 +478,9 @@ model User {
   companyName                                               String?                // If investing via entity
   companyRegNumber                                          String?                // CIPC registration number
   kycSubmittedAt                                            DateTime?              // When the KYC form was submitted
+  // Phase 10 — investor appropriateness questionnaire (FSCA suitability)
+  appropriatenessCompletedAt                                DateTime?
+  appropriatenessAssessment                                 Json?                  // {experience, income, netWorth, tolerance, ack flags, completedAt}
   auditLogs                                                AuditLog[]
   budgetEntries                                             BudgetEntry[]
   emailVerifications                                        EmailVerification[]

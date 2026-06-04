@@ -110,10 +110,24 @@ import {
   acceptWorkOrder,
   proposeVariation,
   respondToVariation,
+  listVariations,
   listAuditLog,
   impersonateUser,
   listCoolingOffContributions,
 } from "~/server/trpc/procedures/extended-workflows";
+import {
+  resubmitPaymentProof,
+  requestRefund,
+  submitAppropriatenessQuestionnaire,
+  getAppropriatenessStatus,
+  getCapTablePreview,
+  getDistributionForecast,
+  getSystemHealth,
+  bulkApproveUsers,
+  bulkSuspendUsers,
+  popiaSubjectAccessExport,
+  listMyDocuments,
+} from "~/server/trpc/procedures/investor-admin-extras";
 
 export const appRouter = createTRPCRouter({
   register,
@@ -337,9 +351,22 @@ export const appRouter = createTRPCRouter({
   acceptWorkOrder,
   proposeVariation,
   respondToVariation,
+  listVariations,
   listAuditLog,
   impersonateUser,
   listCoolingOffContributions,
+  // Phase 10/13/14 investor + admin extras
+  resubmitPaymentProof,
+  requestRefund,
+  submitAppropriatenessQuestionnaire,
+  getAppropriatenessStatus,
+  getCapTablePreview,
+  getDistributionForecast,
+  getSystemHealth,
+  bulkApproveUsers,
+  bulkSuspendUsers,
+  popiaSubjectAccessExport,
+  listMyDocuments,
 });
 
 export type AppRouter = typeof appRouter;

@@ -314,6 +314,44 @@ export const respondToVariation = baseProcedure
     return { success: true, variation: updated };
   });
 
+/* ─── Phase 12: List variations (manager dashboard) ─────────────────── */
+
+export const listVariations = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      status: z.enum(["ALL", "PROPOSED", "APPROVED", "REJECTED"]).default("PROPOSED"),
+    })
+  )
+  .query(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "ADMIN"], "Manager-only");
+
+    const where: any = {};
+    if (input.status !== "ALL") where.status = input.status;
+
+    const variations = await db.variationOrder.findMany({
+      where,
+      include: {
+        workOrder: {
+          select: {
+            id: true,
+            title: true,
+            agreedAmount: true,
+            expectedEndDate: true,
+            property: { select: { id: true, title: true, city: true } },
+            contractorProfile: {
+              select: { companyName: true, user: { select: { name: true, email: true } } },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return { variations };
+  });
+
 /* ─── Phase 13: Audit-log viewer ────────────────────────────────────── */
 
 export const listAuditLog = baseProcedure

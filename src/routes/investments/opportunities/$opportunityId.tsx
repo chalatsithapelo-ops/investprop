@@ -109,6 +109,16 @@ function OpportunityDetailPage() {
   });
   const ficaStatus = ficaQuery.data as any;
 
+  // Documents pack for this opportunity (Phase 9)
+  const docsPackQuery = useQuery({
+    ...trpc.getLegalDocuments.queryOptions({
+      authToken: authToken ?? "",
+      propertyId: Number(opportunityId),
+    }),
+    enabled: !!authToken && !!opportunityId,
+  });
+  const docsPack: any[] = (docsPackQuery.data as any[]) ?? [];
+
   // Whether FICA is required for the current investment amount
   const FICA_THRESHOLD = 20_000;
   const currentAmount = Number(investmentAmount) || 0;
@@ -633,6 +643,75 @@ function OpportunityDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Documents Pack (Phase 9) */}
+            <div className="rounded-xl border border-navy-800/50 bg-navy-900/50 p-6">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Documents Pack
+                </h2>
+                <span className="rounded-full bg-gold-100 px-2 py-0.5 text-xs font-medium text-gold-700">
+                  {docsPack.length}
+                </span>
+              </div>
+              <p className="mb-4 text-sm text-gray-500">
+                Legal disclosures, SPV agreements, and supporting documents for this
+                opportunity. Please review before investing.
+              </p>
+              {docsPackQuery.isLoading ? (
+                <p className="text-sm text-gray-500">Loading documents…</p>
+              ) : docsPack.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-navy-700 bg-navy-800/30 p-4 text-sm text-gray-400">
+                  No documents have been published yet. Documents are typically added
+                  before the funding round closes.
+                </p>
+              ) : (
+                <ul className="divide-y divide-navy-800/50 rounded-lg border border-navy-800/50 bg-navy-900/30">
+                  {docsPack.map((d: any) => (
+                    <li
+                      key={d.id}
+                      className="flex items-center justify-between gap-3 p-3 text-sm"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <FileText className="h-4 w-4 shrink-0 text-gold-500" />
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-gray-900">
+                            {d.title ?? d.documentType ?? `Document #${d.id}`}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {d.documentType ?? "—"}
+                            {d.createdAt
+                              ? ` · ${new Date(d.createdAt).toLocaleDateString("en-ZA")}`
+                              : ""}
+                          </p>
+                        </div>
+                      </div>
+                      {d.fileUrl ? (
+                        <a
+                          href={d.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="shrink-0 rounded-lg border border-gold-500 px-3 py-1.5 text-xs font-medium text-gold-600 hover:bg-gold-50"
+                        >
+                          View
+                        </a>
+                      ) : (
+                        <span className="text-xs text-gray-500">Pending</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-4 border-t border-navy-800/50 pt-3">
+                <Link
+                  to="/investments/opportunities/$opportunityId/cap-table"
+                  params={{ opportunityId }}
+                  className="inline-flex items-center gap-2 text-sm font-medium text-gold-500 hover:text-gold-400"
+                >
+                  View live cap table →
+                </Link>
+              </div>
+            </div>
 
             {/* Terms & Conditions */}
             {isInvestor && (

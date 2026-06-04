@@ -10,7 +10,9 @@
     "node_modules",
     "dist",
     "build",
-    "app.config.timestamp_*"
+    "app.config.timestamp_*",
+    "playwright.config.ts",
+    "e2e"
   ],
   "compilerOptions": {
     "ignoreDeprecations": "5.0",

@@ -24,6 +24,9 @@ import {
 import { Navbar } from "~/components/Navbar";
 import { useTRPC } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import { VerifyEmailBanner } from "~/components/VerifyEmailBanner";
+import { FicaBadge } from "~/components/FicaBadge";
+import { AppropriatenessQuestionnaireModal } from "~/components/AppropriatenessQuestionnaireModal";
 
 export const Route = createFileRoute("/dashboard/")({
   component: DashboardPage,
@@ -72,6 +75,11 @@ function DashboardPage() {
     ...trpc.getMyContributions.queryOptions({ authToken: authToken ?? "" }),
     enabled: !!authToken && isInvestor,
     placeholderData: keepPreviousData,
+  });
+
+  const appropriatenessQuery = useQuery({
+    ...trpc.getAppropriatenessStatus.queryOptions({ authToken: authToken ?? "" }),
+    enabled: !!authToken && isInvestor,
   });
 
   // Manager-specific queries
@@ -177,6 +185,14 @@ function DashboardPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {isInvestor && <VerifyEmailBanner />}
+        {isInvestor && appropriatenessQuery.data && !(appropriatenessQuery.data as any).completed && (
+          <AppropriatenessQuestionnaireModal
+            open
+            onClose={() => { /* gated — stays open until completed */ }}
+            onComplete={() => appropriatenessQuery.refetch()}
+          />
+        )}
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
@@ -184,9 +200,12 @@ function DashboardPage() {
             <p className="mt-1 text-gray-500">
               Welcome back, {user.name}. {roleLabel}
             </p>
-            <span className="mt-1 inline-block rounded bg-gold-50 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-gold-600">
-              {role.replace(/_/g, " ")}
-            </span>
+            <div className="mt-1 flex items-center gap-2">
+              <span className="inline-block rounded bg-gold-50 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-gold-600">
+                {role.replace(/_/g, " ")}
+              </span>
+              {isInvestor && <FicaBadge ficaVerified={(user as any).ficaVerified} />}
+            </div>
           </div>
           {isManager && (
             <Link

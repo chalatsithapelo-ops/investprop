@@ -1,10 +1,12 @@
 import { createFileRoute, Link, useNavigate, Outlet, useMatchRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Building, MapPin, DollarSign, Users, BarChart3, Calendar, Edit, ArrowLeft, ChevronLeft, ChevronRight, TrendingUp, AlertTriangle, Clock, Wallet, PiggyBank, Home, Percent, Plus } from "lucide-react";
+import { Building, MapPin, DollarSign, Users, BarChart3, Calendar, Edit, ArrowLeft, ChevronLeft, ChevronRight, TrendingUp, AlertTriangle, Clock, Wallet, PiggyBank, Home, Percent, Plus, Trash2 } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
 import { useTRPCClient, useTRPC } from "~/trpc/react";
 import toast from "react-hot-toast";
 import { Navbar } from "~/components/Navbar";
+import { ConfirmModal } from "~/components/ConfirmModal";
 import { useAuthStore } from "~/stores/authStore";
 import { calculateFlipMetrics, calculateRentalMetrics, calculateDevelopmentMetrics } from "~/financial-calculations";
 import type { PropertyFlipInput, RentalPropertyInput, PropertyDevelopmentInput } from "~/financial-calculations";
@@ -37,6 +39,17 @@ function PropertyDetailPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showBudgetForm, setShowBudgetForm] = useState(false);
   const [budgetForm, setBudgetForm] = useState({ category: "", description: "", amount: "" });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const deletePropertyMutation = useMutation({
+    mutationFn: async () => trpcClient.deleteProperty.mutate({ authToken: authToken!, propertyId: Number(propertyId) }),
+    onSuccess: () => {
+      toast.success("Property deleted");
+      queryClient.invalidateQueries({ queryKey: trpc.getProperties.queryKey() });
+      navigate({ to: "/dashboard" });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to delete property"),
+  });
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -125,15 +138,34 @@ function PropertyDetailPage() {
             <ArrowLeft size={18} /> Back
           </Link>
           {isManager && (
-            <Link
-              to="/properties/$propertyId/edit"
-              params={{ propertyId }}
-              className="flex items-center gap-2 rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-white hover:bg-gold-600"
-            >
-              <Edit size={16} /> Edit Property
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/properties/$propertyId/edit"
+                params={{ propertyId }}
+                className="flex items-center gap-2 rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-white hover:bg-gold-600"
+              >
+                <Edit size={16} /> Edit Property
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(true)}
+                className="flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+              >
+                <Trash2 size={16} /> Delete
+              </button>
+            </div>
           )}
         </div>
+        <ConfirmModal
+          open={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={() => deletePropertyMutation.mutate()}
+          title="Delete this property?"
+          message={<span>This permanently removes <strong>{property.title}</strong>, its financials, milestones, and budget entries. Any active investors will be notified. This cannot be undone.</span>}
+          confirmLabel="Delete permanently"
+          tone="danger"
+          loading={deletePropertyMutation.isPending}
+        />
 
         {/* Image Carousel */}
         {images.length > 0 && (

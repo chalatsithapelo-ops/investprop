@@ -15,6 +15,7 @@ import {
   Loader2,
   FileText,
   Download,
+  Clock,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
@@ -65,6 +66,14 @@ function MyCertificatesPage() {
     enabled: !!authToken,
   });
 
+  // Used to surface contributions that are paid but awaiting certificate issuance
+  const contributionsQuery = useQuery({
+    ...trpc.getMyContributions.queryOptions({
+      authToken: authToken ?? "",
+    }),
+    enabled: !!authToken,
+  });
+
   const detailQuery = useQuery({
     ...trpc.getCertificateDetail.queryOptions({
       authToken: authToken ?? "",
@@ -74,6 +83,16 @@ function MyCertificatesPage() {
   });
 
   const certs = (certsQuery.data as any[]) ?? [];
+
+  const contributionsResp = contributionsQuery.data as any;
+  const allContributions: any[] = contributionsResp?.contributions ?? contributionsResp ?? [];
+  const issuedContribIds = new Set<number>(certs.map((c: any) => c.contributionId).filter(Boolean));
+  const pendingContributions = allContributions.filter(
+    (c) =>
+      c?.paymentStatus === "CONFIRMED" &&
+      !c?.cancelledAt &&
+      !issuedContribIds.has(c.id),
+  );
 
   const totalValue = certs.reduce(
     (s: number, c: any) => s + (c.totalValue ?? 0),
@@ -131,7 +150,7 @@ function MyCertificatesPage() {
         )}
 
         {/* Empty State */}
-        {!certsQuery.isLoading && certs.length === 0 && (
+        {!certsQuery.isLoading && certs.length === 0 && pendingContributions.length === 0 && (
           <div className="rounded-xl border bg-white p-8 text-center">
             <FileText className="mx-auto mb-3 text-gray-300" size={48} />
             <h3 className="text-lg font-semibold text-gray-900">
@@ -147,6 +166,38 @@ function MyCertificatesPage() {
             >
               Browse Investment Opportunities
             </button>
+          </div>
+        )}
+
+        {/* Pending Issuance */}
+        {!certsQuery.isLoading && pendingContributions.length > 0 && (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <Clock className="text-amber-600" size={20} />
+              <h3 className="font-semibold text-amber-900">
+                Certificates pending issuance ({pendingContributions.length})
+              </h3>
+            </div>
+            <p className="mb-3 text-sm text-amber-800">
+              Your payment has been confirmed. Certificates are typically issued within 1–2 business days after the cooling-off window opens.
+            </p>
+            <ul className="divide-y divide-amber-200 rounded-lg border border-amber-200 bg-white">
+              {pendingContributions.map((c: any) => (
+                <li key={c.id} className="flex items-center justify-between gap-3 p-3 text-sm">
+                  <div>
+                    <p className="font-medium text-gray-900">{c.property?.title ?? `Contribution #${c.id}`}</p>
+                    <p className="text-xs text-gray-500">
+                      R{Number(c.contributionAmount ?? 0).toLocaleString()}
+                      {c.numberOfShares ? ` · ${c.numberOfShares} shares` : ""}
+                      {c.paymentReviewedAt ? ` · confirmed ${new Date(c.paymentReviewedAt).toLocaleDateString()}` : ""}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">
+                    Awaiting issuance
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

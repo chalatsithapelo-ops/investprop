@@ -546,6 +546,37 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
   const [uploading, setUploading] = useState(false);
   const [showInvoiceForm, setShowInvoiceForm] = useState<number | null>(null);
   const [invoiceForm, setInvoiceForm] = useState({ invoiceNumber: "", amount: "", taxAmount: "0", description: "" });
+  // Phase 12 — Variation Orders
+  const [showVariationForm, setShowVariationForm] = useState<number | null>(null);
+  const [variationForm, setVariationForm] = useState({ title: "", description: "", amountDelta: "", daysDelta: "0" });
+
+  const submitVariation = async (workOrderId: number) => {
+    if (!variationForm.title.trim() || variationForm.title.length < 3) {
+      toast.error("Provide a short title");
+      return;
+    }
+    if (!variationForm.description.trim() || variationForm.description.length < 10) {
+      toast.error("Provide a description (min 10 chars)");
+      return;
+    }
+    try {
+      const voNumber = `VO-${workOrderId}-${Date.now().toString(36).toUpperCase()}`;
+      await trpcClient.proposeVariation.mutate({
+        authToken,
+        workOrderId,
+        number: voNumber,
+        description: `${variationForm.title}\n\n${variationForm.description}`,
+        costImpact: parseFloat(variationForm.amountDelta || "0"),
+        timeImpactDays: parseInt(variationForm.daysDelta || "0", 10),
+      });
+      toast.success("Variation order submitted for approval");
+      setShowVariationForm(null);
+      setVariationForm({ title: "", description: "", amountDelta: "", daysDelta: "0" });
+      queryClient.invalidateQueries({ queryKey: trpc.getWorkOrders.queryKey() });
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to submit variation");
+    }
+  };
 
   const workOrdersQuery = useQuery({
     ...trpc.getWorkOrders.queryOptions({ authToken }),
@@ -681,6 +712,19 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
                       <Receipt className="mr-1 inline h-4 w-4" /> Submit Invoice
                     </button>
                   )}
+                  {["ACCEPTED", "IN_PROGRESS"].includes(wo.status) && (
+                    <button
+                      onClick={() => {
+                        setShowVariationForm(showVariationForm === wo.id ? null : wo.id);
+                        setShowInvoiceForm(null);
+                        setShowUpdateForm(null);
+                      }}
+                      className="rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700"
+                      title="Request a variation order for additional scope or time"
+                    >
+                      <FileText className="mr-1 inline h-4 w-4" /> Request Variation
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       const pdfData: WorkOrderPDFData = {
@@ -733,6 +777,81 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
                     <Send className="mr-1 inline h-4 w-4" /> Submit Update
                   </button>
                   <button onClick={() => { setShowUpdateForm(null); setUpdateText(""); setUpdateImages([]); }} className="rounded-lg bg-navy-700 px-4 py-2 text-sm text-black hover:bg-navy-600">Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {/* Variation Order Form (Phase 12) */}
+            {showVariationForm === wo.id && (
+              <div className="border-t border-navy-800 bg-purple-50 p-6">
+                <h4 className="mb-3 text-sm font-semibold text-purple-700 flex items-center gap-2">
+                  <FileText className="h-4 w-4" /> Request Variation Order for: {wo.title}
+                </h4>
+                <p className="mb-3 text-xs text-purple-700">
+                  Use this to request additional scope, time, or cost. The development manager will review and approve or reject.
+                </p>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="md:col-span-2">
+                    <label htmlFor={`vo-title-${wo.id}`} className="mb-1 block text-xs text-gray-700">Title *</label>
+                    <input
+                      id={`vo-title-${wo.id}`}
+                      type="text"
+                      value={variationForm.title}
+                      onChange={(e) => setVariationForm({ ...variationForm, title: e.target.value })}
+                      className="w-full rounded-lg border border-purple-300 bg-white px-3 py-2 text-sm text-black"
+                      placeholder="e.g. Additional plastering in bedroom 2"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label htmlFor={`vo-desc-${wo.id}`} className="mb-1 block text-xs text-gray-700">Description *</label>
+                    <textarea
+                      id={`vo-desc-${wo.id}`}
+                      rows={3}
+                      value={variationForm.description}
+                      onChange={(e) => setVariationForm({ ...variationForm, description: e.target.value })}
+                      className="w-full rounded-lg border border-purple-300 bg-white px-3 py-2 text-sm text-black"
+                      placeholder="Explain the change and why it's needed"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor={`vo-amount-${wo.id}`} className="mb-1 block text-xs text-gray-700">Cost change (R) — can be negative</label>
+                    <input
+                      id={`vo-amount-${wo.id}`}
+                      type="number"
+                      step="0.01"
+                      value={variationForm.amountDelta}
+                      onChange={(e) => setVariationForm({ ...variationForm, amountDelta: e.target.value })}
+                      className="w-full rounded-lg border border-purple-300 bg-white px-3 py-2 text-sm text-black"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor={`vo-days-${wo.id}`} className="mb-1 block text-xs text-gray-700">Time change (days)</label>
+                    <input
+                      id={`vo-days-${wo.id}`}
+                      type="number"
+                      value={variationForm.daysDelta}
+                      onChange={(e) => setVariationForm({ ...variationForm, daysDelta: e.target.value })}
+                      className="w-full rounded-lg border border-purple-300 bg-white px-3 py-2 text-sm text-black"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => submitVariation(wo.id)}
+                    className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700"
+                  >
+                    Submit for approval
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowVariationForm(null)}
+                    className="rounded-lg border border-purple-300 bg-white px-4 py-2 text-sm text-purple-700 hover:bg-purple-50"
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
             )}
@@ -816,6 +935,68 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
                     {wo.completionNotes && <p className="mt-2 text-sm text-black italic">"{wo.completionNotes}"</p>}
                   </div>
                 )}
+
+                {/* Variation Order History (Phase 12) */}
+                <div className="mt-6">
+                  <h5 className="mb-3 text-sm font-semibold text-black flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-purple-500" /> Variation Orders
+                    {wo.variations?.length ? (
+                      <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
+                        {wo.variations.length}
+                      </span>
+                    ) : null}
+                  </h5>
+                  {!wo.variations?.length ? (
+                    <p className="text-sm text-black italic">
+                      No variation orders. Use "Request Variation" if scope or time needs to change.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {wo.variations.map((vo: any) => {
+                        const statusColor =
+                          vo.status === "APPROVED"
+                            ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                            : vo.status === "REJECTED"
+                              ? "bg-red-100 text-red-700 border-red-200"
+                              : vo.status === "WITHDRAWN"
+                                ? "bg-gray-100 text-gray-600 border-gray-200"
+                                : "bg-amber-100 text-amber-700 border-amber-200";
+                        const sign = vo.costImpact >= 0 ? "+" : "−";
+                        return (
+                          <div key={vo.id} className="rounded-lg border border-purple-200 bg-white p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-semibold text-black">VO {vo.number}</span>
+                                  <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${statusColor}`}>
+                                    {vo.status}
+                                  </span>
+                                </div>
+                                <p className="mt-1 whitespace-pre-line text-xs text-gray-700">{vo.description}</p>
+                                <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-600">
+                                  <span>Cost: <strong className={vo.costImpact >= 0 ? "text-red-600" : "text-emerald-600"}>{sign} R {Math.abs(vo.costImpact).toLocaleString()}</strong></span>
+                                  <span>Time: <strong>{vo.timeImpactDays >= 0 ? "+" : ""}{vo.timeImpactDays} days</strong></span>
+                                  <span>Proposed by {vo.proposedBy?.name ?? "—"}</span>
+                                  <span>{new Date(vo.createdAt).toLocaleDateString("en-ZA")}</span>
+                                </div>
+                                {vo.status === "APPROVED" && vo.approvedBy && (
+                                  <p className="mt-1 text-xs text-emerald-700">
+                                    Approved by {vo.approvedBy.name} on {new Date(vo.approvedAt).toLocaleDateString("en-ZA")}
+                                  </p>
+                                )}
+                                {vo.status === "REJECTED" && (
+                                  <p className="mt-1 text-xs text-red-700">
+                                    Rejected{vo.approvedBy ? ` by ${vo.approvedBy.name}` : ""}{vo.rejectionReason ? ` — ${vo.rejectionReason}` : ""}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
