@@ -31,8 +31,8 @@ export type AITier = "cheap" | "premium" | "vision";
 
 const MODELS: Record<AITier, string> = {
   cheap: "openai/gpt-4o-mini",
-  premium: "google/gemini-2.0-flash-001",
-  vision: "google/gemini-2.0-flash-001",
+  premium: "google/gemini-flash-1.5",
+  vision: "google/gemini-flash-1.5",
 };
 
 // Per-1M-token cost in USD (input, output) — used for ballpark accounting only.
@@ -40,6 +40,7 @@ const COST_PER_M_TOKENS: Record<string, { input: number; output: number }> = {
   "openai/gpt-4o-mini": { input: 0.15, output: 0.6 },
   "openai/gpt-4o": { input: 2.5, output: 10 },
   "google/gemini-2.0-flash-001": { input: 0.1, output: 0.4 },
+  "google/gemini-flash-1.5": { input: 0.075, output: 0.3 },
   "openai/dall-e-3": { input: 0, output: 0 },
 };
 
