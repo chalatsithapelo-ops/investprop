@@ -25,11 +25,20 @@ function LandingPage() {
             dedicated SPV structures, with full transparency on each opportunity. Investment
             from R1,000 per property.
           </p>
-          <p className="mx-auto -mt-6 mb-10 max-w-3xl text-xs text-gray-400">
-            Investprop is a financial services platform currently preparing its FSCA licensing
-            application. We are not yet a licensed Financial Services Provider. All investments
-            carry risk and past performance does not guarantee future returns.
-          </p>
+          <div className="mx-auto -mt-6 mb-10 flex max-w-3xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium text-gray-600">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="text-gold-600">✓</span> Ring-fenced SPV per property
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="text-gold-600">✓</span> Tradable share certificates
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="text-gold-600">✓</span> AI-powered deal analysis
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="text-gold-600">✓</span> Bank-grade FICA & POPIA
+            </span>
+          </div>
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
               to="/register"

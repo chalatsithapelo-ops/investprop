@@ -395,6 +395,9 @@ export function getNavigationLinksForRole(
 ): NavigationLink[] {
   if (!userRole) return [];
 
+  // ADMIN sees every link — admins are a superset of every operational role.
+  if (userRole === "ADMIN") return links;
+
   return links.filter((link) => {
     // If no roles specified, link is visible to all authenticated users
     if (!link.roles) return true;
