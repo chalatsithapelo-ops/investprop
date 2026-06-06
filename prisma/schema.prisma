@@ -296,6 +296,7 @@ model Property {
   photoChecks               ConstructionPhotoCheck[]
   updateDrafts              InvestorUpdateDraft[]
   distressPredictions       DistressPrediction[]
+  distressedSource          DistressedListing?       @relation("PropertyFromDistressed")
 
   @@index([createdAt])
   @@index([investmentStatus])
@@ -1308,6 +1309,21 @@ model DistressedListing {
   erfSize       Float? // in sqm
   floorSize     Float? // in sqm
   imageUrl      String?
+  // Geo (for map view; populated lazily by geocoder)
+  latitude      Float?
+  longitude     Float?
+  // AI screening (independent quick rating per listing)
+  aiGrade       String? // A | B | C | D | E (Investprop quick screen)
+  aiRiskScore   Float? // 0-100 (higher = more risk)
+  aiSummary     String?                 @db.Text
+  aiUnderwriting Json? // { pros, cons, redFlags, recommendations, comparableNotes }
+  aiScoredAt    DateTime?
+  // Dedup: same property listed on multiple sources gets same dedupGroupId
+  dedupGroupId  String?
+  // Promotion: link to Property record if this listing was converted into the pipeline
+  convertedToPropertyId Int?            @unique
+  convertedToProperty   Property?       @relation("PropertyFromDistressed", fields: [convertedToPropertyId], references: [id])
+  convertedAt   DateTime?
   // Auction details
   auctionDate   DateTime?
   auctionTime   String? // e.g. "10:00 AM"
@@ -1324,8 +1340,11 @@ model DistressedListing {
   addedById     Int?
   addedBy       User?                   @relation(fields: [addedById], references: [id])
   lastScrapedAt DateTime?
+  // Reminder tracking (so we don't email the same person twice for the same trigger)
+  remindersSent Json? // { auction7: ts, auction3: ts, auction1: ts, priceDropFromR: number }
   createdAt     DateTime                @default(now())
   updatedAt     DateTime                @updatedAt
+  priceHistory  DistressedListingPriceHistory[]
 
   @@unique([source, externalId])
   @@index([province, city])
@@ -1333,6 +1352,19 @@ model DistressedListing {
   @@index([auctionDate])
   @@index([status])
   @@index([createdAt])
+  @@index([dedupGroupId])
+  @@index([aiGrade])
+}
+
+model DistressedListingPriceHistory {
+  id          Int               @id @default(autoincrement())
+  listingId   Int
+  listing     DistressedListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  askingPrice Float
+  marketValue Float?
+  recordedAt  DateTime          @default(now())
+
+  @@index([listingId, recordedAt])
 }
 
 model DistressedScrapeLog {

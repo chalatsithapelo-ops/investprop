@@ -2286,6 +2286,25 @@ export async function runFullScrape(): Promise<{
         }
 
         if (existing) {
+          // Log a price-history snapshot only when the price actually changed
+          // (avoids polluting the table with identical rows on every scrape).
+          if (
+            typeof listing.askingPrice === "number" &&
+            listing.askingPrice > 0 &&
+            listing.askingPrice !== existing.askingPrice
+          ) {
+            try {
+              await db.distressedListingPriceHistory.create({
+                data: {
+                  listingId: existing.id,
+                  askingPrice: listing.askingPrice,
+                  marketValue: listing.marketValue ?? existing.marketValue ?? null,
+                },
+              });
+            } catch {
+              // history is best-effort, never block the scrape
+            }
+          }
           await db.distressedListing.update({
             where: { id: existing.id },
             data: {
@@ -2310,7 +2329,7 @@ export async function runFullScrape(): Promise<{
             },
           });
         } else {
-          await db.distressedListing.create({
+          const created = await db.distressedListing.create({
             data: {
               externalId: listing.externalId,
               source: listing.source,
@@ -2341,6 +2360,13 @@ export async function runFullScrape(): Promise<{
               lastScrapedAt: new Date(),
             },
           });
+          if (typeof listing.askingPrice === "number" && listing.askingPrice > 0) {
+            try {
+              await db.distressedListingPriceHistory.create({
+                data: { listingId: created.id, askingPrice: listing.askingPrice, marketValue: listing.marketValue ?? null },
+              });
+            } catch {}
+          }
           totalNew++;
         }
       } catch {

@@ -6,7 +6,7 @@ import {
   Building2, Home, Filter, Plus, Trash2, Eye, Gavel, Landmark,
   TrendingDown, AlertTriangle, CheckCircle2, XCircle, Loader2,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Banknote, Bed, Bath, Maximize,
-  ShieldAlert, Globe, Lock, Zap, Heart, Download,
+  ShieldAlert, Globe, Lock, Zap, Heart, Download, Sparkles, Send, Layers,
 } from 'lucide-react';
 import { Navbar } from '~/components/Navbar';
 import { ConfirmModal } from '~/components/ConfirmModal';
@@ -184,6 +184,54 @@ function DistressedFinderPage() {
     })
   );
 
+  const screenMutation = useMutation(
+    trpc.screenDistressedListing.mutationOptions({
+      onSuccess: (data: any) => {
+        toast.success(`AI grade: ${data.grade} (risk ${data.riskScore}/100)`);
+        qc.invalidateQueries({ queryKey: trpc.getDistressedListings.queryKey() });
+      },
+      onError: (e: any) => toast.error(e.message ?? 'AI screen failed'),
+    })
+  );
+
+  const screenBatchMutation = useMutation(
+    trpc.screenDistressedBatch.mutationOptions({
+      onSuccess: (data: any) => {
+        toast.success(`Screened ${data.screened} listing(s) (${data.failed} failed)`);
+        qc.invalidateQueries({ queryKey: trpc.getDistressedListings.queryKey() });
+      },
+      onError: (e: any) => toast.error(e.message ?? 'Batch screen failed'),
+    })
+  );
+
+  const dedupMutation = useMutation(
+    trpc.runDistressedDedup.mutationOptions({
+      onSuccess: (data: any) => {
+        toast.success(`Dedup: ${data.groupsFound} group(s) covering ${data.listingsGrouped} listing(s)`);
+        qc.invalidateQueries({ queryKey: trpc.getDistressedListings.queryKey() });
+      },
+    })
+  );
+
+  const remindersMutation = useMutation(
+    trpc.runDistressedReminders.mutationOptions({
+      onSuccess: (data: any) => {
+        toast.success(`Sent ${data.auctionReminders} auction reminder(s), ${data.priceDropAlerts} price-drop alert(s)`);
+      },
+    })
+  );
+
+  const promoteMutation = useMutation(
+    trpc.promoteDistressedToProperty.mutationOptions({
+      onSuccess: (data: any) => {
+        toast.success(`Promoted to pipeline as property #${data.propertyId}: ${data.title}`);
+        qc.invalidateQueries({ queryKey: trpc.getDistressedListings.queryKey() });
+        navigate({ to: `/properties/${data.propertyId}` as any });
+      },
+      onError: (e: any) => toast.error(e.message ?? 'Promote failed'),
+    })
+  );
+
   if (!user || !authToken) {
     return (
       <div className="min-h-screen bg-white">
@@ -220,7 +268,7 @@ function DistressedFinderPage() {
               <p className="text-navy-400">Scans 14+ SA property &amp; auction sites &middot; Filter by area, type and price cap &middot; Current cap: <span className="font-semibold text-gold-600">R{filters.maxPrice.toLocaleString('en-ZA')}</span></p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => scrapeMutation.mutate({ authToken: authToken ?? '' })}
               disabled={scrapeMutation.isPending}
@@ -233,15 +281,43 @@ function DistressedFinderPage() {
               )}
             </button>
             <button
+              onClick={() => screenBatchMutation.mutate({ authToken: authToken ?? '', limit: 20 })}
+              disabled={screenBatchMutation.isPending}
+              className="inline-flex items-center gap-2 rounded-lg border border-gold-500/40 bg-gold-50 px-4 py-2.5 text-sm font-semibold text-gold-700 hover:bg-gold-100 disabled:opacity-50"
+              title="Run AI screen on next 20 unrated listings"
+            >
+              {screenBatchMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+              AI Screen Batch
+            </button>
+            <button
+              onClick={() => dedupMutation.mutate({ authToken: authToken ?? '' })}
+              disabled={dedupMutation.isPending}
+              className="inline-flex items-center gap-2 rounded-lg border border-navy-700/50 bg-navy-800/40 px-3 py-2.5 text-sm text-navy-300 hover:bg-navy-800 hover:text-gray-900 transition disabled:opacity-50"
+              title="Merge same property listed on multiple sources"
+            >
+              {dedupMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Layers size={14} />}
+              Dedup
+            </button>
+            <button
+              onClick={() => remindersMutation.mutate({ authToken: authToken ?? '' })}
+              disabled={remindersMutation.isPending}
+              className="inline-flex items-center gap-2 rounded-lg border border-navy-700/50 bg-navy-800/40 px-3 py-2.5 text-sm text-navy-300 hover:bg-navy-800 hover:text-gray-900 transition disabled:opacity-50"
+              title="Send auction-date reminders + price-drop alerts now"
+            >
+              {remindersMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              Reminders
+            </button>
+            <button
               onClick={() => {
                 if (!listings.length) { toast.error('Nothing to export'); return; }
-                const header = ['Title','Source','City','Suburb','Property Type','Asking Price','Market Value','Discount %','Auction Date','Source URL'];
+                const header = ['Title','Source','City','Suburb','Property Type','Asking Price','Market Value','Discount %','AI Grade','AI Risk','Auction Date','Source URL'];
                 const lines = [header.join(',')];
                 listings.forEach((l: any) => {
                   const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
                   lines.push([
                     esc(l.title), esc(l.source), esc(l.city), esc(l.suburb), esc(l.propertyType),
                     l.askingPrice ?? 0, l.marketValue ?? '', l.discount ? l.discount.toFixed(1) : '',
+                    l.aiGrade ?? '', l.aiRiskScore ?? '',
                     l.auctionDate ? new Date(l.auctionDate).toISOString().slice(0,10) : '',
                     esc(l.sourceUrl ?? ''),
                   ].join(','));
@@ -254,15 +330,15 @@ function DistressedFinderPage() {
                 a.click();
                 URL.revokeObjectURL(url);
               }}
-              className="inline-flex items-center gap-2 rounded-lg border border-navy-700/50 bg-navy-800/40 px-4 py-2.5 text-sm text-navy-300 hover:bg-navy-800 hover:text-gray-900 transition"
+              className="inline-flex items-center gap-2 rounded-lg border border-navy-700/50 bg-navy-800/40 px-3 py-2.5 text-sm text-navy-300 hover:bg-navy-800 hover:text-gray-900 transition"
             >
-              <Download size={16} /> Export CSV
+              <Download size={14} /> CSV
             </button>
             <button
               onClick={() => setTab('add')}
-              className="inline-flex items-center gap-2 rounded-lg border border-navy-700/50 bg-navy-800/40 px-4 py-2.5 text-sm text-navy-300 hover:bg-navy-800 hover:text-gray-900 transition"
+              className="inline-flex items-center gap-2 rounded-lg border border-navy-700/50 bg-navy-800/40 px-3 py-2.5 text-sm text-navy-300 hover:bg-navy-800 hover:text-gray-900 transition"
             >
-              <Plus size={16} /> Add Manually
+              <Plus size={14} /> Add
             </button>
           </div>
         </div>
@@ -367,6 +443,7 @@ function DistressedFinderPage() {
                   <label className="mb-1 block text-xs text-gray-500">Sort By</label>
                   <select value={filters.sortBy} onChange={(e) => { setFilters({ ...filters, sortBy: e.target.value }); setCurrentPage(1); }} className="w-full rounded-lg border border-navy-700 bg-navy-800/50 p-2 text-sm text-gray-900">
                     <option value="recommended">⭐ Recommended</option>
+                    <option value="ai_grade">🧠 AI Grade (A → E)</option>
                     <option value="newest">Newest First</option>
                     <option value="price_asc">Price: Low to High</option>
                     <option value="price_desc">Price: High to Low</option>
@@ -450,6 +527,25 @@ function DistressedFinderPage() {
                               No Reserve
                             </div>
                           )}
+                          {listing.aiGrade && (
+                            <div
+                              className={`absolute right-2 ${isUrgent ? 'top-10' : 'top-2'} rounded-md px-2 py-0.5 text-xs font-bold text-white shadow ${
+                                listing.aiGrade === 'A' ? 'bg-emerald-600' :
+                                listing.aiGrade === 'B' ? 'bg-lime-600' :
+                                listing.aiGrade === 'C' ? 'bg-amber-500' :
+                                listing.aiGrade === 'D' ? 'bg-orange-600' :
+                                'bg-red-600'
+                              }`}
+                              title={`AI grade ${listing.aiGrade} — risk ${listing.aiRiskScore ?? '?'}/100`}
+                            >
+                              AI {listing.aiGrade}
+                            </div>
+                          )}
+                          {listing.dedupCount > 1 && (
+                            <div className="absolute right-2 bottom-2 rounded-md bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
+                              On {listing.dedupCount} sites
+                            </div>
+                          )}
                         </div>
 
                         {/* Content */}
@@ -464,6 +560,16 @@ function DistressedFinderPage() {
                             </div>
                             <div className="flex items-center gap-1">
                               <button
+                                onClick={() => screenMutation.mutate({ authToken: authToken ?? '', listingId: listing.id, force: !!listing.aiGrade })}
+                                disabled={screenMutation.isPending}
+                                className="rounded-lg p-2 text-gold-600 hover:text-gold-500 disabled:opacity-50"
+                                title={listing.aiGrade ? 'Re-screen with AI' : 'Screen with AI'}
+                              >
+                                {screenMutation.isPending && screenMutation.variables?.listingId === listing.id
+                                  ? <Loader2 size={18} className="animate-spin" />
+                                  : <Sparkles size={18} />}
+                              </button>
+                              <button
                                 onClick={() => favMutation.mutate({ authToken: authToken ?? '', listingId: listing.id })}
                                 className={`rounded-lg p-2 transition ${listing.isFavourited ? 'text-gold-600 hover:text-gold-500' : 'text-gray-600 hover:text-gold-600'}`}
                                 title={listing.isFavourited ? 'Remove from watchlist' : 'Add to watchlist'}
@@ -474,6 +580,20 @@ function DistressedFinderPage() {
                                 <a href={listing.sourceUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg p-2 text-gray-600 hover:text-blue-600" title="View original listing">
                                   <ExternalLink size={18} />
                                 </a>
+                              )}
+                              {!listing.convertedToPropertyId && role !== 'PROJECT_MANAGER' && (
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Promote "${listing.title}" to the pipeline as a new property?`)) {
+                                      promoteMutation.mutate({ authToken: authToken ?? '', listingId: listing.id });
+                                    }
+                                  }}
+                                  disabled={promoteMutation.isPending}
+                                  className="rounded-lg p-2 text-emerald-600 hover:text-emerald-500 disabled:opacity-50"
+                                  title="Promote to pipeline (create property)"
+                                >
+                                  <Send size={18} />
+                                </button>
                               )}
                               <button
                                 onClick={() => setDeleteTarget({ id: listing.id, title: listing.title })}
@@ -500,6 +620,18 @@ function DistressedFinderPage() {
                             {listing.discount && (
                               <div className="rounded-lg bg-emerald-50 px-3 py-1">
                                 <p className="text-sm font-bold text-emerald-600">{listing.discount.toFixed(0)}% below market</p>
+                              </div>
+                            )}
+                            {typeof listing.firstAskingPrice === 'number' && listing.firstAskingPrice > listing.askingPrice && (
+                              <div className="rounded-lg bg-blue-50 px-3 py-1">
+                                <p className="text-xs font-semibold text-blue-700">
+                                  ↓ Dropped from R{Number(listing.firstAskingPrice).toLocaleString('en-ZA')}
+                                </p>
+                              </div>
+                            )}
+                            {listing.convertedToPropertyId && (
+                              <div className="rounded-lg bg-violet-50 px-3 py-1">
+                                <p className="text-xs font-semibold text-violet-700">Promoted → #{listing.convertedToPropertyId}</p>
                               </div>
                             )}
 
@@ -557,6 +689,19 @@ function DistressedFinderPage() {
                           {/* Notes */}
                           {listing.notes && (
                             <p className="mt-2 text-sm text-gray-500 italic">{listing.notes}</p>
+                          )}
+                          {listing.aiSummary && (
+                            <div className="mt-3 rounded-lg border border-gold-200 bg-gold-50/50 px-3 py-2">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-gold-700 mb-1 flex items-center gap-1">
+                                <Sparkles size={12} /> AI Summary
+                              </p>
+                              <p className="text-sm text-gray-700">{listing.aiSummary}</p>
+                              {listing.aiUnderwriting?.redFlags?.length > 0 && (
+                                <p className="mt-1 text-xs text-red-700">
+                                  <strong>Red flags:</strong> {listing.aiUnderwriting.redFlags.join('; ')}
+                                </p>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>

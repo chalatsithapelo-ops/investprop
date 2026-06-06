@@ -20,7 +20,9 @@ export const getDistressedListings = baseProcedure
       status: z.enum(["ACTIVE", "SOLD", "WITHDRAWN", "EXPIRED", "WATCHED"]).optional(),
       onlyUpcoming: z.boolean().optional(), // only show future auction dates
       onlyFavourited: z.boolean().optional(),
-      sortBy: z.enum(["recommended", "price_asc", "price_desc", "date_asc", "date_desc", "newest", "discount"]).optional().default("recommended"),
+      onlyAIScored: z.boolean().optional(),
+      minAIGrade: z.enum(["A", "B", "C", "D", "E"]).optional(),
+      sortBy: z.enum(["recommended", "price_asc", "price_desc", "date_asc", "date_desc", "newest", "discount", "ai_grade"]).optional().default("recommended"),
       limit: z.number().min(1).max(100).optional().default(20),
       page: z.number().min(1).optional().default(1),
     })
@@ -88,6 +90,12 @@ export const getDistressedListings = baseProcedure
     }
     if (input.onlyUpcoming) where.auctionDate = { gte: new Date() };
     if (input.onlyFavourited) where.isFavourited = true;
+    if (input.onlyAIScored) where.aiGrade = { not: null };
+    if (input.minAIGrade) {
+      // Grade order: A < B < C < D < E (lexicographic works)
+      const allowed = ["A", "B", "C", "D", "E"].filter((g) => g <= input.minAIGrade!);
+      where.aiGrade = { in: allowed };
+    }
 
     // Sort
     const isRecommended = input.sortBy === "recommended";
@@ -98,6 +106,7 @@ export const getDistressedListings = baseProcedure
       case "date_asc": orderBy = { auctionDate: "asc" }; break;
       case "date_desc": orderBy = { auctionDate: "desc" }; break;
       case "discount": orderBy = { discount: "desc" }; break;
+      case "ai_grade": orderBy = [{ aiGrade: "asc" }, { aiRiskScore: "asc" }, { createdAt: "desc" }]; break;
       case "recommended": orderBy = { createdAt: "desc" }; break;
       default: orderBy = { createdAt: "desc" };
     }
@@ -118,7 +127,10 @@ export const getDistressedListings = baseProcedure
       // Fetch all matching and score in memory for smart prioritisation
       const allListings = await db.distressedListing.findMany({
         where,
-        include: { addedBy: { select: { id: true, name: true } } },
+        include: {
+          addedBy: { select: { id: true, name: true } },
+          priceHistory: { orderBy: { recordedAt: "asc" }, take: 50 },
+        },
       });
 
       // Priority cities: Johannesburg, Kempton Park, Benoni and East Rand surrounds
@@ -169,9 +181,32 @@ export const getDistressedListings = baseProcedure
         orderBy,
         skip,
         take: input.limit,
-        include: { addedBy: { select: { id: true, name: true } } },
+        include: {
+          addedBy: { select: { id: true, name: true } },
+          priceHistory: { orderBy: { recordedAt: "asc" }, take: 50 },
+        },
       });
     }
+
+    // Enrich each listing with dedup-group size + first-recorded price for UI badges.
+    // Single query for all groups, then map.
+    const groupIds = Array.from(new Set(listings.map((l: any) => l.dedupGroupId).filter(Boolean))) as string[];
+    const groupCounts: Record<string, number> = {};
+    if (groupIds.length > 0) {
+      const counts = await db.distressedListing.groupBy({
+        by: ["dedupGroupId"],
+        where: { dedupGroupId: { in: groupIds } },
+        _count: { dedupGroupId: true },
+      });
+      counts.forEach((c) => {
+        if (c.dedupGroupId) groupCounts[c.dedupGroupId] = c._count.dedupGroupId;
+      });
+    }
+    listings = listings.map((l: any) => ({
+      ...l,
+      dedupCount: l.dedupGroupId ? groupCounts[l.dedupGroupId] ?? 1 : 1,
+      firstAskingPrice: l.priceHistory?.[0]?.askingPrice ?? l.askingPrice,
+    }));
 
     // Summary stats — respect current filter so the user sees averages
     // for what they're actually browsing. Exclude R0 listings from price
