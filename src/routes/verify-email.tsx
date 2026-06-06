@@ -47,8 +47,8 @@ function VerifyEmail() {
       <div className="w-full max-w-md">
         {/* Branding */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Prop<span className="text-gold-500">Vest</span>
+          <h1 className="text-3xl font-bold">
+            <span className="text-gold-500">Invest</span><span className="text-gray-900">prop</span>
           </h1>
           <p className="text-gray-500 mt-2">Email Verification</p>
         </div>

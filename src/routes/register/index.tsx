@@ -58,8 +58,8 @@ function RegisterPage() {
         <div className="mb-8 text-center">
           <Link to="/" className="inline-block">
             <h1 className="text-3xl font-bold font-display">
-              <span className="text-gold-600">Prop</span>
-              <span className="text-gray-900">Vest</span>
+              <span className="text-gold-600">Invest</span>
+              <span className="text-gray-900">prop</span>
             </h1>
           </Link>
           <p className="mt-2 text-sm text-gray-500">Create your investment account</p>

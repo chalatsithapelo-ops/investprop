@@ -66,8 +66,8 @@ function InvestorRegisterPage() {
         <div className="mb-8 text-center">
           <Link to="/" className="inline-block">
             <h1 className="text-3xl font-bold">
-              <span className="text-gold-500">Prop</span>
-              <span className="text-gray-900">Vest</span>
+              <span className="text-gold-500">Invest</span>
+              <span className="text-gray-900">prop</span>
             </h1>
           </Link>
           <p className="mt-2 text-gray-500">Investor Registration</p>
