@@ -29,6 +29,7 @@ import { useAuthStore } from "~/stores/authStore";
 import { VerifyEmailBanner } from "~/components/VerifyEmailBanner";
 import { FicaBadge } from "~/components/FicaBadge";
 import { AppropriatenessQuestionnaireModal } from "~/components/AppropriatenessQuestionnaireModal";
+import { InvestorOnboardingRibbon } from "~/components/InvestorOnboardingRibbon";
 
 export const Route = createFileRoute("/dashboard/")({
   component: DashboardPage,
@@ -81,6 +82,11 @@ function DashboardPage() {
 
   const appropriatenessQuery = useQuery({
     ...trpc.getAppropriatenessStatus.queryOptions({ authToken: authToken ?? "" }),
+    enabled: !!authToken && isInvestor,
+  });
+
+  const ficaStatusQuery = useQuery({
+    ...trpc.getMyFicaStatus.queryOptions({ authToken: authToken ?? "" }),
     enabled: !!authToken && isInvestor,
   });
 
@@ -194,6 +200,15 @@ function DashboardPage() {
       <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {isInvestor && <VerifyEmailBanner />}
+        {isInvestor && (
+          <InvestorOnboardingRibbon
+            emailVerified={!!(user as any).emailVerified || !!(user as any).emailVerifiedAt}
+            ficaVerified={!!(user as any).ficaVerified}
+            ficaDocsSubmitted={(((ficaStatusQuery.data as any)?.documentsSubmitted) ?? 0) > 0}
+            appropriatenessCompleted={!!(appropriatenessQuery.data as any)?.completed}
+            hasInvested={contributionsArr.length > 0}
+          />
+        )}
         {isInvestor && appropriatenessQuery.data && !(appropriatenessQuery.data as any).completed && (
           <AppropriatenessQuestionnaireModal
             open

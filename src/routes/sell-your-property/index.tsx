@@ -1,12 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Navbar } from "~/components/Navbar";
 import { Home, Handshake, RefreshCw, Building2, ShieldCheck, Clock, FileCheck, ArrowRight } from "lucide-react";
+import { useAuthStore } from "~/stores/authStore";
 
 export const Route = createFileRoute("/sell-your-property/")({
   component: SellYourPropertyPage,
 });
 
 function SellYourPropertyPage() {
+  const user = useAuthStore((s) => s.user);
+  const authToken = useAuthStore((s) => s.token);
+  const isLoggedIn = !!(user && authToken);
+  // Send authenticated owners straight to the workflow page. Others land in registration first.
+  const primaryCtaHref: any = isLoggedIn ? "/owner-portal" : "/register";
+  const primaryCtaLabel = isLoggedIn ? "Open Owner Portal" : "Submit Your Property";
+
   return (
     <div className="min-h-screen bg-white text-gray-900">
       <Navbar />
@@ -30,17 +38,19 @@ function SellYourPropertyPage() {
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
-              to="/register"
+              to={primaryCtaHref}
               className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-500 to-gold-600 px-8 py-3 text-lg font-semibold text-white shadow-lg shadow-gold-500/25 hover:from-gold-600 hover:to-gold-700"
             >
-              Submit Your Property <ArrowRight size={18} />
+              {primaryCtaLabel} <ArrowRight size={18} />
             </Link>
-            <Link
-              to="/login"
-              className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-8 py-3 text-lg font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              I already have an account
-            </Link>
+            {!isLoggedIn && (
+              <Link
+                to="/login"
+                className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-8 py-3 text-lg font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                I already have an account
+              </Link>
+            )}
           </div>
           <p className="mt-3 text-xs text-gray-400">
             Free to submit · No obligation · Confidential

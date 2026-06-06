@@ -111,6 +111,13 @@ function OpportunityDetailPage() {
   });
   const ficaStatus = ficaQuery.data as any;
 
+  // Appropriateness questionnaire status (hard gate per FAIS)
+  const appropriatenessQuery = useQuery({
+    ...trpc.getAppropriatenessStatus.queryOptions({ authToken: authToken ?? "" }),
+    enabled: !!authToken && isInvestor,
+  });
+  const appropriatenessCompleted = !!(appropriatenessQuery.data as any)?.completed;
+
   // Documents pack for this opportunity (Phase 9)
   const docsPackQuery = useQuery({
     ...trpc.getLegalDocuments.queryOptions({
@@ -132,6 +139,8 @@ function OpportunityDetailPage() {
   const ficaRequired = currentAmount >= FICA_THRESHOLD || totalAfterInvestment >= FICA_THRESHOLD;
   const ficaVerified = ficaStatus?.ficaVerified === true;
   const ficaBlocked = ficaRequired && !ficaVerified;
+  // FAIS hard gate — appropriateness must be done before ANY investment goes through.
+  const appropriatenessBlocked = isInvestor && !appropriatenessCompleted;
 
   const property = propertyQuery.data as any;
   const shareInfo = shareInfoQuery.data as any;
@@ -146,6 +155,14 @@ function OpportunityDetailPage() {
 
   const handleSubmitInvestment = async () => {
     if (!allTermsAccepted || !investmentAmount || submitting) return;
+    if (appropriatenessBlocked) {
+      setSubmitError("Please complete the suitability questionnaire first.");
+      return;
+    }
+    if (ficaBlocked) {
+      setSubmitError("Please complete FICA verification before investing this amount.");
+      return;
+    }
     setSubmitting(true);
     setSubmitError("");
     try {
@@ -1261,18 +1278,42 @@ function OpportunityDetailPage() {
                           !allTermsAccepted ||
                           !investmentAmount ||
                           submitting ||
-                          ficaBlocked
+                          ficaBlocked ||
+                          appropriatenessBlocked
                         }
                         className="w-full rounded-lg bg-gold-500 py-3 text-sm font-semibold text-navy-950 transition-colors hover:bg-gold-400 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {submitting
                           ? "Submitting..."
-                          : ficaBlocked
-                            ? "Complete FICA verification to invest"
-                            : allTermsAccepted
-                              ? "Submit Investment"
-                              : `Accept all T&Cs to invest (${remainingTerms} left)`}
+                          : appropriatenessBlocked
+                            ? "Complete suitability questionnaire to invest"
+                            : ficaBlocked
+                              ? "Complete FICA verification to invest"
+                              : allTermsAccepted
+                                ? "Submit Investment"
+                                : `Accept all T&Cs to invest (${remainingTerms} left)`}
                       </button>
+                      {appropriatenessBlocked && (
+                        <p className="mt-2 text-xs text-amber-700">
+                          Required by FAIS: a 2-minute questionnaire helps confirm this product is appropriate for you.{" "}
+                          <Link to="/dashboard" className="font-semibold underline hover:text-amber-800">
+                            Complete it now
+                          </Link>
+                        </p>
+                      )}
+                      {!appropriatenessBlocked && ficaBlocked && (
+                        <p className="mt-2 text-xs text-amber-700">
+                          You&rsquo;re above the R20 000 threshold and need FICA verification before investing.{" "}
+                          <Link to="/kyc-compliance" className="font-semibold underline hover:text-amber-800">
+                            Upload documents
+                          </Link>
+                        </p>
+                      )}
+                      {!appropriatenessBlocked && !ficaBlocked && (
+                        <p className="mt-2 text-xs text-gray-500">
+                          You have a <strong>5-business-day cooling-off period</strong> after submitting — you can cancel for any reason and receive a full refund.
+                        </p>
+                      )}
                     </>
                   )}
                 </div>

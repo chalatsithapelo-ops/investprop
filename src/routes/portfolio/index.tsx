@@ -43,6 +43,18 @@ function PortfolioPage() {
   const totalDistributions = distributionsArr.reduce((sum: number, d: any) => sum + (Number(d.amount) || 0), 0);
   const avgROI = portfolio?.averageROI ?? (holdingsArr.length > 0 ? holdingsArr.reduce((sum: number, h: any) => sum + (Number(h.roi) || 0), 0) / holdingsArr.length : 0);
 
+  const totalContributed = holdingsArr.reduce((sum: number, h: any) =>
+    sum + Number(h.totalInvested ?? h.contributionAmount ?? h.invested ?? 0), 0);
+  const distributionsYTD = distributionsArr
+    .filter((d: any) => {
+      const dt = new Date(d.distributionDate ?? d.paidAt ?? d.createdAt ?? 0);
+      return dt.getFullYear() === new Date().getFullYear();
+    })
+    .reduce((s: number, d: any) => s + Number(d.amount ?? 0), 0);
+  const valueGrowth = totalValue - totalContributed;
+  const valueGrowthPct = totalContributed > 0 ? (valueGrowth / totalContributed) * 100 : 0;
+  const hasPortfolio = totalContributed > 0 || holdingsArr.length > 0;
+
   if (!user || !authToken) return null;
 
   if (portfolioQuery.isLoading) {
@@ -98,6 +110,44 @@ function PortfolioPage() {
             </div>
           </div>
         </div>
+
+        {/* Hero KPI story — only when there's something to tell */}
+        {hasPortfolio && (
+          <div className="mb-8 rounded-2xl border border-gold-200 bg-gradient-to-br from-gold-50 via-white to-emerald-50 p-6 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Your money story</p>
+            <div className="mt-3 grid grid-cols-1 items-center gap-4 md:grid-cols-[1fr_auto_1fr_auto_1fr]">
+              {/* Contributed */}
+              <div>
+                <p className="text-xs text-gray-500">You&rsquo;ve put in</p>
+                <p className="mt-1 text-3xl font-bold text-gray-900">R{totalContributed.toLocaleString("en-ZA")}</p>
+                <p className="mt-0.5 text-xs text-gray-500">across {holdingsArr.length} {holdingsArr.length === 1 ? "property" : "properties"}</p>
+              </div>
+              <div className="hidden md:block text-2xl text-gray-300">→</div>
+              {/* Current value */}
+              <div>
+                <p className="text-xs text-gray-500">Worth today</p>
+                <p className={`mt-1 text-3xl font-bold ${valueGrowth >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                  R{totalValue.toLocaleString("en-ZA")}
+                </p>
+                <p className={`mt-0.5 text-xs font-medium ${valueGrowth >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                  {valueGrowth >= 0 ? "▲" : "▼"} R{Math.abs(valueGrowth).toLocaleString("en-ZA")} ({valueGrowthPct >= 0 ? "+" : ""}{valueGrowthPct.toFixed(1)}%)
+                </p>
+              </div>
+              <div className="hidden md:block text-2xl text-gray-300">→</div>
+              {/* Distributions YTD */}
+              <div>
+                <p className="text-xs text-gray-500">Cash to your bank ({new Date().getFullYear()})</p>
+                <p className="mt-1 text-3xl font-bold text-gold-700">R{distributionsYTD.toLocaleString("en-ZA")}</p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  R{totalDistributions.toLocaleString("en-ZA")} lifetime distributions
+                </p>
+              </div>
+            </div>
+            <p className="mt-4 text-xs text-gray-500">
+              Valuations are based on sponsor-reported NAV and recent comparable sales — not a guarantee of resale price. Capital is at risk.
+            </p>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

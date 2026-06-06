@@ -149,6 +149,81 @@ function OwnerPortalPage() {
           </button>
         </div>
 
+        {/* Owner journey timeline — explains the path from "submit" to "money in your bank" */}
+        {!showForm && (
+          <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">How your sale moves through Investprop</h2>
+              <span className="text-xs text-gray-500">Typical timeline: 4–8 weeks</span>
+            </div>
+            {(() => {
+              // Determine the furthest stage reached across all proposals.
+              const stages = [
+                { key: "SUBMITTED", label: "Submitted", desc: "You list the property" },
+                { key: "PRE_SCREEN", label: "Pre-screen", desc: "We check title & price band" },
+                { key: "SITE_VISIT", label: "Site visit", desc: "Inspection & condition rating" },
+                { key: "OFFER", label: "Offer drafted", desc: "We propose price or counter" },
+                { key: "INVESTORS", label: "Investors notified", desc: "Capital raise begins" },
+                { key: "FUNDED", label: "Funded", desc: "Capital secured in escrow" },
+                { key: "CLOSED", label: "Closed", desc: "Funds in your bank" },
+              ];
+              const statusToIndex: Record<string, number> = {
+                PENDING: 0,
+                UNDER_REVIEW: 1,
+                COUNTER_OFFERED: 3,
+                ACCEPTED: 5,
+                COMPLETED: 6,
+                CLOSED: 6,
+                FUNDED: 5,
+                REJECTED: 0,
+              };
+              const maxIdx = proposals.reduce((m: number, p: any) => {
+                const i = statusToIndex[(p.status ?? "").toUpperCase()] ?? 0;
+                return Math.max(m, i);
+              }, proposals.length > 0 ? 0 : -1);
+              return (
+                <div className="overflow-x-auto">
+                  <ol className="flex min-w-max items-start gap-2">
+                    {stages.map((stage, idx) => {
+                      const reached = idx <= maxIdx;
+                      const current = idx === maxIdx;
+                      return (
+                        <li key={stage.key} className="flex items-start gap-2">
+                          <div className="flex flex-col items-center" style={{ minWidth: 110 }}>
+                            <div
+                              className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
+                                current
+                                  ? "bg-gold-500 text-white ring-4 ring-gold-200"
+                                  : reached
+                                  ? "bg-emerald-500 text-white"
+                                  : "bg-gray-200 text-gray-500"
+                              }`}
+                            >
+                              {reached && !current ? "✓" : idx + 1}
+                            </div>
+                            <p className={`mt-2 text-center text-xs font-semibold ${reached ? "text-gray-900" : "text-gray-500"}`}>
+                              {stage.label}
+                            </p>
+                            <p className="mt-0.5 max-w-[110px] text-center text-[10px] leading-tight text-gray-500">
+                              {stage.desc}
+                            </p>
+                          </div>
+                          {idx < stages.length - 1 && (
+                            <div className={`mt-4 h-0.5 w-8 ${idx < maxIdx ? "bg-emerald-400" : "bg-gray-200"}`} />
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              );
+            })()}
+            <p className="mt-4 text-xs text-gray-500">
+              You stay informed at every step — we email you when the status changes and you can message us anytime via this portal.
+            </p>
+          </div>
+        )}
+
         {/* Phase 8: counter-offer banner */}
         {counterOffered.length > 0 && (
           <div className="mb-6 space-y-3">

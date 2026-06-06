@@ -37,6 +37,18 @@ export const submitInvestmentProposal = baseProcedure
       });
     }
 
+    // Appropriateness questionnaire must be completed (FAIS hard gate).
+    const userRecord = await db.user.findUnique({
+      where: { id: user.id },
+      select: { appropriatenessCompletedAt: true } as any,
+    }) as any;
+    if (!userRecord?.appropriatenessCompletedAt) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Please complete the suitability questionnaire before investing. This is a once-off step required by FAIS.",
+      });
+    }
+
     // Rate limit
     const rl = checkRateLimit(`investment:${user.id}`, RATE_LIMITS.INVESTMENT_CREATE);
     if (!rl.allowed) {
