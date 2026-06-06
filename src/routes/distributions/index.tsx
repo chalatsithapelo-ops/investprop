@@ -333,7 +333,19 @@ function DistributionsPage() {
                                 : "bg-gray-100 text-gray-500"
                         }`}
                       >
-                        {dist.status ?? "PENDING"}
+                        {dist.status === "EXECUTED"
+                          ? (isManager ? "Paid out" : "Paid to your bank")
+                          : dist.status === "PENDING"
+                            ? "Awaiting approval"
+                            : dist.status === "APPROVED"
+                              ? "Approved — payout pending"
+                              : dist.status === "PAID"
+                                ? "Paid to your bank"
+                                : dist.status === "HELD_FOR_TAX"
+                                  ? "Held for tax"
+                                  : dist.status === "REINVESTED"
+                                    ? "Reinvested"
+                                    : dist.status ?? "Pending"}
                       </span>
                       {isManager && dist.status === "APPROVED" && (
                         <button

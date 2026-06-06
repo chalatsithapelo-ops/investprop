@@ -6,9 +6,10 @@ import {
   Building2, Home, Filter, Plus, Trash2, Eye, Gavel, Landmark,
   TrendingDown, AlertTriangle, CheckCircle2, XCircle, Loader2,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Banknote, Bed, Bath, Maximize,
-  ShieldAlert, Globe, Lock, Zap, Heart,
+  ShieldAlert, Globe, Lock, Zap, Heart, Download,
 } from 'lucide-react';
 import { Navbar } from '~/components/Navbar';
+import { ConfirmModal } from '~/components/ConfirmModal';
 import { useTRPC } from '~/trpc/react';
 import { useAuthStore } from '~/stores/authStore';
 import toast from 'react-hot-toast';
@@ -76,18 +77,20 @@ function DistressedFinderPage() {
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
 
   const role = (user as any)?.role ?? '';
-  const isManager = role === 'DEVELOPMENT_MANAGER' || role === 'PROJECT_MANAGER' || role === 'PROPERTY_OWNER';
+  // Access: ops/admin only. Property owners don't need to see other people's distress data.
+  const isManager = role === 'DEVELOPMENT_MANAGER' || role === 'PROJECT_MANAGER' || role === 'ADMIN';
 
   useEffect(() => {
     if (!hasHydrated) return;
     if (!user || !authToken) { navigate({ to: '/login' }); return; }
-    // Only managers can access the distressed finder
+    // Only managers/admins can access the distressed finder
     if (!isManager) navigate({ to: '/dashboard' });
   }, [user, authToken, hasHydrated, isManager]);
 
   const [tab, setTab] = useState<'listings' | 'sources' | 'add'>('listings');
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; title: string } | null>(null);
   const [filters, setFilters] = useState({
     city: 'all',
     source: 'all',
@@ -214,7 +217,7 @@ function DistressedFinderPage() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Distressed Property Finder</h1>
-              <p className="text-navy-400">AI-powered scan of 14+ SA property sites &middot; Houses under R450K, Student Accommodation investments &amp; more in Gauteng</p>
+              <p className="text-navy-400">Scans 14+ SA property &amp; auction sites &middot; Filter by area, type and price cap &middot; Current cap: <span className="font-semibold text-gold-600">R{filters.maxPrice.toLocaleString('en-ZA')}</span></p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -228,6 +231,32 @@ function DistressedFinderPage() {
               ) : (
                 <><RefreshCw size={16} /> Scan All Sites Now</>
               )}
+            </button>
+            <button
+              onClick={() => {
+                if (!listings.length) { toast.error('Nothing to export'); return; }
+                const header = ['Title','Source','City','Suburb','Property Type','Asking Price','Market Value','Discount %','Auction Date','Source URL'];
+                const lines = [header.join(',')];
+                listings.forEach((l: any) => {
+                  const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+                  lines.push([
+                    esc(l.title), esc(l.source), esc(l.city), esc(l.suburb), esc(l.propertyType),
+                    l.askingPrice ?? 0, l.marketValue ?? '', l.discount ? l.discount.toFixed(1) : '',
+                    l.auctionDate ? new Date(l.auctionDate).toISOString().slice(0,10) : '',
+                    esc(l.sourceUrl ?? ''),
+                  ].join(','));
+                });
+                const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `distressed-listings-${new Date().toISOString().slice(0,10)}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="inline-flex items-center gap-2 rounded-lg border border-navy-700/50 bg-navy-800/40 px-4 py-2.5 text-sm text-navy-300 hover:bg-navy-800 hover:text-gray-900 transition"
+            >
+              <Download size={16} /> Export CSV
             </button>
             <button
               onClick={() => setTab('add')}
@@ -447,7 +476,7 @@ function DistressedFinderPage() {
                                 </a>
                               )}
                               <button
-                                onClick={() => { if (confirm('Delete this listing?')) deleteMutation.mutate({ authToken: authToken ?? '', listingId: listing.id }); }}
+                                onClick={() => setDeleteTarget({ id: listing.id, title: listing.title })}
                                 className="rounded-lg p-2 text-gray-700 hover:text-red-600"
                                 title="Delete"
                               >
@@ -803,6 +832,27 @@ function DistressedFinderPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) {
+            deleteMutation.mutate({ authToken: authToken ?? '', listingId: deleteTarget.id });
+            setDeleteTarget(null);
+          }
+        }}
+        title="Delete distressed listing?"
+        message={
+          <span>
+            This will remove <strong>{deleteTarget?.title}</strong> from the active listings.
+            It will re-appear on the next scrape if still listed on the source site.
+          </span>
+        }
+        confirmLabel="Delete"
+        tone="danger"
+        loading={deleteMutation.isPending}
+      />
     </div>
   );
 }

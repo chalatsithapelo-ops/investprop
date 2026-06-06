@@ -885,11 +885,11 @@ function SaleProposalForm({
             <div>
               <label className={labelClass}>Property Condition</label>
               <select name="conditionRating" value={form.conditionRating} onChange={handleChange} className={inputClass}>
-                <option value="EXCELLENT">Excellent — move-in ready</option>
-                <option value="GOOD">Good — minor cosmetic work</option>
-                <option value="FAIR">Fair — moderate work needed</option>
-                <option value="NEEDS_RENOVATION">Needs renovation</option>
-                <option value="DISTRESSED">Distressed — major work / damaged</option>
+                <option value="EXCELLENT">Excellent — move-in ready (no work)</option>
+                <option value="GOOD">Good — minor cosmetic (≈ R5k – R30k)</option>
+                <option value="FAIR">Fair — moderate work (≈ R30k – R150k)</option>
+                <option value="NEEDS_RENOVATION">Needs renovation (≈ R150k – R500k)</option>
+                <option value="DISTRESSED">Distressed — major work or damage (R500k +)</option>
               </select>
             </div>
             <div>

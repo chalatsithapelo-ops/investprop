@@ -34,6 +34,13 @@ const envSchema = z.object({
   // Payment gateway (Paystack)
   PAYSTACK_SECRET_KEY: z.string().optional(),
   PAYSTACK_PUBLIC_KEY: z.string().optional(),
+  // Distressed scraper credentials (login-required sources)
+  SHERIFFHQ_EMAIL: z.string().optional(),
+  SHERIFFHQ_PASSWORD: z.string().optional(),
+  SHERIFFHQ_COOKIES: z.string().optional(),
+  SASHERIFF_EMAIL: z.string().optional(),
+  SASHERIFF_PASSWORD: z.string().optional(),
+  SASHERIFF_COOKIES: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

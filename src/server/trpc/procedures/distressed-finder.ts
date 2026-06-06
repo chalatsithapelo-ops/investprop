@@ -12,6 +12,7 @@ export const getDistressedListings = baseProcedure
       authToken: z.string(),
       maxPrice: z.number().optional().default(450000),
       minMarketValue: z.number().optional(),
+      province: z.string().optional().default("Gauteng"),
       city: z.string().optional(),
       source: z.string().optional(),
       auctionType: z.string().optional(),
@@ -30,8 +31,9 @@ export const getDistressedListings = baseProcedure
     const isStudentFilter = input.propertyType === "STUDENT";
 
     const where: any = {
-      province: "Gauteng",
+      province: input.province === "all" ? undefined : input.province,
     };
+    if (where.province === undefined) delete where.province;
 
     // Student accommodation has no price cap (investment properties like R2M+ buildings).
     // All other property types keep the normal max-price filter.
@@ -98,6 +100,12 @@ export const getDistressedListings = baseProcedure
       case "discount": orderBy = { discount: "desc" }; break;
       case "recommended": orderBy = { createdAt: "desc" }; break;
       default: orderBy = { createdAt: "desc" };
+    }
+
+    // Apply R0 askingPrice filter consistently for non-recommended sorts that
+    // don't deal with score-based ordering — keeps cheapest/avg meaningful.
+    if (input.sortBy === "price_asc" && !input.onlyFavourited) {
+      where.askingPrice = { ...(where.askingPrice ?? {}), gt: 0 };
     }
 
     const totalCount = await db.distressedListing.count({ where });
@@ -170,8 +178,9 @@ export const getDistressedListings = baseProcedure
     // averages (auctions with no published reserve skew the figure).
     const statsWhere = { ...where };
     const priceWhere = { ...statsWhere, askingPrice: { gt: 0, lte: 500_000_000 } };
-    const totalActive = await db.distressedListing.count({ where: { status: "ACTIVE", province: "Gauteng" } });
-    const totalWatched = await db.distressedListing.count({ where: { isFavourited: true, province: "Gauteng" } });
+    const provinceScope = where.province ? { province: where.province } : {};
+    const totalActive = await db.distressedListing.count({ where: { status: "ACTIVE", ...provinceScope } });
+    const totalWatched = await db.distressedListing.count({ where: { isFavourited: true, ...provinceScope } });
     const upcomingAuctions = await db.distressedListing.count({
       where: { ...statsWhere, auctionDate: { gte: new Date() } },
     });
