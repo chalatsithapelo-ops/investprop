@@ -447,3 +447,280 @@ export const listCoolingOffContributions = baseProcedure
       ),
     }));
   });
+
+/* ─── Phase 3c: PM Today inbox (single panel pulling what needs doing now) ── */
+
+export const getPmTodayInbox = baseProcedure
+  .input(z.object({ authToken: z.string() }))
+  .query(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(
+      user,
+      ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "ADMIN"],
+      "Manager-only",
+    );
+
+    const now = new Date();
+    const sevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      pendingVariations,
+      overdueMilestones,
+      upcomingMilestones,
+      pendingSignoffs,
+      overBudgetMilestones,
+    ] = await Promise.all([
+      db.variationOrder.findMany({
+        where: { status: "PROPOSED" },
+        include: {
+          workOrder: {
+            select: { id: true, title: true, property: { select: { id: true, title: true } } },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      }),
+      db.milestone.findMany({
+        where: {
+          status: { notIn: ["COMPLETED" as any, "CANCELLED" as any] },
+          estimatedCompletionDate: { lt: now },
+        },
+        include: { property: { select: { id: true, title: true } } },
+        orderBy: { estimatedCompletionDate: "asc" },
+        take: 10,
+      }),
+      db.milestone.findMany({
+        where: {
+          status: { notIn: ["COMPLETED" as any, "CANCELLED" as any] },
+          estimatedCompletionDate: { gte: now, lte: sevenDays },
+        },
+        include: { property: { select: { id: true, title: true } } },
+        orderBy: { estimatedCompletionDate: "asc" },
+        take: 10,
+      }),
+      db.progressSubmission.findMany({
+        where: { approvalStatus: "PENDING" },
+        include: {
+          milestone: {
+            select: { id: true, name: true, property: { select: { id: true, title: true } } },
+          },
+          submittedBy: { select: { id: true, name: true } },
+        },
+        orderBy: { submittedAt: "desc" },
+        take: 10,
+      }),
+      db.milestone.findMany({
+        where: {
+          status: { notIn: ["COMPLETED" as any, "CANCELLED" as any] },
+        },
+        include: { property: { select: { id: true, title: true } } },
+        take: 100,
+      }).then((rows) =>
+        rows
+          .filter((m: any) => m.budgetAllocated > 0 && m.budgetSpent / m.budgetAllocated > 0.9)
+          .slice(0, 10),
+      ),
+    ]);
+
+    return {
+      generatedAt: now,
+      counts: {
+        pendingVariations: pendingVariations.length,
+        overdueMilestones: overdueMilestones.length,
+        upcomingMilestones: upcomingMilestones.length,
+        pendingSignoffs: pendingSignoffs.length,
+        overBudgetMilestones: overBudgetMilestones.length,
+      },
+      pendingVariations: pendingVariations.map((v: any) => ({
+        id: v.id,
+        number: v.number,
+        description: v.description,
+        costImpact: v.costImpact,
+        workOrderTitle: v.workOrder.title,
+        propertyId: v.workOrder.property?.id ?? null,
+        propertyTitle: v.workOrder.property?.title ?? "—",
+        createdAt: v.createdAt,
+      })),
+      overdueMilestones: overdueMilestones.map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        propertyId: m.propertyId,
+        propertyTitle: m.property?.title ?? "—",
+        dueDate: m.estimatedCompletionDate,
+        daysLate: Math.floor((now.getTime() - new Date(m.estimatedCompletionDate).getTime()) / (24 * 60 * 60 * 1000)),
+      })),
+      upcomingMilestones: upcomingMilestones.map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        propertyId: m.propertyId,
+        propertyTitle: m.property?.title ?? "—",
+        dueDate: m.estimatedCompletionDate,
+      })),
+      pendingSignoffs: pendingSignoffs.map((s: any) => ({
+        id: s.id,
+        milestoneId: s.milestoneId,
+        milestoneName: s.milestone?.name ?? "—",
+        propertyId: s.milestone?.property?.id ?? null,
+        propertyTitle: s.milestone?.property?.title ?? "—",
+        submittedBy: s.submittedBy?.name ?? "—",
+        submittedAt: s.submittedAt,
+        photoCount: Array.isArray(s.imageUrls) ? s.imageUrls.length : 0,
+      })),
+      overBudgetMilestones: overBudgetMilestones.map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        propertyId: m.propertyId,
+        propertyTitle: m.property?.title ?? "—",
+        budgetAllocated: m.budgetAllocated,
+        budgetSpent: m.budgetSpent,
+        utilizationPct: m.budgetAllocated > 0 ? (m.budgetSpent / m.budgetAllocated) * 100 : 0,
+      })),
+    };
+  });
+
+/* ─── Phase 3c: Admin global Action-Required inbox ────────────────── */
+
+export const getAdminActionInbox = baseProcedure
+  .input(z.object({ authToken: z.string() }))
+  .query(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, ["ADMIN", "DEVELOPMENT_MANAGER"], "Admin only");
+
+    const now = new Date();
+    const [
+      pendingKyc,
+      pendingPaymentProofs,
+      openProposals,
+      coolingOff,
+      pendingVariations,
+      pendingDistributions,
+    ] = await Promise.all([
+      db.kYCDocument.findMany({
+        where: { status: "PENDING" },
+        include: { user: { select: { id: true, name: true, email: true } } },
+        orderBy: { uploadedAt: "asc" },
+        take: 25,
+      }),
+      db.investorContribution.findMany({
+        where: {
+          paymentStatus: "POP_SUBMITTED",
+          status: { notIn: ["CANCELLED", "REJECTED"] },
+        },
+        include: {
+          investor: { select: { id: true, name: true, email: true } },
+          property: { select: { id: true, title: true } },
+        },
+        orderBy: { createdAt: "asc" },
+        take: 25,
+      }),
+      db.ownerSaleProposal.findMany({
+        where: { status: { in: ["PENDING", "UNDER_REVIEW"] } },
+        include: { owner: { select: { id: true, name: true, email: true } } },
+        orderBy: { createdAt: "asc" },
+        take: 25,
+      }),
+      db.investorContribution.findMany({
+        where: {
+          coolingOffExpiresAt: { gt: now },
+          status: { notIn: ["CANCELLED", "REJECTED"] },
+        },
+        include: {
+          investor: { select: { id: true, name: true } },
+          property: { select: { id: true, title: true } },
+        },
+        orderBy: { coolingOffExpiresAt: "asc" },
+        take: 25,
+      }),
+      db.variationOrder.findMany({
+        where: { status: "PROPOSED" },
+        include: {
+          workOrder: {
+            select: { id: true, title: true, property: { select: { id: true, title: true } } },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+        take: 25,
+      }),
+      db.distribution.findMany({
+        where: { status: { in: ["PENDING", "APPROVED"] as any } },
+        include: { property: { select: { id: true, title: true } } },
+        orderBy: { createdAt: "asc" },
+        take: 25,
+      }),
+    ]);
+
+    return {
+      generatedAt: now,
+      counts: {
+        pendingKyc: pendingKyc.length,
+        pendingPaymentProofs: pendingPaymentProofs.length,
+        openProposals: openProposals.length,
+        coolingOff: coolingOff.length,
+        pendingVariations: pendingVariations.length,
+        pendingDistributions: pendingDistributions.length,
+        total:
+          pendingKyc.length +
+          pendingPaymentProofs.length +
+          openProposals.length +
+          pendingVariations.length +
+          pendingDistributions.length,
+      },
+      pendingKyc: pendingKyc.map((d: any) => ({
+        id: d.id,
+        userId: d.userId,
+        userName: d.user?.name,
+        userEmail: d.user?.email,
+        documentType: d.documentType,
+        uploadedAt: d.uploadedAt,
+        daysWaiting: Math.floor((now.getTime() - new Date(d.uploadedAt).getTime()) / (24 * 60 * 60 * 1000)),
+      })),
+      pendingPaymentProofs: pendingPaymentProofs.map((c: any) => ({
+        id: c.id,
+        amount: c.amount,
+        propertyTitle: c.property?.title ?? "—",
+        propertyId: c.propertyId,
+        investorName: c.investor?.name ?? "—",
+        investorEmail: c.investor?.email ?? "",
+        createdAt: c.createdAt,
+        paymentStatus: c.paymentStatus,
+      })),
+      openProposals: openProposals.map((p: any) => ({
+        id: p.id,
+        title: p.title,
+        askingPrice: p.askingPrice,
+        ownerName: p.owner?.name ?? "—",
+        status: p.status,
+        createdAt: p.createdAt,
+        daysWaiting: Math.floor((now.getTime() - new Date(p.createdAt).getTime()) / (24 * 60 * 60 * 1000)),
+      })),
+      coolingOff: coolingOff.map((c: any) => ({
+        id: c.id,
+        amount: c.amount,
+        propertyTitle: c.property?.title ?? "—",
+        investorName: c.investor?.name ?? "—",
+        coolingOffExpiresAt: c.coolingOffExpiresAt,
+        hoursRemaining: Math.max(
+          0,
+          Math.floor((new Date(c.coolingOffExpiresAt!).getTime() - now.getTime()) / (1000 * 60 * 60)),
+        ),
+      })),
+      pendingVariations: pendingVariations.map((v: any) => ({
+        id: v.id,
+        number: v.number,
+        costImpact: v.costImpact,
+        workOrderTitle: v.workOrder?.title ?? "—",
+        propertyId: v.workOrder?.property?.id ?? null,
+        propertyTitle: v.workOrder?.property?.title ?? "—",
+        createdAt: v.createdAt,
+      })),
+      pendingDistributions: pendingDistributions.map((d: any) => ({
+        id: d.id,
+        amount: d.totalAmount ?? d.amount ?? 0,
+        propertyTitle: d.property?.title ?? "—",
+        propertyId: d.propertyId,
+        type: d.type,
+        status: d.status,
+        createdAt: d.createdAt,
+      })),
+    };
+  });

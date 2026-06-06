@@ -33,6 +33,7 @@ import {
   Activity,
   Database,
   GitBranch,
+  Inbox,
 } from "lucide-react";
 
 /**
@@ -155,6 +156,13 @@ export const mainNavigationLinks: NavigationLink[] = [
     icon: ShieldCheck,
     roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
     description: "Verify investor identities and track FICA compliance status",
+  },
+  {
+    label: "Action Required",
+    to: "/admin/action-required",
+    icon: Inbox,
+    roles: ["DEVELOPMENT_MANAGER", "ADMIN"],
+    description: "Everything needing admin attention in one inbox",
   },
   {
     label: "Audit Log",

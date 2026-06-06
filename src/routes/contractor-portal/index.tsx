@@ -55,7 +55,7 @@ function ContractorPortalPage() {
   if (!user || !authToken || user.role !== "CONTRACTOR") return null;
 
   return (
-    <div className="min-h-screen bg-navy-950 text-white">
+    <div className="min-h-screen bg-navy-950 text-white pb-20 lg:pb-0">
       <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
@@ -65,7 +65,8 @@ function ContractorPortalPage() {
           <p className="mt-1 text-black">Welcome back, {user.name} — manage your work, quotations, and billing</p>
         </div>
 
-        <div className="mb-6 flex flex-wrap gap-1 rounded-lg bg-navy-900/50 p-1">
+        {/* Desktop / tablet tabs */}
+        <div className="mb-6 hidden flex-wrap gap-1 rounded-lg bg-navy-900/50 p-1 lg:flex">
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -89,6 +90,27 @@ function ContractorPortalPage() {
         {activeTab === "progress" && <ProgressTab authToken={authToken} />}
         {activeTab === "profile" && <ProfileTab authToken={authToken} />}
       </div>
+
+      {/* Mobile bottom tab bar — large touch targets, always visible */}
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-navy-700 bg-navy-900/95 backdrop-blur lg:hidden">
+        <div className="mx-auto grid max-w-7xl grid-cols-6">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
+                activeTab === tab.key
+                  ? "bg-gold-500/20 text-gold-400"
+                  : "text-gray-400 hover:text-gold-300"
+              }`}
+              aria-label={tab.label}
+            >
+              <tab.icon className="h-5 w-5" />
+              <span className="leading-tight">{tab.label.split(" ")[0]}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }
@@ -1234,8 +1256,55 @@ function InvoicesTab({ authToken }: { authToken: string }) {
   const invoices = invoicesQuery.data ?? [];
   const activeOrders = (workOrdersQuery.data ?? []).filter((o: any) => ["ACCEPTED", "IN_PROGRESS"].includes(o.status));
 
+  // Payment tracker totals
+  const paid = invoices.filter((i: any) => i.status === "PAID");
+  const submitted = invoices.filter((i: any) => i.status === "SUBMITTED" || i.status === "APPROVED");
+  const overdue = invoices.filter((i: any) => {
+    if (i.status !== "SUBMITTED" && i.status !== "APPROVED") return false;
+    const created = new Date(i.createdAt);
+    const daysOpen = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
+    return daysOpen > 30;
+  });
+  const totalPaid = paid.reduce((s: number, i: any) => s + Number(i.totalAmount ?? i.amount ?? 0), 0);
+  const totalOutstanding = submitted.reduce((s: number, i: any) => s + Number(i.totalAmount ?? i.amount ?? 0), 0);
+  const totalOverdue = overdue.reduce((s: number, i: any) => s + Number(i.totalAmount ?? i.amount ?? 0), 0);
+
   return (
     <div className="space-y-4">
+      {/* Payment tracker — what's been paid vs what's still owed */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rounded-xl border border-emerald-300/40 bg-emerald-500/10 p-4">
+          <p className="text-xs uppercase tracking-wider text-emerald-300">Paid lifetime</p>
+          <p className="mt-1 text-xl font-bold text-emerald-300">R{totalPaid.toLocaleString("en-ZA")}</p>
+          <p className="mt-0.5 text-[10px] text-emerald-400/80">{paid.length} invoice{paid.length === 1 ? "" : "s"}</p>
+        </div>
+        <div className="rounded-xl border border-blue-300/40 bg-blue-500/10 p-4">
+          <p className="text-xs uppercase tracking-wider text-blue-300">Outstanding</p>
+          <p className="mt-1 text-xl font-bold text-blue-300">R{totalOutstanding.toLocaleString("en-ZA")}</p>
+          <p className="mt-0.5 text-[10px] text-blue-400/80">{submitted.length} awaiting payment</p>
+        </div>
+        <div className="rounded-xl border border-red-300/40 bg-red-500/10 p-4">
+          <p className="text-xs uppercase tracking-wider text-red-300">Overdue (30d+)</p>
+          <p className="mt-1 text-xl font-bold text-red-300">R{totalOverdue.toLocaleString("en-ZA")}</p>
+          <p className="mt-0.5 text-[10px] text-red-400/80">{overdue.length} need chasing</p>
+        </div>
+        <div className="rounded-xl border border-gold-300/40 bg-gold-500/10 p-4">
+          <p className="text-xs uppercase tracking-wider text-gold-300">Average pay time</p>
+          <p className="mt-1 text-xl font-bold text-gold-300">
+            {paid.length > 0
+              ? `${Math.round(
+                  paid.reduce((s: number, i: any) => {
+                    if (!i.paidAt) return s;
+                    const d = (new Date(i.paidAt).getTime() - new Date(i.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+                    return s + d;
+                  }, 0) / paid.length,
+                )}d`
+              : "—"}
+          </p>
+          <p className="mt-0.5 text-[10px] text-gold-400/80">submit → cleared</p>
+        </div>
+      </div>
+
       <div className="flex justify-end">
         <button onClick={() => setShowForm(!showForm)} className="inline-flex items-center gap-2 rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-navy-950 hover:bg-gold-400">
           <Receipt className="h-4 w-4" /> New Invoice

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Gavel, Building, ArrowRight, Clock, CheckCircle, ShieldAlert } from "lucide-react";
+import { Gavel, Building, ArrowRight, ArrowLeft, Clock, CheckCircle, ShieldAlert, LayoutGrid, Columns3 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
@@ -31,6 +31,7 @@ function AcquisitionPipelinePage() {
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
 
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [viewMode, setViewMode] = useState<"cards" | "kanban">("kanban");
   const [createForm, setCreateForm] = useState({
     propertyId: 0,
     spvId: 0,
@@ -120,6 +121,36 @@ function AcquisitionPipelinePage() {
     }
   };
 
+  // Kanban move ← (back one column) and → (forward one column)
+  const handleMoveStage = async (acquisitionId: number, currentTransferStatus: string, direction: 1 | -1) => {
+    const currentIdx = TRANSFER_STAGES.indexOf(currentTransferStatus as any);
+    const nextIdx = currentIdx + direction;
+    if (currentIdx < 0 || nextIdx < 0 || nextIdx >= TRANSFER_STAGES.length) return;
+    const nextStatus = TRANSFER_STAGES[nextIdx];
+    try {
+      await trpcClient.updateAcquisitionStatus.mutate({
+        authToken: authToken ?? "",
+        acquisitionId,
+        transferStatus: nextStatus!,
+      });
+      toast.success(`Moved to ${nextStatus!.replace(/_/g, " ")}`);
+      queryClient.invalidateQueries({ queryKey: trpc.getAcquisitions.queryKey() });
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to move");
+    }
+  };
+
+  // Plain-language column labels for kanban
+  const STAGE_META: Record<string, { label: string; tone: string }> = {
+    AUCTION_WON: { label: "1. Auction Won", tone: "border-amber-300 bg-amber-50" },
+    DEPOSIT_PAID: { label: "2. Deposit Paid", tone: "border-amber-300 bg-amber-50" },
+    SPV_ASSIGNED: { label: "3. SPV Assigned", tone: "border-purple-300 bg-purple-50" },
+    CESSION_EXECUTED: { label: "4. Cession Executed", tone: "border-purple-300 bg-purple-50" },
+    CONVEYANCING_IN_PROGRESS: { label: "5. Conveyancing", tone: "border-blue-300 bg-blue-50" },
+    REGISTERED_AT_DEEDS: { label: "6. Registered at Deeds", tone: "border-blue-300 bg-blue-50" },
+    TRANSFER_COMPLETE: { label: "7. Transfer Complete", tone: "border-emerald-300 bg-emerald-50" },
+  };
+
   const stageColor = (stage: string) => {
     const map: Record<string, string> = {
       IDENTIFIED: "bg-blue-500/20 text-blue-600 border-blue-500/30",
@@ -162,6 +193,33 @@ function AcquisitionPipelinePage() {
             className="inline-flex items-center gap-2 rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-navy-950 hover:bg-gold-400 transition"
           >
             <Gavel size={16} /> New Acquisition
+          </button>
+        </div>
+
+        {/* View mode toggle */}
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-xs uppercase tracking-wider text-gray-500">View:</span>
+          <button
+            type="button"
+            onClick={() => setViewMode("kanban")}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+              viewMode === "kanban"
+                ? "border-gold-500 bg-gold-50 text-gold-700"
+                : "border-navy-700 bg-navy-900/30 text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            <Columns3 size={14} /> Kanban
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("cards")}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+              viewMode === "cards"
+                ? "border-gold-500 bg-gold-50 text-gold-700"
+                : "border-navy-700 bg-navy-900/30 text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            <LayoutGrid size={14} /> Cards
           </button>
         </div>
 
@@ -215,7 +273,85 @@ function AcquisitionPipelinePage() {
           </div>
         )}
 
+        {/* Kanban view — columns by TransferStatus */}
+        {viewMode === "kanban" && (
+          <div className="mb-8 overflow-x-auto pb-2">
+            <div className="flex min-w-max gap-3">
+              {TRANSFER_STAGES.map((stage) => {
+                const meta = STAGE_META[stage]!;
+                const inThisColumn = acquisitionsArr.filter(
+                  (a: any) => (a.transferStatus ?? "AUCTION_WON") === stage,
+                );
+                return (
+                  <div key={stage} className={`flex w-72 flex-col rounded-xl border ${meta.tone}`}>
+                    <div className="border-b border-gray-300/60 px-3 py-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-700">{meta.label}</p>
+                      <p className="text-xs text-gray-500">{inThisColumn.length} acquisition{inThisColumn.length === 1 ? "" : "s"}</p>
+                    </div>
+                    <div className="flex-1 space-y-2 p-2">
+                      {inThisColumn.length === 0 ? (
+                        <p className="px-2 py-6 text-center text-xs italic text-gray-400">Nothing here</p>
+                      ) : (
+                        inThisColumn.map((acq: any) => {
+                          const idx = TRANSFER_STAGES.indexOf(stage);
+                          return (
+                            <div
+                              key={acq.id}
+                              className="rounded-lg border border-white/60 bg-white p-3 shadow-sm"
+                            >
+                              <p className="text-sm font-semibold text-gray-900">
+                                {acq.property?.title ?? acq.propertyTitle ?? `Acquisition #${acq.id}`}
+                              </p>
+                              {(acq.property?.city || acq.spv?.name) && (
+                                <p className="mt-0.5 text-xs text-gray-500">
+                                  {acq.property?.city}
+                                  {acq.spv?.name && ` · ${acq.spv.name}`}
+                                </p>
+                              )}
+                              {acq.purchasePrice ? (
+                                <p className="mt-1 text-xs text-gold-700">R{Number(acq.purchasePrice).toLocaleString()}</p>
+                              ) : acq.depositAmount ? (
+                                <p className="mt-1 text-xs text-gray-500">Deposit R{Number(acq.depositAmount).toLocaleString()}</p>
+                              ) : null}
+                              {acq.expectedTransferDate && (
+                                <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+                                  <Clock size={11} /> Target {new Date(acq.expectedTransferDate).toLocaleDateString("en-ZA")}
+                                </p>
+                              )}
+                              <div className="mt-2 flex items-center justify-between gap-1">
+                                <button
+                                  type="button"
+                                  disabled={idx === 0}
+                                  onClick={() => handleMoveStage(acq.id, stage, -1)}
+                                  className="inline-flex items-center gap-0.5 rounded border border-gray-300 px-2 py-0.5 text-[10px] text-gray-700 hover:bg-gray-100 disabled:opacity-30"
+                                  title="Move back one stage"
+                                >
+                                  <ArrowLeft size={10} /> back
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={idx === TRANSFER_STAGES.length - 1}
+                                  onClick={() => handleMoveStage(acq.id, stage, 1)}
+                                  className="inline-flex items-center gap-0.5 rounded bg-gold-500 px-2 py-0.5 text-[10px] font-semibold text-navy-950 hover:bg-gold-400 disabled:opacity-30"
+                                  title="Advance to next stage"
+                                >
+                                  next <ArrowRight size={10} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Acquisition Cards */}
+        {viewMode === "cards" && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {acquisitionsArr.length > 0 ? acquisitionsArr.map((acq: any, i: number) => {
             const stage = acq.status ?? acq.stage ?? "IDENTIFIED";
@@ -278,6 +414,7 @@ function AcquisitionPipelinePage() {
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );

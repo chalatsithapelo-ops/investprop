@@ -103,6 +103,12 @@ function DashboardPage() {
     placeholderData: keepPreviousData,
   });
 
+  const pmTodayQuery = useQuery({
+    ...trpc.getPmTodayInbox.queryOptions({ authToken: authToken ?? "" }),
+    enabled: !!authToken && isManager,
+    placeholderData: keepPreviousData,
+  });
+
   // Owner-specific queries
   const ownerProposalsQuery = useQuery({
     ...trpc.getMySaleProposals.queryOptions({ authToken: authToken ?? "" }),
@@ -339,6 +345,126 @@ function DashboardPage() {
                 </p>
               )}
             </Link>
+          );
+        })()}
+
+        {/* ─── PM Today inbox (managers only) — single panel of what needs doing ─── */}
+        {isManager && (() => {
+          const inbox = pmTodayQuery.data as any;
+          if (!inbox) return null;
+          const totalUrgent =
+            (inbox.counts.pendingVariations ?? 0) +
+            (inbox.counts.overdueMilestones ?? 0) +
+            (inbox.counts.pendingSignoffs ?? 0) +
+            (inbox.counts.overBudgetMilestones ?? 0);
+          return (
+            <div className="mb-8 rounded-xl border border-blue-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-blue-100 bg-gradient-to-r from-blue-50 to-white px-5 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-blue-100 p-2">
+                    <Clock className="text-blue-700" size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-gray-900">PM Today</h2>
+                    <p className="text-xs text-gray-500">
+                      {totalUrgent === 0 ? "Nothing urgent — go grab a coffee." : `${totalUrgent} item${totalUrgent === 1 ? "" : "s"} need your eyes`}
+                    </p>
+                  </div>
+                </div>
+                <Link to="/project-management" className="text-xs font-semibold text-blue-700 hover:text-blue-900">
+                  Open project board →
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 divide-blue-100 lg:grid-cols-4 lg:divide-x">
+                {/* Pending variations */}
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Variations</p>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${inbox.counts.pendingVariations > 0 ? "bg-amber-100 text-amber-800" : "bg-gray-100 text-gray-500"}`}>
+                      {inbox.counts.pendingVariations}
+                    </span>
+                  </div>
+                  {inbox.pendingVariations.length === 0 ? (
+                    <p className="mt-2 text-xs italic text-gray-400">No pending variations</p>
+                  ) : (
+                    <ul className="mt-2 space-y-1.5">
+                      {inbox.pendingVariations.slice(0, 3).map((v: any) => (
+                        <li key={v.id} className="text-xs">
+                          <span className="font-semibold text-gray-900">{v.number}</span>{" "}
+                          <span className={`font-medium ${v.costImpact >= 0 ? "text-red-600" : "text-emerald-600"}`}>
+                            {v.costImpact >= 0 ? "+" : "−"}R{Math.abs(v.costImpact).toLocaleString("en-ZA")}
+                          </span>
+                          <p className="truncate text-gray-500">{v.propertyTitle}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {/* Overdue milestones */}
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Overdue</p>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${inbox.counts.overdueMilestones > 0 ? "bg-red-100 text-red-800" : "bg-gray-100 text-gray-500"}`}>
+                      {inbox.counts.overdueMilestones}
+                    </span>
+                  </div>
+                  {inbox.overdueMilestones.length === 0 ? (
+                    <p className="mt-2 text-xs italic text-gray-400">All milestones on track</p>
+                  ) : (
+                    <ul className="mt-2 space-y-1.5">
+                      {inbox.overdueMilestones.slice(0, 3).map((m: any) => (
+                        <li key={m.id} className="text-xs">
+                          <p className="truncate font-semibold text-gray-900">{m.name}</p>
+                          <p className="text-red-600">{m.daysLate}d late · {m.propertyTitle}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {/* Pending sign-offs */}
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Sign-offs</p>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${inbox.counts.pendingSignoffs > 0 ? "bg-purple-100 text-purple-800" : "bg-gray-100 text-gray-500"}`}>
+                      {inbox.counts.pendingSignoffs}
+                    </span>
+                  </div>
+                  {inbox.pendingSignoffs.length === 0 ? (
+                    <p className="mt-2 text-xs italic text-gray-400">Nothing awaiting review</p>
+                  ) : (
+                    <ul className="mt-2 space-y-1.5">
+                      {inbox.pendingSignoffs.slice(0, 3).map((s: any) => (
+                        <li key={s.id} className="text-xs">
+                          <p className="truncate font-semibold text-gray-900">{s.milestoneName}</p>
+                          <p className="text-gray-500">{s.photoCount} photo{s.photoCount === 1 ? "" : "s"} · {s.submittedBy}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {/* Budget alerts */}
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Budget alerts</p>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${inbox.counts.overBudgetMilestones > 0 ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-500"}`}>
+                      {inbox.counts.overBudgetMilestones}
+                    </span>
+                  </div>
+                  {inbox.overBudgetMilestones.length === 0 ? (
+                    <p className="mt-2 text-xs italic text-gray-400">All within budget</p>
+                  ) : (
+                    <ul className="mt-2 space-y-1.5">
+                      {inbox.overBudgetMilestones.slice(0, 3).map((m: any) => (
+                        <li key={m.id} className="text-xs">
+                          <p className="truncate font-semibold text-gray-900">{m.name}</p>
+                          <p className="text-orange-600">{m.utilizationPct.toFixed(0)}% used · {m.propertyTitle}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
           );
         })()}
 

@@ -115,6 +115,8 @@ import {
   listAuditLog,
   impersonateUser,
   listCoolingOffContributions,
+  getPmTodayInbox,
+  getAdminActionInbox,
 } from "~/server/trpc/procedures/extended-workflows";
 import {
   resubmitPaymentProof,
@@ -378,6 +380,8 @@ export const appRouter = createTRPCRouter({
   listAuditLog,
   impersonateUser,
   listCoolingOffContributions,
+  getPmTodayInbox,
+  getAdminActionInbox,
   // Phase 10/13/14 investor + admin extras
   resubmitPaymentProof,
   requestRefund,
