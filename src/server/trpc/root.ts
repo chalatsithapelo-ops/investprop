@@ -79,7 +79,7 @@ import { placeShareOrder, getOrderBook, getMyOrders, cancelShareOrder, getTradeH
 // Phase 8: Payment Gateway (Paystack)
 import { initiateDistributionPayout, verifyPaystackTransfer, initializePayment, verifyPayment, getPaystackBalance, getPaymentGatewayStatus } from "~/server/trpc/procedures/payments";
 // Phase 9: Distressed Property Finder
-import { getDistressedListings, triggerDistressedScrape, getScrapeLogs, getDistressedSources, toggleDistressedFavourite, addDistressedListing, updateDistressedStatus, deleteDistressedListing } from "~/server/trpc/procedures/distressed-finder";
+import { getDistressedListings, triggerDistressedScrape, getDistressedDashboardSummary, getScrapeLogs, getDistressedSources, toggleDistressedFavourite, addDistressedListing, updateDistressedStatus, deleteDistressedListing } from "~/server/trpc/procedures/distressed-finder";
 import { screenDistressedListing, screenDistressedBatch, promoteDistressedToProperty, getDistressedPriceHistory, runDistressedDedup, runDistressedReminders } from "~/server/trpc/procedures/distressed-ai";
 // Owner Sale Proposals
 import { submitSaleProposal, getMySaleProposals, getSaleProposals, reviewSaleProposal, withdrawSaleProposal } from "~/server/trpc/procedures/owner-proposals";
@@ -294,6 +294,7 @@ export const appRouter = createTRPCRouter({
   // Phase 9: Distressed Property Finder
   getDistressedListings,
   triggerDistressedScrape,
+  getDistressedDashboardSummary,
   getScrapeLogs,
   getDistressedSources,
   toggleDistressedFavourite,

@@ -20,6 +20,8 @@ import {
   Send,
   Clock,
   CheckCircle2,
+  Gavel,
+  Sparkles,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC } from "~/trpc/react";
@@ -85,6 +87,12 @@ function DashboardPage() {
   // Manager-specific queries
   const metricsQuery = useQuery({
     ...trpc.getDevelopmentMetrics.queryOptions({ authToken: authToken ?? "" }),
+    enabled: !!authToken && isManager,
+    placeholderData: keepPreviousData,
+  });
+
+  const distressedSummaryQuery = useQuery({
+    ...trpc.getDistressedDashboardSummary.queryOptions({ authToken: authToken ?? "" }),
     enabled: !!authToken && isManager,
     placeholderData: keepPreviousData,
   });
@@ -258,6 +266,66 @@ function DashboardPage() {
             </div>
           ))}
         </div>
+
+        {/* ─── Distressed Finder live tile (managers only) ─── */}
+        {isManager && (() => {
+          const ds = distressedSummaryQuery.data as any;
+          const lastScrapeAt = ds?.lastScrape?.scrapedAt ? new Date(ds.lastScrape.scrapedAt) : null;
+          const minsAgo = lastScrapeAt ? Math.round((Date.now() - lastScrapeAt.getTime()) / 60000) : null;
+          const fmtAgo = minsAgo === null ? "no scrapes yet" :
+            minsAgo < 60 ? `${minsAgo} min ago` :
+            minsAgo < 1440 ? `${Math.round(minsAgo / 60)}h ago` :
+            `${Math.round(minsAgo / 1440)}d ago`;
+          return (
+            <Link
+              to="/distressed-finder"
+              className="mb-8 block rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-white p-5 shadow-sm transition hover:border-amber-300 hover:shadow"
+            >
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="rounded-lg bg-amber-100 p-3">
+                    <Gavel className="text-amber-700" size={24} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-semibold text-gray-900">Distressed Property Finder</h2>
+                      <span className="rounded-full bg-amber-200/60 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-800">LIVE</span>
+                    </div>
+                    <p className="mt-0.5 text-sm text-gray-500">
+                      Scans 14+ SA auction / distress sites · last scan {fmtAgo}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-4 text-center text-sm">
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">{ds?.totalActive ?? "—"}</p>
+                    <p className="text-xs text-gray-500">Active</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-red-600">{ds?.upcomingThisWeek ?? "—"}</p>
+                    <p className="text-xs text-gray-500">Auctions ≤7d</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-emerald-600 flex items-center justify-center gap-1">
+                      <Sparkles size={16} /> {ds?.gradedA_B ?? "—"}
+                    </p>
+                    <p className="text-xs text-gray-500">AI A/B grade</p>
+                  </div>
+                  <div className="flex items-center">
+                    <ArrowRight className="text-amber-700" size={20} />
+                  </div>
+                </div>
+              </div>
+              {ds?.newest && (
+                <p className="mt-3 text-xs text-gray-600 border-t border-amber-100 pt-2">
+                  <strong className="text-gray-700">Newest:</strong>{" "}
+                  {ds.newest.aiGrade && <span className="font-bold text-emerald-700">AI {ds.newest.aiGrade} ·</span>}{" "}
+                  {ds.newest.title} ({ds.newest.city}) · R{Number(ds.newest.askingPrice).toLocaleString("en-ZA")}
+                </p>
+              )}
+            </Link>
+          );
+        })()}
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* ─── Investor: My Investments ─── */}

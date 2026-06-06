@@ -8,6 +8,10 @@ import {
   Users,
   Search,
   Filter,
+  FileSearch,
+  Wallet,
+  CheckCircle2,
+  PiggyBank,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC } from "~/trpc/react";
@@ -113,6 +117,47 @@ function InvestmentOpportunitiesPage() {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* How it works strip */}
+        <div className="mb-8 rounded-xl border border-gold-200/30 bg-gradient-to-r from-gold-950/20 via-navy-900/40 to-navy-900/40 p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gold-500">How investing here works</h2>
+            <span className="text-xs text-gray-500">~5 minutes to your first share</span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <div className="flex items-start gap-3 rounded-lg bg-navy-900/60 p-3">
+              <FileSearch className="mt-0.5 flex-shrink-0 text-gold-400" size={20} />
+              <div>
+                <p className="text-sm font-semibold text-gray-100">1. Review the deal</p>
+                <p className="mt-0.5 text-xs text-gray-400">Open the offer pack, financials, risk rating and exit plan.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-lg bg-navy-900/60 p-3">
+              <CheckCircle2 className="mt-0.5 flex-shrink-0 text-gold-400" size={20} />
+              <div>
+                <p className="text-sm font-semibold text-gray-100">2. Confirm suitability</p>
+                <p className="mt-0.5 text-xs text-gray-400">Pass FICA + quick appropriateness questionnaire (once).</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-lg bg-navy-900/60 p-3">
+              <Wallet className="mt-0.5 flex-shrink-0 text-gold-400" size={20} />
+              <div>
+                <p className="text-sm font-semibold text-gray-100">3. Fund &amp; commit</p>
+                <p className="mt-0.5 text-xs text-gray-400">EFT into the ring-fenced trust account. 5-day cooling-off period.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-lg bg-navy-900/60 p-3">
+              <PiggyBank className="mt-0.5 flex-shrink-0 text-gold-400" size={20} />
+              <div>
+                <p className="text-sm font-semibold text-gray-100">4. Earn &amp; track</p>
+                <p className="mt-0.5 text-xs text-gray-400">Distributions paid to your bank. Sell on the secondary market.</p>
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-gray-500">
+            <strong className="text-gray-400">Heads-up:</strong> property is illiquid and returns aren't guaranteed. Read each deal's risk warning before investing.
+          </p>
         </div>
 
         {/* Search & Filter */}

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Target, CheckCircle, Clock, AlertTriangle, Shield, ShieldAlert, Plus, X, Pencil } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
+import { MilestoneCompletionModal } from "~/components/MilestoneCompletionModal";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 import toast from "react-hot-toast";
@@ -27,6 +28,7 @@ function ProjectManagementPage() {
   const [showMilestoneForm, setShowMilestoneForm] = useState(false);
   const [showRiskForm, setShowRiskForm] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState<any>(null);
+  const [completingMilestone, setCompletingMilestone] = useState<{ id: number; name: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Milestone form fields
@@ -114,6 +116,12 @@ function ProjectManagementPage() {
   };
 
   const handleUpdateMilestone = async (milestoneId: number, status: string) => {
+    // For COMPLETED — open photo-prompt modal instead of immediate update
+    if (status === "COMPLETED") {
+      const ms = (milestones as any[] | undefined)?.find((m: any) => m.id === milestoneId);
+      setCompletingMilestone({ id: milestoneId, name: ms?.name ?? `Milestone #${milestoneId}` });
+      return;
+    }
     try {
       await trpcClient.updateMilestone.mutate({
         authToken: authToken!,
@@ -432,6 +440,19 @@ function ProjectManagementPage() {
           </>
         )}
       </div>
+
+      {completingMilestone && (
+        <MilestoneCompletionModal
+          open={!!completingMilestone}
+          onClose={() => setCompletingMilestone(null)}
+          onCompleted={() => {
+            queryClient.invalidateQueries({ queryKey: trpc.getMilestones.queryKey() });
+          }}
+          milestoneId={completingMilestone.id}
+          milestoneName={completingMilestone.name}
+          authToken={authToken ?? ""}
+        />
+      )}
     </div>
   );
 }

@@ -56,8 +56,65 @@ function SystemHealthPage() {
 function Dashboard({ data }: { data: any }) {
   const uptimeHrs = Math.floor((data.uptime ?? 0) / 3600);
   const uptimeMins = Math.floor(((data.uptime ?? 0) % 3600) / 60);
+
+  // Plain-language status summary
+  const memUsedPct = data.memory.total > 0 ? data.memory.used / data.memory.total : 0;
+  const issues: string[] = [];
+  if (memUsedPct > 0.85) issues.push(`Memory is high (${Math.round(memUsedPct * 100)}% used)`);
+  if (data.workload.pendingFica > 5) issues.push(`${data.workload.pendingFica} FICA verifications waiting on the team`);
+  if (data.workload.pendingPayments > 10) issues.push(`${data.workload.pendingPayments} payment proofs still need review`);
+  if (data.workload.pendingContributions > 10) issues.push(`${data.workload.pendingContributions} investor contributions queued`);
+  if (data.activity.errorAuditEvents24h > 0) issues.push(`${data.activity.errorAuditEvents24h} error events in the last 24h — worth a look`);
+
+  const allGreen = issues.length === 0;
+
   return (
     <div className="space-y-6">
+      {/* Plain language health summary */}
+      <div
+        className={`rounded-xl border p-5 shadow-sm ${
+          allGreen
+            ? "border-emerald-200 bg-emerald-50"
+            : issues.length <= 2
+              ? "border-amber-200 bg-amber-50"
+              : "border-red-200 bg-red-50"
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          {allGreen ? (
+            <CheckCircle2 className="mt-0.5 flex-shrink-0 text-emerald-600" size={28} />
+          ) : (
+            <ShieldAlert className={`mt-0.5 flex-shrink-0 ${issues.length <= 2 ? "text-amber-600" : "text-red-600"}`} size={28} />
+          )}
+          <div className="flex-1">
+            <h2 className={`text-lg font-bold ${allGreen ? "text-emerald-900" : issues.length <= 2 ? "text-amber-900" : "text-red-900"}`}>
+              {allGreen
+                ? "All systems healthy"
+                : issues.length <= 2
+                  ? "Things are working — a couple of items need attention"
+                  : "Multiple items need attention"}
+            </h2>
+            {allGreen ? (
+              <p className={`mt-1 text-sm text-emerald-800`}>
+                The platform has been running for {uptimeHrs}h {uptimeMins}m without issues.
+                Memory, queues, and audit logs are all within normal levels.
+              </p>
+            ) : (
+              <>
+                <p className={`mt-1 text-sm ${issues.length <= 2 ? "text-amber-800" : "text-red-800"}`}>
+                  The platform is up and serving users. Here&rsquo;s what the team should action:
+                </p>
+                <ul className={`mt-2 list-disc space-y-1 pl-5 text-sm ${issues.length <= 2 ? "text-amber-900" : "text-red-900"}`}>
+                  {issues.map((i, idx) => (
+                    <li key={idx}>{i}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat icon={Cpu} label="Uptime" value={`${uptimeHrs}h ${uptimeMins}m`} tone="good" />
         <Stat

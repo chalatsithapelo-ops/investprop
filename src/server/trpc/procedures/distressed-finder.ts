@@ -255,6 +255,44 @@ export const triggerDistressedScrape = baseProcedure
     return result;
   });
 
+// ─── Distressed Dashboard Summary (lightweight for tile) ─────────
+
+export const getDistressedDashboardSummary = baseProcedure
+  .input(z.object({ authToken: z.string() }))
+  .query(async ({ input }) => {
+    await getAuthenticatedUser(input.authToken);
+    const now = new Date();
+    const weekAhead = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    const [totalActive, upcomingThisWeek, gradedA_B, newest, lastScrape] = await Promise.all([
+      db.distressedListing.count({ where: { status: "ACTIVE" } }),
+      db.distressedListing.count({
+        where: { status: "ACTIVE", auctionDate: { gte: now, lte: weekAhead } },
+      }),
+      db.distressedListing.count({
+        where: { status: "ACTIVE", aiGrade: { in: ["A", "B"] } },
+      }),
+      db.distressedListing.findFirst({
+        where: { status: "ACTIVE" },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, title: true, city: true, askingPrice: true, aiGrade: true, createdAt: true },
+      }),
+      db.distressedScrapeLog.findFirst({
+        orderBy: { scrapedAt: "desc" },
+        select: { scrapedAt: true, status: true },
+      }),
+    ]);
+
+    return {
+      totalActive,
+      upcomingThisWeek,
+      gradedA_B,
+      newest,
+      lastScrape,
+    };
+  });
+
+
 // ─── Get Scrape Logs ─────────────────────────────────────────────
 
 export const getScrapeLogs = baseProcedure
