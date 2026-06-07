@@ -35,6 +35,7 @@ import {
   GitBranch,
   Inbox,
   Receipt,
+  FileBarChart,
 } from "lucide-react";
 
 /**
@@ -304,6 +305,13 @@ export const mainNavigationLinks: NavigationLink[] = [
     icon: Receipt,
     roles: ["INVESTOR"],
     description: "Download your annual IT3 income summary for SARS filing",
+  },
+  {
+    label: "Statements",
+    to: "/statements",
+    icon: FileBarChart,
+    roles: ["INVESTOR"],
+    description: "Download periodic statements of holdings, distributions and transactions",
   },
   {
     label: "Payments",

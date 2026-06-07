@@ -64,6 +64,8 @@ import { createAcquisition, getAcquisitions, updateAcquisitionStatus } from "~/s
 import { createShareClass, getShareInfo, purchaseShares, transferShares, getShareLedger, getInvestorPortfolio, requestCoolingOffWithdrawal, getMyShareHoldings, lookupInvestorByCode } from "~/server/trpc/procedures/shares";
 // Distribution Engine
 import { createDistribution, getDistributions, executeDistribution, getMyDistributions } from "~/server/trpc/procedures/distributions";
+// Investor Statements
+import { generateInvestorStatement } from "~/server/trpc/procedures/statements";
 // Governance & Voting
 import { createProposal, getProposals, castVote, closeProposal, getGovernanceRules } from "~/server/trpc/procedures/governance";
 // KYC / FICA Compliance
@@ -249,6 +251,8 @@ export const appRouter = createTRPCRouter({
   getDistributions,
   executeDistribution,
   getMyDistributions,
+  // Investor Statements
+  generateInvestorStatement,
   // Governance & Voting
   createProposal,
   getProposals,
