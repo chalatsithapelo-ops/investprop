@@ -59,18 +59,25 @@ AI is uniquely suited to all four.
 
 | Feature | Status |
 |---|---|
-| 1.1 Conversational Deal Co-Pilot | ✅ backend (`ai-copilot.ts`) |
-| 1.2 Personalised Risk Match Score | ✅ backend (`ai-match-score.ts`) |
-| 1.3 Plain-Language Document Summariser | ✅ backend (`ai-doc-summary.ts`) |
-| 1.4 Listing Quality Coach | ✅ backend (`ai-listing-coach.ts`) |
-| 2.1 Independent AI Underwriting | ✅ backend (`ai-underwriting.ts`) |
-| 2.2 Vision Construction Verification | ✅ backend (`ai-photo-check.ts`) |
-| 2.3 Portfolio Advisor | ✅ backend (`ai-portfolio-advisor.ts`) |
-| 2.4 Auto Investor Update Emails | ✅ backend (`ai-investor-updates.ts`) |
-| 3.1 Voice Onboarding | ✅ backend chat-MVP (`ai-onboarding.ts`); voice layer is client-side |
-| 3.2 Predictive Distress | ✅ backend (`ai-distress.ts`) |
-| 3.3 Sponsor Track Record | ✅ backend (`ai-sponsor-track.ts`) |
+| 1.1 Conversational Deal Co-Pilot | ✅ live — `AICopilotChat` on `opportunities/$opportunityId` |
+| 1.2 Personalised Risk Match Score | ✅ live — `AIMatchBadge` on cards + opportunity |
+| 1.3 Plain-Language Document Summariser | ✅ live — `AIDocSummary` on `legal-documents` |
+| 1.4 Listing Quality Coach | ✅ live — `AIListingCoach` on `properties/$propertyId/edit` |
+| 2.1 Independent AI Underwriting | ✅ live — `AIConfidenceRating` on opportunity (manager-run, investor read-only) |
+| 2.2 Vision Construction Verification | ✅ live — `AIPhotoCheck` on property timeline (manager) |
+| 2.3 Portfolio Advisor | ✅ live — `AIPortfolioInsight` on `/portfolio` |
+| 2.4 Auto Investor Update Emails | ✅ live — `AIInvestorUpdateEditor` on property timeline (manager) |
+| 3.1 Voice Onboarding | ✅ backend chat-MVP (`ai-onboarding.ts`); voice UI deferred |
+| 3.2 Predictive Distress | ✅ live — `/admin/ai-distress` watchlist |
+| 3.3 Sponsor Track Record | ✅ live — `/sponsors/$sponsorId` page, linked from opportunity |
 | 3.4 WhatsApp Concierge | _deferred_ |
+
+### Models
+
+- `cheap` → `openai/gpt-4o-mini` (chat, match score, listing coach)
+- `premium` → `openai/gpt-4o` (underwriting, portfolio, distress, investor updates)
+- `vision` → `openai/gpt-4o` (construction photo verification)
+
 
 ### Shared infrastructure
 
@@ -80,15 +87,24 @@ AI is uniquely suited to all four.
 
 ### UI status
 
-UI components are intentionally minimal so we can iterate. Pending screens:
+All Tier-1/2/3 backends are now surfaced in the product (voice-onboarding UI is the only deferred screen):
 
-- `AICopilotChat` panel on `opportunities/$opportunityId`
-- `AIMatchBadge` on `PropertyCard`
-- `AIDocSummary` panel on legal documents page
-- `AIListingCoach` modal on `properties/new`
-- `AIConfidenceRating` badge alongside sponsor risk rating
-- `AIPhotoCheckResult` badge for progress submissions
-- `AIPortfolioInsight` card on `/portfolio`
-- `AIInvestorUpdateDraftEditor` on dev-manager property detail
-- `/admin/ai-distress` admin list
-- Voice-onboarding chat overlay using `startOnboardingSession` / `continueOnboardingSession`
+- `AICopilotChat` panel on `opportunities/$opportunityId` — ✅
+- `AIMatchBadge` on `PropertyCard` + opportunity — ✅
+- `AIDocSummary` panel on legal documents page — ✅
+- `AIListingCoach` panel on `properties/$propertyId/edit` — ✅
+- `AIConfidenceRating` badge on opportunity (manager-run gate, investor read-only) — ✅
+- `AIPhotoCheck` panel on property timeline (manager) — ✅
+- `AIPortfolioInsight` card on `/portfolio` — ✅
+- `AIInvestorUpdateEditor` on property timeline (manager) — ✅
+- `/admin/ai-distress` admin watchlist (+ navbar link) — ✅
+- `/sponsors/$sponsorId` track-record page, linked from opportunity — ✅
+- Voice-onboarding chat overlay using `startOnboardingSession` / `continueOnboardingSession` — _deferred_
+
+#### Defensive framing (sponsor track record + underwriting confidence)
+
+These two "judgment" surfaces are built to inform without discouraging:
+
+- **Underwriting confidence (A–E)** is a manager-run pre-publish gate, not a public verdict. Don't publish E-rated deals. The badge always reads as **research, not advice**; a lower letter means "ask more questions", never "avoid".
+- **Sponsor track record** uses `MATURITY_THRESHOLD = 3`: new sponsors show a "Building a track record" card instead of a discouraging "0% on-time", so early sponsors aren't punished for thin history.
+

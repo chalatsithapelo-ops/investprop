@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
-import { FileText, Plus, Download, Eye, Building2, Users, CheckCircle, Clock, XCircle, ShieldAlert } from "lucide-react";
+import { useState, useEffect, Fragment } from "react";
+import { FileText, Plus, Download, Eye, Building2, Users, CheckCircle, Clock, XCircle, ShieldAlert, Sparkles } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
+import { AIDocSummary } from "~/components/AIDocSummary";
 import { useTRPC } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 import toast from "react-hot-toast";
@@ -57,6 +58,7 @@ function LegalDocumentsPage() {
   }
 
   const [showGenerate, setShowGenerate] = useState(false);
+  const [summaryDocId, setSummaryDocId] = useState<number | null>(null);
   const [genForm, setGenForm] = useState({
     documentType: "MOI" as string,
     propertyId: null as number | null,
@@ -198,7 +200,8 @@ function LegalDocumentsPage() {
                 </thead>
                 <tbody className="divide-y">
                   {docs.map((doc: any) => (
-                    <tr key={doc.id} className="hover:bg-navy-800/30">
+                    <Fragment key={doc.id}>
+                    <tr className="hover:bg-navy-800/30">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <FileText size={16} className="text-indigo-500" />
@@ -246,9 +249,25 @@ function LegalDocumentsPage() {
                           ) : (
                             <span className="text-xs text-gray-500">No content</span>
                           )}
+                          {doc.content && (
+                            <button
+                              onClick={() => setSummaryDocId((cur) => (cur === doc.id ? null : doc.id))}
+                              className="rounded p-1.5 text-violet-500 hover:bg-navy-800/50 flex items-center gap-1 text-sm"
+                            >
+                              <Sparkles size={14} /> AI
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
+                    {summaryDocId === doc.id && doc.content && (
+                      <tr>
+                        <td colSpan={5} className="bg-navy-950/40 px-6 py-4">
+                          <AIDocSummary documentId={doc.id} />
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

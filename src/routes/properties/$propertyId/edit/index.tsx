@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { ArrowLeft, ShieldAlert } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { PropertyForm } from "~/components/PropertyForm";
+import { AIListingCoach } from "~/components/AIListingCoach";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 import toast from "react-hot-toast";
@@ -125,6 +126,8 @@ function EditPropertyPage() {
             Update the details for {property.title || "this property"}
           </p>
         </div>
+
+        <AIListingCoach propertyId={Number(propertyId)} />
 
         {/* Form */}
         <PropertyForm

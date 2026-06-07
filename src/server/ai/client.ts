@@ -31,8 +31,8 @@ export type AITier = "cheap" | "premium" | "vision";
 
 const MODELS: Record<AITier, string> = {
   cheap: "openai/gpt-4o-mini",
-  premium: "openai/gpt-4o-mini",
-  vision: "openai/gpt-4o-mini",
+  premium: "openai/gpt-4o",
+  vision: "openai/gpt-4o",
 };
 
 // Per-1M-token cost in USD (input, output) — used for ballpark accounting only.

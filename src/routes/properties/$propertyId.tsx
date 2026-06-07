@@ -7,6 +7,8 @@ import { useTRPCClient, useTRPC } from "~/trpc/react";
 import toast from "react-hot-toast";
 import { Navbar } from "~/components/Navbar";
 import { ConfirmModal } from "~/components/ConfirmModal";
+import { AIInvestorUpdateEditor } from "~/components/AIInvestorUpdateEditor";
+import { AIPhotoCheck } from "~/components/AIPhotoCheck";
 import { useAuthStore } from "~/stores/authStore";
 import { calculateFlipMetrics, calculateRentalMetrics, calculateDevelopmentMetrics } from "~/financial-calculations";
 import type { PropertyFlipInput, RentalPropertyInput, PropertyDevelopmentInput } from "~/financial-calculations";
@@ -527,6 +529,13 @@ function PropertyDetailPage() {
                 <div className="py-8 text-center">
                   <Calendar className="mx-auto mb-3 text-gray-600" size={40} />
                   <p className="text-gray-500">No milestones yet</p>
+                </div>
+              )}
+
+              {isManager && (
+                <div className="space-y-6 pt-2">
+                  <AIPhotoCheck propertyId={Number(propertyId)} />
+                  <AIInvestorUpdateEditor propertyId={Number(propertyId)} />
                 </div>
               )}
             </div>

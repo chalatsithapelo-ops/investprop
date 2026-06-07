@@ -24,6 +24,7 @@ import {
 import { Navbar } from "~/components/Navbar";
 import { AICopilotChat } from "~/components/AICopilotChat";
 import { AIMatchBadge } from "~/components/AIMatchBadge";
+import { AIConfidenceRating } from "~/components/AIConfidenceRating";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 import { calculateFlipMetrics, calculateRentalMetrics, calculateDevelopmentMetrics } from "~/financial-calculations";
@@ -813,6 +814,21 @@ function OpportunityDetailPage() {
           {/* Right Column — Investment Form */}
           <div className="space-y-6">
             <AIMatchBadge propertyId={Number(opportunityId)} />
+            <AIConfidenceRating propertyId={Number(opportunityId)} />
+            {property?.user?.id && (
+              <Link
+                to="/sponsors/$sponsorId"
+                params={{ sponsorId: String(property.user.id) }}
+                className="flex items-center justify-between rounded-lg border border-navy-800/50 bg-navy-900/50 px-4 py-3 text-sm text-gray-300 transition hover:border-gold-500/50 hover:text-white"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Building2 size={16} className="text-gold-500" />
+                  Sponsor track record
+                  {property.user.name ? <span className="text-gray-500">&middot; {property.user.name}</span> : null}
+                </span>
+                <ArrowLeft size={16} className="rotate-180 text-gray-500" />
+              </Link>
+            )}
             <AICopilotChat propertyId={Number(opportunityId)} />
             {isInvestor && (
               <div className="sticky top-8 space-y-4">

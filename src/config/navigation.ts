@@ -167,6 +167,13 @@ export const mainNavigationLinks: NavigationLink[] = [
     description: "Everything needing admin attention in one inbox",
   },
   {
+    label: "Distress Watchlist",
+    to: "/admin/ai-distress",
+    icon: Activity,
+    roles: ["DEVELOPMENT_MANAGER", "ADMIN"],
+    description: "AI early-warning scores for deals trending toward trouble",
+  },
+  {
     label: "Audit Log",
     to: "/admin/audit-log",
     icon: ShieldCheck,
