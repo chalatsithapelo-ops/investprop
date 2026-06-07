@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { randomUUID } from "node:crypto";
 import { env } from "~/server/env";
 
 /**
@@ -54,6 +55,7 @@ export function generateRefreshToken(
 
   const token = jwt.sign(payload, env.JWT_REFRESH_SECRET, {
     expiresIn: "7d", // 7 days
+    jwtid: randomUUID(), // unique per token so two tokens are never identical
   });
 
   // Keep DB expiry in sync with JWT expiry.
