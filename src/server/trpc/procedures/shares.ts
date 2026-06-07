@@ -823,3 +823,62 @@ export const requestCoolingOffWithdrawal = baseProcedure
       ...result,
     };
   });
+
+// ─── My Share Holdings (for direct transfer UI) ────────────────
+
+export const getMyShareHoldings = baseProcedure
+  .input(z.object({ authToken: z.string() }))
+  .query(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+
+    const holdings = await db.shareHolding.findMany({
+      where: { investorId: user.id, sharesOwned: { gt: 0 } },
+      include: {
+        shareClass: {
+          select: {
+            id: true,
+            name: true,
+            pricePerShare: true,
+            property: { select: { id: true, title: true } },
+          },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+
+    return holdings.map((h) => ({
+      shareClassId: h.shareClassId,
+      shareClassName: h.shareClass.name,
+      propertyId: h.shareClass.property.id,
+      propertyTitle: h.shareClass.property.title,
+      sharesOwned: h.sharesOwned,
+      pricePerShare: h.shareClass.pricePerShare,
+      averageCostPerShare: h.averageCostPerShare,
+    }));
+  });
+
+// ─── Look up an investor by their investor code (for transfers) ─
+// Privacy: returns only minimal identity on an EXACT code match. No enumeration,
+// no listing. Used so a sender can confirm the recipient before transferring.
+
+export const lookupInvestorByCode = baseProcedure
+  .input(z.object({ authToken: z.string(), investorCode: z.string().min(3) }))
+  .query(async ({ input }) => {
+    const caller = await getAuthenticatedUser(input.authToken);
+
+    const code = input.investorCode.trim().toUpperCase();
+    const recipient = await db.user.findFirst({
+      where: { investorCode: code, role: "INVESTOR" },
+      select: { id: true, name: true, investorCode: true },
+    });
+
+    if (!recipient) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "No investor found with that code" });
+    }
+    if (recipient.id === caller.id) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "You cannot transfer shares to yourself" });
+    }
+
+    return recipient;
+  });
+

@@ -61,7 +61,7 @@ import { reconcilePayouts, markPayoutReconciled } from "~/server/trpc/procedures
 import { getSPVs, getSPVById, createSPV, updateSPV, assignPropertyToSPV, removePropertyFromSPV } from "~/server/trpc/procedures/spv";
 import { createAcquisition, getAcquisitions, updateAcquisitionStatus } from "~/server/trpc/procedures/acquisition";
 // Fractional Ownership (Shares)
-import { createShareClass, getShareInfo, purchaseShares, transferShares, getShareLedger, getInvestorPortfolio, requestCoolingOffWithdrawal } from "~/server/trpc/procedures/shares";
+import { createShareClass, getShareInfo, purchaseShares, transferShares, getShareLedger, getInvestorPortfolio, requestCoolingOffWithdrawal, getMyShareHoldings, lookupInvestorByCode } from "~/server/trpc/procedures/shares";
 // Distribution Engine
 import { createDistribution, getDistributions, executeDistribution, getMyDistributions } from "~/server/trpc/procedures/distributions";
 // Governance & Voting
@@ -242,6 +242,8 @@ export const appRouter = createTRPCRouter({
   getShareLedger,
   getInvestorPortfolio,
   requestCoolingOffWithdrawal,
+  getMyShareHoldings,
+  lookupInvestorByCode,
   // Distribution Engine
   createDistribution,
   getDistributions,
