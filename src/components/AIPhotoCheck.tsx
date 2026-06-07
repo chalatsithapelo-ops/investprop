@@ -13,6 +13,16 @@ const VERDICT_META: Record<string, { label: string; cls: string }> = {
   RED: { label: "Not verified", cls: "bg-rose-50 text-rose-700 border-rose-200" },
 };
 
+interface PhotoFlag { category: string; description: string }
+interface PhotoCheck {
+  id: number;
+  verdict: string;
+  confidence: number;
+  narrative: string;
+  flags: PhotoFlag[];
+  generatedAt: string | Date;
+}
+
 export function AIPhotoCheck({ propertyId }: Props) {
   const trpc = useTRPC();
   const qc = useQueryClient();
@@ -26,18 +36,18 @@ export function AIPhotoCheck({ propertyId }: Props) {
     ...trpc.getPhotoChecks.queryOptions({ authToken: token ?? "", propertyId }),
     enabled: !!token,
   });
-  const checks = (q.data ?? []) as any[];
+  const checks = (q.data ?? []) as PhotoCheck[];
 
   const run = useMutation(
     trpc.verifyConstructionPhotos.mutationOptions({
-      onSuccess: (r: any) => {
+      onSuccess: (r: { verdict: string }) => {
         toast.success(`Verification: ${r.verdict}`);
-        qc.invalidateQueries({ queryKey: trpc.getPhotoChecks.queryKey({ authToken: token ?? "", propertyId }) });
+        void qc.invalidateQueries({ queryKey: trpc.getPhotoChecks.queryKey({ authToken: token ?? "", propertyId }) });
         setShowForm(false);
         setUrls("");
         setExpected("");
       },
-      onError: (e: any) => toast.error(e?.message ?? "Verification failed"),
+      onError: (e) => toast.error(e.message || "Verification failed"),
     })
   );
 
@@ -122,7 +132,7 @@ export function AIPhotoCheck({ propertyId }: Props) {
                 <p className="mt-1 text-xs leading-relaxed opacity-90">{c.narrative}</p>
                 {Array.isArray(c.flags) && c.flags.length > 0 && (
                   <ul className="mt-2 space-y-1">
-                    {c.flags.map((f: any, i: number) => (
+                    {c.flags.map((f, i) => (
                       <li key={i} className="flex items-start gap-1 text-[11px]">
                         <AlertTriangle className="mt-0.5 h-3 w-3 flex-shrink-0" />
                         <span><strong>{f.category}:</strong> {f.description}</span>

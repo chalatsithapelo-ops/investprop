@@ -19,6 +19,16 @@ const BAND_META: Record<string, { cls: string; label: string }> = {
   LOW: { cls: "border-emerald-300 bg-emerald-50 text-emerald-700", label: "Low" },
 };
 
+interface DistressRow {
+  id: number;
+  propertyId: number;
+  score: number;
+  band: string;
+  narrative: string | null;
+  generatedAt: string | Date;
+  property: { id: number; title: string; city: string } | null;
+}
+
 function AdminDistressPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
@@ -28,7 +38,7 @@ function AdminDistressPage() {
 
   useEffect(() => {
     if (!hasHydrated) return;
-    if (!user || !authToken) navigate({ to: "/login" });
+    if (!user || !authToken) void navigate({ to: "/login" });
   }, [user, authToken, hasHydrated]);
 
   const isAdmin = ADMIN_ROLES.includes(user?.role ?? "");
@@ -54,7 +64,7 @@ function AdminDistressPage() {
     );
   }
 
-  const rows = (q.data ?? []) as any[];
+  const rows = (q.data ?? []) as DistressRow[];
 
   return (
     <div className="min-h-screen bg-navy-950">

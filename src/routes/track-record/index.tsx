@@ -32,7 +32,7 @@ function PlatformTrackRecordPage() {
 
   useEffect(() => {
     if (!hasHydrated) return;
-    if (!user || !token) navigate({ to: "/login" });
+    if (!user || !token) void navigate({ to: "/login" });
   }, [user, token, hasHydrated]);
 
   const q = useQuery({
@@ -51,7 +51,7 @@ function PlatformTrackRecordPage() {
     <div className="min-h-screen bg-navy-950">
       <Navbar />
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-        <button onClick={() => navigate({ to: "/investments" })} className="mb-4 inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200">
+        <button onClick={() => { void navigate({ to: "/investments" }); }} className="mb-4 inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200">
           <ArrowLeft size={16} /> Back to opportunities
         </button>
 

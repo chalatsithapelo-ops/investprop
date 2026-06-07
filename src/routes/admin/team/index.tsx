@@ -20,6 +20,14 @@ const ROLE_LABEL: Record<string, string> = {
   PROPERTY_OWNER: "Property Owner",
 };
 
+interface TeamUser {
+  id: number;
+  name: string | null;
+  email: string;
+  role: string;
+  _count?: { properties?: number; investorContributions?: number };
+}
+
 function AdminTeamPage() {
   const trpc = useTRPC();
   const navigate = useNavigate();
@@ -29,13 +37,13 @@ function AdminTeamPage() {
 
   useEffect(() => {
     if (!hasHydrated) return;
-    if (!user || !authToken) navigate({ to: "/login" });
+    if (!user || !authToken) void navigate({ to: "/login" });
   }, [user, authToken, hasHydrated]);
 
   const isAdmin = ADMIN_ROLES.includes(user?.role ?? "");
 
   const q = useQuery({
-    ...trpc.getAllUsers.queryOptions({ authToken: authToken ?? "", role: "ALL", page: 1, limit: 200 } as any),
+    ...trpc.getAllUsers.queryOptions({ role: "ALL", page: 1, limit: 100 }),
     enabled: !!authToken && isAdmin,
   });
 
@@ -54,7 +62,7 @@ function AdminTeamPage() {
     );
   }
 
-  const allUsers = ((q.data as any)?.users ?? []) as any[];
+  const allUsers = ((q.data as { users?: TeamUser[] } | undefined)?.users ?? []);
   const team = allUsers
     .filter((u) => SPONSOR_ROLES.includes(u.role))
     .sort((a, b) => (b._count?.properties ?? 0) - (a._count?.properties ?? 0));

@@ -38,10 +38,10 @@ export function AIListingCoach({ propertyId }: Props) {
     trpc.coachListing.mutationOptions({
       onSuccess: () => {
         toast.success("Listing reviewed");
-        qc.invalidateQueries({ queryKey: trpc.getListingCoachResult.queryKey({ authToken: token ?? "", propertyId }) });
+        void qc.invalidateQueries({ queryKey: trpc.getListingCoachResult.queryKey({ authToken: token ?? "", propertyId }) });
         setOpen(true);
       },
-      onError: (e: any) => toast.error(e?.message ?? "Coach failed"),
+      onError: (e) => toast.error(e.message || "Coach failed"),
     })
   );
 
@@ -66,7 +66,7 @@ export function AIListingCoach({ propertyId }: Props) {
             </button>
           )}
           <button
-            onClick={() => run.mutate({ authToken: token!, propertyId })}
+            onClick={() => run.mutate({ authToken: token, propertyId })}
             disabled={run.isPending}
             className="inline-flex items-center gap-1.5 rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
           >

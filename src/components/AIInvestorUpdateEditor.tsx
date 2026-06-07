@@ -7,6 +7,16 @@ import toast from "react-hot-toast";
 
 type Props = { propertyId: number };
 
+interface Draft {
+  id: number;
+  status: string;
+  period: string;
+  subject: string;
+  bodyHtml: string;
+  bodyText: string;
+  sentAt: string | Date | null;
+}
+
 function currentPeriod(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -27,10 +37,10 @@ export function AIInvestorUpdateEditor({ propertyId }: Props) {
     ...trpc.listInvestorUpdates.queryOptions({ authToken: token ?? "", propertyId }),
     enabled: !!token,
   });
-  const drafts = (listQ.data ?? []) as any[];
+  const drafts = (listQ.data ?? []) as Draft[];
   const active = drafts.find((d) => d.id === activeId) ?? null;
 
-  function loadDraft(d: any) {
+  function loadDraft(d: Draft) {
     setActiveId(d.id);
     setSubject(d.subject);
     setBodyHtml(d.bodyHtml);
@@ -40,12 +50,12 @@ export function AIInvestorUpdateEditor({ propertyId }: Props) {
 
   const genM = useMutation(
     trpc.generateInvestorUpdate.mutationOptions({
-      onSuccess: (d: any) => {
+      onSuccess: (d: Draft) => {
         toast.success("Draft generated");
-        qc.invalidateQueries({ queryKey: trpc.listInvestorUpdates.queryKey({ authToken: token ?? "", propertyId }) });
+        void qc.invalidateQueries({ queryKey: trpc.listInvestorUpdates.queryKey({ authToken: token ?? "", propertyId }) });
         loadDraft(d);
       },
-      onError: (e: any) => toast.error(e?.message ?? "Generation failed"),
+      onError: (e) => toast.error(e.message || "Generation failed"),
     })
   );
 
@@ -53,20 +63,20 @@ export function AIInvestorUpdateEditor({ propertyId }: Props) {
     trpc.updateInvestorDraft.mutationOptions({
       onSuccess: () => {
         toast.success("Draft saved");
-        qc.invalidateQueries({ queryKey: trpc.listInvestorUpdates.queryKey({ authToken: token ?? "", propertyId }) });
+        void qc.invalidateQueries({ queryKey: trpc.listInvestorUpdates.queryKey({ authToken: token ?? "", propertyId }) });
       },
-      onError: (e: any) => toast.error(e?.message ?? "Save failed"),
+      onError: (e) => toast.error(e.message || "Save failed"),
     })
   );
 
   const sendM = useMutation(
     trpc.sendInvestorUpdate.mutationOptions({
-      onSuccess: (r: any) => {
+      onSuccess: (r: { sent: number; failed: number }) => {
         toast.success(`Sent to ${r.sent} investor${r.sent === 1 ? "" : "s"}${r.failed ? ` (${r.failed} failed)` : ""}`);
-        qc.invalidateQueries({ queryKey: trpc.listInvestorUpdates.queryKey({ authToken: token ?? "", propertyId }) });
+        void qc.invalidateQueries({ queryKey: trpc.listInvestorUpdates.queryKey({ authToken: token ?? "", propertyId }) });
         setConfirmSend(false);
       },
-      onError: (e: any) => toast.error(e?.message ?? "Send failed"),
+      onError: (e) => toast.error(e.message || "Send failed"),
     })
   );
 

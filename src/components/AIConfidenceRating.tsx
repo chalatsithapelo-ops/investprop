@@ -43,9 +43,9 @@ export function AIConfidenceRating({ propertyId }: Props) {
     trpc.runUnderwriting.mutationOptions({
       onSuccess: () => {
         toast.success("Independent underwriting complete");
-        qc.invalidateQueries({ queryKey: trpc.getUnderwriting.queryKey({ authToken: token ?? "", propertyId }) });
+        void qc.invalidateQueries({ queryKey: trpc.getUnderwriting.queryKey({ authToken: token ?? "", propertyId }) });
       },
-      onError: (e: any) => toast.error(e?.message ?? "Underwriting failed"),
+      onError: (e) => toast.error(e.message || "Underwriting failed"),
     })
   );
 
