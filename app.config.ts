@@ -110,6 +110,52 @@ export default createApp({
         tsConfigPaths({
           projects: ["./tsconfig.json"],
         }),
+        config("client-build-opts", {
+          build: {
+            // Split heavy, rarely-changing vendor libraries into their own
+            // chunks so the main app bundle shrinks and vendors stay cached
+            // across deploys. Silences the >500kB chunk warning too.
+            chunkSizeWarningLimit: 900,
+            rollupOptions: {
+              output: {
+                manualChunks(id: string) {
+                  if (!id.includes("node_modules")) return;
+                  // Keep the React runtime (react + react-dom + scheduler) together.
+                  if (
+                    /[\\/]react-dom[\\/]/.test(id) ||
+                    /[\\/]react[\\/]/.test(id) ||
+                    id.includes("react/jsx") ||
+                    /[\\/]scheduler[\\/]/.test(id)
+                  )
+                    return "react-vendor";
+                  if (id.includes("@tanstack")) return "tanstack";
+                  if (id.includes("lucide-react")) return "icons";
+                  if (
+                    id.includes("jspdf") ||
+                    id.includes("html2canvas") ||
+                    id.includes("canvg") ||
+                    id.includes("fflate") ||
+                    id.includes("raphael")
+                  )
+                    return "pdf";
+                  if (
+                    id.includes("@trpc") ||
+                    id.includes("superjson") ||
+                    id.includes("zod")
+                  )
+                    return "trpc";
+                  if (
+                    id.includes("react-hook-form") ||
+                    id.includes("@hookform")
+                  )
+                    return "forms";
+                  if (id.includes("markdown-to-jsx")) return "markdown";
+                  if (id.includes("qrcode")) return "qrcode";
+                },
+              },
+            },
+          },
+        }),
         TanStackRouterVite({
           target: "react",
           autoCodeSplitting: false,
