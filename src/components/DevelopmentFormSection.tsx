@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 type FormData = {
   siteAcquisitionCost: number;
@@ -65,6 +66,69 @@ const fields: { key: keyof FormData; label: string }[] = [
   { key: "buildingPlanApproval", label: "Building Plan Approval" },
 ];
 
+// Group the 25 inputs into logical accordion sections so the form is
+// scannable instead of one long wall of fields.
+const fieldGroups: { title: string; keys: (keyof FormData)[] }[] = [
+  {
+    title: "Land & Site",
+    keys: [
+      "siteAcquisitionCost",
+      "landClearingCost",
+      "infrastructureCost",
+      "landscapingCost",
+      "bulkServicesCost",
+    ],
+  },
+  {
+    title: "Construction",
+    keys: [
+      "constructionCostPerUnit",
+      "numberOfUnits",
+      "constructionDurationMonths",
+      "constructionInsurance",
+    ],
+  },
+  {
+    title: "Professional Fees",
+    keys: [
+      "architectFees",
+      "engineerFees",
+      "projectManagementFees",
+      "legalAndPermitCosts",
+    ],
+  },
+  {
+    title: "Statutory & Approvals",
+    keys: [
+      "transferDutyCost",
+      "municipalContributions",
+      "environmentalImpactCost",
+      "developmentLevies",
+      "buildingPlanApproval",
+      "performanceGuarantee",
+    ],
+  },
+  {
+    title: "Holding, Finance & Sale",
+    keys: [
+      "financingCosts",
+      "holdingCostsPerMonth",
+      "marketingCosts",
+      "salesCommissionRate",
+      "sellingPricePerUnit",
+      "contingencyPercentage",
+    ],
+  },
+];
+
+const fieldLabels: Record<keyof FormData, string> = fields.reduce(
+  (acc, f) => {
+    acc[f.key] = f.label;
+    return acc;
+  },
+  {} as Record<keyof FormData, string>,
+);
+
 function useDevelopmentCalculations(data: FormData) {
   return useMemo(() => {
     const constructionCost =
@@ -122,6 +186,18 @@ export function DevelopmentFormSection({
   onChange,
 }: DevelopmentFormSectionProps) {
   const metrics = useDevelopmentCalculations(data);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
+    fieldGroups.reduce(
+      (acc, g, i) => {
+        acc[g.title] = i === 0; // first group expanded by default
+        return acc;
+      },
+      {} as Record<string, boolean>,
+    ),
+  );
+
+  const toggleGroup = (title: string) =>
+    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
 
   return (
     <div className="space-y-6">
@@ -129,22 +205,50 @@ export function DevelopmentFormSection({
         Development Analysis Inputs
       </h3>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {fields.map(({ key, label }) => (
-          <div key={key}>
-            <label htmlFor={key} className={LABEL_CLASS}>
-              {label}
-            </label>
-            <input
-              id={key}
-              type="number"
-              className={INPUT_CLASS}
-              value={data[key]}
-              onChange={(e) => onChange(key, parseFloat(e.target.value) || 0)}
-              placeholder="0"
-            />
-          </div>
-        ))}
+      <div className="space-y-3">
+        {fieldGroups.map((group) => {
+          const isOpen = openGroups[group.title];
+          return (
+            <div
+              key={group.title}
+              className="overflow-hidden rounded-lg border border-navy-700"
+            >
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.title)}
+                aria-expanded={isOpen}
+                className="flex w-full items-center justify-between bg-navy-900/40 px-4 py-3 text-left text-sm font-semibold text-gray-700 hover:bg-navy-900/60"
+              >
+                <span>{group.title}</span>
+                <ChevronDown
+                  size={18}
+                  className={`text-gold-600 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {isOpen && (
+                <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
+                  {group.keys.map((key) => (
+                    <div key={key}>
+                      <label htmlFor={key} className={LABEL_CLASS}>
+                        {fieldLabels[key]}
+                      </label>
+                      <input
+                        id={key}
+                        type="number"
+                        className={INPUT_CLASS}
+                        value={data[key]}
+                        onChange={(e) =>
+                          onChange(key, parseFloat(e.target.value) || 0)
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Calculated Results */}
