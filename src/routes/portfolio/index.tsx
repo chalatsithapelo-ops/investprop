@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { Wallet, Building2, DollarSign, TrendingUp, PieChart } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
+import { ReferralCard } from "~/components/ReferralCard";
 import { useTRPC } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 
@@ -323,6 +324,11 @@ function PortfolioPage() {
               </table>
             </div>
           )}
+        </div>
+
+        {/* Invite / referral */}
+        <div className="mt-8">
+          <ReferralCard />
         </div>
       </div>
     </div>

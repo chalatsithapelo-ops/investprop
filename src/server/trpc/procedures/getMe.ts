@@ -14,5 +14,6 @@ export const getMe = baseProcedure
       email: user.email,
       name: user.name,
       role: user.role,
+      investorCode: user.investorCode,
     };
   });

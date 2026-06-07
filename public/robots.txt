@@ -1,0 +1,22 @@
+User-agent: *
+Allow: /$
+Allow: /login
+Allow: /register
+Allow: /sell-your-property
+
+# Application areas behind authentication — no value to crawlers
+Disallow: /dashboard
+Disallow: /admin/
+Disallow: /investments/
+Disallow: /portfolio
+Disallow: /statements
+Disallow: /tax-certificates
+Disallow: /my-documents
+Disallow: /share-marketplace
+Disallow: /share-ledger
+Disallow: /distributions
+Disallow: /payments
+Disallow: /trpc/
+Disallow: /api/
+
+Sitemap: https://investprop.io/sitemap.xml
