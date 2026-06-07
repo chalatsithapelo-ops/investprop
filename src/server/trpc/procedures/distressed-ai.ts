@@ -222,6 +222,103 @@ export const getDistressedPriceHistory = baseProcedure
     return history;
   });
 
+/** Get up to 10 comparable distressed listings in the same suburb/city (excluding the source listing).
+ *  Helps a manager see whether a price is fair vs the local market. */
+export const getDistressedComparables = baseProcedure
+  .input(z.object({ authToken: z.string(), listingId: z.number() }))
+  .query(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "ADMIN"], "Manager-only");
+
+    const subject = await db.distressedListing.findUnique({
+      where: { id: input.listingId },
+      select: { id: true, suburb: true, city: true, province: true, propertyType: true, askingPrice: true, bedrooms: true },
+    });
+    if (!subject) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Listing not found" });
+    }
+
+    // Layer 1: same suburb + similar property type
+    const sameSuburb = subject.suburb
+      ? await db.distressedListing.findMany({
+          where: {
+            id: { not: subject.id },
+            suburb: subject.suburb,
+            propertyType: subject.propertyType ?? undefined,
+            status: { in: ["ACTIVE", "SOLD", "EXPIRED"] },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+          select: {
+            id: true,
+            title: true,
+            askingPrice: true,
+            estimatedMarketValue: true,
+            propertyType: true,
+            bedrooms: true,
+            bathrooms: true,
+            suburb: true,
+            city: true,
+            status: true,
+            source: true,
+            url: true,
+            aiGrade: true,
+            createdAt: true,
+            convertedToPropertyId: true,
+          },
+        })
+      : [];
+
+    // Layer 2: same city + property type (fill if suburb is sparse)
+    const sameCity =
+      sameSuburb.length < 5
+        ? await db.distressedListing.findMany({
+            where: {
+              id: { not: subject.id },
+              city: subject.city ?? undefined,
+              propertyType: subject.propertyType ?? undefined,
+              status: { in: ["ACTIVE", "SOLD", "EXPIRED"] },
+              NOT: { id: { in: sameSuburb.map((s) => s.id) } },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 10 - sameSuburb.length,
+            select: {
+              id: true,
+              title: true,
+              askingPrice: true,
+              estimatedMarketValue: true,
+              propertyType: true,
+              bedrooms: true,
+              bathrooms: true,
+              suburb: true,
+              city: true,
+              status: true,
+              source: true,
+              url: true,
+              aiGrade: true,
+              createdAt: true,
+              convertedToPropertyId: true,
+            },
+          })
+        : [];
+
+    const comparables = [...sameSuburb, ...sameCity];
+    const prices = comparables.map((c) => Number(c.askingPrice)).filter((p) => p > 0);
+    const median = prices.length === 0 ? null : prices.sort((a, b) => a - b)[Math.floor(prices.length / 2)] ?? null;
+    const avg = prices.length === 0 ? null : prices.reduce((s, p) => s + p, 0) / prices.length;
+
+    return {
+      subject,
+      comparables,
+      summary: {
+        count: comparables.length,
+        medianAskingPrice: median,
+        avgAskingPrice: avg,
+        priceVsMedian: subject.askingPrice && median ? ((subject.askingPrice - median) / median) * 100 : null,
+      },
+    };
+  });
+
 export const promoteDistressedToProperty = baseProcedure
   .input(z.object({
     authToken: z.string(),

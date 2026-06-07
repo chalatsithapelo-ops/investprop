@@ -6,7 +6,7 @@ import {
   Building2, Home, Filter, Plus, Trash2, Eye, Gavel, Landmark,
   TrendingDown, AlertTriangle, CheckCircle2, XCircle, Loader2,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Banknote, Bed, Bath, Maximize,
-  ShieldAlert, Globe, Lock, Zap, Heart, Download, Sparkles, Send, Layers,
+  ShieldAlert, Globe, Lock, Zap, Heart, Download, Sparkles, Send, Layers, Scale,
 } from 'lucide-react';
 import { Navbar } from '~/components/Navbar';
 import { ConfirmModal } from '~/components/ConfirmModal';
@@ -89,8 +89,10 @@ function DistressedFinderPage() {
 
   const [tab, setTab] = useState<'listings' | 'sources' | 'add'>('listings');
   const [showFilters, setShowFilters] = useState(false);
+  const [view, setView] = useState<'list' | 'map'>('list');
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; title: string } | null>(null);
+  const [comparablesTarget, setComparablesTarget] = useState<{ id: number; title: string } | null>(null);
   const [filters, setFilters] = useState({
     city: 'all',
     source: 'all',
@@ -390,13 +392,30 @@ function DistressedFinderPage() {
         {tab === 'listings' && (
           <>
             {/* Filter bar */}
-            <div className="mb-4">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="inline-flex items-center gap-2 rounded-lg border border-navy-700 bg-navy-800/50 px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
               >
                 <Filter size={16} /> Filters {showFilters ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </button>
+              {/* View toggle: list vs map (geo-clustered) */}
+              <div className="inline-flex rounded-lg border border-navy-700 bg-navy-800/50 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setView('list')}
+                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${view === 'list' ? 'bg-gold-500 text-navy-950' : 'text-gray-400 hover:text-gray-100'}`}
+                >
+                  List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView('map')}
+                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${view === 'map' ? 'bg-gold-500 text-navy-950' : 'text-gray-400 hover:text-gray-100'}`}
+                >
+                  Map
+                </button>
+              </div>
             </div>
 
             {showFilters && (
@@ -473,6 +492,8 @@ function DistressedFinderPage() {
                 <h3 className="text-xl font-semibold text-gray-900">No Distressed Properties Found</h3>
                 <p className="mt-2 text-gray-500">Click "Scan All Sites Now" to search SA property websites for distressed listings, or add listings manually.</p>
               </div>
+            ) : view === 'map' ? (
+              <DistressedMapView listings={listings} />
             ) : (
               <div className="space-y-3">
                 {/* Results count bar */}
@@ -595,6 +616,13 @@ function DistressedFinderPage() {
                                   <Send size={18} />
                                 </button>
                               )}
+                              <button
+                                onClick={() => setComparablesTarget({ id: listing.id, title: listing.title })}
+                                className="rounded-lg p-2 text-gray-600 hover:text-blue-600"
+                                title="View comparable listings nearby"
+                              >
+                                <Scale size={18} />
+                              </button>
                               <button
                                 onClick={() => setDeleteTarget({ id: listing.id, title: listing.title })}
                                 className="rounded-lg p-2 text-gray-700 hover:text-red-600"
@@ -998,6 +1026,250 @@ function DistressedFinderPage() {
         tone="danger"
         loading={deleteMutation.isPending}
       />
+
+      {comparablesTarget && (
+        <DistressedComparablesModal
+          listingId={comparablesTarget.id}
+          title={comparablesTarget.title}
+          authToken={authToken ?? ''}
+          onClose={() => setComparablesTarget(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Distressed Comparables Modal ───────────────────────────────────────
+// Shows nearby comparable listings (same suburb/city + property type) to
+// help managers sanity-check an asking price before promoting to pipeline.
+
+function DistressedComparablesModal({
+  listingId,
+  title,
+  authToken,
+  onClose,
+}: {
+  listingId: number;
+  title: string;
+  authToken: string;
+  onClose: () => void;
+}) {
+  const trpc = useTRPC();
+  const { data, isLoading, isError, error } = useQuery(
+    trpc.getDistressedComparables.queryOptions({ authToken, listingId }),
+  );
+
+  const fmt = (n: number | null | undefined) =>
+    n == null ? '—' : `R${Math.round(Number(n)).toLocaleString('en-ZA')}`;
+
+  const vsMedian = data?.summary.priceVsMedian;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div
+        className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-navy-700 bg-navy-900 p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="flex items-center gap-2 text-lg font-semibold text-white">
+              <Scale size={18} className="text-blue-400" /> Comparable listings
+            </h3>
+            <p className="mt-1 text-sm text-gray-400 truncate">{title}</p>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:text-white">
+            <XCircle size={20} />
+          </button>
+        </div>
+
+        {isLoading && (
+          <div className="flex items-center justify-center gap-2 py-12 text-gray-400">
+            <Loader2 size={18} className="animate-spin" /> Finding comparables…
+          </div>
+        )}
+
+        {isError && (
+          <div className="mt-4 rounded-lg border border-red-800 bg-red-950/40 p-4 text-sm text-red-300">
+            {(error as any)?.message ?? 'Failed to load comparables.'}
+          </div>
+        )}
+
+        {data && (
+          <>
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="rounded-lg border border-navy-700 bg-navy-800/40 p-3">
+                <p className="text-xs text-gray-400">Comparables found</p>
+                <p className="mt-1 text-xl font-semibold text-white">{data.summary.count}</p>
+              </div>
+              <div className="rounded-lg border border-navy-700 bg-navy-800/40 p-3">
+                <p className="text-xs text-gray-400">Median asking</p>
+                <p className="mt-1 text-xl font-semibold text-white">{fmt(data.summary.medianAskingPrice)}</p>
+              </div>
+              <div className="rounded-lg border border-navy-700 bg-navy-800/40 p-3">
+                <p className="text-xs text-gray-400">This vs median</p>
+                <p className={`mt-1 text-xl font-semibold ${vsMedian == null ? 'text-gray-400' : vsMedian < 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  {vsMedian == null ? '—' : `${vsMedian > 0 ? '+' : ''}${vsMedian.toFixed(1)}%`}
+                </p>
+              </div>
+            </div>
+
+            {vsMedian != null && (
+              <p className="mt-3 text-sm text-gray-400">
+                {vsMedian < -5
+                  ? `Priced ${Math.abs(vsMedian).toFixed(0)}% below the local median — potential value buy.`
+                  : vsMedian > 5
+                    ? `Priced ${vsMedian.toFixed(0)}% above the local median — verify before promoting.`
+                    : 'Priced in line with the local median.'}
+              </p>
+            )}
+
+            <div className="mt-5 space-y-2">
+              {data.comparables.length === 0 && (
+                <p className="rounded-lg border border-navy-700 bg-navy-800/40 p-4 text-sm text-gray-400">
+                  No comparable listings found in the same suburb or city.
+                </p>
+              )}
+              {data.comparables.map((c: any) => (
+                <div key={c.id} className="flex items-center justify-between gap-3 rounded-lg border border-navy-700 bg-navy-800/30 p-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-white">{c.title}</p>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-gray-400">
+                      <span className="inline-flex items-center gap-1"><MapPin size={11} />{c.suburb ? `${c.suburb}, ` : ''}{c.city}</span>
+                      {c.bedrooms != null && <span>· {c.bedrooms} bed</span>}
+                      {c.aiGrade && <span className="rounded bg-navy-700 px-1.5 py-0.5 font-semibold text-gold-400">{c.aiGrade}</span>}
+                      {c.convertedToPropertyId && <span className="text-violet-400">· in pipeline</span>}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold text-white">{fmt(c.askingPrice)}</p>
+                    {c.url && (
+                      <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300">
+                        View source
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Distressed Map View ────────────────────────────────────────────────
+// Geo-aware visualisation of listings. Uses latitude/longitude when present
+// and falls back to a province-grouped bubble chart for the rest. No
+// external map dep — keeps bundle small and stays usable offline.
+function DistressedMapView({ listings }: { listings: any[] }) {
+  // South Africa bounding box (rough)
+  const SA_BOUNDS = { minLat: -34.9, maxLat: -22.0, minLng: 16.4, maxLng: 32.9 };
+  const withCoords = listings.filter((l) => Number(l.latitude) && Number(l.longitude));
+  const withoutCoords = listings.filter((l) => !(Number(l.latitude) && Number(l.longitude)));
+
+  // Province aggregation for listings without coords
+  const provinceCounts: Record<string, { count: number; aGrade: number; total: number }> = {};
+  for (const l of withoutCoords) {
+    const province = (l.province || l.city || "Unknown").trim();
+    if (!provinceCounts[province]) provinceCounts[province] = { count: 0, aGrade: 0, total: 0 };
+    provinceCounts[province].count += 1;
+    provinceCounts[province].total += Number(l.askingPrice ?? 0);
+    if (l.aiGrade === "A" || l.aiGrade === "B") provinceCounts[province].aGrade += 1;
+  }
+  const provinceEntries = Object.entries(provinceCounts).sort((a, b) => b[1].count - a[1].count);
+
+  const project = (lat: number, lng: number) => {
+    const xPct = ((lng - SA_BOUNDS.minLng) / (SA_BOUNDS.maxLng - SA_BOUNDS.minLng)) * 100;
+    const yPct = ((SA_BOUNDS.maxLat - lat) / (SA_BOUNDS.maxLat - SA_BOUNDS.minLat)) * 100;
+    return { left: `${Math.min(98, Math.max(2, xPct))}%`, top: `${Math.min(98, Math.max(2, yPct))}%` };
+  };
+
+  const gradeTone = (grade: string | null | undefined) => {
+    switch (grade) {
+      case "A": return "bg-emerald-500 border-emerald-300";
+      case "B": return "bg-lime-500 border-lime-300";
+      case "C": return "bg-amber-500 border-amber-300";
+      case "D": return "bg-orange-500 border-orange-300";
+      case "E": return "bg-red-600 border-red-300";
+      default: return "bg-blue-500 border-blue-300";
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-navy-800/50 bg-navy-900/50 p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gray-900">Geographic distribution</h3>
+        <div className="flex gap-3 text-xs">
+          <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-emerald-500" /> A</span>
+          <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-lime-500" /> B</span>
+          <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-amber-500" /> C</span>
+          <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-orange-500" /> D</span>
+          <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-red-600" /> E</span>
+          <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-blue-500" /> Unscored</span>
+        </div>
+      </div>
+
+      {/* Geo-positioned map (uses lat/lng) */}
+      {withCoords.length > 0 ? (
+        <div className="relative mb-4 h-[420px] w-full overflow-hidden rounded-lg border border-navy-700 bg-gradient-to-br from-navy-900 via-navy-950 to-navy-900">
+          {/* Simple SA outline backdrop using SVG */}
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full opacity-25">
+            <path
+              d="M5,40 Q12,30 22,32 Q35,28 45,30 Q56,28 65,35 Q75,40 85,45 Q92,55 90,70 Q85,82 70,88 Q55,93 40,88 Q25,82 15,72 Q5,60 5,40 Z"
+              fill="none"
+              stroke="#fcd34d"
+              strokeWidth="0.5"
+              strokeDasharray="1 1"
+            />
+            <text x="50" y="50" textAnchor="middle" fill="#fcd34d" fontSize="3" opacity="0.4">South Africa</text>
+          </svg>
+          {withCoords.map((l: any) => {
+            const pos = project(Number(l.latitude), Number(l.longitude));
+            return (
+              <a
+                key={l.id}
+                href={l.url || `#listing-${l.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`${l.title} · R${Number(l.askingPrice).toLocaleString("en-ZA")}${l.aiGrade ? ` · AI ${l.aiGrade}` : ""}`}
+                className={`absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow-lg transition hover:h-4 hover:w-4 ${gradeTone(l.aiGrade)}`}
+                style={pos}
+              />
+            );
+          })}
+          <p className="absolute bottom-2 right-2 rounded bg-navy-950/80 px-2 py-1 text-[10px] text-gray-400">
+            {withCoords.length} of {listings.length} have GPS coords
+          </p>
+        </div>
+      ) : (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          No GPS coordinates yet on any listings. Coordinates are stored when scrapers can extract them.
+          Aggregate view by province shown below.
+        </div>
+      )}
+
+      {/* Province-aggregated breakdown (covers listings without coords) */}
+      {provinceEntries.length > 0 && (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {provinceEntries.map(([province, stats]) => {
+            const avg = stats.count > 0 ? stats.total / stats.count : 0;
+            return (
+              <div key={province} className="rounded-lg border border-navy-700 bg-navy-800/40 p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-100">{province}</p>
+                  <span className="rounded-full bg-gold-500/20 px-2 py-0.5 text-xs font-bold text-gold-300">
+                    {stats.count}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-gray-400">
+                  Avg R{avg.toLocaleString("en-ZA", { maximumFractionDigits: 0 })} · {stats.aGrade} graded A/B
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
