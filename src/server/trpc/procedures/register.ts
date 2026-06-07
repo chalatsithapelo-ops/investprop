@@ -21,6 +21,8 @@ export const register = publicProcedure
         .regex(/[0-9]/, "Password must contain at least one digit"),
       name: z.string().min(1),
       role: z.enum(["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "CONTRACTOR"]),
+      phone: z.string().optional(),
+      companyName: z.string().optional(),
     })
   )
   .mutation(async ({ input, ctx }) => {
@@ -63,6 +65,8 @@ export const register = publicProcedure
         name: input.name,
         role: input.role,
         status,
+        phoneNumber: input.phone,
+        companyName: input.companyName,
         updatedAt: new Date(),
       },
     });

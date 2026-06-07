@@ -62,7 +62,7 @@ function DashboardPage() {
 
   // Shared queries
   const propertiesQuery = useQuery({
-    ...trpc.getProperties.queryOptions({ authToken: authToken ?? "" }),
+    ...trpc.getProperties.queryOptions({}),
     enabled: !!authToken,
     placeholderData: keepPreviousData,
   });

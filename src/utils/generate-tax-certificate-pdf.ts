@@ -186,6 +186,7 @@ export function generateTaxCertificatePDF(data: TaxCertificateData): jsPDF {
     let stripe = false;
     for (const cls of classes) {
       const row = data.summary[cls];
+      if (!row) continue;
       const meta =
         CLASSIFICATION_META[cls] ?? { label: cls, code: "IT3" };
       if (stripe) {

@@ -11,6 +11,8 @@ export const Route = createFileRoute("/admin/")({
   component: AdminPage,
 });
 
+type AssignableRole = "INVESTOR" | "DEVELOPMENT_MANAGER" | "PROJECT_MANAGER" | "PROPERTY_OWNER" | "CONTRACTOR";
+
 function AdminPage() {
   const trpc = useTRPC();
   const trpcClient = useTRPCClient();
@@ -47,17 +49,17 @@ function AdminPage() {
   const isAdmin = user?.role === "ADMIN";
 
   const statsQuery = useQuery({
-    ...trpc.getSystemStats.queryOptions({ authToken: authToken ?? "" }),
+    ...trpc.getSystemStats.queryOptions(),
     enabled: !!authToken && isManager,
   });
 
   const usersQuery = useQuery({
-    ...trpc.getAllUsers.queryOptions({ authToken: authToken ?? "" }),
+    ...trpc.getAllUsers.queryOptions({}),
     enabled: !!authToken && isManager,
   });
 
   const auditQuery = useQuery({
-    ...trpc.getAuditLogs.queryOptions({ authToken: authToken ?? "" }),
+    ...trpc.getAuditLogs.queryOptions({}),
     enabled: !!authToken && isManager,
   });
 
@@ -83,11 +85,10 @@ function AdminPage() {
     setSubmitting(true);
     try {
       await trpcClient.updateUser.mutate({
-        authToken: authToken!,
         userId: editingUser.id,
         name: editName || undefined,
         email: editEmail || undefined,
-        role: editRole || undefined,
+        role: (editRole || undefined) as AssignableRole | undefined,
       });
       toast.success("User updated successfully");
       setEditingUser(null);
@@ -105,7 +106,6 @@ function AdminPage() {
     setSubmitting(true);
     try {
       await trpcClient.resetUserPassword.mutate({
-        authToken: authToken!,
         userId: resettingUser.id,
         newPassword,
       });
@@ -124,7 +124,6 @@ function AdminPage() {
     setSubmitting(true);
     try {
       await trpcClient.deleteUser.mutate({
-        authToken: authToken!,
         userId: deletingUser.id,
       });
       toast.success("User deleted successfully");
@@ -277,10 +276,10 @@ function AdminPage() {
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2 flex-wrap">
                           {u.status === "PENDING_APPROVAL" && (
-                            <button onClick={async () => { try { await trpcClient.approveUser.mutate({ authToken: authToken!, userId: u.id }); toast.success("User approved"); queryClient.invalidateQueries({ queryKey: trpc.getAllUsers.queryKey() }); } catch (e: any) { toast.error(e.message); } }} className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2 py-1 text-xs text-white hover:bg-emerald-700 transition">Approve</button>
+                            <button onClick={async () => { try { await trpcClient.approveUser.mutate({ userId: u.id }); toast.success("User approved"); queryClient.invalidateQueries({ queryKey: trpc.getAllUsers.queryKey() }); } catch (e: any) { toast.error(e.message); } }} className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2 py-1 text-xs text-white hover:bg-emerald-700 transition">Approve</button>
                           )}
                           {u.status === "SUSPENDED" && (
-                            <button onClick={async () => { try { await trpcClient.unsuspendUser.mutate({ authToken: authToken!, userId: u.id }); toast.success("User reactivated"); queryClient.invalidateQueries({ queryKey: trpc.getAllUsers.queryKey() }); } catch (e: any) { toast.error(e.message); } }} className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2 py-1 text-xs text-white hover:bg-emerald-700 transition">Unsuspend</button>
+                            <button onClick={async () => { try { await trpcClient.unsuspendUser.mutate({ userId: u.id }); toast.success("User reactivated"); queryClient.invalidateQueries({ queryKey: trpc.getAllUsers.queryKey() }); } catch (e: any) { toast.error(e.message); } }} className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2 py-1 text-xs text-white hover:bg-emerald-700 transition">Unsuspend</button>
                           )}
                           {u.status === "ACTIVE" && u.id !== user?.id && (
                             <button onClick={() => { setSuspendingUser(u); setSuspendReason(""); }} className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-orange-600 hover:bg-orange-50 transition">Suspend</button>
@@ -450,7 +449,7 @@ function AdminPage() {
                   if (suspendReason.trim().length < 3) { toast.error("Please provide a reason"); return; }
                   setSubmitting(true);
                   try {
-                    await trpcClient.suspendUser.mutate({ authToken: authToken!, userId: suspendingUser.id, reason: suspendReason.trim() });
+                    await trpcClient.suspendUser.mutate({ userId: suspendingUser.id, reason: suspendReason.trim() });
                     toast.success("User suspended");
                     setSuspendingUser(null);
                     queryClient.invalidateQueries({ queryKey: trpc.getAllUsers.queryKey() });
@@ -509,7 +508,7 @@ function AdminPage() {
                   if (!newUserEmail || !newUserName || newUserPassword.length < 8) { toast.error("All fields required, password ≥ 8 chars"); return; }
                   setSubmitting(true);
                   try {
-                    await trpcClient.createUser.mutate({ authToken: authToken!, email: newUserEmail, name: newUserName, role: newUserRole as any, password: newUserPassword });
+                    await trpcClient.createUser.mutate({ email: newUserEmail, name: newUserName, role: newUserRole as AssignableRole, password: newUserPassword });
                     toast.success("User created");
                     setCreatingUser(false);
                     queryClient.invalidateQueries({ queryKey: trpc.getAllUsers.queryKey() });

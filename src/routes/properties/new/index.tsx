@@ -233,7 +233,7 @@ function NewPropertyPage() {
   );
 
   const initialData = selectedTemplate
-    ? { ...selectedTemplate.configuration, propertyType: type }
+    ? { ...(selectedTemplate.configuration as Record<string, unknown>), propertyType: type }
     : draftData
       ? { ...draftData, propertyType: type }
       : undefined;

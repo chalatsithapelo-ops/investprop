@@ -46,7 +46,7 @@ function DistributionsPage() {
   });
 
   const proposalsQuery = useQuery({
-    ...trpc.getProposals.queryOptions({ authToken: authToken ?? "" }),
+    ...trpc.getProposals.queryOptions({}),
     enabled: !!authToken,
   });
 
@@ -79,7 +79,8 @@ function DistributionsPage() {
       await trpcClient.createDistribution.mutate({
         authToken: authToken ?? "",
         propertyId: createForm.propertyId,
-        totalAmount: createForm.totalAmount,
+        type: "RENTAL_INCOME",
+        grossAmount: createForm.totalAmount,
         description: createForm.description,
       });
       toast.success("Distribution created successfully");
@@ -141,7 +142,7 @@ function DistributionsPage() {
       await trpcClient.castVote.mutate({
         authToken: authToken ?? "",
         proposalId,
-        support,
+        voteChoice: support ? "YES" : "NO",
       });
       toast.success(`Vote cast: ${support ? "For" : "Against"}`);
       queryClient.invalidateQueries({ queryKey: trpc.getProposals.queryKey() });

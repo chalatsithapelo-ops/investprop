@@ -302,7 +302,7 @@ export const bulkApproveUsers = baseProcedure
         "Account approved",
         "Your InvestProp account has been approved. You can now log in.",
         "SUCCESS",
-        "ACCOUNT",
+        "SYSTEM",
         id
       );
     }
@@ -369,7 +369,7 @@ export const listMyDocuments = baseProcedure
     const user = await getAuthenticatedUser(input.authToken);
     const legal = await db.legalDocument
       .findMany({
-        where: { OR: [{ generatedFor: user.id }, { userId: user.id }] },
+        where: { generatedFor: user.id },
         orderBy: { createdAt: "desc" },
       })
       .catch(() => [] as any[]);

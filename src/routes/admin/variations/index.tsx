@@ -91,7 +91,9 @@ function VariationsAdminPage() {
           emptyHint={filter === "PROPOSED" ? "No pending variations to review." : "Try a different filter."}
           isEmpty={(d: any) => !d?.variations?.length}
         >
-          {(data: any) => (
+          {(() => {
+            const data: any = listQuery.data;
+            return (
             <div className="space-y-3">
               {data.variations.map((v: any) => (
                 <div key={v.id} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -149,7 +151,8 @@ function VariationsAdminPage() {
                 </div>
               ))}
             </div>
-          )}
+          );
+          })()}
         </QueryState>
       </div>
 

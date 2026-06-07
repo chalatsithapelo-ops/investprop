@@ -68,17 +68,17 @@ function ProjectManagementPage() {
   }
 
   const propertiesQuery = useQuery({
-    ...trpc.getProperties.queryOptions({ authToken: authToken ?? "" }),
+    ...trpc.getProperties.queryOptions({}),
     enabled: !!authToken,
   });
 
   const milestonesQuery = useQuery({
-    ...trpc.getMilestones.queryOptions({ authToken: authToken ?? "", propertyId: selectedPropertyId ?? 0 }),
+    ...trpc.getMilestones.queryOptions({ propertyId: selectedPropertyId ?? 0 }),
     enabled: !!authToken && !!selectedPropertyId,
   });
 
   const risksQuery = useQuery({
-    ...trpc.getRisks.queryOptions({ authToken: authToken ?? "", propertyId: selectedPropertyId ?? 0 }),
+    ...trpc.getRisks.queryOptions({ propertyId: selectedPropertyId ?? 0 }),
     enabled: !!authToken && !!selectedPropertyId,
   });
 

@@ -16,9 +16,9 @@ export function AppropriatenessQuestionnaireModal({ open, onClose, onComplete }:
   const trpc = useTRPC();
   const token = useAuthStore((s) => s.token);
   const [form, setForm] = useState({
-    investmentExperience: "NONE" as "NONE" | "LIMITED" | "MODERATE" | "EXTENSIVE",
-    annualIncome: "",
-    netWorth: "",
+    investmentExperience: "NONE" as "NONE" | "BASIC" | "EXPERIENCED" | "PROFESSIONAL",
+    annualIncome: "UNDER_350K" as "UNDER_350K" | "350_750K" | "750K_1_5M" | "OVER_1_5M",
+    netWorth: "UNDER_500K" as "UNDER_500K" | "500K_2M" | "2M_10M" | "OVER_10M",
     understandsIlliquid: false,
     understandsLossOfCapital: false,
     understandsCoolingOff: false,
@@ -47,8 +47,8 @@ export function AppropriatenessQuestionnaireModal({ open, onClose, onComplete }:
     submitM.mutate({
       authToken: token ?? "",
       investmentExperience: form.investmentExperience,
-      annualIncome: parseFloat(form.annualIncome || "0"),
-      netWorth: parseFloat(form.netWorth || "0"),
+      annualIncome: form.annualIncome,
+      netWorth: form.netWorth,
       understandsIlliquid: form.understandsIlliquid,
       understandsLossOfCapital: form.understandsLossOfCapital,
       understandsCoolingOff: form.understandsCoolingOff,
@@ -94,14 +94,14 @@ export function AppropriatenessQuestionnaireModal({ open, onClose, onComplete }:
                 id="exp"
                 value={form.investmentExperience}
                 onChange={(e) =>
-                  setForm({ ...form, investmentExperience: e.target.value as any })
+                  setForm({ ...form, investmentExperience: e.target.value as typeof form.investmentExperience })
                 }
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
               >
                 <option value="NONE">None</option>
-                <option value="LIMITED">Limited (1–2 investments)</option>
-                <option value="MODERATE">Moderate (3–10)</option>
-                <option value="EXTENSIVE">Extensive (10+)</option>
+                <option value="BASIC">Basic (1–2 investments)</option>
+                <option value="EXPERIENCED">Experienced (3–10)</option>
+                <option value="PROFESSIONAL">Professional (10+)</option>
               </select>
             </div>
 
@@ -110,29 +110,33 @@ export function AppropriatenessQuestionnaireModal({ open, onClose, onComplete }:
                 <label htmlFor="income" className="mb-1 block text-sm font-medium text-gray-700">
                   Annual income (R)
                 </label>
-                <input
+                <select
                   id="income"
-                  type="number"
-                  min={0}
                   value={form.annualIncome}
-                  onChange={(e) => setForm({ ...form, annualIncome: e.target.value })}
+                  onChange={(e) => setForm({ ...form, annualIncome: e.target.value as typeof form.annualIncome })}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  placeholder="0"
-                />
+                >
+                  <option value="UNDER_350K">Under R350,000</option>
+                  <option value="350_750K">R350,000 – R750,000</option>
+                  <option value="750K_1_5M">R750,000 – R1.5M</option>
+                  <option value="OVER_1_5M">Over R1.5M</option>
+                </select>
               </div>
               <div>
                 <label htmlFor="net" className="mb-1 block text-sm font-medium text-gray-700">
                   Net worth (R)
                 </label>
-                <input
+                <select
                   id="net"
-                  type="number"
-                  min={0}
                   value={form.netWorth}
-                  onChange={(e) => setForm({ ...form, netWorth: e.target.value })}
+                  onChange={(e) => setForm({ ...form, netWorth: e.target.value as typeof form.netWorth })}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  placeholder="0"
-                />
+                >
+                  <option value="UNDER_500K">Under R500,000</option>
+                  <option value="500K_2M">R500,000 – R2M</option>
+                  <option value="2M_10M">R2M – R10M</option>
+                  <option value="OVER_10M">Over R10M</option>
+                </select>
               </div>
             </div>
 

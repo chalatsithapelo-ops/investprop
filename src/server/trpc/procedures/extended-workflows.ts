@@ -435,7 +435,7 @@ export const listCoolingOffContributions = baseProcedure
       id: r.id,
       propertyId: r.propertyId,
       propertyTitle: r.property?.title ?? "—",
-      amount: r.amount,
+      amount: r.contributionAmount,
       status: r.status,
       createdAt: r.createdAt,
       coolingOffExpiresAt: r.coolingOffExpiresAt,

@@ -131,13 +131,16 @@ export const getDevelopmentMetrics = baseProcedure
     // Recent activity
     const recentActivity = properties
       .filter((p) => p.budgetEntries.length > 0)
-      .map((p) => ({
-        propertyId: p.id,
-        projectName: p.propertyDevelopment!.projectName,
-        lastUpdate: p.budgetEntries[0].dateRecorded,
-        lastUpdateAmount: p.budgetEntries[0].amount,
-        lastUpdateCategory: p.budgetEntries[0].category,
-      }))
+      .map((p) => {
+        const firstEntry = p.budgetEntries[0]!;
+        return {
+          propertyId: p.id,
+          projectName: p.propertyDevelopment!.projectName,
+          lastUpdate: firstEntry.dateRecorded,
+          lastUpdateAmount: firstEntry.amount,
+          lastUpdateCategory: firstEntry.category,
+        };
+      })
       .sort(
         (a, b) =>
           new Date(b.lastUpdate).getTime() - new Date(a.lastUpdate).getTime()

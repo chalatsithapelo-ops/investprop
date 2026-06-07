@@ -23,7 +23,7 @@ function DevelopmentsPage() {
   }, [user, authToken, hasHydrated]);
 
   const propertiesQuery = useQuery({
-    ...trpc.getProperties.queryOptions({ authToken: authToken ?? "" }),
+    ...trpc.getProperties.queryOptions({}),
     enabled: !!authToken,
   });
 

@@ -1032,8 +1032,7 @@ function PaymentsPage() {
                     .filter(
                       (t) =>
                         historyFilter === "all" ||
-                        (historyFilter === "incoming" && t.type === "incoming") ||
-                        (historyFilter === "outgoing" && t.type === "outgoing")
+                        (historyFilter === "incoming" && t.type === "incoming")
                     )
                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                     .map((t) => (

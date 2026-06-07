@@ -30,7 +30,7 @@ function parseCsv(text: string): Array<{ reference: string; amount: number; paid
   const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length === 0) return [];
   // Skip header if first line contains 'reference' or 'ref' (case-insensitive)
-  const hasHeader = /reference|ref/i.test(lines[0]) && /amount/i.test(lines[0]);
+  const hasHeader = /reference|ref/i.test(lines[0]!) && /amount/i.test(lines[0]!);
   const dataLines = hasHeader ? lines.slice(1) : lines;
   const rows: Array<{ reference: string; amount: number; paidAt?: string }> = [];
   for (const line of dataLines) {

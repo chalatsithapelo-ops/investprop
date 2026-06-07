@@ -43,7 +43,7 @@ export function MilestoneCompletionModal({
         reader.onload = () => resolve(reader.result as string);
         reader.readAsDataURL(file);
       });
-      const fileBase64 = dataUri.includes(",") ? dataUri.split(",")[1] : dataUri;
+      const fileBase64 = dataUri.includes(",") ? dataUri.split(",")[1] ?? "" : dataUri;
       const result = await trpcClient.uploadFile.mutate({
         authToken,
         fileName: file.name,

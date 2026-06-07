@@ -430,6 +430,7 @@ export const runDistressedDedup = baseProcedure
       for (let j = i + 1; j < lToKey.length; j++) {
         const a = lToKey[i];
         const b = lToKey[j];
+        if (!a || !b) continue;
         if (!a.city || a.city !== b.city) continue;
         const suburbMatch = a.suburb && a.suburb === b.suburb;
         const streetMatch = a.street && b.street && a.street.length >= 4 && a.street === b.street;

@@ -46,7 +46,7 @@ function ComplianceDashboardPage() {
   });
 
   const propertiesQuery = useQuery({
-    ...trpc.getProperties.queryOptions({ authToken: authToken ?? "" }),
+    ...trpc.getProperties.queryOptions({}),
     enabled: !!authToken,
   });
 

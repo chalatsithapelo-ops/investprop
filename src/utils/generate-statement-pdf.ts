@@ -269,7 +269,7 @@ export function generateInvestorStatementPDF(data: StatementData): jsPDF {
         doc.text(money(h.averageCostPerShare).replace("R ", ""), cx.avg, y + 5);
         doc.text(money(h.pricePerShare).replace("R ", ""), cx.price, y + 5);
         doc.text(money(h.currentValue).replace("R ", ""), cx.value, y + 5);
-        doc.setTextColor(...(h.unrealizedGain >= 0 ? GREEN : RED));
+        doc.setTextColor(...(h.unrealizedGain >= 0 ? GREEN : RED) as readonly [number, number, number]);
         doc.text(money(h.unrealizedGain).replace("R ", ""), cx.gain, y + 5, {
           align: "right",
         });
@@ -395,7 +395,7 @@ export function generateInvestorStatementPDF(data: StatementData): jsPDF {
         doc.text(fmtDate(t.date), cx.date, y + 4.8);
         doc.text(doc.splitTextToSize(t.propertyTitle, 64)[0], cx.prop, y + 4.8);
         doc.text(TX_LABELS[t.transactionType] ?? t.transactionType, cx.type, y + 4.8);
-        doc.setTextColor(...(t.shares >= 0 ? GREEN : RED));
+        doc.setTextColor(...(t.shares >= 0 ? GREEN : RED) as readonly [number, number, number]);
         doc.text((t.shares >= 0 ? "+" : "") + String(t.shares), cx.shares, y + 4.8);
         doc.setTextColor(...DARK_GREY);
         doc.text(money(t.pricePerShare).replace("R ", ""), cx.price, y + 4.8);

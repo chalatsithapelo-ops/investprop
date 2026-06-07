@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+﻿import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { DollarSign, Plus, Trash2, TrendingUp, TrendingDown, BarChart3, Calendar, Building2, ShieldAlert, ArrowUpRight, ArrowDownRight } from 'lucide-react';
@@ -203,7 +203,7 @@ function PropertyFinancialsPage() {
                         authToken: authToken ?? '',
                         propertyId: selectedPropertyId!,
                         type: entryForm.type,
-                        category: entryForm.category,
+                        category: entryForm.category as 'RENTAL_INCOME' | 'SALE_PROCEEDS' | 'INTEREST_INCOME' | 'OTHER_INCOME' | 'MAINTENANCE' | 'INSURANCE' | 'PROPERTY_TAX' | 'MANAGEMENT_FEE' | 'LEGAL_FEES' | 'UTILITIES' | 'TRANSFER_DUTY' | 'CONVEYANCING' | 'RATES_AND_LEVIES' | 'OTHER_EXPENSE',
                         amount: Number(entryForm.amount),
                         description: entryForm.description || entryForm.category.replace(/_/g, ' '),
                         date: entryForm.date,

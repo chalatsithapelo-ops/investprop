@@ -114,7 +114,7 @@ describe('Token Utils', () => {
     it('should not include sensitive data in token', () => {
       const token = generateAccessToken(mockUserId);
       const parts = token.split('.');
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+      const payload = JSON.parse(Buffer.from(parts[1]!, 'base64').toString());
 
       // Ensure no password or sensitive fields
       expect(payload).not.toHaveProperty('password');
@@ -125,7 +125,7 @@ describe('Token Utils', () => {
     it('should have expiration set', () => {
       const token = generateAccessToken(mockUserId);
       const parts = token.split('.');
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+      const payload = JSON.parse(Buffer.from(parts[1]!, 'base64').toString());
 
       expect(payload).toHaveProperty('exp');
       expect(payload).toHaveProperty('iat');
@@ -140,10 +140,10 @@ describe('Token Utils', () => {
       const refreshParts = refreshToken.split('.');
 
       const accessPayload = JSON.parse(
-        Buffer.from(accessParts[1], 'base64').toString()
+        Buffer.from(accessParts[1]!, 'base64').toString()
       );
       const refreshPayload = JSON.parse(
-        Buffer.from(refreshParts[1], 'base64').toString()
+        Buffer.from(refreshParts[1]!, 'base64').toString()
       );
 
       expect(accessPayload.exp).toBeLessThan(refreshPayload.exp);

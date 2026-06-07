@@ -533,11 +533,9 @@ function aggregateOrderLevels(orders: any[]) {
   const levels: Record<number, { price: number; quantity: number; orders: number }> = {};
   for (const o of orders) {
     const remaining = o.quantity - o.filledQuantity;
-    if (!levels[o.pricePerShare]) {
-      levels[o.pricePerShare] = { price: o.pricePerShare, quantity: 0, orders: 0 };
-    }
-    levels[o.pricePerShare].quantity += remaining;
-    levels[o.pricePerShare].orders += 1;
+    const level = (levels[o.pricePerShare] ??= { price: o.pricePerShare, quantity: 0, orders: 0 });
+    level.quantity += remaining;
+    level.orders += 1;
   }
   return Object.values(levels);
 }

@@ -54,7 +54,7 @@ export const createProgressSubmission = baseProcedure
         milestoneId: input.milestoneId,
         submittedById: user.id,
         description: input.description,
-        imageUrls: input.imageUrls,
+        imageUrls: input.imageUrls ?? [],
         updatedAt: new Date(),
       },
     });

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Building, DollarSign, MapPin, Home, Plus, Trash2, Upload, X, Image as ImageIcon } from "lucide-react";
 import { useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
@@ -47,6 +47,7 @@ type PropertyFormProps = {
   isSubmitting?: boolean;
   mode?: "create" | "edit";
   defaultPropertyType?: string;
+  onFormDataChange?: (data: PropertyFormData) => void;
 };
 
 const inputClass =
@@ -56,7 +57,7 @@ const labelClass = "text-sm font-medium text-gray-600";
 
 const sectionClass = "rounded-xl border border-navy-800/50 bg-navy-900/50 p-6";
 
-export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, isSubmitting, mode, defaultPropertyType }: PropertyFormProps) {
+export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, isSubmitting, mode, defaultPropertyType, onFormDataChange }: PropertyFormProps) {
   const defaults = defaultValues ?? initialData;
   const [form, setForm] = useState<PropertyFormData>({
     title: defaults?.title ?? "",
@@ -94,6 +95,10 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
   function updateField<K extends keyof PropertyFormData>(key: K, value: PropertyFormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
+
+  useEffect(() => {
+    onFormDataChange?.(form);
+  }, [form]);
 
   function handleAddBudgetItem() {
     setForm((prev) => ({

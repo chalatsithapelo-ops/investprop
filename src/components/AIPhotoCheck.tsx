@@ -36,7 +36,7 @@ export function AIPhotoCheck({ propertyId }: Props) {
     ...trpc.getPhotoChecks.queryOptions({ authToken: token ?? "", propertyId }),
     enabled: !!token,
   });
-  const checks = (q.data ?? []) as PhotoCheck[];
+  const checks = (q.data ?? []) as unknown as PhotoCheck[];
 
   const run = useMutation(
     trpc.verifyConstructionPhotos.mutationOptions({

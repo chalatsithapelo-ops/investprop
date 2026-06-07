@@ -380,7 +380,8 @@ function MyContributionsPage() {
                         )}
                         {propertyId && (
                           <Link
-                            to={`/investments/opportunities/${propertyId}`}
+                            to="/investments/opportunities/$opportunityId"
+                            params={{ opportunityId: String(propertyId) }}
                             className="flex items-center gap-1 text-sm text-gold-600 hover:text-gold-500"
                           >
                             View

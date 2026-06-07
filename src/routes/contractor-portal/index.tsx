@@ -641,7 +641,7 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
     try {
       const reader = new FileReader();
       const dataUri = await new Promise<string>((resolve) => { reader.onload = () => resolve(reader.result as string); reader.readAsDataURL(file); });
-      const fileBase64 = dataUri.includes(",") ? dataUri.split(",")[1] : dataUri;
+      const fileBase64 = dataUri.includes(",") ? dataUri.split(",")[1] ?? "" : dataUri;
       const result = await trpcClient.uploadFile.mutate({ authToken, fileName: file.name, fileType: file.type, fileBase64 });
       setUpdateImages((prev) => [...prev, result.publicUrl]);
     } catch (e: any) {
@@ -1452,13 +1452,13 @@ function ProgressTab({ authToken }: { authToken: string }) {
   }, []);
 
   const milestonesQuery = useQuery({
-    ...trpc.getMilestones.queryOptions({ authToken, propertyId: selectedPropertyId ?? 0 }),
+    ...trpc.getMilestones.queryOptions({ propertyId: selectedPropertyId ?? 0 }),
     enabled: !!selectedPropertyId,
   });
 
   const submissionsQuery = useQuery({
-    ...trpc.getProgressSubmissions.queryOptions({ authToken, propertyId: selectedPropertyId ?? 0 }),
-    enabled: !!selectedPropertyId,
+    ...trpc.getProgressSubmissions.queryOptions({ milestoneId: form.milestoneId ?? 0 }),
+    enabled: !!selectedPropertyId && !!form.milestoneId,
   });
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1470,7 +1470,7 @@ function ProgressTab({ authToken }: { authToken: string }) {
       try {
         const reader = new FileReader();
         const base64: string = await new Promise((resolve) => {
-          reader.onload = () => resolve((reader.result as string).split(",")[1]);
+          reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
           reader.readAsDataURL(file);
         });
         const result = await (trpcClient as any).uploadFile.mutate({
@@ -1731,7 +1731,7 @@ function ProfileTab({ authToken }: { authToken: string }) {
       try {
         const reader = new FileReader();
         const base64: string = await new Promise((resolve) => {
-          reader.onload = () => resolve((reader.result as string).split(",")[1]);
+          reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
           reader.readAsDataURL(file);
         });
         const result = await (trpcClient as any).uploadFile.mutate({

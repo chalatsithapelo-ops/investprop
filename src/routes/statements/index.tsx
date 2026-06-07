@@ -49,6 +49,7 @@ function buildPeriodOptions(): PeriodOption[] {
   for (let yr = year; yr >= year - 1; yr--) {
     for (let i = quarters.length - 1; i >= 0; i--) {
       const q = quarters[i];
+      if (!q) continue;
       const start = new Date(Date.UTC(yr, q.sm, 1));
       if (start > now) continue;
       const end = new Date(Date.UTC(yr, q.em, q.ed, 23, 59, 59));
@@ -88,7 +89,7 @@ function StatementsPage() {
     if (!user || !authToken) navigate({ to: "/login" });
   }, [user, authToken, hasHydrated]);
 
-  const selected = periods[periodIdx];
+  const selected = periods[periodIdx] ?? periods[0]!;
 
   const stmtQuery = useQuery({
     ...trpc.generateInvestorStatement.queryOptions({

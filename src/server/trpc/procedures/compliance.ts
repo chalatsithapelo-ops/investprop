@@ -236,7 +236,8 @@ export const getRegulatoryChecklist = baseProcedure
     const moiDoc = await db.legalDocument.findFirst({
       where: { propertyId: property.id, documentType: "MOI" },
     });
-    checklist[3].items[2].done = !!moiDoc;
+    const moiChecklistItem = checklist[3]?.items[2];
+    if (moiChecklistItem) moiChecklistItem.done = !!moiDoc;
 
     const totalItems = checklist.flatMap((c) => c.items).filter((i) => i.required);
     const doneItems = totalItems.filter((i) => i.done);

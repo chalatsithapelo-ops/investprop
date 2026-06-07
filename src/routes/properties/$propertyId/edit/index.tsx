@@ -30,7 +30,7 @@ function EditPropertyPage() {
   }, [user, authToken, hasHydrated]);
 
   const propertyQuery = useQuery({
-    ...trpc.getPropertyById.queryOptions({ authToken: authToken ?? "", propertyId: Number(propertyId) }),
+    ...trpc.getPropertyById.queryOptions({ propertyId: Number(propertyId) }),
     enabled: !!authToken && !!propertyId,
   });
 

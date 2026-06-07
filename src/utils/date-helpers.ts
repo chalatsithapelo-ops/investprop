@@ -14,7 +14,7 @@ export function dateToFormValue(date: Date | string | null | undefined): string 
   
   try {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
-    return dateObj.toISOString().split('T')[0];
+    return dateObj.toISOString().split('T')[0] ?? '';
   } catch (error) {
     console.error('Error converting date to form value:', error);
     return '';
