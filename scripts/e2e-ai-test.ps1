@@ -58,7 +58,9 @@ Write-Host "`n=== Investprop AI E2E ($STAMP) ===`n"
 $T = @{}
 
 # ---------- LOGINS ----------
-$r = Invoke-Trpc "login" @{ email="admin@investprop.io"; password="910809Slowmo*" }
+$adminPw = $env:INVESTPROP_ADMIN_PASSWORD
+if (-not $adminPw) { Write-Host "[FATAL] Set `$env:INVESTPROP_ADMIN_PASSWORD before running this script." -ForegroundColor Red; exit 1 }
+$r = Invoke-Trpc "login" @{ email="admin@investprop.io"; password=$adminPw }
 if (-not $r.ok) { Log-Step "AUTH" "Admin login" "FAIL" $r.error; exit 1 }
 $T.AdminToken = $r.data.accessToken; $T.AdminId = $r.data.user.id
 Log-Step "AUTH" "Admin login" "PASS" "id=$($T.AdminId)"

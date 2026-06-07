@@ -76,7 +76,9 @@ Write-Host "=========================================`n"
 
 # -------- PERSONA 0: ADMIN --------
 Log-Step "ADMIN" "Login as platform admin" "INFO"
-$r = Invoke-Trpc "login" @{ email = "admin@investprop.io"; password = "910809Slowmo*" }
+$adminPw = $env:INVESTPROP_ADMIN_PASSWORD
+if (-not $adminPw) { Write-Host "[FATAL] Set `$env:INVESTPROP_ADMIN_PASSWORD before running this script." -ForegroundColor Red; exit 1 }
+$r = Invoke-Trpc "login" @{ email = "admin@investprop.io"; password = $adminPw }
 if ($r.ok -and $r.data.accessToken) {
     $TestData.AdminToken = $r.data.accessToken
     $TestData.AdminUser = $r.data.user
