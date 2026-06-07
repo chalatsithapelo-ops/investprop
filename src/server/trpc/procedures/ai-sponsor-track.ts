@@ -17,13 +17,18 @@ import { TRPCError } from "@trpc/server";
 import { generateText } from "ai";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
-import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 import { getModel, getModelId, runAIWithGuard } from "~/server/ai/client";
 
+// Internal oversight tool: per-sponsor (dev-manager) performance scorecard.
+// Investors should NOT see individual staff performance — they care about the
+// platform's aggregate record (see getPlatformTrackRecord). Restricted to
+// ADMIN / DEVELOPMENT_MANAGER.
 export const getSponsorTrackRecord = baseProcedure
   .input(z.object({ authToken: z.string(), sponsorUserId: z.number() }))
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const requester = await getAuthenticatedUser(input.authToken);
+    requireRole(requester, ["ADMIN", "DEVELOPMENT_MANAGER"]);
 
     const sponsor = await db.user.findUnique({
       where: { id: input.sponsorUserId },

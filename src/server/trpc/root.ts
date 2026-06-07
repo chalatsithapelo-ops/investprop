@@ -147,6 +147,7 @@ import { generateInvestorUpdate, updateInvestorDraft, sendInvestorUpdate, listIn
 import { startOnboardingSession, continueOnboardingSession } from "~/server/trpc/procedures/ai-onboarding";
 import { predictDistress, getLatestDistress, listDistressedPortfolio } from "~/server/trpc/procedures/ai-distress";
 import { getSponsorTrackRecord } from "~/server/trpc/procedures/ai-sponsor-track";
+import { getPlatformTrackRecord } from "~/server/trpc/procedures/platform-track";
 
 export const appRouter = createTRPCRouter({
   register,
@@ -430,6 +431,7 @@ export const appRouter = createTRPCRouter({
   getLatestDistress,
   listDistressedPortfolio,
   getSponsorTrackRecord,
+  getPlatformTrackRecord,
 });
 
 export type AppRouter = typeof appRouter;

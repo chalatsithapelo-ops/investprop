@@ -174,6 +174,13 @@ export const mainNavigationLinks: NavigationLink[] = [
     description: "AI early-warning scores for deals trending toward trouble",
   },
   {
+    label: "Team Performance",
+    to: "/admin/team",
+    icon: Users,
+    roles: ["DEVELOPMENT_MANAGER", "ADMIN"],
+    description: "Per-manager delivery scorecards for internal oversight",
+  },
+  {
     label: "Audit Log",
     to: "/admin/audit-log",
     icon: ShieldCheck,
