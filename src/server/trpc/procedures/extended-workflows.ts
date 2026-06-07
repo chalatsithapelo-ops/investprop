@@ -597,8 +597,8 @@ export const getAdminActionInbox = baseProcedure
     ] = await Promise.all([
       db.kYCDocument.findMany({
         where: { status: "PENDING" },
-        include: { user: { select: { id: true, name: true, email: true } } },
-        orderBy: { uploadedAt: "asc" },
+        include: { investor: { select: { id: true, name: true, email: true } } },
+        orderBy: { createdAt: "asc" },
         take: 25,
       }),
       db.investorContribution.findMany({
@@ -667,16 +667,16 @@ export const getAdminActionInbox = baseProcedure
       },
       pendingKyc: pendingKyc.map((d: any) => ({
         id: d.id,
-        userId: d.userId,
-        userName: d.user?.name,
-        userEmail: d.user?.email,
+        userId: d.investorId,
+        userName: d.investor?.name,
+        userEmail: d.investor?.email,
         documentType: d.documentType,
-        uploadedAt: d.uploadedAt,
-        daysWaiting: Math.floor((now.getTime() - new Date(d.uploadedAt).getTime()) / (24 * 60 * 60 * 1000)),
+        uploadedAt: d.createdAt,
+        daysWaiting: Math.floor((now.getTime() - new Date(d.createdAt).getTime()) / (24 * 60 * 60 * 1000)),
       })),
       pendingPaymentProofs: pendingPaymentProofs.map((c: any) => ({
         id: c.id,
-        amount: c.amount,
+        amount: c.contributionAmount,
         propertyTitle: c.property?.title ?? "—",
         propertyId: c.propertyId,
         investorName: c.investor?.name ?? "—",
@@ -695,7 +695,7 @@ export const getAdminActionInbox = baseProcedure
       })),
       coolingOff: coolingOff.map((c: any) => ({
         id: c.id,
-        amount: c.amount,
+        amount: c.contributionAmount,
         propertyTitle: c.property?.title ?? "—",
         investorName: c.investor?.name ?? "—",
         coolingOffExpiresAt: c.coolingOffExpiresAt,
@@ -715,7 +715,7 @@ export const getAdminActionInbox = baseProcedure
       })),
       pendingDistributions: pendingDistributions.map((d: any) => ({
         id: d.id,
-        amount: d.totalAmount ?? d.amount ?? 0,
+        amount: d.netAmount ?? d.grossAmount ?? 0,
         propertyTitle: d.property?.title ?? "—",
         propertyId: d.propertyId,
         type: d.type,
