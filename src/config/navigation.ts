@@ -34,6 +34,7 @@ import {
   Database,
   GitBranch,
   Inbox,
+  Receipt,
 } from "lucide-react";
 
 /**
@@ -296,6 +297,13 @@ export const mainNavigationLinks: NavigationLink[] = [
     icon: FolderOpen,
     roles: ["INVESTOR"],
     description: "Access your share certificates, tax certs, and SPV documents",
+  },
+  {
+    label: "Tax Certificates",
+    to: "/tax-certificates",
+    icon: Receipt,
+    roles: ["INVESTOR"],
+    description: "Download your annual IT3 income summary for SARS filing",
   },
   {
     label: "Payments",
