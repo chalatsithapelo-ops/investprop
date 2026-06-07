@@ -1142,8 +1142,8 @@ function DistressedComparablesModal({
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-semibold text-white">{fmt(c.askingPrice)}</p>
-                    {c.url && (
-                      <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300">
+                    {c.sourceUrl && (
+                      <a href={c.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300">
                         View source
                       </a>
                     )}
