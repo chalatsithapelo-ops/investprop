@@ -4,6 +4,7 @@ import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { TRPCError } from "@trpc/server";
 import { createNotification } from "./notifications";
+import { ensureShareHoldingForContribution } from "./share-certificates";
 
 // ─── Create Distribution ──────────────────────────────────────
 
@@ -47,6 +48,21 @@ export const createDistribution = baseProcedure
 
     if (!property) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Property not found" });
+    }
+
+    // Reconcile: materialise ShareHoldings for any PAID contributions that
+    // don't yet have one (e.g. paid before holdings were auto-created), so
+    // distributions reflect every investor who has actually funded.
+    const paidContributions = await db.investorContribution.findMany({
+      where: { propertyId: input.propertyId, paymentStatus: "PAID" },
+      select: { id: true },
+    });
+    for (const c of paidContributions) {
+      try {
+        await ensureShareHoldingForContribution(c.id);
+      } catch (err) {
+        console.error("Failed to reconcile share holding:", err);
+      }
     }
 
     // Get all share holdings for this property

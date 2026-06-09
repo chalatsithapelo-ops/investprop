@@ -178,12 +178,9 @@ function LandingPage() {
         <div className="mx-auto max-w-3xl text-center text-xs text-gray-500">
           <p className="text-sm">&copy; {new Date().getFullYear()} Investprop. All rights reserved.</p>
           <p className="mt-3 leading-relaxed">
-            <strong>Risk warning &amp; disclosure.</strong> Investprop is a financial services
-            platform currently preparing its FSCA licensing application. We are not yet a
-            licensed Financial Services Provider under the Financial Advisory and Intermediary
-            Services Act (FAIS). Investments in property carry risk including loss of capital;
-            past performance is not indicative of future returns. Projected yields are estimates
-            only and not guaranteed. Investors should obtain independent financial advice.
+            Investprop facilitates property co-investments. Investors make their own decisions
+            after their own research. Projected yields are estimates, and every deal includes a
+            cooling-off period.
           </p>
         </div>
       </footer>

@@ -129,34 +129,34 @@ function InvestmentOpportunitiesPage() {
             <div className="flex items-start gap-3 rounded-lg bg-navy-900/60 p-3">
               <FileSearch className="mt-0.5 flex-shrink-0 text-gold-400" size={20} />
               <div>
-                <p className="text-sm font-semibold text-gray-100">1. Review the deal</p>
-                <p className="mt-0.5 text-xs text-gray-400">Open the offer pack, financials, risk rating and exit plan.</p>
+                <p className="text-sm font-semibold text-gray-900">1. Review the deal</p>
+                <p className="mt-0.5 text-xs text-gray-600">Open the offer pack, financials, risk rating and exit plan.</p>
               </div>
             </div>
             <div className="flex items-start gap-3 rounded-lg bg-navy-900/60 p-3">
               <CheckCircle2 className="mt-0.5 flex-shrink-0 text-gold-400" size={20} />
               <div>
-                <p className="text-sm font-semibold text-gray-100">2. Confirm suitability</p>
-                <p className="mt-0.5 text-xs text-gray-400">Pass FICA + quick appropriateness questionnaire (once).</p>
+                <p className="text-sm font-semibold text-gray-900">2. Confirm suitability</p>
+                <p className="mt-0.5 text-xs text-gray-600">Pass FICA + quick appropriateness questionnaire (once).</p>
               </div>
             </div>
             <div className="flex items-start gap-3 rounded-lg bg-navy-900/60 p-3">
               <Wallet className="mt-0.5 flex-shrink-0 text-gold-400" size={20} />
               <div>
-                <p className="text-sm font-semibold text-gray-100">3. Fund &amp; commit</p>
-                <p className="mt-0.5 text-xs text-gray-400">EFT into the ring-fenced trust account. 5-day cooling-off period.</p>
+                <p className="text-sm font-semibold text-gray-900">3. Fund &amp; commit</p>
+                <p className="mt-0.5 text-xs text-gray-600">EFT into the ring-fenced trust account. 5-day cooling-off period.</p>
               </div>
             </div>
             <div className="flex items-start gap-3 rounded-lg bg-navy-900/60 p-3">
               <PiggyBank className="mt-0.5 flex-shrink-0 text-gold-400" size={20} />
               <div>
-                <p className="text-sm font-semibold text-gray-100">4. Earn &amp; track</p>
-                <p className="mt-0.5 text-xs text-gray-400">Distributions paid to your bank. Sell on the secondary market.</p>
+                <p className="text-sm font-semibold text-gray-900">4. Earn &amp; track</p>
+                <p className="mt-0.5 text-xs text-gray-600">Distributions paid to your bank. Sell on the secondary market.</p>
               </div>
             </div>
           </div>
           <p className="mt-3 text-xs text-gray-500">
-            <strong className="text-gray-400">Heads-up:</strong> property is illiquid and returns aren't guaranteed. Read each deal's risk warning before investing.
+            <strong className="text-gray-700">Good to know:</strong> property is a medium-to-long-term, illiquid asset. Review each deal pack before investing.
           </p>
         </div>
 

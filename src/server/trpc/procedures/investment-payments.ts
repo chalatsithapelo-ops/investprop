@@ -6,7 +6,7 @@ import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 import { createNotification } from "./notifications";
 import { createAuditLog } from "./audit-log";
 import { env } from "~/server/env";
-import { issueCertificate } from "./share-certificates";
+import { issueCertificate, ensureShareHoldingForContribution } from "./share-certificates";
 
 // ═══════════════════════════════════════════════════════════════
 //  Investment Payment Flow
@@ -145,6 +145,16 @@ async function confirmPaymentAndUpdateFunding(
   } catch (err) {
     // Log but don't fail — certificate can be issued later
     console.error("Failed to auto-issue certificate:", err);
+  }
+
+  // Materialise the investor's ShareHolding so distributions can be created.
+  // (The contribution and the ShareHolding ledger are two views of the same
+  // ownership; the distribution engine reads ShareHolding.)
+  try {
+    await ensureShareHoldingForContribution(contributionId);
+  } catch (err) {
+    // Log but don't fail — holding can be reconciled later
+    console.error("Failed to create share holding:", err);
   }
 
   // Notify managers

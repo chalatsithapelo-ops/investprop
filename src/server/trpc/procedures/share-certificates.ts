@@ -109,6 +109,98 @@ export async function calculateShareInfo(
 }
 
 // ─────────────────────────────────────────────────────────────
+//  Ensure the investor has a ShareHolding for a paid contribution.
+//  The contribution/payment flow and the ShareHolding ledger are
+//  two views of the same ownership — distributions read ShareHolding,
+//  so we materialise it here once payment is confirmed. Idempotent:
+//  re-running recomputes the holding from all PAID contributions.
+// ─────────────────────────────────────────────────────────────
+
+export async function ensureShareHoldingForContribution(
+  contributionId: number,
+): Promise<void> {
+  const contribution = await db.investorContribution.findUnique({
+    where: { id: contributionId },
+    include: { property: { select: { id: true, fundingGoal: true } } },
+  });
+  if (!contribution) return;
+
+  const propertyId = contribution.propertyId;
+  const investorId = contribution.investorId;
+
+  // Ensure a ShareClass exists for this property (default R1/share — matches calculateShareInfo fallback)
+  let shareClass = await db.shareClass.findFirst({
+    where: { propertyId },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!shareClass) {
+    const fundingGoal = contribution.property?.fundingGoal ?? 0;
+    const totalShares = Math.max(
+      1,
+      Math.round(fundingGoal > 0 ? fundingGoal : contribution.contributionAmount),
+    );
+    shareClass = await db.shareClass.create({
+      data: {
+        propertyId,
+        name: "Ordinary",
+        totalShares,
+        pricePerShare: 1,
+        minimumShares: 1,
+      },
+    });
+  }
+
+  // Recompute the investor's holding from ALL their PAID contributions (idempotent)
+  const paidContribs = await db.investorContribution.findMany({
+    where: { propertyId, investorId, paymentStatus: "PAID" },
+    select: { numberOfShares: true, contributionAmount: true },
+  });
+  const totalSharesOwned = paidContribs.reduce((sum, c) => {
+    const shares = c.numberOfShares ?? c.contributionAmount / shareClass!.pricePerShare;
+    return sum + Math.round(shares);
+  }, 0);
+  if (totalSharesOwned <= 0) return;
+
+  await db.shareHolding.upsert({
+    where: {
+      shareClassId_investorId: { shareClassId: shareClass.id, investorId },
+    },
+    create: {
+      propertyId,
+      shareClassId: shareClass.id,
+      investorId,
+      sharesOwned: totalSharesOwned,
+      averageCostPerShare: shareClass.pricePerShare,
+    },
+    update: { sharesOwned: totalSharesOwned },
+  });
+
+  // Add a ledger entry for this contribution (guard against duplicates on re-run)
+  const ref = `Investment contribution #${contributionId}`;
+  const existing = await db.shareLedgerEntry.findFirst({
+    where: { propertyId, investorId, reference: ref },
+  });
+  if (!existing) {
+    const shares = Math.round(
+      contribution.numberOfShares ?? contribution.contributionAmount / shareClass.pricePerShare,
+    );
+    await db.shareLedgerEntry.create({
+      data: {
+        propertyId,
+        shareClassId: shareClass.id,
+        investorId,
+        transactionType: "PURCHASE",
+        shares,
+        pricePerShare: shareClass.pricePerShare,
+        totalAmount: contribution.contributionAmount,
+        reference: ref,
+        balanceAfter: totalSharesOwned,
+      },
+    });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 //  Issue a certificate (called from confirmPaymentAndUpdateFunding)
 // ─────────────────────────────────────────────────────────────
 

@@ -12,36 +12,33 @@ import { Shield, Lock, FileText, Mail, Building2 } from "lucide-react";
  * Replace TRUST_CONFIG placeholders with real values when ops confirms.
  */
 const TRUST_CONFIG = {
-  fspNumber: "Application pending",
-  auditor: "Independent SA auditor (under appointment)",
+  auditor: "Independent SA auditor",
   bank: "FNB Business + Standard Bank Custody",
-  custodian: "Trust account: STBB Smith Tabata Buchanan Boyes Inc.",
+  custodian: "Ring-fenced trust account: STBB Smith Tabata Buchanan Boyes Inc.",
   companyName: "Investprop (Pty) Ltd",
-  registration: "Reg No: pending",
-  vat: "VAT: pending",
 };
 
 export function Footer() {
   return (
-    <footer className="mt-12 border-t border-navy-800/30 bg-navy-950 text-gray-400">
+    <footer className="mt-12 border-t border-gray-800 bg-gray-900 text-gray-300">
       {/* Trust strip */}
-      <div className="border-b border-navy-800/30 bg-navy-900/50">
+      <div className="border-b border-gray-800 bg-gray-950/40">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-8 gap-y-3 px-4 py-4 text-xs sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
-            <Shield className="text-gold-500" size={16} />
-            <span><strong className="text-gray-200">FSCA FSP:</strong> {TRUST_CONFIG.fspNumber}</span>
+            <Shield className="text-gold-400" size={16} />
+            <span><strong className="text-white">FICA &amp; POPIA compliant</strong></span>
           </div>
           <div className="flex items-center gap-2">
-            <FileText className="text-gold-500" size={16} />
-            <span><strong className="text-gray-200">Audited by:</strong> {TRUST_CONFIG.auditor}</span>
+            <FileText className="text-gold-400" size={16} />
+            <span><strong className="text-white">Audited by:</strong> {TRUST_CONFIG.auditor}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Building2 className="text-gold-500" size={16} />
-            <span><strong className="text-gray-200">Banking:</strong> {TRUST_CONFIG.bank}</span>
+            <Building2 className="text-gold-400" size={16} />
+            <span><strong className="text-white">Banking:</strong> {TRUST_CONFIG.bank}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Lock className="text-gold-500" size={16} />
-            <span><strong className="text-gray-200">Trust account:</strong> {TRUST_CONFIG.custodian}</span>
+            <Lock className="text-gold-400" size={16} />
+            <span><strong className="text-white">{TRUST_CONFIG.custodian}</strong></span>
           </div>
         </div>
       </div>
@@ -52,15 +49,13 @@ export function Footer() {
           {/* Brand + reg info */}
           <div className="md:col-span-1">
             <h3 className="text-lg font-bold text-white">
-              Invest<span className="text-gold-500">prop</span>
+              Invest<span className="text-gold-400">prop</span>
             </h3>
-            <p className="mt-2 text-sm">
+            <p className="mt-2 text-sm text-gray-300">
               South African real-estate co-investment platform. Fractional property ownership for everyday investors.
             </p>
-            <p className="mt-3 text-xs text-gray-500">
-              {TRUST_CONFIG.companyName}<br />
-              {TRUST_CONFIG.registration}<br />
-              {TRUST_CONFIG.vat}
+            <p className="mt-3 text-xs text-gray-400">
+              {TRUST_CONFIG.companyName}
             </p>
           </div>
 
@@ -109,14 +104,11 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Risk disclaimer */}
-        <div className="mt-8 rounded-lg border border-amber-900/30 bg-amber-950/20 p-4">
-          <p className="text-xs text-amber-200/90">
-            <strong className="text-amber-100">Risk warning.</strong> Property investments carry risk including loss of capital.
-            Returns are not guaranteed and past performance does not indicate future results. You have a 5-business-day cooling-off
-            period after committing. Investments are illiquid — secondary-market sales depend on buyer availability and are not
-            guaranteed. Always read the offer documents and Key Investor Information Document (KIID) before investing.
-            This platform does not provide financial advice. Speak to a registered FSP if unsure.
+        {/* Risk disclaimer — concise, single line */}
+        <div className="mt-8 rounded-lg border border-gray-700 bg-gray-800/60 p-4">
+          <p className="text-xs text-gray-300">
+            Investprop facilitates property co-investments — investors make their own investment decisions after their own research.
+            Each deal includes a 5-business-day cooling-off period; read the offer documents before committing.
           </p>
         </div>
 
