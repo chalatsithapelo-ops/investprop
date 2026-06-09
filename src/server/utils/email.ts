@@ -98,6 +98,82 @@ export async function sendEmail(
   }
 }
 
+export interface BatchEmailItem {
+  to: EmailRecipient;
+  subject: string;
+  htmlContent: string;
+  textContent: string;
+}
+
+/**
+ * Send many emails efficiently using Resend's batch endpoint
+ * (https://resend.com/docs/api-reference/emails/send-batch-emails).
+ *
+ * Resend rate-limits individual sends (default 2 req/s), so firing one request
+ * per recipient in parallel trips "Too Many Requests". The batch endpoint accepts
+ * up to 100 messages per request, so we chunk into batches of 100 and pace the
+ * requests to stay within the rate limit.
+ *
+ * @returns the number of emails successfully accepted by Resend.
+ */
+export async function sendBatchEmails(items: BatchEmailItem[]): Promise<number> {
+  if (items.length === 0) return 0;
+
+  // Check if email service is configured
+  if (!env.EMAIL_SERVICE_API_KEY || !env.EMAIL_FROM_ADDRESS) {
+    console.log(`⚠️  Email service not configured. ${items.length} email(s) would be sent.`);
+    return 0;
+  }
+
+  const from = env.EMAIL_FROM_NAME
+    ? `${env.EMAIL_FROM_NAME} <${env.EMAIL_FROM_ADDRESS}>`
+    : env.EMAIL_FROM_ADDRESS;
+
+  const BATCH_SIZE = 100;
+  let accepted = 0;
+
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const chunk = items.slice(i, i + BATCH_SIZE);
+
+    try {
+      const response = await fetch("https://api.resend.com/emails/batch", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.EMAIL_SERVICE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(
+          chunk.map((item) => ({
+            from,
+            to: [item.to.email],
+            subject: item.subject,
+            html: item.htmlContent,
+            text: item.textContent,
+          }))
+        ),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Failed to send batch email:", errorData);
+      } else {
+        const result = await response.json();
+        accepted += Array.isArray(result.data) ? result.data.length : chunk.length;
+        console.log(`✅ Batch email sent: ${chunk.length} message(s)`);
+      }
+    } catch (error) {
+      console.error("Error sending batch email:", error);
+    }
+
+    // Pace requests when there is more than one batch (stay under 2 req/s).
+    if (i + BATCH_SIZE < items.length) {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    }
+  }
+
+  return accepted;
+}
+
 /**
  * Send email notification when an investment reaches a milestone
  */
@@ -243,12 +319,13 @@ Investprop
 }
 
 /**
- * Send email notification when a new investment opportunity matching investor interests becomes available
+ * Build the subject/html/text for a new-opportunity email (without sending).
+ * Shared by the single-send and batch-send paths.
  */
-export async function sendNewOpportunityNotification(
+export function buildNewOpportunityEmail(
   recipient: EmailRecipient,
   data: NewOpportunityEmailData
-): Promise<void> {
+): { subject: string; htmlContent: string; textContent: string } {
   const subject = `New Investment Opportunity: ${data.propertyTitle}`;
 
   const textContent = `
@@ -320,6 +397,17 @@ Investprop
 </html>
   `.trim();
 
+  return { subject, htmlContent, textContent };
+}
+
+/**
+ * Send email notification when a new investment opportunity matching investor interests becomes available
+ */
+export async function sendNewOpportunityNotification(
+  recipient: EmailRecipient,
+  data: NewOpportunityEmailData
+): Promise<void> {
+  const { subject, htmlContent, textContent } = buildNewOpportunityEmail(recipient, data);
   await sendEmail(recipient, subject, htmlContent, textContent);
 }
 
@@ -398,12 +486,13 @@ Investprop
 }
 
 /**
- * Send a general announcement email broadcast by an admin or development manager.
+ * Build the subject/html/text for an announcement email (without sending).
+ * Shared by the single-send and batch-send paths.
  */
-export async function sendAnnouncementEmail(
+export function buildAnnouncementEmail(
   recipient: EmailRecipient,
   data: AnnouncementEmailData
-): Promise<void> {
+): { subject: string; htmlContent: string; textContent: string } {
   const subject = data.title;
 
   // Preserve author line breaks in the plain-text and HTML versions.
@@ -454,5 +543,16 @@ Investprop
 </html>
   `.trim();
 
+  return { subject, htmlContent, textContent };
+}
+
+/**
+ * Send a general announcement email broadcast by an admin or development manager.
+ */
+export async function sendAnnouncementEmail(
+  recipient: EmailRecipient,
+  data: AnnouncementEmailData
+): Promise<void> {
+  const { subject, htmlContent, textContent } = buildAnnouncementEmail(recipient, data);
   await sendEmail(recipient, subject, htmlContent, textContent);
 }

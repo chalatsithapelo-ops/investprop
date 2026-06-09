@@ -3,7 +3,7 @@ import type { UserRole } from "@prisma/client";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
-import { sendAnnouncementEmail } from "~/server/utils/email";
+import { buildAnnouncementEmail, sendBatchEmails } from "~/server/utils/email";
 
 /**
  * Map a target audience to the set of user roles that should receive the announcement.
@@ -78,22 +78,27 @@ export const broadcastAnnouncement = baseProcedure
       })),
     });
 
-    // 2) Email broadcast (optional, best-effort per recipient).
+    // 2) Email broadcast (optional, sent via Resend's batch endpoint to respect rate limits).
     let emailsSent = 0;
     if (input.sendEmail) {
-      const results = await Promise.allSettled(
-        recipients.map((r) =>
-          sendAnnouncementEmail(
+      emailsSent = await sendBatchEmails(
+        recipients.map((r) => {
+          const { subject, htmlContent, textContent } = buildAnnouncementEmail(
             { email: r.email, name: r.name },
             {
               title: input.title,
               message: input.message,
               senderName: sender.name,
             }
-          )
-        )
+          );
+          return {
+            to: { email: r.email, name: r.name },
+            subject,
+            htmlContent,
+            textContent,
+          };
+        })
       );
-      emailsSent = results.filter((res) => res.status === "fulfilled").length;
     }
 
     return {

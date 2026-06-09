@@ -1,5 +1,9 @@
 import { db } from "~/server/db";
-import { sendNewOpportunityNotification, sendProgressSubmissionNotification as sendProgressSubmissionEmail } from "~/server/utils/email";
+import {
+  buildNewOpportunityEmail,
+  sendBatchEmails,
+  sendProgressSubmissionNotification as sendProgressSubmissionEmail,
+} from "~/server/utils/email";
 
 interface PropertyNotificationData {
   propertyId: number;
@@ -158,13 +162,10 @@ export async function notifyMatchingInvestors(
         console.error("Failed to create in-app opportunity notifications:", error);
       });
 
-    // Send email to each matching investor (non-blocking, errors swallowed per-recipient).
-    const emailPromises = matchingInvestors.map((investor) =>
-      sendNewOpportunityNotification(
-        {
-          email: investor.email,
-          name: investor.name,
-        },
+    // Send emails via Resend's batch endpoint (respects rate limits).
+    const emailItems = matchingInvestors.map((investor) => {
+      const { subject, htmlContent, textContent } = buildNewOpportunityEmail(
+        { email: investor.email, name: investor.name },
         {
           propertyTitle: propertyData.title,
           propertyId: propertyData.propertyId,
@@ -175,16 +176,17 @@ export async function notifyMatchingInvestors(
           state: propertyData.state,
           investmentStatus: propertyData.investmentStatus,
         }
-      ).catch((error) => {
-        console.error(
-          `Failed to send new opportunity notification to ${investor.email}:`,
-          error
-        );
-      })
-    );
+      );
+      return {
+        to: { email: investor.email, name: investor.name },
+        subject,
+        htmlContent,
+        textContent,
+      };
+    });
 
-    await Promise.all(emailPromises);
-    console.log(`Successfully sent notifications to ${matchingInvestors.length} investor(s)`);
+    const accepted = await sendBatchEmails(emailItems);
+    console.log(`Successfully sent ${accepted} opportunity email(s) to ${matchingInvestors.length} investor(s)`);
   } catch (error) {
     console.error("Error in notifyMatchingInvestors:", error);
     // Don't throw - we don't want to block the main operation if notifications fail
