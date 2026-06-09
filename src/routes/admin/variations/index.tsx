@@ -93,6 +93,7 @@ function VariationsAdminPage() {
         >
           {(() => {
             const data: any = listQuery.data;
+            if (!data?.variations) return null;
             return (
             <div className="space-y-3">
               {data.variations.map((v: any) => (
