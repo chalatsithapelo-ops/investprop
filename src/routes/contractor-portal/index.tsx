@@ -1534,8 +1534,8 @@ function ProgressTab({ authToken }: { authToken: string }) {
     }
   };
 
-  const milestones = Array.isArray(milestonesQuery.data) ? milestonesQuery.data : [];
-  const submissions = Array.isArray(submissionsQuery.data) ? submissionsQuery.data : [];
+  const milestones = milestonesQuery.data?.milestones ?? [];
+  const submissions = submissionsQuery.data?.submissions ?? [];
 
   return (
     <div className="space-y-4">
