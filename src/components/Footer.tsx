@@ -91,11 +91,11 @@ export function Footer() {
             <ul className="mt-3 space-y-2 text-sm">
               <li className="flex items-center gap-2">
                 <Mail size={14} />
-                <a href="mailto:support@investprop.co.za" className="hover:text-gold-400">support@investprop.co.za</a>
+                <a href="mailto:support@investprop.io" className="hover:text-gold-400">support@investprop.io</a>
               </li>
               <li className="flex items-center gap-2">
                 <Mail size={14} />
-                <a href="mailto:compliance@investprop.co.za" className="hover:text-gold-400">compliance@investprop.co.za</a>
+                <a href="mailto:compliance@investprop.io" className="hover:text-gold-400">compliance@investprop.io</a>
               </li>
             </ul>
             <p className="mt-3 text-xs text-gray-500">
