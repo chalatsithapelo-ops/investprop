@@ -296,12 +296,12 @@ function DistributionsPage() {
                     <div className="flex items-center gap-3">
                       <div
                         className={`rounded-lg p-2 ${
-                          dist.status === "EXECUTED"
+                          dist.status === "EXECUTED" || dist.status === "DISTRIBUTED"
                             ? "bg-emerald-50"
                             : "bg-gold-50"
                         }`}
                       >
-                        {dist.status === "EXECUTED" ? (
+                        {dist.status === "EXECUTED" || dist.status === "DISTRIBUTED" ? (
                           <CheckCircle className="text-emerald-600" size={20} />
                         ) : (
                           <Clock className="text-gold-600" size={20} />
@@ -321,11 +321,11 @@ function DistributionsPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold text-gray-900">
-                        R{Number(dist.totalAmount ?? dist.amount ?? 0).toLocaleString()}
+                        R{Number(dist.totalAmount ?? dist.amount ?? dist.netAmount ?? dist.grossAmount ?? 0).toLocaleString()}
                       </p>
                       <span
                         className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                          dist.status === "EXECUTED"
+                          dist.status === "EXECUTED" || dist.status === "DISTRIBUTED"
                             ? "bg-emerald-50 text-emerald-600"
                             : dist.status === "PENDING"
                               ? "bg-gold-50 text-gold-600"
