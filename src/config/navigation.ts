@@ -209,6 +209,13 @@ export const mainNavigationLinks: NavigationLink[] = [
     description: "Review and approve contractor variation orders",
   },
   {
+    label: "Announcements",
+    to: "/admin/announcements",
+    icon: Send,
+    roles: ["DEVELOPMENT_MANAGER", "ADMIN"],
+    description: "Broadcast an announcement to investors and owners via in-app and email",
+  },
+  {
     label: "POPIA Subject Access",
     to: "/admin/popia-sar",
     icon: Database,

@@ -57,6 +57,7 @@ import { getAllUsers, getUserById, updateUser, deleteUser, resetUserPassword, ge
 import { uploadFile } from "~/server/trpc/procedures/uploadFile";
 import { cancelContributionDuringCoolingOff, screenSanctions, generateTaxCertificate, generateInvestmentReceipt } from "~/server/trpc/procedures/investor-compliance";
 import { reconcilePayouts, markPayoutReconciled } from "~/server/trpc/procedures/reconciliation";
+import { broadcastAnnouncement } from "~/server/trpc/procedures/broadcastAnnouncement";
 // SPV & Acquisition Pipeline
 import { getSPVs, getSPVById, createSPV, updateSPV, assignPropertyToSPV, removePropertyFromSPV } from "~/server/trpc/procedures/spv";
 import { createAcquisition, getAcquisitions, updateAcquisitionStatus } from "~/server/trpc/procedures/acquisition";
@@ -227,6 +228,7 @@ export const appRouter = createTRPCRouter({
   generateInvestmentReceipt,
   reconcilePayouts,
   markPayoutReconciled,
+  broadcastAnnouncement,
   // SPV & Acquisition Pipeline
   getSPVs,
   getSPVById,

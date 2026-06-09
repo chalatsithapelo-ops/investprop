@@ -4,8 +4,9 @@ import { sendNewOpportunityNotification, sendProgressSubmissionNotification as s
 interface PropertyNotificationData {
   propertyId: number;
   title: string;
-  propertyType: "flip" | "rental" | "development";
-  developmentType?: "AFFORDABLE_RESALE" | "AFFORDABLE_RENTAL" | "COMMERCIAL_RENTAL";
+  /** "flip" | "rental" | "development" — derived from the related property model */
+  propertyType: string;
+  developmentType?: string;
   price: number;
   address: string;
   city: string;
@@ -13,11 +14,91 @@ interface PropertyNotificationData {
   investmentStatus: string;
 }
 
+interface InvestorPreferences {
+  preferredPropertyTypes?: string[];
+  propertyTypes?: string[];
+  developmentTypes?: string[];
+  preferredLocations?: string[];
+  preferredCities?: string[];
+  preferredStates?: string[];
+  notificationsEnabled?: boolean;
+}
+
+/** Normalise a string for loose, case-insensitive comparison. */
+function norm(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 /**
- * Notify investors about new investment opportunities that match their preferences
+ * Decide whether a property matches an investor's stated preferences.
+ * Rules:
+ *  - If the investor has explicitly disabled notifications, never match.
+ *  - If a preference category is empty/unset, it does not restrict (treated as "any").
+ *  - Property-type preferences are matched loosely (substring either direction) so the
+ *    human-friendly UI labels (e.g. "Residential", "Affordable Housing") still match the
+ *    underlying property/development type keys ("flip" | "rental" | "development").
+ *  - Location preferences are matched loosely against the property's city/state/address.
+ */
+export function propertyMatchesPreferences(
+  prefs: InvestorPreferences | null,
+  property: PropertyNotificationData
+): boolean {
+  // No preferences object at all → opted in by default so investors aren't silently excluded.
+  if (!prefs) return true;
+
+  // Explicit opt-out always wins.
+  if (prefs.notificationsEnabled === false) return false;
+
+  // --- Property type matching ---
+  const typePrefs = [
+    ...(prefs.preferredPropertyTypes ?? []),
+    ...(prefs.propertyTypes ?? []),
+    ...(prefs.developmentTypes ?? []),
+  ].map(norm);
+
+  if (typePrefs.length > 0) {
+    const propertyTypeTokens = [property.propertyType, property.developmentType ?? ""]
+      .filter(Boolean)
+      .map(norm);
+
+    const typeMatch = typePrefs.some((pref) =>
+      propertyTypeTokens.some(
+        (token) => token.includes(pref) || pref.includes(token)
+      )
+    );
+
+    if (!typeMatch) return false;
+  }
+
+  // --- Location matching ---
+  const locationPrefs = [
+    ...(prefs.preferredLocations ?? []),
+    ...(prefs.preferredCities ?? []),
+    ...(prefs.preferredStates ?? []),
+  ].map(norm);
+
+  if (locationPrefs.length > 0) {
+    const locationTokens = [property.city, property.state, property.address]
+      .filter(Boolean)
+      .map(norm);
+
+    const locationMatch = locationPrefs.some((pref) =>
+      locationTokens.some(
+        (token) => token.includes(pref) || pref.includes(token)
+      )
+    );
+
+    if (!locationMatch) return false;
+  }
+
+  return true;
+}
+
+/**
+ * Notify investors about new investment opportunities that match their preferences.
+ * Sends BOTH an in-app notification and an email to each matching investor.
  * This function is called when:
- * - A new property is created with status RAISING_FUNDS, FUNDED, or PROJECT_STARTED
- * - An existing property's status is changed to RAISING_FUNDS
+ * - A property is published for funding (status set to RAISING_FUNDS)
  */
 export async function notifyMatchingInvestors(
   propertyData: PropertyNotificationData
@@ -36,36 +117,18 @@ export async function notifyMatchingInvestors(
 
     // Filter investors based on preferences
     const matchingInvestors = allInvestors.filter((investor) => {
-      // If no preferences set, don't notify (investor hasn't opted in)
-      if (!investor.investorPreferences) {
-        return false;
-      }
-
       try {
-        const prefs = investor.investorPreferences as {
-          propertyTypes?: string[];
-          developmentTypes?: string[];
-        };
-
-        // Check if investor is interested in this property type
-        if (prefs.propertyTypes && prefs.propertyTypes.includes(propertyData.propertyType)) {
-          // For development properties, also check development type if specified
-          if (propertyData.propertyType === "development" && propertyData.developmentType) {
-            return (
-              prefs.developmentTypes &&
-              prefs.developmentTypes.includes(propertyData.developmentType)
-            );
-          }
-          return true;
-        }
-
-        return false;
+        return propertyMatchesPreferences(
+          investor.investorPreferences as InvestorPreferences | null,
+          propertyData
+        );
       } catch (error) {
         console.error(
           `Error parsing investor preferences for user ${investor.id}:`,
           error
         );
-        return false;
+        // On parse failure, default to notifying so investors aren't silently dropped.
+        return true;
       }
     });
 
@@ -79,7 +142,23 @@ export async function notifyMatchingInvestors(
       `Sending new opportunity notifications to ${matchingInvestors.length} investor(s) for property ${propertyData.propertyId}`
     );
 
-    // Send email to each matching investor (non-blocking)
+    // Create in-app notifications in bulk.
+    await db.notification
+      .createMany({
+        data: matchingInvestors.map((investor) => ({
+          userId: investor.id,
+          title: "New Investment Opportunity",
+          message: `"${propertyData.title}" is now open for funding in ${propertyData.city}. Asking price: R${propertyData.price.toLocaleString("en-ZA")}.`,
+          type: "INFO",
+          category: "PROPERTY",
+          relatedId: propertyData.propertyId,
+        })),
+      })
+      .catch((error) => {
+        console.error("Failed to create in-app opportunity notifications:", error);
+      });
+
+    // Send email to each matching investor (non-blocking, errors swallowed per-recipient).
     const emailPromises = matchingInvestors.map((investor) =>
       sendNewOpportunityNotification(
         {
@@ -104,7 +183,6 @@ export async function notifyMatchingInvestors(
       })
     );
 
-    // Send emails in background (don't wait for them)
     await Promise.all(emailPromises);
     console.log(`Successfully sent notifications to ${matchingInvestors.length} investor(s)`);
   } catch (error) {

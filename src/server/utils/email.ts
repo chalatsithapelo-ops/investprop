@@ -40,6 +40,12 @@ interface ProgressSubmissionEmailData {
   milestoneId: number;
 }
 
+interface AnnouncementEmailData {
+  title: string;
+  message: string;
+  senderName: string;
+}
+
 /**
  * Send an email using Resend (https://resend.com)
  * Requires EMAIL_SERVICE_API_KEY to be set in environment variables
@@ -382,6 +388,66 @@ Investprop
       <p>Thank you for your investment.</p>
 
       <p>Best regards,<br>Investprop</p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  await sendEmail(recipient, subject, htmlContent, textContent);
+}
+
+/**
+ * Send a general announcement email broadcast by an admin or development manager.
+ */
+export async function sendAnnouncementEmail(
+  recipient: EmailRecipient,
+  data: AnnouncementEmailData
+): Promise<void> {
+  const subject = data.title;
+
+  // Preserve author line breaks in the plain-text and HTML versions.
+  const messageHtml = data.message
+    .split("\n")
+    .map((line) => (line.trim() === "" ? "<br>" : `<p>${line}</p>`))
+    .join("");
+
+  const textContent = `
+Hello ${recipient.name},
+
+${data.message}
+
+—
+${data.senderName}
+Investprop
+  `.trim();
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; }
+    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+    .announcement-card { background: white; padding: 25px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4f46e5; }
+    .sender { margin-top: 20px; color: #6b7280; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📢 ${data.title}</h1>
+    </div>
+    <div class="content">
+      <p>Hello ${recipient.name},</p>
+
+      <div class="announcement-card">
+        ${messageHtml}
+      </div>
+
+      <p class="sender">— ${data.senderName}<br>Investprop</p>
     </div>
   </div>
 </body>

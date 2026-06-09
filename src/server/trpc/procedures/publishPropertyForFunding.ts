@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
-import { createNotification } from "./notifications";
+import { notifyMatchingInvestors } from "~/server/utils/investor-notifications";
 
 const fundingBreakdownItemSchema = z.object({
   category: z.string().min(1, "Category is required"),
@@ -35,6 +35,9 @@ export const publishPropertyForFunding = baseProcedure
       where: { id: input.propertyId },
       include: {
         spv: { select: { id: true, name: true, status: true } },
+        propertyFlip: { select: { id: true } },
+        rentalBond: { select: { id: true } },
+        propertyDevelopment: { select: { developmentType: true } },
       },
     });
 
@@ -97,21 +100,28 @@ export const publishPropertyForFunding = baseProcedure
       },
     });
 
-    // Notify all investors about the new funding opportunity
-    const investors = await db.user.findMany({
-      where: { role: "INVESTOR" },
-      select: { id: true },
+    // Derive the high-level property type from whichever specialised model exists.
+    const derivedPropertyType = property.propertyDevelopment
+      ? "development"
+      : property.rentalBond
+        ? "rental"
+        : property.propertyFlip
+          ? "flip"
+          : "property";
+
+    // Notify investors whose preferences match — sends BOTH in-app and email.
+    // Fire-and-forget: notification failures must never block publishing.
+    void notifyMatchingInvestors({
+      propertyId: updatedProperty.id,
+      title: updatedProperty.title,
+      propertyType: derivedPropertyType,
+      developmentType: property.propertyDevelopment?.developmentType,
+      price: updatedProperty.price,
+      address: updatedProperty.address,
+      city: updatedProperty.city,
+      state: updatedProperty.state,
+      investmentStatus: updatedProperty.investmentStatus,
     });
-    for (const inv of investors) {
-      createNotification(
-        inv.id,
-        "New Investment Opportunity",
-        `"${updatedProperty.title}" is now open for funding — goal: R${input.fundingGoal.toLocaleString("en-ZA")}. Closing: ${closingDate.toLocaleDateString("en-ZA")}`,
-        "INFO",
-        "PROPERTY",
-        updatedProperty.id
-      );
-    }
 
     return updatedProperty;
   });
