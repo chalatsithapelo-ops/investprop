@@ -387,8 +387,9 @@ export function generateOTP(data: OTPData): jsPDF {
     14,
   );
 
-  // ── Signature page ──
-  ensure(260);
+  // ── Signature page (always starts on a fresh page) ──
+  doc.addPage();
+  y = m;
   doc.setFontSize(11).setFont("helvetica", "bold").setTextColor(20);
   doc.text("SIGNED BY THE PARTIES", m, y);
   y += 24;
@@ -420,6 +421,146 @@ export function generateOTP(data: OTPData): jsPDF {
   sigBlock("Duly authorised representative");
   sigBlock("Witness 1");
   sigBlock("Witness 2");
+
+  // ── Annexure helpers ──
+  const annexure = (letter: string, title: string, intro: string) => {
+    doc.addPage();
+    y = m;
+    doc.setFontSize(13).setFont("helvetica", "bold").setTextColor(0);
+    doc.text(`ANNEXURE ${letter}`, m, y);
+    y += 18;
+    doc.setFontSize(11).setFont("helvetica", "bold").setTextColor(40);
+    doc.text(title, m, y);
+    y += 16;
+    doc.setDrawColor(180);
+    doc.line(m, y, pageW - m, y);
+    y += 16;
+    if (intro) para(intro, 10);
+  };
+
+  const checkRow = (label: string) => {
+    ensure(20);
+    doc.setDrawColor(120);
+    // two tick boxes: Included / Excluded
+    const boxY = y - 8;
+    doc.rect(pageW - m - 150, boxY, 10, 10);
+    doc.rect(pageW - m - 60, boxY, 10, 10);
+    doc.setFontSize(8).setFont("helvetica", "normal").setTextColor(110);
+    doc.text("Incl.", pageW - m - 137, y);
+    doc.text("Excl.", pageW - m - 47, y);
+    doc.setFontSize(9.5).setTextColor(40);
+    doc.text(label, m, y);
+    y += 18;
+  };
+
+  const discRow = (label: string) => {
+    ensure(20);
+    doc.setDrawColor(120);
+    const boxY = y - 8;
+    doc.rect(pageW - m - 120, boxY, 10, 10);
+    doc.rect(pageW - m - 60, boxY, 10, 10);
+    doc.setFontSize(8).setFont("helvetica", "normal").setTextColor(110);
+    doc.text("Yes", pageW - m - 107, y);
+    doc.text("No", pageW - m - 47, y);
+    doc.setFontSize(9.5).setTextColor(40);
+    const lines: string[] = doc.splitTextToSize(label, contentW - 140);
+    lines.forEach((ln: string, i: number) => {
+      if (i > 0) { ensure(13.5); }
+      doc.text(ln, m, y);
+      if (i < lines.length - 1) y += 13.5;
+    });
+    y += 18;
+  };
+
+  // ── Annexure A: Fixtures, Fittings and Inclusions Schedule ──
+  annexure(
+    "A",
+    "FIXTURES, FITTINGS AND INCLUSIONS SCHEDULE",
+    "The Parties record below which items are included in or excluded from the sale of the property. Where an item is marked neither included nor excluded, it shall be deemed included if it is a permanent fixture attached to the property as at the date of signature. This schedule forms an integral part of the Offer to Purchase.",
+  );
+  [
+    "Fitted carpets and floor coverings",
+    "Curtain rails, blinds and pelmets",
+    "Curtains and curtaining",
+    "Light fittings and chandeliers",
+    "Fitted stove, hob and oven",
+    "Extractor fan / cooker hood",
+    "Built-in kitchen cupboards and cabinetry",
+    "Built-in bedroom cupboards",
+    "Fitted heaters and heated towel rails",
+    "Awnings, shutters and blinds (external)",
+    "Swimming-pool pump, filter and cleaning equipment",
+    "Borehole, pump and irrigation system",
+    "Television aerials and satellite dishes",
+    "Automated gate motor and remote controls",
+    "Garage-door motor and remote controls",
+    "Alarm system, beams and control panel",
+    "Electric fencing and energiser",
+    "Intercom and access-control equipment",
+    "Solar panels, inverter and battery storage",
+    "Water tanks and rainwater-harvesting equipment",
+    "Garden ornaments, statues and pot plants",
+    "Wendy house / tool shed / storage structures",
+  ].forEach(checkRow);
+
+  // ── Annexure B: Seller's Mandatory Disclosure Statement ──
+  annexure(
+    "B",
+    "SELLER'S MANDATORY DISCLOSURE STATEMENT",
+    "In accordance with the Property Practitioners Act 22 of 2019 and the regulations promulgated thereunder, the Seller is required to disclose all defects and information known to it in respect of the property. The Seller warrants that the information provided below is true and correct to the best of its knowledge and belief as at the date of signature.",
+  );
+  [
+    "Is the Seller aware of any latent or patent defects in the structure of the property (foundations, walls, roof)?",
+    "Is the Seller aware of any defects in the electrical, plumbing, gas or drainage installations?",
+    "Has the property been affected by flooding, rising or penetrating damp, or water ingress?",
+    "Are there any unapproved building works, structures or alterations without municipal-approved building plans?",
+    "Is the Seller aware of any boundary, encroachment or servitude disputes affecting the property?",
+    "Is the property subject to any lease, right of occupation, or pre-emptive right in favour of a third party?",
+    "Are there any outstanding amounts owing to the local authority, body corporate or home-owners' association?",
+    "Is the Seller aware of any pending or threatened expropriation or land-restitution claim?",
+    "Has the property been treated for, or is it affected by, wood borer, termites or other infestation?",
+    "Are there any defects in fixed appliances, pool, borehole or irrigation systems included in the sale?",
+  ].forEach(discRow);
+  y += 6;
+  para(
+    "The Seller confirms that, save as disclosed above and in any attached explanatory note, the Seller is not aware of any further defect or fact materially affecting the value or desirability of the property. The Purchaser acknowledges receipt of this disclosure statement prior to signature.",
+    10,
+  );
+
+  // ── Annexure C: FICA and Verification Checklist ──
+  annexure(
+    "C",
+    "FICA AND VERIFICATION CHECKLIST",
+    "The following documentation is required from each natural-person and juristic Party in order to comply with the Financial Intelligence Centre Act 38 of 2001 and to enable the Conveyancer to proceed with registration of transfer. Documents must be certified copies not older than three (3) months unless otherwise indicated.",
+  );
+  doc.setFontSize(10).setFont("helvetica", "bold").setTextColor(40);
+  ensure(16);
+  doc.text("Natural persons:", m, y);
+  y += 16;
+  [
+    "Certified copy of valid identity document or passport",
+    "Proof of residential address (utility bill, bank statement) not older than 3 months",
+    "Income-tax registration number / SARS confirmation",
+    "Marriage certificate and antenuptial contract (where applicable)",
+    "Bank confirmation of account details for payment / refund purposes",
+  ].forEach(checkRow);
+  y += 6;
+  doc.setFontSize(10).setFont("helvetica", "bold").setTextColor(40);
+  ensure(16);
+  doc.text("Juristic persons (companies, trusts, close corporations):", m, y);
+  y += 16;
+  [
+    "Certified registration / incorporation documents (CIPC, Master's Office)",
+    "Resolution authorising the transaction and the signatory",
+    "Identity documents and proof of address of directors / trustees / members",
+    "Proof of address of the registered office and place of business",
+    "Income-tax and VAT registration confirmation (where applicable)",
+  ].forEach(checkRow);
+  y += 10;
+  para(
+    "The Parties undertake to deliver the above documentation to the Conveyancer within 7 (seven) days of written request. Registration of transfer shall not proceed until all verification requirements have been satisfied to the reasonable satisfaction of the Conveyancer.",
+    10,
+  );
 
   // ── Page footers ──
   const total = doc.getNumberOfPages();
