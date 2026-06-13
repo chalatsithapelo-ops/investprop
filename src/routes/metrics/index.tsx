@@ -10,7 +10,7 @@ export const Route = createFileRoute("/metrics/")({
   component: MetricsPage,
 });
 
-const MANAGER_ROLES = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "OWNER"];
+const MANAGER_ROLES = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "OWNER"];
 
 function MetricsPage() {
   const trpc = useTRPC();

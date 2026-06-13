@@ -28,6 +28,7 @@ import { useAuthStore } from "~/stores/authStore";
 import toast from "react-hot-toast";
 
 const MANAGER_ROLES = [
+  "ADMIN",
   "DEVELOPMENT_MANAGER",
   "PROJECT_MANAGER",
   "PROPERTY_OWNER",

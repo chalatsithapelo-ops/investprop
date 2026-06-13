@@ -40,7 +40,7 @@ function PropertiesPage() {
   }, [user, authToken, hasHydrated]);
 
   const role = user?.role ?? "";
-  const isManager = role === "DEVELOPMENT_MANAGER" || role === "PROJECT_MANAGER";
+  const isManager = role === "ADMIN" || role === "DEVELOPMENT_MANAGER" || role === "PROJECT_MANAGER";
 
   const propertiesQuery = useQuery({
     ...trpc.getProperties.queryOptions({

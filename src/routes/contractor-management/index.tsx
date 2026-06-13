@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   HardHat, FileText, ClipboardList, Receipt, Users, Plus,
   Building, ChevronDown, ChevronUp, CheckCircle, XCircle, Clock, Eye,
   Send, DollarSign, AlertTriangle, Calendar, Phone, Mail, MapPin, Download,
-  Star, MessageSquare,
+  Star, MessageSquare, BarChart3, Award, TrendingUp, CheckSquare,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/contractor-management/")({
   component: ContractorManagementPage,
 });
 
-type Tab = "contractors" | "rfqs" | "work-orders" | "invoices";
+type Tab = "contractors" | "performance" | "rfqs" | "work-orders" | "invoices";
 
 function ContractorManagementPage() {
   const trpc = useTRPC();
@@ -33,13 +33,14 @@ function ContractorManagementPage() {
   useEffect(() => {
     if (!hasHydrated) return;
     if (!user || !authToken) navigate({ to: "/login" });
-    if (user && !["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"].includes(user.role)) {
+    if (user && !["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"].includes(user.role)) {
       navigate({ to: "/dashboard" });
     }
   }, [user, authToken, hasHydrated]);
 
   const tabs: { key: Tab; label: string; icon: any }[] = [
     { key: "contractors", label: "Contractors", icon: Users },
+    { key: "performance", label: "Performance", icon: BarChart3 },
     { key: "rfqs", label: "RFQs", icon: FileText },
     { key: "work-orders", label: "Work Orders", icon: ClipboardList },
     { key: "invoices", label: "Invoices", icon: Receipt },
@@ -48,20 +49,20 @@ function ContractorManagementPage() {
   if (!user || !authToken) return null;
 
   return (
-    <div className="min-h-screen bg-navy-950 text-white">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gold-400 flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-gold-600 flex items-center gap-3">
               <HardHat className="h-8 w-8" /> Contractor Management
             </h1>
-            <p className="mt-1 text-gray-400">Review contractor profiles, send RFQs, issue work orders, and manage invoices</p>
+            <p className="mt-1 text-gray-600">Onboard and approve contractors, track KPI performance, send RFQs, issue work orders, and manage invoices</p>
           </div>
         </div>
 
         {/* Tab Bar */}
-        <div className="mb-6 flex gap-1 rounded-lg bg-navy-900/50 p-1">
+        <div className="mb-6 flex flex-wrap gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -69,7 +70,7 @@ function ContractorManagementPage() {
               className={`flex items-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-colors ${
                 activeTab === tab.key
                   ? "bg-gold-500 text-white"
-                  : "text-gray-400 hover:bg-navy-800/50 hover:text-white"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
               }`}
             >
               <tab.icon className="h-4 w-4" />
@@ -79,6 +80,7 @@ function ContractorManagementPage() {
         </div>
 
         {activeTab === "contractors" && <ContractorsTab authToken={authToken} />}
+        {activeTab === "performance" && <PerformanceTab authToken={authToken} />}
         {activeTab === "rfqs" && <RFQsTab authToken={authToken} />}
         {activeTab === "work-orders" && <WorkOrdersTab authToken={authToken} />}
         {activeTab === "invoices" && <InvoicesTab authToken={authToken} />}
@@ -126,49 +128,57 @@ function ContractorsTab({ authToken }: { authToken: string }) {
   };
 
   const statusColors: Record<string, string> = {
-    PENDING: "bg-amber-500/20 text-amber-400",
-    APPROVED: "bg-green-500/20 text-green-400",
-    REJECTED: "bg-red-500/20 text-red-400",
+    PENDING: "bg-amber-100 text-amber-700",
+    APPROVED: "bg-green-100 text-green-700",
+    REJECTED: "bg-red-100 text-red-700",
   };
 
   return (
     <div className="space-y-6">
-      {/* Pending Approvals */}
-      {(pendingQuery.data?.length ?? 0) > 0 && (
-        <div className="space-y-4">
-          <h2 className="flex items-center gap-2 text-xl font-semibold text-amber-400">
-            <Clock className="h-5 w-5" /> Pending Approvals ({pendingQuery.data?.length})
+      {/* Pending Approvals — Contractor Onboarding */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="flex items-center gap-2 text-xl font-semibold text-amber-600">
+            <Clock className="h-5 w-5" /> Onboarding &mdash; Pending Approvals ({pendingQuery.data?.length ?? 0})
           </h2>
-          {pendingQuery.data?.map((c: any) => (
-            <div key={c.id} className="rounded-xl border border-amber-500/30 bg-navy-900/70 p-5">
+          <p className="mt-1 text-sm text-gray-600">Review submitted contractor profiles and supporting documents, then approve to onboard or reject with a reason.</p>
+        </div>
+        {(pendingQuery.data?.length ?? 0) === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+            <CheckCircle className="mx-auto h-10 w-10 text-green-500 mb-2" />
+            <p className="text-gray-600">No contractors awaiting approval. New submissions will appear here for onboarding.</p>
+          </div>
+        ) : (
+          pendingQuery.data?.map((c: any) => (
+            <div key={c.id} className="rounded-xl border border-amber-300 bg-amber-50 p-5 shadow-sm">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-white">{c.companyName}</h3>
-                  {c.tradingAs && <p className="text-sm text-gray-400">t/a {c.tradingAs}</p>}
-                  <p className="mt-1 text-sm text-gray-400">{c.user?.name} • {c.user?.email}</p>
+                  <h3 className="text-lg font-semibold text-gray-900">{c.companyName}</h3>
+                  {c.tradingAs && <p className="text-sm text-gray-600">t/a {c.tradingAs}</p>}
+                  <p className="mt-1 text-sm text-gray-600">{c.user?.name} • {c.user?.email}</p>
                 </div>
-                <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-medium text-amber-400">PENDING</span>
+                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">PENDING</span>
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-300 md:grid-cols-3 lg:grid-cols-4">
-                <p className="flex items-center gap-2"><HardHat className="h-3.5 w-3.5 text-gold-400" /> {c.specialty}</p>
-                <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-gold-400" /> {c.phone}</p>
-                {c.city && <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-gold-400" /> {c.city}{c.province ? `, ${c.province}` : ""}</p>}
-                {c.registrationNumber && <p className="text-xs text-gray-400">CIPC: {c.registrationNumber}</p>}
-                {c.vatNumber && <p className="text-xs text-gray-400">VAT: {c.vatNumber}</p>}
-                {c.beeLevel && <p className="text-xs text-gray-400">BEE Level: {c.beeLevel}</p>}
-                {c.cidbGrade && <p className="text-xs text-gray-400">CIDB: {c.cidbGrade}</p>}
-                {c.bankName && <p className="text-xs text-gray-400">Bank: {c.bankName}</p>}
+              <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-700 md:grid-cols-3 lg:grid-cols-4">
+                <p className="flex items-center gap-2"><HardHat className="h-3.5 w-3.5 text-gold-600" /> {c.specialty}</p>
+                <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-gold-600" /> {c.phone}</p>
+                {c.city && <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-gold-600" /> {c.city}{c.province ? `, ${c.province}` : ""}</p>}
+                {c.registrationNumber && <p className="text-xs text-gray-600">CIPC: {c.registrationNumber}</p>}
+                {c.vatNumber && <p className="text-xs text-gray-600">VAT: {c.vatNumber}</p>}
+                {c.beeLevel && <p className="text-xs text-gray-600">BEE Level: {c.beeLevel}</p>}
+                {c.cidbGrade && <p className="text-xs text-gray-600">CIDB: {c.cidbGrade}</p>}
+                {c.bankName && <p className="text-xs text-gray-600">Bank: {c.bankName}</p>}
               </div>
 
               {/* Documents */}
               {c.documents?.length > 0 && (
                 <div className="mt-3">
-                  <p className="mb-2 text-xs font-medium text-gray-400">Supporting Documents ({c.documents.length}):</p>
+                  <p className="mb-2 text-xs font-medium text-gray-600">Supporting Documents ({c.documents.length}):</p>
                   <div className="flex flex-wrap gap-2">
                     {c.documents.map((doc: any) => (
-                      <a key={doc.id} href={doc.documentUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded-lg border border-navy-600 bg-navy-800 px-3 py-1.5 text-xs text-gray-300 hover:border-gold-500/50 transition-colors">
-                        <FileText className="h-3 w-3 text-gold-400" /> {doc.documentName}
+                      <a key={doc.id} href={doc.documentUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 hover:border-gold-500 transition-colors">
+                        <FileText className="h-3 w-3 text-gold-600" /> {doc.documentName}
                       </a>
                     ))}
                   </div>
@@ -182,51 +192,51 @@ function ContractorsTab({ authToken }: { authToken: string }) {
                 </button>
                 {rejectingId === c.id ? (
                   <div className="flex items-center gap-2">
-                    <input value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Rejection reason..." className="rounded-lg border border-navy-600 bg-navy-800 px-3 py-2 text-sm text-white w-64" />
+                    <input value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Rejection reason..." className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 w-64" />
                     <button onClick={() => handleReject(c.id)} className="rounded-lg bg-red-600 px-3 py-2 text-sm text-white hover:bg-red-700">Reject</button>
-                    <button onClick={() => { setRejectingId(null); setRejectReason(""); }} className="rounded-lg bg-navy-700 px-3 py-2 text-sm text-gray-300 hover:bg-navy-600">Cancel</button>
+                    <button onClick={() => { setRejectingId(null); setRejectReason(""); }} className="rounded-lg bg-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-300">Cancel</button>
                   </div>
                 ) : (
-                  <button onClick={() => setRejectingId(c.id)} className="flex items-center gap-1.5 rounded-lg bg-red-600/80 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 transition-colors">
+                  <button onClick={() => setRejectingId(c.id)} className="flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors">
                     <XCircle className="h-4 w-4" /> Reject
                   </button>
                 )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
 
       {/* All Contractors List */}
       <div>
-        <h2 className="text-xl font-semibold mb-4">All Contractors</h2>
+        <h2 className="text-xl font-semibold mb-4 text-gray-900">All Contractors</h2>
         {contractorsQuery.isLoading ? (
-          <p className="text-gray-400">Loading contractors...</p>
+          <p className="text-gray-600">Loading contractors...</p>
         ) : !contractorsQuery.data?.length ? (
-          <div className="rounded-xl border border-navy-700 bg-navy-900/50 p-12 text-center">
-            <Users className="mx-auto h-12 w-12 text-gray-600 mb-3" />
-            <p className="text-gray-400">No contractors registered yet. Contractors will appear here once they submit their profiles.</p>
+          <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+            <Users className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+            <p className="text-gray-500">No contractors registered yet. Contractors will appear here once they submit their profiles.</p>
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {contractorsQuery.data.map((c: any) => (
-              <div key={c.id} className="rounded-xl border border-navy-700 bg-navy-900/70 p-5">
+              <div key={c.id} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-semibold text-white">{c.companyName}</h3>
-                    {c.tradingAs && <p className="text-sm text-gray-400">t/a {c.tradingAs}</p>}
+                    <h3 className="font-semibold text-gray-900">{c.companyName}</h3>
+                    {c.tradingAs && <p className="text-sm text-gray-600">t/a {c.tradingAs}</p>}
                   </div>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[c.profileStatus] ?? (c.isActive ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400")}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[c.profileStatus] ?? (c.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}`}>
                     {c.profileStatus ?? (c.isActive ? "Active" : "Inactive")}
                   </span>
                 </div>
-                <div className="mt-3 space-y-1 text-sm text-gray-300">
-                  <p className="flex items-center gap-2"><HardHat className="h-3.5 w-3.5 text-gold-400" /> {c.specialty}</p>
-                  <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-gold-400" /> {c.phone}</p>
-                  <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-gold-400" /> {c.user.email}</p>
-                  {c.city && <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-gold-400" /> {c.city}, {c.province}</p>}
-                  {c.beeLevel && <p className="text-xs text-gray-400">BEE Level: {c.beeLevel}</p>}
-                  {c.cidbGrade && <p className="text-xs text-gray-400">CIDB Grade: {c.cidbGrade}</p>}
+                <div className="mt-3 space-y-1 text-sm text-gray-700">
+                  <p className="flex items-center gap-2"><HardHat className="h-3.5 w-3.5 text-gold-600" /> {c.specialty}</p>
+                  <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-gold-600" /> {c.phone}</p>
+                  <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-gold-600" /> {c.user.email}</p>
+                  {c.city && <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-gold-600" /> {c.city}, {c.province}</p>}
+                  {c.beeLevel && <p className="text-xs text-gray-600">BEE Level: {c.beeLevel}</p>}
+                  {c.cidbGrade && <p className="text-xs text-gray-600">CIDB Grade: {c.cidbGrade}</p>}
                 </div>
                 <button
                   onClick={() => {
@@ -251,7 +261,7 @@ function ContractorsTab({ authToken }: { authToken: string }) {
                     generateContractorReportPDF(reportData);
                     toast.success("Contractor report PDF downloaded");
                   }}
-                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-navy-600 px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-navy-800 transition-colors"
+                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 transition-colors"
                 >
                   <Download className="h-3.5 w-3.5" /> Download Report
                 </button>
@@ -260,6 +270,180 @@ function ContractorsTab({ authToken }: { authToken: string }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Performance / KPI Tab ──────────────────────────────────────
+
+function PerformanceTab({ authToken }: { authToken: string }) {
+  const trpc = useTRPC();
+  const contractorsQuery = useQuery(trpc.getContractors.queryOptions({ authToken }));
+  const workOrdersQuery = useQuery(trpc.getWorkOrders.queryOptions({ authToken }));
+  const invoicesQuery = useQuery(trpc.getContractorInvoices.queryOptions({ authToken }));
+
+  const isLoading = contractorsQuery.isLoading || workOrdersQuery.isLoading || invoicesQuery.isLoading;
+
+  // Aggregate KPIs per contractor profile
+  const scorecards = useMemo(() => {
+    const contractors = contractorsQuery.data ?? [];
+    const workOrders = workOrdersQuery.data ?? [];
+    const invoices = invoicesQuery.data ?? [];
+
+    return contractors.map((c: any) => {
+      const cWOs = workOrders.filter((wo: any) => wo.contractorProfile?.id === c.id);
+      const completed = cWOs.filter((wo: any) => wo.status === "COMPLETED");
+      const active = cWOs.filter((wo: any) => ["ISSUED", "ACCEPTED", "IN_PROGRESS", "ON_HOLD"].includes(wo.status));
+
+      const rated = completed.filter((wo: any) => typeof wo.completionRating === "number" && wo.completionRating > 0);
+      const avgRating = rated.length
+        ? rated.reduce((s: number, wo: any) => s + wo.completionRating, 0) / rated.length
+        : 0;
+
+      const withDates = completed.filter((wo: any) => wo.actualEndDate && wo.expectedEndDate);
+      const onTime = withDates.filter((wo: any) => new Date(wo.actualEndDate) <= new Date(wo.expectedEndDate));
+      const onTimePct = withDates.length ? Math.round((onTime.length / withDates.length) * 100) : null;
+
+      const contractValue = cWOs.reduce((s: number, wo: any) => s + (wo.agreedAmount ?? 0), 0);
+
+      const cInvoices = invoices.filter((inv: any) => inv.contractorProfile?.id === c.id);
+      const paid = cInvoices.filter((inv: any) => inv.status === "PAID").reduce((s: number, inv: any) => s + (inv.totalAmount ?? 0), 0);
+      const outstanding = cInvoices.filter((inv: any) => ["SUBMITTED", "UNDER_REVIEW", "APPROVED"].includes(inv.status)).reduce((s: number, inv: any) => s + (inv.totalAmount ?? 0), 0);
+
+      return {
+        id: c.id,
+        companyName: c.companyName,
+        specialty: c.specialty,
+        userName: c.user?.name,
+        totalJobs: cWOs.length,
+        completedJobs: completed.length,
+        activeJobs: active.length,
+        avgRating,
+        ratedCount: rated.length,
+        onTimePct,
+        contractValue,
+        paid,
+        outstanding,
+      };
+    }).sort((a, b) => b.avgRating - a.avgRating || b.completedJobs - a.completedJobs);
+  }, [contractorsQuery.data, workOrdersQuery.data, invoicesQuery.data]);
+
+  // Portfolio-level summary
+  const summary = useMemo(() => {
+    const totalContractors = scorecards.length;
+    const activeContractors = scorecards.filter((s) => s.activeJobs > 0).length;
+    const ratedCards = scorecards.filter((s) => s.ratedCount > 0);
+    const portfolioRating = ratedCards.length
+      ? ratedCards.reduce((s, c) => s + c.avgRating, 0) / ratedCards.length
+      : 0;
+    const onTimeCards = scorecards.filter((s) => s.onTimePct !== null);
+    const portfolioOnTime = onTimeCards.length
+      ? Math.round(onTimeCards.reduce((s, c) => s + (c.onTimePct ?? 0), 0) / onTimeCards.length)
+      : null;
+    const totalPaid = scorecards.reduce((s, c) => s + c.paid, 0);
+    return { totalContractors, activeContractors, portfolioRating, portfolioOnTime, totalPaid };
+  }, [scorecards]);
+
+  const ratingColor = (r: number) =>
+    r >= 4 ? "text-green-600" : r >= 3 ? "text-amber-600" : r > 0 ? "text-red-600" : "text-gray-400";
+  const onTimeColor = (p: number | null) =>
+    p === null ? "text-gray-400" : p >= 80 ? "text-green-600" : p >= 50 ? "text-amber-600" : "text-red-600";
+
+  if (isLoading) return <p className="text-gray-600">Loading performance data...</p>;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="flex items-center gap-2 text-xl font-semibold text-gray-900">
+          <BarChart3 className="h-5 w-5 text-gold-600" /> Contractor KPI &amp; Performance
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">Track delivery quality, on-time completion, workload, and payments across your contractor panel.</p>
+      </div>
+
+      {/* Portfolio summary cards */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-gray-600"><Users className="h-4 w-4 text-gold-600" /><span className="text-xs font-medium">Contractors</span></div>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{summary.totalContractors}</p>
+          <p className="text-xs text-gray-500">{summary.activeContractors} with active jobs</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-gray-600"><Star className="h-4 w-4 text-gold-600" /><span className="text-xs font-medium">Avg Rating</span></div>
+          <p className={`mt-2 text-2xl font-bold ${ratingColor(summary.portfolioRating)}`}>{summary.portfolioRating ? summary.portfolioRating.toFixed(1) : "—"}<span className="text-sm font-normal text-gray-400">/5</span></p>
+          <p className="text-xs text-gray-500">across rated jobs</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-gray-600"><TrendingUp className="h-4 w-4 text-gold-600" /><span className="text-xs font-medium">On-Time</span></div>
+          <p className={`mt-2 text-2xl font-bold ${onTimeColor(summary.portfolioOnTime)}`}>{summary.portfolioOnTime === null ? "—" : `${summary.portfolioOnTime}%`}</p>
+          <p className="text-xs text-gray-500">completed on schedule</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-gray-600"><DollarSign className="h-4 w-4 text-gold-600" /><span className="text-xs font-medium">Paid to Date</span></div>
+          <p className="mt-2 text-2xl font-bold text-gray-900">R {summary.totalPaid.toLocaleString()}</p>
+          <p className="text-xs text-gray-500">total disbursed</p>
+        </div>
+      </div>
+
+      {/* Per-contractor scorecards */}
+      {scorecards.length === 0 ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+          <BarChart3 className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+          <p className="text-gray-500">No contractor performance data yet. KPIs appear once contractors are onboarded and work orders are issued.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-100 text-left text-gray-600">
+              <tr>
+                <th className="px-4 py-3 font-medium">Contractor</th>
+                <th className="px-4 py-3 font-medium text-center">Rating</th>
+                <th className="px-4 py-3 font-medium text-center">On-Time</th>
+                <th className="px-4 py-3 font-medium text-center">Total Jobs</th>
+                <th className="px-4 py-3 font-medium text-center">Completed</th>
+                <th className="px-4 py-3 font-medium text-center">Active</th>
+                <th className="px-4 py-3 font-medium text-right">Contract Value</th>
+                <th className="px-4 py-3 font-medium text-right">Paid</th>
+                <th className="px-4 py-3 font-medium text-right">Outstanding</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {scorecards.map((s, idx) => (
+                <tr key={s.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {idx === 0 && s.avgRating > 0 && <Award className="h-4 w-4 text-gold-500" aria-label="Top performer" />}
+                      <div>
+                        <p className="font-medium text-gray-900">{s.companyName}</p>
+                        <p className="text-xs text-gray-500">{s.specialty}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {s.ratedCount > 0 ? (
+                      <span className={`inline-flex items-center gap-1 font-semibold ${ratingColor(s.avgRating)}`}>
+                        <Star className="h-3.5 w-3.5 fill-current" /> {s.avgRating.toFixed(1)}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </td>
+                  <td className={`px-4 py-3 text-center font-semibold ${onTimeColor(s.onTimePct)}`}>
+                    {s.onTimePct === null ? "—" : `${s.onTimePct}%`}
+                  </td>
+                  <td className="px-4 py-3 text-center text-gray-700">{s.totalJobs}</td>
+                  <td className="px-4 py-3 text-center text-gray-700">
+                    <span className="inline-flex items-center gap-1"><CheckSquare className="h-3.5 w-3.5 text-green-600" /> {s.completedJobs}</span>
+                  </td>
+                  <td className="px-4 py-3 text-center text-gray-700">{s.activeJobs}</td>
+                  <td className="px-4 py-3 text-right text-gray-700">R {s.contractValue.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right font-medium text-green-600">R {s.paid.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right text-amber-600">R {s.outstanding.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -321,29 +505,29 @@ function RFQsTab({ authToken }: { authToken: string }) {
   };
 
   const statusColors: Record<string, string> = {
-    OPEN: "bg-blue-500/20 text-blue-400",
-    UNDER_REVIEW: "bg-yellow-500/20 text-yellow-400",
-    AWARDED: "bg-green-500/20 text-green-400",
-    CLOSED: "bg-gray-500/20 text-gray-400",
-    CANCELLED: "bg-red-500/20 text-red-400",
+    OPEN: "bg-blue-100 text-blue-700",
+    UNDER_REVIEW: "bg-yellow-100 text-yellow-700",
+    AWARDED: "bg-green-100 text-green-700",
+    CLOSED: "bg-gray-100 text-gray-600",
+    CANCELLED: "bg-red-100 text-red-700",
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Requests for Quotation</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Requests for Quotation</h2>
         <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-white hover:bg-gold-600 transition-colors">
           <Plus className="h-4 w-4" /> Create RFQ
         </button>
       </div>
 
       {showForm && (
-        <div className="rounded-xl border border-navy-700 bg-navy-900/70 p-6">
-          <h3 className="text-lg font-semibold text-gold-400 mb-4">New Request for Quotation</h3>
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gold-600 mb-4">New Request for Quotation</h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Property *</label>
-              <select value={form.propertyId} onChange={(e) => setForm({ ...form, propertyId: e.target.value })} className="w-full rounded-lg border border-navy-600 bg-navy-800 px-3 py-2 text-white">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Property *</label>
+              <select value={form.propertyId} onChange={(e) => setForm({ ...form, propertyId: e.target.value })} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900">
                 <option value="">Select property...</option>
                 {propertiesQuery.data?.properties?.map((p: any) => (
                   <option key={p.id} value={p.id}>{p.title} — {p.city}</option>
@@ -351,49 +535,49 @@ function RFQsTab({ authToken }: { authToken: string }) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Title *</label>
-              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Bathroom Renovation" className="w-full rounded-lg border border-navy-600 bg-navy-800 px-3 py-2 text-white" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Bathroom Renovation" className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900" />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-300 mb-1">Scope of Work *</label>
-              <textarea value={form.scopeOfWork} onChange={(e) => setForm({ ...form, scopeOfWork: e.target.value })} rows={4} placeholder="Describe in detail the work required..." className="w-full rounded-lg border border-navy-600 bg-navy-800 px-3 py-2 text-white" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Scope of Work *</label>
+              <textarea value={form.scopeOfWork} onChange={(e) => setForm({ ...form, scopeOfWork: e.target.value })} rows={4} placeholder="Describe in detail the work required..." className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Estimated Budget (R)</label>
-              <input type="number" value={form.estimatedBudget} onChange={(e) => setForm({ ...form, estimatedBudget: e.target.value })} placeholder="Optional" className="w-full rounded-lg border border-navy-600 bg-navy-800 px-3 py-2 text-white" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Estimated Budget (R)</label>
+              <input type="number" value={form.estimatedBudget} onChange={(e) => setForm({ ...form, estimatedBudget: e.target.value })} placeholder="Optional" className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Deadline *</label>
-              <input type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} className="w-full rounded-lg border border-navy-600 bg-navy-800 px-3 py-2 text-white" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Deadline *</label>
+              <input type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900" />
             </div>
           </div>
           <div className="mt-6 flex gap-3">
             <button onClick={handleCreateRFQ} className="flex items-center gap-2 rounded-lg bg-gold-500 px-6 py-2 text-sm font-medium text-white hover:bg-gold-600 transition-colors">
               <Send className="h-4 w-4" /> Send RFQ
             </button>
-            <button onClick={() => setShowForm(false)} className="rounded-lg border border-navy-600 px-6 py-2 text-sm font-medium text-gray-300 hover:bg-navy-800 transition-colors">Cancel</button>
+            <button onClick={() => setShowForm(false)} className="rounded-lg border border-gray-300 px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">Cancel</button>
           </div>
         </div>
       )}
 
       {rfqsQuery.isLoading ? (
-        <p className="text-gray-400">Loading RFQs...</p>
+        <p className="text-gray-600">Loading RFQs...</p>
       ) : !rfqsQuery.data?.length ? (
-        <div className="rounded-xl border border-navy-700 bg-navy-900/50 p-12 text-center">
-          <FileText className="mx-auto h-12 w-12 text-gray-600 mb-3" />
-          <p className="text-gray-400">No RFQs created yet. Send one to get contractor quotes.</p>
+        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+          <FileText className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+          <p className="text-gray-500">No RFQs created yet. Send one to get contractor quotes.</p>
         </div>
       ) : (
         <div className="space-y-4">
           {rfqsQuery.data.map((rfq: any) => (
-            <div key={rfq.id} className="rounded-xl border border-navy-700 bg-navy-900/70">
+            <div key={rfq.id} className="rounded-xl border border-gray-200 bg-white shadow-sm">
               <div className="flex items-center justify-between p-5 cursor-pointer" onClick={() => setExpandedRfq(expandedRfq === rfq.id ? null : rfq.id)}>
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
-                    <h3 className="font-semibold text-white">{rfq.title}</h3>
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[rfq.status] || "bg-gray-500/20 text-gray-400"}`}>{rfq.status}</span>
+                    <h3 className="font-semibold text-gray-900">{rfq.title}</h3>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[rfq.status] || "bg-gray-100 text-gray-600"}`}>{rfq.status}</span>
                   </div>
-                  <div className="mt-1 flex items-center gap-4 text-sm text-gray-400">
+                  <div className="mt-1 flex items-center gap-4 text-sm text-gray-600">
                     <span className="flex items-center gap-1"><Building className="h-3.5 w-3.5" /> {rfq.property.title}</span>
                     <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> Deadline: {new Date(rfq.deadline).toLocaleDateString("en-ZA")}</span>
                     <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> {rfq._count.responses} quote{rfq._count.responses !== 1 ? "s" : ""}</span>
@@ -422,41 +606,41 @@ function RFQsTab({ authToken }: { authToken: string }) {
                       generateRFQPDF(pdfData);
                       toast.success("RFQ PDF downloaded");
                     }}
-                    className="rounded-lg border border-navy-600 p-1.5 text-gray-400 hover:bg-navy-800 hover:text-white transition-colors"
+                    className="rounded-lg border border-gray-300 p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors"
                     title="Download RFQ PDF"
                   >
                     <Download className="h-4 w-4" />
                   </button>
-                  {expandedRfq === rfq.id ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
+                  {expandedRfq === rfq.id ? <ChevronUp className="h-5 w-5 text-gray-500" /> : <ChevronDown className="h-5 w-5 text-gray-500" />}
                 </div>
               </div>
 
               {expandedRfq === rfq.id && (
-                <div className="border-t border-navy-700 p-5">
+                <div className="border-t border-gray-200 p-5">
                   <div className="mb-4">
-                    <h4 className="text-sm font-medium text-gray-300 mb-1">Scope of Work</h4>
-                    <p className="text-sm text-gray-400 whitespace-pre-wrap">{rfq.scopeOfWork}</p>
-                    {rfq.estimatedBudget && <p className="mt-2 text-sm text-gold-400">Estimated Budget: R {rfq.estimatedBudget.toLocaleString()}</p>}
+                    <h4 className="text-sm font-medium text-gray-700 mb-1">Scope of Work</h4>
+                    <p className="text-sm text-gray-600 whitespace-pre-wrap">{rfq.scopeOfWork}</p>
+                    {rfq.estimatedBudget && <p className="mt-2 text-sm text-gold-600 font-medium">Estimated Budget: R {rfq.estimatedBudget.toLocaleString()}</p>}
                   </div>
 
                   {rfq.responses.length > 0 ? (
                     <div>
-                      <h4 className="text-sm font-medium text-gray-300 mb-3">Quotations Received</h4>
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Quotations Received</h4>
                       <div className="space-y-3">
                         {rfq.responses.map((resp: any) => (
-                          <div key={resp.id} className="rounded-lg border border-navy-600 bg-navy-800/50 p-4">
+                          <div key={resp.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="font-medium text-white">{resp.contractorProfile.user.name}</p>
-                                <p className="text-lg font-bold text-gold-400">R {resp.quotedAmount.toLocaleString()}</p>
-                                {resp.proposedTimeline && <p className="text-sm text-gray-400">Timeline: {resp.proposedTimeline}</p>}
-                                {resp.notes && <p className="mt-1 text-sm text-gray-400">{resp.notes}</p>}
+                                <p className="font-medium text-gray-900">{resp.contractorProfile.user.name}</p>
+                                <p className="text-lg font-bold text-gold-600">R {resp.quotedAmount.toLocaleString()}</p>
+                                {resp.proposedTimeline && <p className="text-sm text-gray-600">Timeline: {resp.proposedTimeline}</p>}
+                                {resp.notes && <p className="mt-1 text-sm text-gray-600">{resp.notes}</p>}
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                  resp.status === "ACCEPTED" ? "bg-green-500/20 text-green-400" :
-                                  resp.status === "REJECTED" ? "bg-red-500/20 text-red-400" :
-                                  "bg-blue-500/20 text-blue-400"
+                                  resp.status === "ACCEPTED" ? "bg-green-100 text-green-700" :
+                                  resp.status === "REJECTED" ? "bg-red-100 text-red-700" :
+                                  "bg-blue-100 text-blue-700"
                                 }`}>{resp.status}</span>
                                 {resp.status === "SUBMITTED" && (
                                   <>
@@ -563,75 +747,75 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
   };
 
   const statusColors: Record<string, string> = {
-    ISSUED: "bg-blue-500/20 text-blue-400",
-    ACCEPTED: "bg-cyan-500/20 text-cyan-400",
-    IN_PROGRESS: "bg-yellow-500/20 text-yellow-400",
-    ON_HOLD: "bg-orange-500/20 text-orange-400",
-    COMPLETED: "bg-green-500/20 text-green-400",
-    CANCELLED: "bg-red-500/20 text-red-400",
+    ISSUED: "bg-blue-100 text-blue-700",
+    ACCEPTED: "bg-cyan-100 text-cyan-700",
+    IN_PROGRESS: "bg-yellow-100 text-yellow-700",
+    ON_HOLD: "bg-orange-100 text-orange-700",
+    COMPLETED: "bg-green-100 text-green-700",
+    CANCELLED: "bg-red-100 text-red-700",
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Work Orders</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Work Orders</h2>
         <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-white hover:bg-gold-600 transition-colors">
           <Plus className="h-4 w-4" /> Issue Work Order
         </button>
       </div>
 
       {showForm && (
-        <div className="rounded-xl border border-navy-700 bg-navy-900/70 p-6">
-          <h3 className="text-lg font-semibold text-gold-400 mb-4">Issue Work Order</h3>
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gold-600 mb-4">Issue Work Order</h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Property *</label>
-              <select value={form.propertyId} onChange={(e) => setForm({ ...form, propertyId: e.target.value })} className="w-full rounded-lg border border-navy-600 bg-navy-800 px-3 py-2 text-white">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Property *</label>
+              <select value={form.propertyId} onChange={(e) => setForm({ ...form, propertyId: e.target.value })} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900">
                 <option value="">Select property...</option>
                 {propertiesQuery.data?.properties?.map((p: any) => <option key={p.id} value={p.id}>{p.title}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Contractor *</label>
-              <select value={form.contractorProfileId} onChange={(e) => setForm({ ...form, contractorProfileId: e.target.value })} className="w-full rounded-lg border border-navy-600 bg-navy-800 px-3 py-2 text-white">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Contractor *</label>
+              <select value={form.contractorProfileId} onChange={(e) => setForm({ ...form, contractorProfileId: e.target.value })} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900">
                 <option value="">Select contractor...</option>
                 {contractorsQuery.data?.map((c: any) => <option key={c.id} value={c.id}>{c.companyName} ({c.user.name})</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Title *</label>
-              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full rounded-lg border border-navy-600 bg-navy-800 px-3 py-2 text-white" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Agreed Amount (R) *</label>
-              <input type="number" value={form.agreedAmount} onChange={(e) => setForm({ ...form, agreedAmount: e.target.value })} className="w-full rounded-lg border border-navy-600 bg-navy-800 px-3 py-2 text-white" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Agreed Amount (R) *</label>
+              <input type="number" value={form.agreedAmount} onChange={(e) => setForm({ ...form, agreedAmount: e.target.value })} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900" />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-300 mb-1">Description *</label>
-              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className="w-full rounded-lg border border-navy-600 bg-navy-800 px-3 py-2 text-white" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Start Date *</label>
-              <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="w-full rounded-lg border border-navy-600 bg-navy-800 px-3 py-2 text-white" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+              <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Expected End Date *</label>
-              <input type="date" value={form.expectedEndDate} onChange={(e) => setForm({ ...form, expectedEndDate: e.target.value })} className="w-full rounded-lg border border-navy-600 bg-navy-800 px-3 py-2 text-white" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Expected End Date *</label>
+              <input type="date" value={form.expectedEndDate} onChange={(e) => setForm({ ...form, expectedEndDate: e.target.value })} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900" />
             </div>
           </div>
           <div className="mt-6 flex gap-3">
             <button onClick={handleCreateWorkOrder} className="rounded-lg bg-gold-500 px-6 py-2 text-sm font-medium text-white hover:bg-gold-600 transition-colors">Issue Order</button>
-            <button onClick={() => setShowForm(false)} className="rounded-lg border border-navy-600 px-6 py-2 text-sm font-medium text-gray-300 hover:bg-navy-800 transition-colors">Cancel</button>
+            <button onClick={() => setShowForm(false)} className="rounded-lg border border-gray-300 px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">Cancel</button>
           </div>
         </div>
       )}
 
       {workOrdersQuery.isLoading ? (
-        <p className="text-gray-400">Loading work orders...</p>
+        <p className="text-gray-600">Loading work orders...</p>
       ) : !workOrdersQuery.data?.length ? (
-        <div className="rounded-xl border border-navy-700 bg-navy-900/50 p-12 text-center">
-          <ClipboardList className="mx-auto h-12 w-12 text-gray-600 mb-3" />
-          <p className="text-gray-400">No work orders yet</p>
+        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+          <ClipboardList className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+          <p className="text-gray-500">No work orders yet</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -639,20 +823,20 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
             const isExpanded = expandedWO === wo.id;
             const isRating = ratingWO === wo.id;
             return (
-              <div key={wo.id} className="rounded-xl border border-navy-700 bg-navy-900/70 overflow-hidden">
+              <div key={wo.id} className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
                 <div className="p-5">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 cursor-pointer" onClick={() => setExpandedWO(isExpanded ? null : wo.id)}>
                       <div className="flex items-center gap-3">
-                        <h3 className="font-semibold text-white">{wo.title}</h3>
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[wo.status] || "bg-gray-500/20 text-gray-400"}`}>{wo.status.replace("_", " ")}</span>
+                        <h3 className="font-semibold text-gray-900">{wo.title}</h3>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[wo.status] || "bg-gray-100 text-gray-600"}`}>{wo.status.replace("_", " ")}</span>
                         {wo.completionRating && (
-                          <span className="flex items-center gap-1 text-xs text-gold-500">
+                          <span className="flex items-center gap-1 text-xs text-gold-600">
                             <Star className="h-3.5 w-3.5 fill-gold-400 text-gold-400" /> {wo.completionRating}/5
                           </span>
                         )}
                       </div>
-                      <div className="mt-1 flex items-center gap-4 text-sm text-gray-400">
+                      <div className="mt-1 flex items-center gap-4 text-sm text-gray-600">
                         <span><Building className="h-3.5 w-3.5 inline mr-1" />{wo.property.title}</span>
                         <span><HardHat className="h-3.5 w-3.5 inline mr-1" />{wo.contractorProfile.user.name}</span>
                         <span><DollarSign className="h-3.5 w-3.5 inline mr-1" />R {wo.agreedAmount.toLocaleString()}</span>
@@ -660,7 +844,7 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
                       <div className="mt-1 text-xs text-gray-500">
                         {new Date(wo.startDate).toLocaleDateString("en-ZA")} → {new Date(wo.expectedEndDate).toLocaleDateString("en-ZA")}
                         {wo._count?.invoices > 0 && <span className="ml-3">{wo._count.invoices} invoice{wo._count.invoices !== 1 ? "s" : ""}</span>}
-                        {wo._count?.updates > 0 && <span className="ml-3 text-gold-500 font-medium">{wo._count.updates} update{wo._count.updates !== 1 ? "s" : ""}</span>}
+                        {wo._count?.updates > 0 && <span className="ml-3 text-gold-600 font-medium">{wo._count.updates} update{wo._count.updates !== 1 ? "s" : ""}</span>}
                       </div>
                       {/* Latest progress update preview */}
                       {wo.updates?.[0] && (
@@ -695,7 +879,7 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
                           generateWorkOrderPDF(pdfData);
                           toast.success("Work order PDF downloaded");
                         }}
-                        className="rounded border border-navy-600 px-2 py-1 text-xs text-gray-300 hover:bg-navy-800"
+                        className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
                         title="Download PDF"
                       >
                         <Download className="h-3.5 w-3.5" />
@@ -723,35 +907,35 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
 
                 {/* Rating Form */}
                 {isRating && (
-                  <div className="border-t border-navy-700 bg-gold-50 p-5">
-                    <h4 className="mb-3 text-sm font-semibold text-black flex items-center gap-2"><Star className="h-4 w-4 text-gold-500" /> Rate Contractor's Work</h4>
+                  <div className="border-t border-gray-200 bg-gold-50 p-5">
+                    <h4 className="mb-3 text-sm font-semibold text-gray-900 flex items-center gap-2"><Star className="h-4 w-4 text-gold-500" /> Rate Contractor's Work</h4>
                     <div className="flex items-center gap-1 mb-3">
                       {[1, 2, 3, 4, 5].map((s) => (
                         <button key={s} onClick={() => setRatingValue(s)} className="p-0.5">
                           <Star className={`h-7 w-7 transition-colors ${s <= ratingValue ? "fill-gold-400 text-gold-400" : "text-gray-300 hover:text-gold-300"}`} />
                         </button>
                       ))}
-                      {ratingValue > 0 && <span className="ml-2 text-sm font-medium text-black">{ratingValue}/5</span>}
+                      {ratingValue > 0 && <span className="ml-2 text-sm font-medium text-gray-900">{ratingValue}/5</span>}
                     </div>
                     <textarea
                       value={ratingNotes}
                       onChange={(e) => setRatingNotes(e.target.value)}
                       rows={2}
-                      className="w-full rounded-lg border border-navy-600 bg-white px-3 py-2 text-sm text-black"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
                       placeholder="Optional notes about the work quality..."
                     />
                     <div className="mt-3 flex gap-2">
                       <button onClick={() => handleRateWorkOrder(wo.id)} className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-white hover:bg-gold-600">Submit Rating</button>
-                      <button onClick={() => { setRatingWO(null); setRatingValue(0); setRatingNotes(""); }} className="rounded-lg border border-navy-600 px-4 py-2 text-sm text-gray-600 hover:bg-navy-800">Cancel</button>
+                      <button onClick={() => { setRatingWO(null); setRatingValue(0); setRatingNotes(""); }} className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100">Cancel</button>
                     </div>
                   </div>
                 )}
 
                 {/* Existing Rating Display */}
                 {wo.completionRating && !isRating && isExpanded && (
-                  <div className="border-t border-navy-700 bg-gold-50 px-5 py-3">
+                  <div className="border-t border-gray-200 bg-gold-50 px-5 py-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-black">Your Rating:</span>
+                      <span className="text-xs font-medium text-gray-900">Your Rating:</span>
                       <div className="flex items-center gap-0.5">
                         {[1, 2, 3, 4, 5].map((s) => (
                           <Star key={s} className={`h-4 w-4 ${s <= wo.completionRating ? "fill-gold-400 text-gold-400" : "text-gray-300"}`} />
@@ -764,28 +948,28 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
 
                 {/* Expanded: Progress Updates Timeline */}
                 {isExpanded && (
-                  <div className="border-t border-navy-700 bg-navy-900/30 p-5">
-                    <h4 className="mb-3 text-sm font-semibold text-gray-300 flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4 text-gold-400" /> Contractor Progress Updates
+                  <div className="border-t border-gray-200 bg-gray-50 p-5">
+                    <h4 className="mb-3 text-sm font-semibold text-gray-700 flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-gold-600" /> Contractor Progress Updates
                     </h4>
                     {expandedUpdatesQuery.isLoading ? (
-                      <p className="text-sm text-gray-400">Loading updates...</p>
+                      <p className="text-sm text-gray-600">Loading updates...</p>
                     ) : !expandedUpdatesQuery.data?.length ? (
                       <p className="text-sm text-gray-500 italic">No progress updates from contractor yet.</p>
                     ) : (
                       <div className="space-y-3">
                         {expandedUpdatesQuery.data.map((u: any) => (
-                          <div key={u.id} className="rounded-lg border border-navy-600 bg-navy-800/50 p-4">
+                          <div key={u.id} className="rounded-lg border border-gray-200 bg-white p-4">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-medium text-white">{u.submittedBy?.name}</span>
-                              <span className="text-xs text-gray-400">{new Date(u.createdAt).toLocaleDateString("en-ZA")} {new Date(u.createdAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}</span>
+                              <span className="text-xs font-medium text-gray-900">{u.submittedBy?.name}</span>
+                              <span className="text-xs text-gray-500">{new Date(u.createdAt).toLocaleDateString("en-ZA")} {new Date(u.createdAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}</span>
                             </div>
-                            <p className="text-sm text-gray-300">{u.description}</p>
+                            <p className="text-sm text-gray-700">{u.description}</p>
                             {u.imageUrls && Array.isArray(u.imageUrls) && u.imageUrls.length > 0 && (
                               <div className="mt-3 flex flex-wrap gap-2">
                                 {(u.imageUrls as string[]).map((url: string, i: number) => (
                                   <a key={i} href={url} target="_blank" rel="noreferrer">
-                                    <img src={url} alt={`Update photo ${i + 1}`} className="h-20 w-20 rounded-lg object-cover border border-navy-600 hover:opacity-80 transition-opacity" />
+                                    <img src={url} alt={`Update photo ${i + 1}`} className="h-20 w-20 rounded-lg object-cover border border-gray-200 hover:opacity-80 transition-opacity" />
                                   </a>
                                 ))}
                               </div>
@@ -795,9 +979,9 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
                       </div>
                     )}
                     {wo.description && (
-                      <div className="mt-4 pt-3 border-t border-navy-700">
-                        <h5 className="text-xs font-medium text-gray-400 mb-1">Work Order Description</h5>
-                        <p className="text-sm text-gray-300">{wo.description}</p>
+                      <div className="mt-4 pt-3 border-t border-gray-200">
+                        <h5 className="text-xs font-medium text-gray-500 mb-1">Work Order Description</h5>
+                        <p className="text-sm text-gray-700">{wo.description}</p>
                       </div>
                     )}
                   </div>
@@ -836,28 +1020,28 @@ function InvoicesTab({ authToken }: { authToken: string }) {
   };
 
   const statusColors: Record<string, string> = {
-    SUBMITTED: "bg-blue-500/20 text-blue-400",
-    UNDER_REVIEW: "bg-yellow-500/20 text-yellow-400",
-    APPROVED: "bg-cyan-500/20 text-cyan-400",
-    REJECTED: "bg-red-500/20 text-red-400",
-    PAID: "bg-green-500/20 text-green-400",
+    SUBMITTED: "bg-blue-100 text-blue-700",
+    UNDER_REVIEW: "bg-yellow-100 text-yellow-700",
+    APPROVED: "bg-cyan-100 text-cyan-700",
+    REJECTED: "bg-red-100 text-red-700",
+    PAID: "bg-green-100 text-green-700",
   };
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Contractor Invoices</h2>
+      <h2 className="text-xl font-semibold text-gray-900">Contractor Invoices</h2>
 
       {invoicesQuery.isLoading ? (
-        <p className="text-gray-400">Loading invoices...</p>
+        <p className="text-gray-600">Loading invoices...</p>
       ) : !invoicesQuery.data?.length ? (
-        <div className="rounded-xl border border-navy-700 bg-navy-900/50 p-12 text-center">
-          <Receipt className="mx-auto h-12 w-12 text-gray-600 mb-3" />
-          <p className="text-gray-400">No invoices submitted yet</p>
+        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center shadow-sm">
+          <Receipt className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+          <p className="text-gray-500">No invoices submitted yet</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-navy-700">
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-navy-900/80 text-left text-gray-400">
+            <thead className="bg-gray-100 text-left text-gray-600">
               <tr>
                 <th className="px-4 py-3 font-medium">Invoice #</th>
                 <th className="px-4 py-3 font-medium">Contractor</th>
@@ -869,15 +1053,15 @@ function InvoicesTab({ authToken }: { authToken: string }) {
                 <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-navy-700">
+            <tbody className="divide-y divide-gray-100">
               {invoicesQuery.data.map((inv: any) => (
-                <tr key={inv.id} className="bg-navy-900/50 hover:bg-navy-800/50">
-                  <td className="px-4 py-3 font-medium text-white">{inv.invoiceNumber}</td>
-                  <td className="px-4 py-3 text-gray-300">{inv.contractorProfile.user.name}</td>
-                  <td className="px-4 py-3 text-gray-300">{inv.workOrder.property.title}</td>
-                  <td className="px-4 py-3 text-gray-300">R {inv.amount.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-gray-300">R {inv.taxAmount.toLocaleString()}</td>
-                  <td className="px-4 py-3 font-medium text-gold-400">R {inv.totalAmount.toLocaleString()}</td>
+                <tr key={inv.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">{inv.invoiceNumber}</td>
+                  <td className="px-4 py-3 text-gray-700">{inv.contractorProfile.user.name}</td>
+                  <td className="px-4 py-3 text-gray-700">{inv.workOrder.property.title}</td>
+                  <td className="px-4 py-3 text-gray-700">R {inv.amount.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-gray-700">R {inv.taxAmount.toLocaleString()}</td>
+                  <td className="px-4 py-3 font-medium text-gold-600">R {inv.totalAmount.toLocaleString()}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[inv.status]}`}>{inv.status}</span>
                   </td>
@@ -912,7 +1096,7 @@ function InvoicesTab({ authToken }: { authToken: string }) {
                           generateInvoicePDF(pdfData);
                           toast.success("Invoice PDF downloaded");
                         }}
-                        className="rounded border border-navy-600 px-2 py-1 text-xs text-gray-300 hover:bg-navy-800"
+                        className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
                         title="Download Invoice PDF"
                       >
                         <Download className="h-3 w-3" />

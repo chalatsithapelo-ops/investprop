@@ -64,7 +64,7 @@ function SaleProposalsPage() {
   useEffect(() => {
     if (!hasHydrated) return;
     if (!user || !authToken) navigate({ to: "/login" });
-    if (user && !["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"].includes(user.role)) {
+    if (user && !["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"].includes(user.role)) {
       navigate({ to: "/dashboard" });
     }
   }, [user, authToken, hasHydrated]);

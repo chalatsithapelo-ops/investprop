@@ -28,7 +28,7 @@ function DistributionsPage() {
   const [proposalForm, setProposalForm] = useState({ propertyId: 0, title: "", description: "", proposalType: "OTHER" as string, deadline: "" });
   const [executing, setExecuting] = useState<number | null>(null);
 
-  const isManager = user?.role === "DEVELOPMENT_MANAGER" || user?.role === "PROPERTY_OWNER";
+  const isManager = user?.role === "ADMIN" || user?.role === "DEVELOPMENT_MANAGER" || user?.role === "PROPERTY_OWNER";
 
   useEffect(() => {
     if (!hasHydrated) return;

@@ -56,7 +56,7 @@ function DashboardPage() {
 
   const role = user?.role ?? "";
   const isInvestor = role === "INVESTOR";
-  const isManager = role === "DEVELOPMENT_MANAGER" || role === "PROJECT_MANAGER";
+  const isManager = role === "ADMIN" || role === "DEVELOPMENT_MANAGER" || role === "PROJECT_MANAGER";
   const isOwner = role === "PROPERTY_OWNER";
   const isContractor = role === "CONTRACTOR";
 

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 
-const MANAGER_ROLES = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "OWNER"];
+const MANAGER_ROLES = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "OWNER"];
 
 export const Route = createFileRoute("/financial-reports/")({
   component: FinancialReportsPage,

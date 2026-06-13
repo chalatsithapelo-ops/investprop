@@ -32,7 +32,7 @@ import { useAuthStore } from "~/stores/authStore";
 import { downloadCertificatePDF } from "~/utils/generate-certificate-pdf";
 import toast from "react-hot-toast";
 
-const MANAGER_ROLES = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"];
+const MANAGER_ROLES = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"];
 
 export const Route = createFileRoute("/admin/certificates/")({
   component: CertificateManagementPage,

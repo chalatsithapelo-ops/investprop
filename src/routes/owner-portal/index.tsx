@@ -74,7 +74,9 @@ function OwnerPortalPage() {
   useEffect(() => {
     if (!hasHydrated) return;
     if (!user || !authToken) navigate({ to: "/login" });
-    if (user && user.role !== "PROPERTY_OWNER") navigate({ to: "/dashboard" });
+    // Owner Portal is the submission/progress view for property owners.
+    // Admins and managers manage proposals from the Sale Proposals review screen.
+    if (user && user.role !== "PROPERTY_OWNER") navigate({ to: "/sale-proposals" });
   }, [user, authToken, hasHydrated]);
 
   // Fetch my proposals

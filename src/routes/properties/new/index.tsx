@@ -10,7 +10,7 @@ import { PropertyForm } from "~/components/PropertyForm";
 import { useTRPC } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 
-const MANAGER_ROLES = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "OWNER"];
+const MANAGER_ROLES = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "OWNER"];
 
 const propertyNewSearchSchema = z.object({
   type: fallback(z.enum(["flip", "rental", "development"]), "flip").default("flip"),
