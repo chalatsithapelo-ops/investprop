@@ -308,9 +308,11 @@ function PaymentsPage() {
               <CreditCard className="h-8 w-8 text-gray-900" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Payment Gateway</h1>
+              <h1 className="text-3xl font-bold text-gray-900">{isInvestor ? "Payments" : "Payment Gateway"}</h1>
               <p className="text-gray-500">
-                Secure payments via Paystack — South Africa&apos;s leading payment processor
+                {isInvestor
+                  ? "Fund your investments and track your payouts — secure, FICA-compliant transfers in ZAR"
+                  : "Secure payments via Paystack — South Africa\u2019s leading payment processor"}
               </p>
             </div>
           </div>
@@ -385,12 +387,16 @@ function PaymentsPage() {
                 <div className="flex items-center gap-4">
                   <div
                     className={`flex h-14 w-14 items-center justify-center rounded-xl ${
-                      gateway?.configured
-                        ? "bg-emerald-50"
-                        : "bg-red-50"
+                      isInvestor
+                        ? "bg-blue-50"
+                        : gateway?.configured
+                          ? "bg-emerald-50"
+                          : "bg-red-50"
                     }`}
                   >
-                    {gateway?.configured ? (
+                    {isInvestor ? (
+                      <Banknote className="h-7 w-7 text-blue-600" />
+                    ) : gateway?.configured ? (
                       <CheckCircle className="h-7 w-7 text-emerald-600" />
                     ) : (
                       <XCircle className="h-7 w-7 text-red-500" />
@@ -398,18 +404,26 @@ function PaymentsPage() {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold text-gray-900">
-                      Paystack Integration
+                      {isInvestor ? "Funding Your Investments" : "Paystack Integration"}
                     </h3>
-                    <p className={`text-sm font-medium ${gateway?.configured ? "text-emerald-600" : "text-red-500"}`}>
-                      {gateway?.configured ? "Connected & Active" : "Not Configured — Setup Required"}
-                    </p>
+                    {isInvestor ? (
+                      <p className="text-sm font-medium text-blue-600">
+                        EFT &amp; bank deposit · proof of payment confirmed within 1–2 business days
+                      </p>
+                    ) : (
+                      <p className={`text-sm font-medium ${gateway?.configured ? "text-emerald-600" : "text-red-500"}`}>
+                        {gateway?.configured ? "Connected & Active" : "Not Configured — Setup Required"}
+                      </p>
+                    )}
                   </div>
                 </div>
-                <button
-                  onClick={() => gatewayQuery.refetch()}
-                  className="rounded-lg border p-2 text-gray-500 hover:bg-navy-800/30">
-                  <RefreshCw size={16} />
-                </button>
+                {!isInvestor && (
+                  <button
+                    onClick={() => gatewayQuery.refetch()}
+                    className="rounded-lg border p-2 text-gray-500 hover:bg-navy-800/30">
+                    <RefreshCw size={16} />
+                  </button>
+                )}
               </div>
 
               {gateway?.configured && (
