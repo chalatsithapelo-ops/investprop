@@ -467,11 +467,11 @@ function DistributionsPage() {
                     <div className="mb-3 flex items-center gap-4 text-sm">
                       <div className="flex items-center gap-1 text-emerald-600">
                         <ThumbsUp size={14} />
-                        <span>{proposal.votesFor ?? proposal.yesVotes ?? 0} For</span>
+                        <span>{proposal.tally?.yesCount ?? proposal.votesFor ?? proposal.yesVotes ?? 0} For</span>
                       </div>
                       <div className="flex items-center gap-1 text-red-600">
                         <ThumbsDown size={14} />
-                        <span>{proposal.votesAgainst ?? proposal.noVotes ?? 0} Against</span>
+                        <span>{proposal.tally?.noCount ?? proposal.votesAgainst ?? proposal.noVotes ?? 0} Against</span>
                       </div>
                       {proposal.deadline && (
                         <div className="flex items-center gap-1 text-gray-500">
