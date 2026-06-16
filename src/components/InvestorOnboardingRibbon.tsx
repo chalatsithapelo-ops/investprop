@@ -15,6 +15,7 @@ type Props = {
   ficaDocsSubmitted: boolean;
   appropriatenessCompleted: boolean;
   hasInvested: boolean;
+  onStartQuestionnaire?: () => void;
 };
 
 /**
@@ -28,6 +29,7 @@ export function InvestorOnboardingRibbon({
   ficaDocsSubmitted,
   appropriatenessCompleted,
   hasInvested,
+  onStartQuestionnaire,
 }: Props) {
   const steps = [
     {
@@ -43,6 +45,7 @@ export function InvestorOnboardingRibbon({
       title: "Suitability questionnaire",
       done: appropriatenessCompleted,
       href: "/dashboard",
+      action: onStartQuestionnaire,
       icon: Sparkles,
       cta: "Take 2 min",
     },
@@ -84,12 +87,22 @@ export function InvestorOnboardingRibbon({
             </p>
           </div>
           {nextStep && (
-            <Link
-              to={nextStep.href as any}
-              className="inline-flex items-center gap-2 rounded-lg bg-gold-500 px-3 py-1.5 text-xs font-semibold text-navy-950 transition hover:bg-gold-400"
-            >
-              Next: {nextStep.title} <ArrowRight size={14} />
-            </Link>
+            nextStep.action ? (
+              <button
+                type="button"
+                onClick={nextStep.action}
+                className="inline-flex items-center gap-2 rounded-lg bg-gold-500 px-3 py-1.5 text-xs font-semibold text-navy-950 transition hover:bg-gold-400"
+              >
+                Next: {nextStep.title} <ArrowRight size={14} />
+              </button>
+            ) : (
+              <Link
+                to={nextStep.href as any}
+                className="inline-flex items-center gap-2 rounded-lg bg-gold-500 px-3 py-1.5 text-xs font-semibold text-navy-950 transition hover:bg-gold-400"
+              >
+                Next: {nextStep.title} <ArrowRight size={14} />
+              </Link>
+            )
           )}
         </div>
       </div>
@@ -97,18 +110,15 @@ export function InvestorOnboardingRibbon({
       <div className="grid grid-cols-1 gap-2 px-5 py-4 sm:grid-cols-2 lg:grid-cols-4">
         {steps.map((step, idx) => {
           const Icon = step.icon;
-          return (
-            <Link
-              key={step.key}
-              to={step.href as any}
-              className={`flex items-start gap-3 rounded-lg border p-3 transition ${
-                step.done
-                  ? "border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50"
-                  : nextStep?.key === step.key
-                    ? "border-gold-300 bg-gold-50 ring-2 ring-gold-200"
-                    : "border-gray-200 bg-white hover:border-gray-300"
-              }`}
-            >
+          const cardClass = `flex items-start gap-3 rounded-lg border p-3 text-left transition ${
+            step.done
+              ? "border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50"
+              : nextStep?.key === step.key
+                ? "border-gold-300 bg-gold-50 ring-2 ring-gold-200"
+                : "border-gray-200 bg-white hover:border-gray-300"
+          }`;
+          const inner = (
+            <>
               <div className="flex-shrink-0">
                 {step.done ? (
                   <CheckCircle2 className="text-emerald-600" size={22} />
@@ -129,6 +139,15 @@ export function InvestorOnboardingRibbon({
                   <p className="mt-0.5 text-xs text-gold-700">{step.cta} →</p>
                 )}
               </div>
+            </>
+          );
+          return step.action && !step.done ? (
+            <button key={step.key} type="button" onClick={step.action} className={cardClass}>
+              {inner}
+            </button>
+          ) : (
+            <Link key={step.key} to={step.href as any} className={cardClass}>
+              {inner}
             </Link>
           );
         })}
