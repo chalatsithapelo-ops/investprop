@@ -553,6 +553,11 @@ export interface ContractorReportPDFData {
     status: string;
     date: string;
   }>;
+  documents?: Array<{
+    documentName: string;
+    documentType?: string | null;
+    documentUrl?: string | null;
+  }>;
   totalEarnings: number;
   totalOutstanding: number;
 }
@@ -652,6 +657,33 @@ export function generateContractorReportPDF(data: ContractorReportPDFData): void
       doc.setFont("helvetica", "normal");
       doc.text(inv.status.replace(/_/g, " "), 130, y + 5.5);
       doc.text(formatDate(inv.date), W - 24, y + 5.5, { align: "right" });
+      y += 8;
+    });
+  }
+
+  // Supporting Documents table
+  if (data.documents && data.documents.length > 0) {
+    if (y > 240) { doc.addPage(); drawFooter(doc); y = 20; }
+    y = drawSectionTitle(doc, y, "SUPPORTING DOCUMENTS");
+
+    doc.setFillColor(...NAVY);
+    doc.rect(20, y, W - 40, 8, "F");
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...WHITE);
+    doc.text("Document", 24, y + 5.5);
+    doc.text("Type", W - 24, y + 5.5, { align: "right" });
+    y += 8;
+
+    data.documents.forEach((d, i) => {
+      if (y > 270) { doc.addPage(); drawFooter(doc); y = 20; }
+      doc.setFillColor(i % 2 === 0 ? 248 : 240, i % 2 === 0 ? 250 : 245, i % 2 === 0 ? 252 : 250);
+      doc.rect(20, y, W - 40, 8, "F");
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...DARK_GREY);
+      doc.text((d.documentName || "Document").substring(0, 60), 24, y + 5.5);
+      doc.text((d.documentType || "—").replace(/_/g, " "), W - 24, y + 5.5, { align: "right" });
       y += 8;
     });
   }

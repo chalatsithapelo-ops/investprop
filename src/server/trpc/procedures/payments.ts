@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
-import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { getAuthenticatedUser, requireAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { TRPCError } from "@trpc/server";
 import { env } from "~/server/env";
 import { createNotification } from "./notifications";
@@ -50,7 +50,11 @@ export const initiateDistributionPayout = baseProcedure
     })
   )
   .mutation(async ({ input }) => {
-    const user = await getAuthenticatedUser(input.authToken);
+    const user = await requireAuthenticatedUser(
+      input.authToken,
+      ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER"],
+      "Only managers can initiate distribution payouts."
+    );
 
     const distribution = await db.distribution.findUnique({
       where: { id: input.distributionId },
@@ -229,7 +233,11 @@ export const verifyPayment = baseProcedure
 export const getPaystackBalance = baseProcedure
   .input(z.object({ authToken: z.string() }))
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    await requireAuthenticatedUser(
+      input.authToken,
+      ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER"],
+      "Only managers can view the platform balance."
+    );
     const result = await paystackRequest("/balance", "GET");
     return result.data.map((b: any) => ({
       currency: b.currency,

@@ -238,6 +238,18 @@ function ContractorsTab({ authToken }: { authToken: string }) {
                   {c.beeLevel && <p className="text-xs text-gray-600">BEE Level: {c.beeLevel}</p>}
                   {c.cidbGrade && <p className="text-xs text-gray-600">CIDB Grade: {c.cidbGrade}</p>}
                 </div>
+                {c.documents?.length > 0 && (
+                  <div className="mt-3 border-t border-gray-100 pt-3">
+                    <p className="mb-1.5 text-xs font-medium text-gray-600">Documents ({c.documents.length}):</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {c.documents.map((doc: any) => (
+                        <a key={doc.id} href={doc.documentUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-[11px] text-gray-700 hover:border-gold-500 transition-colors">
+                          <FileText className="h-3 w-3 text-gold-600" /> {doc.documentName}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <button
                   onClick={() => {
                     const reportData: ContractorReportPDFData = {
@@ -255,6 +267,11 @@ function ContractorsTab({ authToken }: { authToken: string }) {
                       province: c.province,
                       workOrders: [],
                       invoices: [],
+                      documents: (c.documents ?? []).map((d: any) => ({
+                        documentName: d.documentName,
+                        documentType: d.documentType,
+                        documentUrl: d.documentUrl,
+                      })),
                       totalEarnings: 0,
                       totalOutstanding: 0,
                     };

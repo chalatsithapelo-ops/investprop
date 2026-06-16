@@ -25,6 +25,7 @@ import { Navbar } from "~/components/Navbar";
 import { AICopilotChat } from "~/components/AICopilotChat";
 import { AIMatchBadge } from "~/components/AIMatchBadge";
 import { AIConfidenceRating } from "~/components/AIConfidenceRating";
+import { InfoTooltip, type FinancialTermKey } from "~/components/InfoTooltip";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 import { calculateFlipMetrics, calculateRentalMetrics, calculateDevelopmentMetrics } from "~/financial-calculations";
@@ -1388,10 +1389,13 @@ function OpportunityDetailPage() {
 const R = (n: number) => `R${n.toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 const pct = (n: number) => `${n.toFixed(1)}%`;
 
-function InvMetric({ label, value, color = "text-gray-900", sub }: { label: string; value: string; color?: string; sub?: string }) {
+function InvMetric({ label, value, color = "text-gray-900", sub, infoTerm }: { label: string; value: string; color?: string; sub?: string; infoTerm?: FinancialTermKey }) {
   return (
     <div className="rounded-lg bg-navy-800/30 p-3">
-      <p className="text-xs text-gray-500">{label}</p>
+      <p className="flex items-center gap-1 text-xs text-gray-500">
+        {label}
+        {infoTerm && <InfoTooltip term={infoTerm} />}
+      </p>
       <p className={`mt-1 text-sm font-semibold ${color}`}>{value}</p>
       {sub && <p className="mt-0.5 text-[11px] text-gray-500">{sub}</p>}
     </div>
@@ -1449,9 +1453,9 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
           </h4>
           <div className="grid grid-cols-2 gap-3">
             <InvMetric label="Total Investment Required" value={R(calc.totalInvestment)} sub="Purchase + renovation + costs" />
-            <InvMetric label="After Repair Value (ARV)" value={R(input.afterRepairValue || input.estimatedValue)} color="text-emerald-600" sub="Estimated sale price" />
-            <InvMetric label="Expected Profit" value={R(calc.expectedProfit)} color={calc.expectedProfit >= 0 ? "text-emerald-600" : "text-red-500"} />
-            <InvMetric label="Return on Investment" value={pct(calc.displayROI)} color="text-gold-600" />
+            <InvMetric label="After Repair Value (ARV)" value={R(input.afterRepairValue || input.estimatedValue)} color="text-emerald-600" sub="Estimated sale price" infoTerm="arv" />
+            <InvMetric label="Expected Profit" value={R(calc.expectedProfit)} color={calc.expectedProfit >= 0 ? "text-emerald-600" : "text-red-500"} infoTerm="grossProfit" />
+            <InvMetric label="Return on Investment" value={pct(calc.displayROI)} color="text-gold-600" infoTerm="roi" />
             <InvMetric label="Break-Even Price" value={R(calc.breakEvenPrice)} sub="Minimum sale price" />
             {input.daysToComplete > 0 && <InvMetric label="Target Timeline" value={`${input.daysToComplete} days`} color="text-blue-600" />}
           </div>
@@ -1466,12 +1470,15 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
             {[
               { label: "Purchase Price", value: input.purchasePrice },
               { label: "Renovation Budget", value: input.renovationBudget },
-              { label: "Holding Costs", value: input.holdingCosts },
+              { label: "Holding Costs", value: input.holdingCosts, infoTerm: "holdingCosts" as FinancialTermKey },
               { label: "Closing Costs (Purchase)", value: input.closingCostsPurchase },
               { label: "Closing Costs (Sale)", value: input.closingCostsSale },
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between rounded-md bg-navy-800/20 px-3 py-2">
-                <span className="text-gray-500">{row.label}</span>
+                <span className="flex items-center gap-1 text-gray-500">
+                  {row.label}
+                  {row.infoTerm && <InfoTooltip term={row.infoTerm} />}
+                </span>
                 <span className="font-medium text-gray-900">{R(row.value)}</span>
               </div>
             ))}
@@ -1493,7 +1500,7 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
               to cover project management and admin costs.
             </p>
             <div className="grid grid-cols-2 gap-3 pt-1">
-              <InvMetric label="Net Profit After Fees" value={R(profitAfterFees)} color={profitAfterFees >= 0 ? "text-emerald-600" : "text-red-500"} />
+              <InvMetric label="Net Profit After Fees" value={R(profitAfterFees)} color={profitAfterFees >= 0 ? "text-emerald-600" : "text-red-500"} infoTerm="netProfit" />
               <InvMetric label="Preferred Return" value={preferredReturn > 0 ? pct(preferredReturn) : "8–10%"} color="text-gold-600" sub="Per property" />
             </div>
           </div>
@@ -1605,7 +1612,7 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
           <div className="grid grid-cols-2 gap-3">
             <InvMetric label="Monthly Rental Income" value={R(input.monthlyRent)} color="text-emerald-600" />
             <InvMetric label="Annual Gross Rent" value={R(calc.annualGrossRent)} color="text-emerald-600" />
-            <InvMetric label="Net Operating Income" value={R(calc.noi)} color={calc.noi >= 0 ? "text-emerald-600" : "text-red-500"} sub="Annual, after expenses" />
+            <InvMetric label="Net Operating Income" value={R(calc.noi)} color={calc.noi >= 0 ? "text-emerald-600" : "text-red-500"} sub="Annual, after expenses" infoTerm="noi" />
             <InvMetric label="Monthly Cash Flow" value={R(calc.monthlyCashFlow)} color={calc.monthlyCashFlow >= 0 ? "text-emerald-600" : "text-red-500"} sub="After debt service" />
           </div>
         </div>
@@ -1616,10 +1623,10 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
             <TrendingUp size={14} className="text-gold-500" /> Yield & Return Analysis
           </h4>
           <div className="grid grid-cols-2 gap-3">
-            <InvMetric label="Gross Yield" value={pct(calc.grossYield)} color="text-gold-600" sub="Annual rent ÷ purchase price" />
-            <InvMetric label="Net Yield" value={pct(calc.netYield)} color="text-gold-600" sub="NOI ÷ purchase price" />
-            <InvMetric label="Cap Rate" value={pct(calc.displayCapRate)} color="text-gold-600" sub="NOI ÷ property value" />
-            <InvMetric label="Cash-on-Cash Return" value={pct(calc.cashOnCashReturn)} color="text-emerald-600" sub="Cash flow ÷ cash invested" />
+            <InvMetric label="Gross Yield" value={pct(calc.grossYield)} color="text-gold-600" sub="Annual rent ÷ purchase price" infoTerm="grossYield" />
+            <InvMetric label="Net Yield" value={pct(calc.netYield)} color="text-gold-600" sub="NOI ÷ purchase price" infoTerm="netYield" />
+            <InvMetric label="Cap Rate" value={pct(calc.displayCapRate)} color="text-gold-600" sub="NOI ÷ property value" infoTerm="capRate" />
+            <InvMetric label="Cash-on-Cash Return" value={pct(calc.cashOnCashReturn)} color="text-emerald-600" sub="Cash flow ÷ cash invested" infoTerm="cashOnCash" />
             {preferredReturn > 0 && <InvMetric label="Preferred Return" value={pct(preferredReturn)} color="text-gold-600" sub="Target investor return" />}
             {input.vacancyRate > 0 && <InvMetric label="Vacancy Rate" value={pct(input.vacancyRate)} color="text-orange-500" sub={`Annual loss: ${R(calc.vacancyLoss)}`} />}
           </div>
@@ -1780,10 +1787,10 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
           <div className="grid grid-cols-2 gap-3">
             <InvMetric label="Total Development Cost" value={R(calc.totalCosts)} />
             {isResale && <InvMetric label="Expected Revenue" value={R(input.totalExpectedRevenue)} color="text-emerald-600" />}
-            {isResale && <InvMetric label="Expected Profit" value={R(input.expectedProfit)} color={input.expectedProfit >= 0 ? "text-emerald-600" : "text-red-500"} />}
+            {isResale && <InvMetric label="Expected Profit" value={R(input.expectedProfit)} color={input.expectedProfit >= 0 ? "text-emerald-600" : "text-red-500"} infoTerm="netProfit" />}
             <InvMetric label="Profit Margin" value={pct(calc.profitMargin)} color="text-gold-600" />
-            {input.expectedROI > 0 && <InvMetric label="Expected ROI" value={pct(input.expectedROI)} color="text-emerald-600" />}
-            {input.expectedIRR > 0 && <InvMetric label="Expected IRR" value={pct(input.expectedIRR)} color="text-emerald-600" sub="Internal Rate of Return" />}
+            {input.expectedROI > 0 && <InvMetric label="Expected ROI" value={pct(input.expectedROI)} color="text-emerald-600" infoTerm="roi" />}
+            {input.expectedIRR > 0 && <InvMetric label="Expected IRR" value={pct(input.expectedIRR)} color="text-emerald-600" sub="Internal Rate of Return" infoTerm="irr" />}
             {input.numberOfUnits > 0 && <InvMetric label="Cost per Unit" value={R(calc.costPerUnit)} />}
             {preferredReturn > 0 && <InvMetric label="Preferred Return" value={pct(preferredReturn)} color="text-gold-600" sub="Per property" />}
           </div>
@@ -1834,8 +1841,8 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
             <div className="grid grid-cols-2 gap-3">
               <InvMetric label="Monthly Rent per Unit" value={R(input.expectedMonthlyRentPerUnit)} />
               {calc.annualGrossRentalIncome != null && <InvMetric label="Annual Gross Rental" value={R(calc.annualGrossRentalIncome)} color="text-emerald-600" />}
-              {calc.noi != null && <InvMetric label="NOI" value={R(calc.noi)} color={calc.noi >= 0 ? "text-emerald-600" : "text-red-500"} />}
-              {calc.calculatedCapRate != null && <InvMetric label="Cap Rate" value={pct(calc.calculatedCapRate)} color="text-gold-600" />}
+              {calc.noi != null && <InvMetric label="NOI" value={R(calc.noi)} color={calc.noi >= 0 ? "text-emerald-600" : "text-red-500"} infoTerm="noi" />}
+              {calc.calculatedCapRate != null && <InvMetric label="Cap Rate" value={pct(calc.calculatedCapRate)} color="text-gold-600" infoTerm="capRate" />}
             </div>
           </div>
         )}

@@ -29,6 +29,10 @@ function DistributionsPage() {
   const [executing, setExecuting] = useState<number | null>(null);
 
   const isManager = user?.role === "ADMIN" || user?.role === "DEVELOPMENT_MANAGER" || user?.role === "PROPERTY_OWNER";
+  // Only Development Managers and Admins may raise/close governance proposals.
+  const canManageProposals = user?.role === "ADMIN" || user?.role === "DEVELOPMENT_MANAGER";
+  // Investors participate by voting (they are the shareholders).
+  const canVote = user?.role === "INVESTOR";
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -373,9 +377,11 @@ function DistributionsPage() {
                 <Vote className="text-gold-600" size={20} />
                 <h2 className="text-lg font-semibold text-gray-900">Governance Proposals</h2>
               </div>
-              <button onClick={() => setShowProposalForm(!showProposalForm)} className="flex items-center gap-2 rounded-lg bg-gold-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-gold-600">
-                <Plus size={16} /> New Proposal
-              </button>
+              {canManageProposals && (
+                <button onClick={() => setShowProposalForm(!showProposalForm)} className="flex items-center gap-2 rounded-lg bg-gold-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-gold-600">
+                  <Plus size={16} /> New Proposal
+                </button>
+              )}
             </div>
 
             {/* Create Proposal Form */}
@@ -478,21 +484,25 @@ function DistributionsPage() {
                     {/* Vote actions */}
                     {(proposal.status === "ACTIVE" || proposal.status === "OPEN") && (
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => handleVote(proposal.id, true)}
-                          disabled={votingId === proposal.id}
-                          className="flex items-center gap-1 rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-500/20 disabled:opacity-50"
-                        >
-                          <ThumbsUp size={14} /> Vote For
-                        </button>
-                        <button
-                          onClick={() => handleVote(proposal.id, false)}
-                          disabled={votingId === proposal.id}
-                          className="flex items-center gap-1 rounded-lg bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-500/20 disabled:opacity-50"
-                        >
-                          <ThumbsDown size={14} /> Vote Against
-                        </button>
-                        {isManager && (
+                        {canVote && (
+                          <>
+                            <button
+                              onClick={() => handleVote(proposal.id, true)}
+                              disabled={votingId === proposal.id}
+                              className="flex items-center gap-1 rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-500/20 disabled:opacity-50"
+                            >
+                              <ThumbsUp size={14} /> Vote For
+                            </button>
+                            <button
+                              onClick={() => handleVote(proposal.id, false)}
+                              disabled={votingId === proposal.id}
+                              className="flex items-center gap-1 rounded-lg bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-500/20 disabled:opacity-50"
+                            >
+                              <ThumbsDown size={14} /> Vote Against
+                            </button>
+                          </>
+                        )}
+                        {canManageProposals && (
                           <button
                             onClick={() => handleCloseProposal(proposal.id)}
                             className="ml-auto flex items-center gap-1 rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-200"

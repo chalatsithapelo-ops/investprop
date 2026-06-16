@@ -12,7 +12,10 @@ export const getContractors = baseProcedure
   .query(async ({ input }) => {
     await requireAuthenticatedUser(input.authToken, ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"]);
     return db.contractorProfile.findMany({
-      include: { user: { select: { id: true, name: true, email: true } } },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        documents: { orderBy: { createdAt: "desc" } },
+      },
       orderBy: { createdAt: "desc" },
     });
   });

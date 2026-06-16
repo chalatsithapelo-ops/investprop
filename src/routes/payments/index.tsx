@@ -45,7 +45,7 @@ function PaymentsPage() {
   const qc = useQueryClient();
   const authToken = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user) as any;
-  const isManager = user?.role === "DEVELOPMENT_MANAGER" || user?.role === "PROJECT_MANAGER" || user?.role === "PROPERTY_OWNER";
+  const isManager = user?.role === "DEVELOPMENT_MANAGER" || user?.role === "PROJECT_MANAGER" || user?.role === "PROPERTY_OWNER" || user?.role === "ADMIN";
   const isInvestor = user?.role === "INVESTOR";
 
   const [tab, setTab] = useState<TabKey>("overview");
@@ -318,18 +318,22 @@ function PaymentsPage() {
 
         {/* Stats Row */}
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatBox
-            icon={Shield}
-            label="Gateway Status"
-            value={gateway?.configured ? "Connected" : "Not Configured"}
-            color={gateway?.configured ? "green" : "red"}
-          />
-          <StatBox
-            icon={Wallet}
-            label="Platform Balance"
-            value={balances.length > 0 ? fmt(balances[0].balance) : isManager ? "—" : "N/A"}
-            color="blue"
-          />
+          {isManager && (
+            <StatBox
+              icon={Shield}
+              label="Gateway Status"
+              value={gateway?.configured ? "Connected" : "Not Configured"}
+              color={gateway?.configured ? "green" : "red"}
+            />
+          )}
+          {isManager && (
+            <StatBox
+              icon={Wallet}
+              label="Platform Balance"
+              value={balances.length > 0 ? fmt(balances[0].balance) : "—"}
+              color="blue"
+            />
+          )}
           <StatBox
             icon={ArrowDownLeft}
             label={isInvestor ? "Total Received" : "Total Distributed"}
@@ -455,7 +459,7 @@ function PaymentsPage() {
                 </div>
               )}
 
-              {!gateway?.configured && (
+              {!gateway?.configured && isManager && (
                 <div className="mt-6 rounded-lg bg-gold-50 p-4">
                   <div className="flex items-start gap-3">
                     <AlertTriangle className="mt-0.5 h-5 w-5 text-gold-600" />
@@ -484,6 +488,24 @@ function PaymentsPage() {
                           Restart the server — the gateway will auto-connect
                         </li>
                       </ol>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!gateway?.configured && isInvestor && (
+                <div className="mt-6 rounded-lg bg-blue-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <Banknote className="mt-0.5 h-5 w-5 text-blue-600" />
+                    <div>
+                      <p className="font-semibold text-blue-700">
+                        Pay by EFT / Bank Deposit
+                      </p>
+                      <p className="mt-1 text-sm text-blue-700">
+                        Instant card payments are being finalised. In the meantime you can fund your
+                        investments by EFT or bank deposit and upload your proof of payment — our team
+                        confirms it within 1–2 business days. Use the <strong>Make Payment</strong> tab to get started.
+                      </p>
                     </div>
                   </div>
                 </div>

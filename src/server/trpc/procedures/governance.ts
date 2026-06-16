@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
-import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { getAuthenticatedUser, requireAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { TRPCError } from "@trpc/server";
 import { createNotification } from "./notifications";
 
@@ -45,57 +45,27 @@ export const createProposal = baseProcedure
     })
   )
   .mutation(async ({ input }) => {
-    const user = await getAuthenticatedUser(input.authToken);
+    // Only the platform's Development Managers (and Admins) may raise
+    // governance proposals. Investors participate by voting, not proposing.
+    const user = await requireAuthenticatedUser(
+      input.authToken,
+      ["DEVELOPMENT_MANAGER"],
+      "Only Development Managers and Admins can create governance proposals."
+    );
 
-    // Verify user is a shareholder
-    const holding = await db.shareHolding.findFirst({
-      where: { propertyId: input.propertyId, investorId: user.id },
+    // Verify the property exists before raising a proposal against it.
+    const property = await db.property.findUnique({
+      where: { id: input.propertyId },
+      select: { id: true },
     });
-    if (!holding) {
+    if (!property) {
       throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "Only shareholders can create proposals",
+        code: "NOT_FOUND",
+        message: "Property not found",
       });
     }
 
-    // ── Guard 1: Minimum ownership threshold ──────────────────
-    const allHoldings = await db.shareHolding.findMany({
-      where: { propertyId: input.propertyId },
-    });
-    const totalShares = allHoldings.reduce((s: number, h: any) => s + h.sharesOwned, 0);
-    const investorShares = allHoldings
-      .filter((h: any) => h.investorId === user.id)
-      .reduce((s: number, h: any) => s + h.sharesOwned, 0);
-    const ownershipPct = totalShares > 0 ? (investorShares / totalShares) * 100 : 0;
-
-    if (ownershipPct < GOVERNANCE_RULES.MIN_OWNERSHIP_PERCENTAGE_TO_PROPOSE) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: `You must hold at least ${GOVERNANCE_RULES.MIN_OWNERSHIP_PERCENTAGE_TO_PROPOSE}% of shares to raise a proposal. You currently hold ${ownershipPct.toFixed(1)}%.`,
-      });
-    }
-
-    // ── Guard 2: Cooldown period per investor per property ────
-    const cooldownDate = new Date();
-    cooldownDate.setDate(cooldownDate.getDate() - GOVERNANCE_RULES.PROPOSAL_COOLDOWN_DAYS);
-    const recentProposal = await db.proposal.findFirst({
-      where: {
-        propertyId: input.propertyId,
-        createdById: user.id,
-        createdAt: { gte: cooldownDate },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-    if (recentProposal) {
-      const nextAllowed = new Date(recentProposal.createdAt);
-      nextAllowed.setDate(nextAllowed.getDate() + GOVERNANCE_RULES.PROPOSAL_COOLDOWN_DAYS);
-      throw new TRPCError({
-        code: "TOO_MANY_REQUESTS",
-        message: `You can only raise one proposal per ${GOVERNANCE_RULES.PROPOSAL_COOLDOWN_DAYS} days per property. Your next proposal can be submitted after ${nextAllowed.toLocaleDateString("en-ZA")}.`,
-      });
-    }
-
-    // ── Guard 3: Max active proposals per property ────────────
+    // ── Guard: Max active proposals per property (anti-spam) ──
     const activeProposals = await db.proposal.count({
       where: { propertyId: input.propertyId, status: "OPEN" },
     });
@@ -264,7 +234,12 @@ export const closeProposal = baseProcedure
     })
   )
   .mutation(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    // Only Development Managers (and Admins) may close voting and tally results.
+    await requireAuthenticatedUser(
+      input.authToken,
+      ["DEVELOPMENT_MANAGER"],
+      "Only Development Managers and Admins can close a proposal."
+    );
 
     const proposal = await db.proposal.findUnique({
       where: { id: input.proposalId },

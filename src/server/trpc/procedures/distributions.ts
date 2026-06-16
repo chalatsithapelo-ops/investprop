@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
-import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { getAuthenticatedUser, requireAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { TRPCError } from "@trpc/server";
 import { createNotification } from "./notifications";
 import { ensureShareHoldingForContribution } from "./share-certificates";
@@ -22,7 +22,11 @@ export const createDistribution = baseProcedure
     })
   )
   .mutation(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    await requireAuthenticatedUser(
+      input.authToken,
+      ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER"],
+      "Only managers can create distributions."
+    );
 
     const managementFee = input.grossAmount * (input.managementFeePercent / 100);
     const netAmount = input.grossAmount - managementFee;
@@ -236,7 +240,11 @@ export const executeDistribution = baseProcedure
     })
   )
   .mutation(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    await requireAuthenticatedUser(
+      input.authToken,
+      ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER"],
+      "Only managers can execute distributions."
+    );
 
     const distribution = await db.distribution.findUnique({
       where: { id: input.distributionId },
