@@ -107,7 +107,7 @@ export const submitAppropriatenessQuestionnaire = baseProcedure
       understandsIlliquid: z.boolean(),
       understandsLossOfCapital: z.boolean(),
       understandsCoolingOff: z.boolean(),
-      maxLossTolerance: z.number().min(0).max(100),
+      maxLossTolerance: z.number().min(0),
     })
   )
   .mutation(async ({ input }) => {

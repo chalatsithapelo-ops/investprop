@@ -70,9 +70,13 @@ function MetricsPage() {
 /* ─── Investor-Specific Metrics ─────────────────────────────── */
 
 function InvestorMetrics({ contributionsData, userName }: { contributionsData: any; userName: string }) {
-  const contributions = (contributionsData ?? []) as any[];
+  // getMyContributions returns { contributions: [...], summary: {...} } — not a bare array.
+  const contributions = (contributionsData?.contributions ??
+    (Array.isArray(contributionsData) ? contributionsData : [])) as any[];
 
-  const totalInvested = contributions.reduce((sum: number, c: any) => sum + (Number(c.amount) || 0), 0);
+  const amountOf = (c: any) => Number(c.contributionAmount ?? c.amount) || 0;
+
+  const totalInvested = contributions.reduce((sum: number, c: any) => sum + amountOf(c), 0);
   const propertiesInvested = new Set(contributions.map((c: any) => c.propertyId)).size;
   const avgContribution = contributions.length > 0 ? totalInvested / contributions.length : 0;
   const pendingContributions = contributions.filter((c: any) => c.status === "PENDING").length;
@@ -84,7 +88,7 @@ function InvestorMetrics({ contributionsData, userName }: { contributionsData: a
     const key = c.propertyId ?? "unknown";
     const name = c.property?.title ?? c.propertyTitle ?? `Property #${key}`;
     if (!byProperty[key]) byProperty[key] = { name, total: 0, count: 0 };
-    byProperty[key].total += Number(c.amount) || 0;
+    byProperty[key].total += amountOf(c);
     byProperty[key].count += 1;
   });
   const propertyBreakdown = Object.values(byProperty);
