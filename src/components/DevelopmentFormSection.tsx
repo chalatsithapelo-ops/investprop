@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { calculateDevelopmentMetrics, type PropertyDevelopmentInput } from "../financial-calculations";
 
 type FormData = {
   siteAcquisitionCost: number;
@@ -131,44 +132,71 @@ const fieldLabels: Record<keyof FormData, string> = fields.reduce(
 
 function useDevelopmentCalculations(data: FormData) {
   return useMemo(() => {
-    const constructionCost =
-      data.constructionCostPerUnit * data.numberOfUnits;
+    const gdv = data.sellingPricePerUnit * data.numberOfUnits;
+    const salesCommission = gdv * (data.salesCommissionRate / 100);
 
-    const holdingCosts =
+    // Map the detailed form fields onto the shared engine's cost buckets so this
+    // form and the investor page derive profit/ROI identically. Sales commission
+    // (which the engine has no dedicated slot for) is folded into soft costs.
+    const landAcquisitionCost =
+      data.siteAcquisitionCost +
+      data.landClearingCost +
+      data.infrastructureCost +
+      data.landscapingCost +
+      data.bulkServicesCost;
+
+    const hardCosts =
+      data.constructionCostPerUnit * data.numberOfUnits +
+      data.constructionInsurance +
       data.holdingCostsPerMonth * data.constructionDurationMonths;
 
-    const baseCost =
-      data.siteAcquisitionCost +
-      constructionCost +
+    const softCosts =
       data.architectFees +
       data.engineerFees +
       data.projectManagementFees +
       data.legalAndPermitCosts +
       data.marketingCosts +
-      data.financingCosts +
-      data.landClearingCost +
-      data.infrastructureCost +
-      data.landscapingCost +
-      holdingCosts +
       data.transferDutyCost +
       data.municipalContributions +
       data.environmentalImpactCost +
-      data.constructionInsurance +
       data.performanceGuarantee +
       data.developmentLevies +
-      data.bulkServicesCost +
-      data.buildingPlanApproval;
+      data.buildingPlanApproval +
+      salesCommission;
 
-    const contingency = baseCost * (data.contingencyPercentage / 100);
-    const totalCost = baseCost + contingency;
+    const input: PropertyDevelopmentInput = {
+      developmentType: "AFFORDABLE_RESALE",
+      landAcquisitionCost,
+      hardCosts,
+      softCosts,
+      financingCosts: data.financingCosts,
+      contingencyPercent: data.contingencyPercentage,
+      contingencyAmount: 0,
+      expectedSalePricePerUnit: data.sellingPricePerUnit,
+      totalExpectedRevenue: gdv,
+      expectedProfit: 0,
+      expectedMonthlyRentPerUnit: 0,
+      annualOperatingExpenses: 0,
+      stabilizedCapRate: 0,
+      expectedGrossYield: 0,
+      expectedNetYield: 0,
+      expectedROI: 0,
+      expectedIRR: 0,
+      developmentTimelineMonths: data.constructionDurationMonths,
+      preSaleUnits: 0,
+      costPerSquareMeter: 0,
+      totalSquareMeters: 0,
+      numberOfUnits: data.numberOfUnits,
+      totalBudget: 0,
+    };
 
-    const gdv = data.sellingPricePerUnit * data.numberOfUnits;
-    const salesCommission = gdv * (data.salesCommissionRate / 100);
-    const profit = gdv - totalCost - salesCommission;
-    const developmentROI =
-      totalCost > 0 ? (profit / totalCost) * 100 : 0;
-
-    return { totalCost, gdv, profit, developmentROI };
+    const calc = calculateDevelopmentMetrics(input);
+    return {
+      totalCost: calc.totalCosts,
+      gdv: calc.grossDevelopmentValue ?? gdv,
+      profit: calc.derivedProfit ?? 0,
+      developmentROI: calc.derivedROI ?? 0,
+    };
   }, [data]);
 }
 

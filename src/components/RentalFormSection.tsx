@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { calculateRentalMetrics, type RentalPropertyInput } from "../financial-calculations";
 
 type FormData = {
   monthlyRent: number;
@@ -63,39 +64,49 @@ const fields: { key: keyof FormData; label: string }[] = [
 
 function useRentalCalculations(data: FormData) {
   return useMemo(() => {
-    const annualGrossRent = data.monthlyRent * 12;
-    const vacancyLoss = annualGrossRent * (data.vacancyRate / 100);
-    const effectiveGrossIncome = annualGrossRent - vacancyLoss;
+    // Route through the shared engine so this form and the investor page agree.
+    // Form fields that have no dedicated engine slot (capex reserve and the annual
+    // marketing/legal/accounting/misc costs) are folded into the monthly "utilities"
+    // bucket as a monthly-equivalent so they are still captured in NOI exactly once.
+    const extraMonthlyEquivalent =
+      data.otherMonthlyExpenses +
+      data.capitalExpenditureReserve +
+      (data.marketingCost + data.legalFees + data.accountingFees + data.miscExpenses) / 12;
 
-    const annualOperatingExpenses =
-      (data.propertyManagement +
-        data.maintenanceReserve +
-        data.propertyTaxMonthly +
-        data.insuranceMonthly +
-        data.monthlyHOA +
-        data.otherMonthlyExpenses +
-        data.capitalExpenditureReserve) *
-        12 +
-      data.marketingCost +
-      data.legalFees +
-      data.accountingFees +
-      data.miscExpenses;
+    const input: RentalPropertyInput = {
+      purchasePrice: data.propertyPrice,
+      monthlyRent: data.monthlyRent,
+      annualPropertyTax: data.propertyTaxMonthly * 12,
+      annualInsurance: data.insuranceMonthly * 12,
+      monthlyHOAFees: data.monthlyHOA,
+      monthlyMaintenanceReserve: data.maintenanceReserve,
+      monthlyUtilities: extraMonthlyEquivalent,
+      monthlyManagementFee: data.propertyManagement,
+      vacancyRate: data.vacancyRate,
+      appreciationRate: data.annualAppreciation,
+      capRate: 0,
+      cashOnCashReturn: 0,
+      grossRentMultiplier: 0,
+      debtServiceCoverageRatio: 0,
+      grossYield: 0,
+      netYield: 0,
+      downPaymentAmount: data.downPayment,
+      loanAmount: 0,
+      interestRate: data.loanInterestRate,
+      loanTermYears: data.loanTermYears,
+      monthlyDebtService: data.mortgage,
+      totalInvestmentBudget: 0,
+      spentInvestmentBudget: 0,
+      closingCosts: data.closingCosts,
+    };
 
-    const noi = effectiveGrossIncome - annualOperatingExpenses;
-    const capRate =
-      data.propertyPrice > 0 ? (noi / data.propertyPrice) * 100 : 0;
-
-    const annualDebtService = data.mortgage * 12;
-    const annualCashFlow = noi - annualDebtService;
-    const monthlyCashFlow = annualCashFlow / 12;
-
-    const totalCashInvested = data.downPayment + data.closingCosts;
-    const cashOnCashReturn =
-      totalCashInvested > 0
-        ? (annualCashFlow / totalCashInvested) * 100
-        : 0;
-
-    return { noi, capRate, monthlyCashFlow, cashOnCashReturn };
+    const calc = calculateRentalMetrics(input);
+    return {
+      noi: calc.noi,
+      capRate: calc.calculatedCapRate,
+      monthlyCashFlow: calc.monthlyCashFlow,
+      cashOnCashReturn: calc.cashOnCashReturn,
+    };
   }, [data]);
 }
 

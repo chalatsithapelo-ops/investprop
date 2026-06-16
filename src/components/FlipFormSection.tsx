@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { calculateFlipMetrics, type PropertyFlipInput } from "../financial-calculations";
 
 type FormData = {
   purchasePrice: number;
@@ -45,28 +46,47 @@ const fields: { key: keyof FormData; label: string }[] = [
 
 function useFlipCalculations(data: FormData) {
   return useMemo(() => {
-    const totalInvestment =
-      data.purchasePrice +
-      data.renovationCost +
+    // Map the form's individual cost fields onto the shared engine input. All
+    // holding-period costs (lump holding costs, financing, inspection, insurance,
+    // utilities and the monthly mortgage/tax/insurance over the hold) are summed
+    // ONCE into the engine's single `holdingCosts` bucket — this removes the old
+    // double-count where both a lump and the monthly costs were added separately.
+    const holdingCosts =
       data.holdingCosts +
-      data.closingCosts +
-      data.realtorFees +
       data.financingCosts +
       data.inspectionCosts +
       data.insuranceCosts +
       data.utilityCosts +
-      data.monthlyMortgagePayment * data.holdingPeriodMonths +
-      data.monthlyPropertyTax * data.holdingPeriodMonths +
-      data.monthlyInsurance * data.holdingPeriodMonths;
+      (data.monthlyMortgagePayment + data.monthlyPropertyTax + data.monthlyInsurance) *
+        data.holdingPeriodMonths;
 
-    const profit = data.afterRepairValue - totalInvestment;
-    const roi = totalInvestment > 0 ? (profit / totalInvestment) * 100 : 0;
+    const input: PropertyFlipInput = {
+      purchasePrice: data.purchasePrice,
+      renovationBudget: data.renovationCost,
+      estimatedValue: data.afterRepairValue,
+      holdingCosts,
+      closingCostsPurchase: data.closingCosts,
+      closingCostsSale: data.realtorFees,
+      estimatedRepairCosts: data.renovationCost,
+      afterRepairValue: data.afterRepairValue,
+      maxOfferPrice: 0,
+      expectedROI: 0,
+      expectedProfitMargin: 0,
+      daysToComplete: data.holdingPeriodMonths * 30,
+      totalInvestmentBudget: 0,
+      spentInvestmentBudget: 0,
+    };
+
+    const calc = calculateFlipMetrics(input);
     const profitMargin =
-      data.afterRepairValue > 0
-        ? (profit / data.afterRepairValue) * 100
-        : 0;
+      data.afterRepairValue > 0 ? (calc.expectedProfit / data.afterRepairValue) * 100 : 0;
 
-    return { totalInvestment, profit, roi, profitMargin };
+    return {
+      totalInvestment: calc.totalInvestment,
+      profit: calc.expectedProfit,
+      roi: calc.displayROI,
+      profitMargin,
+    };
   }, [data]);
 }
 

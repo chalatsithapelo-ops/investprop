@@ -65,6 +65,8 @@ export type RentalPropertyInput = {
   monthlyDebtService: number;
   totalInvestmentBudget: number;
   spentInvestmentBudget: number;
+  /** Upfront acquisition costs (transfer duty, bond & conveyancing fees). Optional; defaults to 0. */
+  closingCosts?: number;
 };
 
 /**
@@ -122,6 +124,20 @@ export type FlipCalculations = {
   calculatedROI: number;
   displayROI: number;
   breakEvenPrice: number;
+  /** Resale value used for the profit calc (afterRepairValue, falling back to estimatedValue). */
+  resaleValue: number;
+  /** Annualised return (IRR-equivalent for a single buy→sell). 0 when timeline is unknown. */
+  annualisedROI: number;
+  /** Holding period in months derived from daysToComplete. */
+  holdingMonths: number;
+  /** Estimated SARS transfer duty on the purchase price (reference — should sit inside closing costs). */
+  estimatedTransferDuty: number;
+  /** Cushion between resale value and break-even, as a % of break-even. Negative = loss. */
+  marginOfSafety: number;
+  /** Indicative tax on the gross profit (flips are taxed as trading income, not CGT). */
+  estimatedIncomeTax: number;
+  /** Profit after the 2% platform fee and estimated income tax. */
+  netProfitAfterFeesAndTax: number;
 };
 
 /**
@@ -141,9 +157,22 @@ export type RentalCalculations = {
   calculatedCapRate: number;
   displayCapRate: number;
   monthlyCashFlow: number;
+  annualCashFlow: number;
   grossYield: number;
   netYield: number;
   cashOnCashReturn: number;
+  /** Cash actually invested (deposit + acquisition costs, or full all-in cost if unleveraged). */
+  cashInvested: number;
+  /** Estimated SARS transfer duty on the purchase price. */
+  estimatedTransferDuty: number;
+  /** Purchase price + transfer duty + closing costs. */
+  allInCost: number;
+  /** Cap rate measured against all-in cost rather than purchase price (more conservative). */
+  capRateOnCost: number;
+  /** Debt Service Coverage Ratio (NOI ÷ annual debt service). 0 when unleveraged. */
+  dscr: number;
+  /** Gross Rent Multiplier (price ÷ annual gross rent). */
+  grossRentMultiplier: number;
 };
 
 /**
@@ -162,6 +191,17 @@ export type DevelopmentCalculations = {
   profitMargin: number;
   costPerUnit: number;
   preSalePercentage: number;
+  /** Contingency recomputed from contingencyPercent × base costs (never trusts a stale stored amount). */
+  contingencyAmount: number;
+  // Sale-focused derived figures (AFFORDABLE_RESALE)
+  /** Gross development value — totalExpectedRevenue, falling back to salePrice × units. */
+  grossDevelopmentValue?: number;
+  /** Profit derived as revenue − total cost (NOT the manager's typed expectedProfit). */
+  derivedProfit?: number;
+  /** ROI derived from derivedProfit ÷ total cost. */
+  derivedROI?: number;
+  /** Annualised return over the development timeline (IRR-equivalent for a single in→out). */
+  annualisedROI?: number;
   // Rental-specific calculations (only for AFFORDABLE_RENTAL and COMMERCIAL_RENTAL)
   annualGrossRentalIncome?: number;
   noi?: number;
@@ -169,6 +209,151 @@ export type DevelopmentCalculations = {
   calculatedGrossYield?: number;
   calculatedNetYield?: number;
 };
+
+// ============================================================================
+// South African Tax & Time-Value Helpers
+// ============================================================================
+
+/**
+ * SARS transfer-duty brackets effective 1 March 2025.
+ * Each bracket: properties up to `upTo` pay `base` + `rate` of the value above `from`.
+ */
+const TRANSFER_DUTY_BRACKETS: { from: number; upTo: number; base: number; rate: number }[] = [
+  { from: 0, upTo: 1_210_000, base: 0, rate: 0 },
+  { from: 1_210_000, upTo: 1_663_800, base: 0, rate: 0.03 },
+  { from: 1_663_800, upTo: 2_329_300, base: 13_614, rate: 0.06 },
+  { from: 2_329_300, upTo: 2_994_800, base: 53_544, rate: 0.08 },
+  { from: 2_994_800, upTo: 13_310_000, base: 106_784, rate: 0.11 },
+  { from: 13_310_000, upTo: Infinity, base: 1_241_456, rate: 0.13 },
+];
+
+/**
+ * Calculate SARS transfer duty for a given property value (2025/26 sliding scale).
+ * Note: transfer duty does NOT apply where the sale is a VAT-able supply (e.g. a new
+ * development sold by a VAT vendor) — in that case VAT is payable instead.
+ *
+ * @param value - Purchase / property value in ZAR
+ * @returns Transfer duty payable in ZAR
+ */
+export function calculateTransferDuty(value: number): number {
+  if (value <= 0) return 0;
+  for (const b of TRANSFER_DUTY_BRACKETS) {
+    if (value <= b.upTo) {
+      return b.base + (value - b.from) * b.rate;
+    }
+  }
+  return 0;
+}
+
+/** Standard South African VAT rate. */
+export const VAT_RATE = 0.15;
+
+/**
+ * Extract the VAT portion contained in a VAT-inclusive price.
+ *
+ * @param vatInclusivePrice - Price that already includes VAT
+ * @returns The VAT amount embedded in the price
+ */
+export function extractVat(vatInclusivePrice: number): number {
+  if (vatInclusivePrice <= 0) return 0;
+  return vatInclusivePrice - vatInclusivePrice / (1 + VAT_RATE);
+}
+
+/**
+ * Indicative tax on a flip's gross profit. SARS treats property bought to resell
+ * at a profit as trading stock, so the gain is ordinary income, not a capital gain.
+ * We apply a flat indicative rate (companies pay 27%); investors should confirm with
+ * their own tax position. Returns 0 for a loss.
+ *
+ * @param grossProfit - Profit before tax
+ * @param rate - Effective tax rate as a decimal (default 0.27, the SA company rate)
+ * @returns Indicative tax payable
+ */
+export function estimateFlipIncomeTax(grossProfit: number, rate = 0.27): number {
+  return grossProfit > 0 ? grossProfit * rate : 0;
+}
+
+/**
+ * Annualise a simple total return so deals of different durations are comparable.
+ * For a single capital-out / capital-back investment this equals the IRR.
+ *
+ * @param profit - Total profit over the holding period
+ * @param invested - Capital invested
+ * @param months - Holding period in months
+ * @returns Annualised return as a percentage. Falls back to the simple period
+ *          return when the timeline is unknown (months <= 0).
+ */
+export function calculateAnnualisedReturn(
+  profit: number,
+  invested: number,
+  months: number
+): number {
+  if (invested <= 0) return 0;
+  const periodReturn = profit / invested;
+  if (months <= 0) return periodReturn * 100;
+  // A 100%+ loss cannot be annualised meaningfully — clamp to -100%.
+  if (periodReturn <= -1) return -100;
+  const years = months / 12;
+  return (Math.pow(1 + periodReturn, 1 / years) - 1) * 100;
+}
+
+/**
+ * Solve the internal rate of return for a series of equally-spaced cash flows
+ * (index 0 = today). Uses bisection so it always converges without a derivative.
+ *
+ * @param cashFlows - Periodic cash flows; the first is normally negative (capital out)
+ * @returns The per-period rate as a decimal, or NaN if no sign change / no root
+ */
+export function calculateIRRPerPeriod(cashFlows: number[]): number {
+  if (cashFlows.length < 2) return NaN;
+  const hasPositive = cashFlows.some((c) => c > 0);
+  const hasNegative = cashFlows.some((c) => c < 0);
+  if (!hasPositive || !hasNegative) return NaN;
+
+  const npv = (rate: number) =>
+    cashFlows.reduce((acc, cf, t) => acc + cf / Math.pow(1 + rate, t), 0);
+
+  let low = -0.9999;
+  let high = 1; // 100% per period upper bound
+  let fLow = npv(low);
+  let fHigh = npv(high);
+
+  // Expand the upper bound until we bracket a root (or give up).
+  let expand = 0;
+  while (fLow * fHigh > 0 && expand < 60) {
+    high *= 1.5;
+    fHigh = npv(high);
+    expand += 1;
+  }
+  if (fLow * fHigh > 0) return NaN;
+
+  let mid = 0;
+  for (let i = 0; i < 200; i++) {
+    mid = (low + high) / 2;
+    const fMid = npv(mid);
+    if (Math.abs(fMid) < 1e-6) return mid;
+    if (fLow * fMid < 0) {
+      high = mid;
+      fHigh = fMid;
+    } else {
+      low = mid;
+      fLow = fMid;
+    }
+  }
+  return mid;
+}
+
+/**
+ * Annual IRR from a series of MONTHLY cash flows.
+ *
+ * @param monthlyCashFlows - Monthly cash flows (index 0 = today)
+ * @returns Annual IRR as a percentage, or NaN if it cannot be solved
+ */
+export function calculateAnnualIRRFromMonthly(monthlyCashFlows: number[]): number {
+  const monthly = calculateIRRPerPeriod(monthlyCashFlows);
+  if (Number.isNaN(monthly)) return NaN;
+  return (Math.pow(1 + monthly, 12) - 1) * 100;
+}
 
 // ============================================================================
 // Property Flip Calculations
@@ -187,22 +372,41 @@ export function calculateFlipMetrics(data: PropertyFlipInput): FlipCalculations 
     data.renovationBudget + 
     data.holdingCosts + 
     data.closingCostsPurchase;
+
+  // Resale value: prefer the explicit After-Repair Value; fall back to estimatedValue.
+  // This keeps the profit, the displayed sale price and the break-even cushion all
+  // referencing the SAME number (previously profit used estimatedValue while the UI
+  // showed afterRepairValue — they could silently disagree).
+  const resaleValue = data.afterRepairValue || data.estimatedValue;
+
+  // Calculate expected profit (gross, before platform fee and tax)
+  const expectedProfit = resaleValue - totalInvestment - data.closingCostsSale;
   
-  // Calculate expected profit
-  const expectedProfit = 
-    data.estimatedValue - 
-    totalInvestment - 
-    data.closingCostsSale;
-  
-  // Calculate actual ROI if not provided
+  // Calculate actual ROI (always derived; never trusts a typed figure)
   const calculatedROI = totalInvestment > 0 
     ? (expectedProfit / totalInvestment) * 100 
     : 0;
-  
-  const displayROI = data.expectedROI || calculatedROI;
+
+  // Headline ROI shown to investors is the DERIVED figure. A manager-entered
+  // expectedROI is treated only as a target, surfaced separately by the UI.
+  const displayROI = calculatedROI;
   
   // Calculate break-even price
   const breakEvenPrice = totalInvestment + data.closingCostsSale;
+
+  // Time-value: annualise the return over the project timeline.
+  const holdingMonths = data.daysToComplete > 0 ? data.daysToComplete / 30 : 0;
+  const annualisedROI = calculateAnnualisedReturn(expectedProfit, totalInvestment, holdingMonths);
+
+  // SA-specific reference figures.
+  const estimatedTransferDuty = calculateTransferDuty(data.purchasePrice);
+  const marginOfSafety = breakEvenPrice > 0 ? ((resaleValue - breakEvenPrice) / breakEvenPrice) * 100 : 0;
+
+  // Net profit after the 2% platform fee and indicative income tax (flips are
+  // taxed as trading income in SA, not capital gains).
+  const platformFee = totalInvestment * 0.02;
+  const estimatedIncomeTax = estimateFlipIncomeTax(expectedProfit - platformFee);
+  const netProfitAfterFeesAndTax = expectedProfit - platformFee - estimatedIncomeTax;
 
   return {
     totalInvestment,
@@ -210,6 +414,13 @@ export function calculateFlipMetrics(data: PropertyFlipInput): FlipCalculations 
     calculatedROI,
     displayROI,
     breakEvenPrice,
+    resaleValue,
+    annualisedROI,
+    holdingMonths,
+    estimatedTransferDuty,
+    marginOfSafety,
+    estimatedIncomeTax,
+    netProfitAfterFeesAndTax,
   };
 }
 
@@ -355,12 +566,28 @@ export function calculateRentalMetrics(data: RentalPropertyInput): RentalCalcula
     ? (noi / data.purchasePrice) * 100
     : 0;
 
-  // Calculate Cash-on-Cash Return: (Annual Cash Flow / Cash Invested) * 100
-  // Cash Invested is the down payment (if financing) or purchase price (if all cash)
-  const cashInvested = data.downPaymentAmount > 0 ? data.downPaymentAmount : data.purchasePrice;
+  // All-in acquisition cost: purchase price + transfer duty + closing/bond costs.
+  const estimatedTransferDuty = calculateTransferDuty(data.purchasePrice);
+  const closingCosts = data.closingCosts ?? 0;
+  const allInCost = data.purchasePrice + estimatedTransferDuty + closingCosts;
+  const capRateOnCost = allInCost > 0 ? (noi / allInCost) * 100 : 0;
+
+  // Cash-on-Cash Return: annual cash flow ÷ cash actually invested.
+  // Cash invested ALWAYS includes acquisition costs (deposit + transfer duty +
+  // closing), so leveraged and all-cash deals are measured consistently. The old
+  // engine excluded these costs (overstating the return) and disagreed with the
+  // input form which included them.
+  const acquisitionCosts = estimatedTransferDuty + closingCosts;
+  const cashInvested = data.downPaymentAmount > 0
+    ? data.downPaymentAmount + acquisitionCosts
+    : data.purchasePrice + acquisitionCosts;
   const cashOnCashReturn = cashInvested > 0
     ? (annualCashFlow / cashInvested) * 100
     : 0;
+
+  // Risk / quality ratios.
+  const dscr = annualDebtService > 0 ? noi / annualDebtService : 0;
+  const grossRentMultiplier = annualGrossRent > 0 ? data.purchasePrice / annualGrossRent : 0;
 
   return {
     annualGrossRent,
@@ -371,9 +598,16 @@ export function calculateRentalMetrics(data: RentalPropertyInput): RentalCalcula
     calculatedCapRate,
     displayCapRate,
     monthlyCashFlow,
+    annualCashFlow,
     grossYield,
     netYield,
     cashOnCashReturn,
+    cashInvested,
+    estimatedTransferDuty,
+    allInCost,
+    capRateOnCost,
+    dscr,
+    grossRentMultiplier,
   };
 }
 
@@ -441,13 +675,18 @@ export function calculateCapRate(noi: number, purchasePrice: number): number {
 }
 
 /**
- * Calculate the monthly cash flow for a rental property.
- * 
- * @param noi - Net Operating Income
- * @returns Monthly cash flow
+ * Calculate the monthly cash flow for a rental property AFTER debt service.
+ *
+ * Previously this returned `noi / 12`, which silently ignored the bond
+ * repayment and overstated the cash an investor actually pockets. Pass the
+ * annual debt service so leveraged and unleveraged deals are both correct.
+ *
+ * @param noi - Net Operating Income (annual)
+ * @param annualDebtService - Annual bond/loan repayment (monthly payment × 12). Defaults to 0.
+ * @returns Monthly cash flow after debt service
  */
-export function calculateMonthlyCashFlow(noi: number): number {
-  return noi / 12;
+export function calculateMonthlyCashFlow(noi: number, annualDebtService = 0): number {
+  return (noi - annualDebtService) / 12;
 }
 
 /**
@@ -523,13 +762,20 @@ export function calculateGrossRentMultiplier(
 export function calculateDevelopmentMetrics(
   data: PropertyDevelopmentInput
 ): DevelopmentCalculations {
+  // Recompute contingency from the percentage on the base costs so a stale stored
+  // contingencyAmount can never silently misstate the total. Fall back to the
+  // stored amount only when no percentage is supplied.
+  const baseCosts =
+    data.landAcquisitionCost +
+    data.hardCosts +
+    data.softCosts +
+    data.financingCosts;
+  const contingencyAmount = data.contingencyPercent > 0
+    ? baseCosts * (data.contingencyPercent / 100)
+    : data.contingencyAmount;
+
   // Calculate total costs
-  const totalCosts = 
-    data.landAcquisitionCost + 
-    data.hardCosts + 
-    data.softCosts + 
-    data.financingCosts + 
-    data.contingencyAmount;
+  const totalCosts = baseCosts + contingencyAmount;
   
   // Calculate cost per unit
   const costPerUnit = data.numberOfUnits > 0 
@@ -541,11 +787,23 @@ export function calculateDevelopmentMetrics(
     ? (data.preSaleUnits / data.numberOfUnits) * 100 
     : 0;
 
+  const timelineMonths = data.developmentTimelineMonths;
+
   // Branch based on development type
   if (data.developmentType === "AFFORDABLE_RESALE") {
-    // Sale-focused development calculations
-    const profitMargin = data.totalExpectedRevenue > 0 
-      ? (data.expectedProfit / data.totalExpectedRevenue) * 100 
+    // Gross Development Value: prefer the explicit revenue, fall back to unit price × units.
+    const grossDevelopmentValue = data.totalExpectedRevenue > 0
+      ? data.totalExpectedRevenue
+      : data.expectedSalePricePerUnit * data.numberOfUnits;
+
+    // Profit is DERIVED (revenue − cost), not the manager's typed expectedProfit,
+    // so the headline figure can never contradict the cost/revenue breakdown.
+    const derivedProfit = grossDevelopmentValue - totalCosts;
+    const derivedROI = totalCosts > 0 ? (derivedProfit / totalCosts) * 100 : 0;
+    const annualisedROI = calculateAnnualisedReturn(derivedProfit, totalCosts, timelineMonths);
+
+    const profitMargin = grossDevelopmentValue > 0 
+      ? (derivedProfit / grossDevelopmentValue) * 100 
       : 0;
 
     return {
@@ -553,6 +811,11 @@ export function calculateDevelopmentMetrics(
       profitMargin,
       costPerUnit,
       preSalePercentage,
+      contingencyAmount,
+      grossDevelopmentValue,
+      derivedProfit,
+      derivedROI,
+      annualisedROI,
     };
   } else {
     // Rental-focused development calculations (AFFORDABLE_RENTAL or COMMERCIAL_RENTAL)
@@ -590,6 +853,7 @@ export function calculateDevelopmentMetrics(
       profitMargin,
       costPerUnit,
       preSalePercentage: 0, // Not applicable for rental developments
+      contingencyAmount,
       annualGrossRentalIncome,
       noi,
       calculatedCapRate,

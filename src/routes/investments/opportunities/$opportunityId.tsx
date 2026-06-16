@@ -1402,6 +1402,37 @@ function InvMetric({ label, value, color = "text-gray-900", sub, infoTerm }: { l
   );
 }
 
+/**
+ * A compact three-point sensitivity table (downside / base / upside) so investors
+ * can see how the headline number moves when a key assumption changes, rather than
+ * a single point estimate. The middle row is highlighted as the base case.
+ */
+function SensitivityTable({ title, rows, asPercent = false }: { title: string; rows: { label: string; value: number }[]; asPercent?: boolean }) {
+  const fmt = (n: number) => (asPercent ? `${n.toFixed(1)}%` : R(n));
+  return (
+    <div>
+      <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-600">
+        <BarChart3 size={14} className="text-gold-500" /> {title}
+        <InfoTooltip title="Scenario analysis" text="These rows stress-test one key assumption up and down. Real outcomes vary — a thin or negative downside row signals a higher-risk deal." />
+      </h4>
+      <div className="overflow-hidden rounded-lg border border-navy-700">
+        {rows.map((row, i) => {
+          const isBase = i === 1;
+          return (
+            <div
+              key={row.label}
+              className={`flex items-center justify-between px-3 py-2 text-sm ${isBase ? "bg-gold-500/10 font-semibold" : "bg-navy-800/10"} ${i > 0 ? "border-t border-navy-700" : ""}`}
+            >
+              <span className="text-gray-600">{row.label}</span>
+              <span className={row.value >= 0 ? "text-emerald-600" : "text-red-500"}>{fmt(row.value)}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function InvestorFinancialDetails({ property, preferredReturn }: { property: any; preferredReturn: number }) {
   const isFlip = !!property.propertyFlip || property.type === "flip" || property.type === "FLIP";
   const isRental = !!property.rentalBond || property.type === "rental" || property.type === "RENTAL";
@@ -1429,7 +1460,7 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
 
     const calc = calculateFlipMetrics(input);
     const managementFee = calc.totalInvestment > 0 ? calc.totalInvestment * 0.02 : 0;
-    const profitAfterFees = calc.expectedProfit - managementFee;
+    const profitAfterFees = calc.netProfitAfterFeesAndTax;
 
     return (
       <div className="space-y-5 rounded-xl border border-navy-800/50 bg-navy-900/50 p-6">
@@ -1453,11 +1484,14 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
           </h4>
           <div className="grid grid-cols-2 gap-3">
             <InvMetric label="Total Investment Required" value={R(calc.totalInvestment)} sub="Purchase + renovation + costs" />
-            <InvMetric label="After Repair Value (ARV)" value={R(input.afterRepairValue || input.estimatedValue)} color="text-emerald-600" sub="Estimated sale price" infoTerm="arv" />
-            <InvMetric label="Expected Profit" value={R(calc.expectedProfit)} color={calc.expectedProfit >= 0 ? "text-emerald-600" : "text-red-500"} infoTerm="grossProfit" />
-            <InvMetric label="Return on Investment" value={pct(calc.displayROI)} color="text-gold-600" infoTerm="roi" />
+            <InvMetric label="After Repair Value (ARV)" value={R(calc.resaleValue)} color="text-emerald-600" sub="Estimated sale price" infoTerm="arv" />
+            <InvMetric label="Expected Profit" value={R(calc.expectedProfit)} color={calc.expectedProfit >= 0 ? "text-emerald-600" : "text-red-500"} sub="Gross, before fees & tax" infoTerm="grossProfit" />
+            <InvMetric label="Return on Investment" value={pct(calc.displayROI)} color="text-gold-600" sub="Over the project, not yet annualised" infoTerm="roi" />
+            {calc.holdingMonths > 0 && <InvMetric label="Annualised Return" value={pct(calc.annualisedROI)} color="text-gold-600" sub="Comparable yearly rate" infoTerm="annualisedReturn" />}
             <InvMetric label="Break-Even Price" value={R(calc.breakEvenPrice)} sub="Minimum sale price" />
+            <InvMetric label="Margin of Safety" value={pct(calc.marginOfSafety)} color={calc.marginOfSafety >= 10 ? "text-emerald-600" : calc.marginOfSafety >= 0 ? "text-orange-500" : "text-red-500"} sub="Cushion above break-even" infoTerm="marginOfSafety" />
             {input.daysToComplete > 0 && <InvMetric label="Target Timeline" value={`${input.daysToComplete} days`} color="text-blue-600" />}
+            {input.expectedROI > 0 && <InvMetric label="Manager's Target ROI" value={pct(input.expectedROI)} color="text-gray-500" sub="Sponsor estimate" />}
           </div>
         </div>
 
@@ -1486,6 +1520,15 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
               <span className="text-gray-900">Total Investment</span>
               <span className="text-gold-600">{R(calc.totalInvestment)}</span>
             </div>
+            {calc.estimatedTransferDuty > 0 && (
+              <div className="flex items-center justify-between rounded-md px-3 py-1.5 text-xs">
+                <span className="flex items-center gap-1 text-gray-500">
+                  Est. SARS transfer duty on purchase
+                  <InfoTooltip term="transferDuty" />
+                </span>
+                <span className="font-medium text-gray-500">{R(calc.estimatedTransferDuty)} <span className="text-gray-400">(within closing costs)</span></span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1499,12 +1542,32 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
               A <span className="font-semibold text-gray-900">2% management fee</span> ({R(managementFee)}) is charged per property
               to cover project management and admin costs.
             </p>
+            {calc.estimatedIncomeTax > 0 && (
+              <p className="text-gray-600">
+                Indicative income tax of <span className="font-semibold text-gray-900">{R(calc.estimatedIncomeTax)}</span> is
+                estimated on the profit. A flip is taxed by SARS as <span className="font-medium">trading income</span> (not
+                capital gains), so the gain is added to taxable income in the year of sale.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-3 pt-1">
-              <InvMetric label="Net Profit After Fees" value={R(profitAfterFees)} color={profitAfterFees >= 0 ? "text-emerald-600" : "text-red-500"} infoTerm="netProfit" />
+              <InvMetric label="Net Profit After Fees & Tax" value={R(profitAfterFees)} color={profitAfterFees >= 0 ? "text-emerald-600" : "text-red-500"} infoTerm="netProfit" />
               <InvMetric label="Preferred Return" value={preferredReturn > 0 ? pct(preferredReturn) : "8–10%"} color="text-gold-600" sub="Per property" />
             </div>
+            <p className="pt-1 text-[11px] leading-relaxed text-gray-500">
+              Tax shown is indicative only, based on a flat {`27%`} company rate, and excludes VAT, your personal tax position and
+              any allowances. Confirm the actual tax treatment with a registered tax practitioner.
+            </p>
           </div>
         </div>
+
+        <SensitivityTable
+          title="Profit sensitivity — what if the sale price moves?"
+          rows={[
+            { label: "Resale −10% (downside)", value: (calc.resaleValue * 0.9) - calc.breakEvenPrice },
+            { label: "Resale as planned (base)", value: calc.expectedProfit },
+            { label: "Resale +10% (upside)", value: (calc.resaleValue * 1.1) - calc.breakEvenPrice },
+          ]}
+        />
 
         {/* Profit Distribution Waterfall */}
         <div>
@@ -1626,7 +1689,10 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
             <InvMetric label="Gross Yield" value={pct(calc.grossYield)} color="text-gold-600" sub="Annual rent ÷ purchase price" infoTerm="grossYield" />
             <InvMetric label="Net Yield" value={pct(calc.netYield)} color="text-gold-600" sub="NOI ÷ purchase price" infoTerm="netYield" />
             <InvMetric label="Cap Rate" value={pct(calc.displayCapRate)} color="text-gold-600" sub="NOI ÷ property value" infoTerm="capRate" />
+            <InvMetric label="Cap Rate on Total Cost" value={pct(calc.capRateOnCost)} color="text-gold-600" sub="NOI ÷ all-in cost" infoTerm="capRateOnCost" />
             <InvMetric label="Cash-on-Cash Return" value={pct(calc.cashOnCashReturn)} color="text-emerald-600" sub="Cash flow ÷ cash invested" infoTerm="cashOnCash" />
+            <InvMetric label="Gross Rent Multiplier" value={calc.grossRentMultiplier.toFixed(1)} color="text-gray-900" sub="Years of rent = price" infoTerm="grm" />
+            {input.loanAmount > 0 && <InvMetric label="DSCR" value={calc.dscr.toFixed(2)} color={calc.dscr >= 1.2 ? "text-emerald-600" : calc.dscr >= 1 ? "text-orange-500" : "text-red-500"} sub={calc.dscr < 1 ? "Rent below repayment" : "Rent covers repayment"} infoTerm="dscr" />}
             {preferredReturn > 0 && <InvMetric label="Preferred Return" value={pct(preferredReturn)} color="text-gold-600" sub="Target investor return" />}
             {input.vacancyRate > 0 && <InvMetric label="Vacancy Rate" value={pct(input.vacancyRate)} color="text-orange-500" sub={`Annual loss: ${R(calc.vacancyLoss)}`} />}
           </div>
@@ -1656,7 +1722,33 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
               <span className="text-gold-600">{R(calc.annualOperatingExpenses)}/yr</span>
             </div>
           </div>
+          {/* Acquisition cost transparency */}
+          <div className="mt-3 space-y-1.5 text-sm">
+            <div className="flex items-center justify-between rounded-md bg-navy-800/20 px-3 py-2">
+              <span className="text-gray-500">Purchase Price</span>
+              <span className="font-medium text-gray-900">{R(input.purchasePrice)}</span>
+            </div>
+            {calc.estimatedTransferDuty > 0 && (
+              <div className="flex items-center justify-between rounded-md bg-navy-800/20 px-3 py-2">
+                <span className="flex items-center gap-1 text-gray-500">Est. SARS Transfer Duty <InfoTooltip term="transferDuty" /></span>
+                <span className="font-medium text-gray-900">{R(calc.estimatedTransferDuty)}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between rounded-md bg-gold-500/10 border border-gold-500/20 px-3 py-2 font-semibold">
+              <span className="text-gray-900">All-In Acquisition Cost</span>
+              <span className="text-gold-600">{R(calc.allInCost)}</span>
+            </div>
+          </div>
         </div>
+
+        <SensitivityTable
+          title="NOI sensitivity — what if rent or vacancy shifts?"
+          rows={[
+            { label: "Rent −10% / vacancy higher (downside)", value: (calc.annualGrossRent * 0.9 * (1 - input.vacancyRate / 100)) - calc.annualOperatingExpenses },
+            { label: "As planned (base)", value: calc.noi },
+            { label: "Rent +10% / fully let (upside)", value: (calc.annualGrossRent * 1.1) - calc.annualOperatingExpenses },
+          ]}
+        />
 
         {/* Financing */}
         {input.loanAmount > 0 && (
@@ -1786,12 +1878,14 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
           </h4>
           <div className="grid grid-cols-2 gap-3">
             <InvMetric label="Total Development Cost" value={R(calc.totalCosts)} />
-            {isResale && <InvMetric label="Expected Revenue" value={R(input.totalExpectedRevenue)} color="text-emerald-600" />}
-            {isResale && <InvMetric label="Expected Profit" value={R(input.expectedProfit)} color={input.expectedProfit >= 0 ? "text-emerald-600" : "text-red-500"} infoTerm="netProfit" />}
-            <InvMetric label="Profit Margin" value={pct(calc.profitMargin)} color="text-gold-600" />
-            {input.expectedROI > 0 && <InvMetric label="Expected ROI" value={pct(input.expectedROI)} color="text-emerald-600" infoTerm="roi" />}
-            {input.expectedIRR > 0 && <InvMetric label="Expected IRR" value={pct(input.expectedIRR)} color="text-emerald-600" sub="Internal Rate of Return" infoTerm="irr" />}
+            {isResale && <InvMetric label="Gross Development Value" value={R(calc.grossDevelopmentValue ?? 0)} color="text-emerald-600" sub="Total expected sales" />}
+            {isResale && calc.derivedProfit != null && <InvMetric label="Expected Profit" value={R(calc.derivedProfit)} color={calc.derivedProfit >= 0 ? "text-emerald-600" : "text-red-500"} sub="Revenue − total cost" infoTerm="netProfit" />}
+            <InvMetric label="Profit Margin" value={pct(calc.profitMargin)} color="text-gold-600" sub={isResale ? "Profit ÷ revenue" : "NOI ÷ rental income"} />
+            {isResale && calc.derivedROI != null && <InvMetric label="Return on Investment" value={pct(calc.derivedROI)} color="text-gold-600" sub="Over the project, not annualised" infoTerm="roi" />}
+            {isResale && calc.annualisedROI != null && input.developmentTimelineMonths > 0 && <InvMetric label="Annualised Return" value={pct(calc.annualisedROI)} color="text-gold-600" sub="Comparable yearly rate (IRR-equivalent)" infoTerm="annualisedReturn" />}
             {input.numberOfUnits > 0 && <InvMetric label="Cost per Unit" value={R(calc.costPerUnit)} />}
+            {input.expectedROI > 0 && <InvMetric label="Manager's Target ROI" value={pct(input.expectedROI)} color="text-gray-500" sub="Sponsor estimate" />}
+            {input.expectedIRR > 0 && <InvMetric label="Manager's Target IRR" value={pct(input.expectedIRR)} color="text-gray-500" sub="Sponsor estimate, not a guarantee" infoTerm="irr" />}
             {preferredReturn > 0 && <InvMetric label="Preferred Return" value={pct(preferredReturn)} color="text-gold-600" sub="Per property" />}
           </div>
         </div>
@@ -1807,7 +1901,7 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
               { label: "Construction (Hard Costs)", value: input.hardCosts },
               { label: "Professional Fees (Soft Costs)", value: input.softCosts },
               { label: "Financing Costs", value: input.financingCosts },
-              { label: `Contingency (${input.contingencyPercent}%)`, value: input.contingencyAmount },
+              { label: `Contingency (${input.contingencyPercent}%)`, value: calc.contingencyAmount },
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between rounded-md bg-navy-800/20 px-3 py-2">
                 <span className="text-gray-500">{row.label}</span>
@@ -1829,9 +1923,24 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
             </h4>
             <div className="grid grid-cols-2 gap-3">
               <InvMetric label="Sale Price per Unit" value={R(input.expectedSalePricePerUnit)} />
-              <InvMetric label="Total Revenue" value={R(input.totalExpectedRevenue)} color="text-emerald-600" />
+              <InvMetric label="Gross Development Value" value={R(calc.grossDevelopmentValue ?? input.totalExpectedRevenue)} color="text-emerald-600" sub="Total expected sales" />
               {input.preSaleUnits > 0 && <InvMetric label="Pre-Sold Units" value={`${input.preSaleUnits} of ${input.numberOfUnits}`} sub={`${calc.preSalePercentage.toFixed(0)}%`} />}
             </div>
+            <p className="mt-2 text-[11px] text-gray-500 leading-relaxed">
+              New-build residential sales are generally subject to <span className="font-semibold">15% VAT</span> (rather than transfer duty). Where the developer is VAT-registered, the sales figures above are treated as the gross consideration; net-of-VAT proceeds would be lower. Confirm the VAT treatment with the sponsor.
+            </p>
+            {calc.derivedProfit != null && input.developmentTimelineMonths > 0 && (
+              <div className="mt-3">
+                <SensitivityTable
+                  title="Profit sensitivity — cost & revenue swings"
+                  rows={[
+                    { label: "Cost +10% / revenue −10% (downside)", value: ((calc.grossDevelopmentValue ?? input.totalExpectedRevenue) * 0.9) - (calc.totalCosts * 1.1) },
+                    { label: "As planned (base)", value: calc.derivedProfit },
+                    { label: "Cost −5% / revenue +10% (upside)", value: ((calc.grossDevelopmentValue ?? input.totalExpectedRevenue) * 1.1) - (calc.totalCosts * 0.95) },
+                  ]}
+                />
+              </div>
+            )}
           </div>
         ) : (
           <div>

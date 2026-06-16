@@ -10,6 +10,13 @@ import {
   calculateDevelopmentROI,
   calculatePreSalePercentage,
   calculateCostPerSquareMeter,
+  calculateTransferDuty,
+  extractVat,
+  estimateFlipIncomeTax,
+  calculateAnnualisedReturn,
+  calculateIRRPerPeriod,
+  calculateAnnualIRRFromMonthly,
+  calculateMonthlyCashFlow,
 } from '../financial-calculations';
 
 describe('Financial Calculations', () => {
@@ -130,6 +137,111 @@ describe('Financial Calculations', () => {
 
     it('returns 0 when square meters is 0', () => {
       expect(calculateCostPerSquareMeter(2800000, 0)).toBe(0);
+    });
+  });
+
+  describe('calculateTransferDuty (SARS 2025/26 sliding scale)', () => {
+    it('charges no duty up to the R1 210 000 threshold', () => {
+      expect(calculateTransferDuty(1_000_000)).toBe(0);
+      expect(calculateTransferDuty(1_210_000)).toBe(0);
+    });
+
+    it('charges 3% on the slice above R1 210 000', () => {
+      // (1 500 000 - 1 210 000) * 3% = 8 700
+      expect(calculateTransferDuty(1_500_000)).toBeCloseTo(8_700, 0);
+    });
+
+    it('uses the R13 614 base + 6% band', () => {
+      // 13 614 + (2 000 000 - 1 663 800) * 6% = 33 786
+      expect(calculateTransferDuty(2_000_000)).toBeCloseTo(33_786, 0);
+    });
+
+    it('uses the R106 784 base + 11% band', () => {
+      // 106 784 + (3 000 000 - 2 994 800) * 11% = 107 356
+      expect(calculateTransferDuty(3_000_000)).toBeCloseTo(107_356, 0);
+    });
+
+    it('uses the top R1 241 456 base + 13% band', () => {
+      // 1 241 456 + (15 000 000 - 13 310 000) * 13% = 1 461 156
+      expect(calculateTransferDuty(15_000_000)).toBeCloseTo(1_461_156, 0);
+    });
+
+    it('returns 0 for a non-positive value', () => {
+      expect(calculateTransferDuty(0)).toBe(0);
+      expect(calculateTransferDuty(-100)).toBe(0);
+    });
+  });
+
+  describe('extractVat', () => {
+    it('extracts the 15% VAT portion from a VAT-inclusive price', () => {
+      // 1 150 000 incl -> 150 000 VAT (1 000 000 ex)
+      expect(extractVat(1_150_000)).toBeCloseTo(150_000, 0);
+    });
+
+    it('returns 0 for a non-positive price', () => {
+      expect(extractVat(0)).toBe(0);
+    });
+  });
+
+  describe('estimateFlipIncomeTax', () => {
+    it('applies the default 27% rate to a positive profit', () => {
+      expect(estimateFlipIncomeTax(100_000)).toBeCloseTo(27_000, 0);
+    });
+
+    it('respects a custom rate', () => {
+      expect(estimateFlipIncomeTax(100_000, 0.4)).toBeCloseTo(40_000, 0);
+    });
+
+    it('returns 0 on a loss (no tax on a negative profit)', () => {
+      expect(estimateFlipIncomeTax(-50_000)).toBe(0);
+    });
+  });
+
+  describe('calculateAnnualisedReturn', () => {
+    it('annualises a 20% six-month return above the simple figure', () => {
+      // (1.2 ^ (1 / 0.5) - 1) * 100 = 44%
+      expect(calculateAnnualisedReturn(20_000, 100_000, 6)).toBeCloseTo(44, 0);
+    });
+
+    it('falls back to the simple period return when months are unknown', () => {
+      expect(calculateAnnualisedReturn(20_000, 100_000, 0)).toBeCloseTo(20, 0);
+    });
+
+    it('returns 0 when nothing was invested (no divide-by-zero)', () => {
+      expect(calculateAnnualisedReturn(20_000, 0, 12)).toBe(0);
+    });
+
+    it('clamps a total wipe-out to -100%', () => {
+      expect(calculateAnnualisedReturn(-150_000, 100_000, 12)).toBe(-100);
+    });
+  });
+
+  describe('calculateIRRPerPeriod', () => {
+    it('solves a simple two-period 10% return', () => {
+      // -100 today, +110 next period -> 10% per period
+      expect(calculateIRRPerPeriod([-100, 110])).toBeCloseTo(0.1, 3);
+    });
+
+    it('returns NaN when there is no sign change', () => {
+      expect(Number.isNaN(calculateIRRPerPeriod([100, 110]))).toBe(true);
+    });
+  });
+
+  describe('calculateAnnualIRRFromMonthly', () => {
+    it('compounds a 1%/month return into an annual rate', () => {
+      // -100 then +101 one month later -> 1%/m -> (1.01^12 - 1) * 100 ~ 12.68%
+      expect(calculateAnnualIRRFromMonthly([-100, 101])).toBeCloseTo(12.68, 1);
+    });
+  });
+
+  describe('calculateMonthlyCashFlow', () => {
+    it('subtracts annual debt service before dividing by 12', () => {
+      // (90 000 - 60 000) / 12 = 2 500
+      expect(calculateMonthlyCashFlow(90_000, 60_000)).toBe(2500);
+    });
+
+    it('treats debt service as 0 by default', () => {
+      expect(calculateMonthlyCashFlow(90_000)).toBe(7500);
     });
   });
 });

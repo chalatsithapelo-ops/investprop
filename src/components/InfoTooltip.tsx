@@ -93,6 +93,26 @@ export const FINANCIAL_TERMS = {
     text: "A payout of profit to investors — from rental income or when a property is sold. Each investor receives a share based on how much equity they hold. SARS may withhold tax on certain distributions.",
     formula: "Profit × Your Equity Share",
   },
+  annualisedReturn: {
+    term: "Annualised Return",
+    text: "The profit expressed as a yearly rate, so deals of different lengths can be compared fairly. A 15% profit earned in 6 months is far better than the same 15% over 3 years — annualising makes that obvious. For a single buy-and-sell it equals the IRR.",
+    formula: "(1 + Profit ÷ Invested) ^ (12 ÷ months) − 1",
+  },
+  marginOfSafety: {
+    term: "Margin of Safety",
+    text: "How far the expected resale price sits above the break-even price. A bigger cushion means the deal can absorb a lower-than-hoped sale price (or cost overruns) and still avoid a loss. A thin or negative margin is a red flag.",
+    formula: "(Resale Value − Break-Even) ÷ Break-Even",
+  },
+  grm: {
+    term: "Gross Rent Multiplier (GRM)",
+    text: "How many years of gross rent it would take to equal the purchase price. A lower GRM generally means better value for an income property. It's a quick screening number — it ignores running costs, so pair it with the net yield.",
+    formula: "GRM = Purchase Price ÷ Annual Gross Rent",
+  },
+  capRateOnCost: {
+    term: "Cap Rate on Total Cost",
+    text: "The cap rate measured against everything you put in — purchase price plus transfer duty and fees — rather than just the price. It's a more honest yield because it counts the true money invested. It will always be a little lower than the headline cap rate.",
+    formula: "NOI ÷ (Price + Transfer Duty + Costs)",
+  },
 } as const;
 
 export type FinancialTermKey = keyof typeof FINANCIAL_TERMS;
