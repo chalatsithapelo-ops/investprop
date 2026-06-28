@@ -14,16 +14,24 @@ function LandingPage() {
       <section className="relative overflow-hidden px-4 pb-20 pt-32 sm:px-6 lg:px-8">
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-white" />
         <div className="relative mx-auto max-w-7xl text-center">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-gold-700">
+            AI-Powered Property Co-Investment Platform
+          </p>
           <h1 className="mb-6 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
-            Fractional Property Investment
+            Invest in Property Like Institutions
             <span className="block bg-gradient-to-r from-gold-500 to-gold-700 bg-clip-text text-transparent">
-              Made Simple in South Africa
+              From R10,000 in South Africa
             </span>
           </h1>
           <p className="mx-auto mb-10 max-w-3xl text-lg text-gray-600 sm:text-xl">
-            Investprop enables everyday South Africans to invest in premium real estate through
-            dedicated SPV structures, with full transparency on each opportunity. Investment
-            from R1,000 per property.
+            Investprop helps investors and property partners access institutional-grade real estate
+            opportunities through ring-fenced SPVs, transparent reporting, and guided execution.
+            Minimum investment starts from R10,000 per property, with AI copilots and real human
+            support from due diligence to distribution.
+          </p>
+          <p className="mx-auto -mt-6 mb-8 max-w-3xl text-sm font-medium text-gray-500">
+            No hidden structures. No blind pools. You choose each opportunity, review the data,
+            and invest with full visibility into risk, fees, and expected outcomes.
           </p>
           <div className="mx-auto -mt-6 mb-10 flex max-w-3xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium text-gray-600">
             <span className="inline-flex items-center gap-1.5">
@@ -36,7 +44,13 @@ function LandingPage() {
               <span className="text-gold-600">✓</span> AI-powered deal analysis
             </span>
             <span className="inline-flex items-center gap-1.5">
+              <span className="text-gold-600">✓</span> AI portfolio insights & risk alerts
+            </span>
+            <span className="inline-flex items-center gap-1.5">
               <span className="text-gold-600">✓</span> Bank-grade FICA & POPIA
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="text-gold-600">✓</span> Dedicated onboarding & investor support
             </span>
           </div>
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -44,7 +58,7 @@ function LandingPage() {
               to="/register"
               className="inline-flex items-center rounded-lg bg-gradient-to-r from-gold-500 to-gold-600 px-8 py-3.5 text-lg font-semibold text-white shadow-lg shadow-gold-500/25 transition hover:from-gold-600 hover:to-gold-700"
             >
-              Start Investing
+              Start Investing From R10,000
             </Link>
             <Link
               to="/sell-your-property"
@@ -58,6 +72,13 @@ function LandingPage() {
             >
               Sign In
             </Link>
+          </div>
+          <div className="mx-auto mt-5 flex max-w-3xl flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-gray-500">
+            <span>Onboarding support available</span>
+            <span className="hidden sm:inline">•</span>
+            <span>POPIA-aware data handling</span>
+            <span className="hidden sm:inline">•</span>
+            <span>Distribution and tax records in-platform</span>
           </div>
         </div>
       </section>
@@ -85,8 +106,8 @@ function LandingPage() {
         <div className="mx-auto max-w-7xl">
           <h2 className="mb-4 text-center text-3xl font-bold">Why Investprop?</h2>
           <p className="mx-auto mb-12 max-w-2xl text-center text-gray-500">
-            Built for the South African market with full regulatory compliance and
-            institutional-grade infrastructure.
+            Built for South African investors who want clarity, control, and credible execution
+            across every property investment lifecycle stage.
           </p>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
             {/* SPV Structure */}
@@ -148,20 +169,102 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* AI Functionality Section */}
+      <section className="border-y border-gray-200 bg-gray-50 px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <h2 className="mb-4 text-center text-3xl font-bold">AI That Helps You Invest Better</h2>
+          <p className="mx-auto mb-12 max-w-3xl text-center text-gray-500">
+            Most platforms only list properties. Investprop gives you practical AI support before,
+            during, and after you invest so decisions are faster, clearer, and evidence-based.
+          </p>
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">AI Deal Scoring</h3>
+              <p className="text-sm text-gray-500">
+                Opportunity pages include AI risk and confidence views to highlight assumptions,
+                downside factors, and where extra diligence is needed.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">AI Portfolio Briefs</h3>
+              <p className="text-sm text-gray-500">
+                Investors receive concise portfolio insights that summarize performance trends,
+                concentration risk, and cash-flow signals across holdings.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">AI Distress Early Warnings</h3>
+              <p className="text-sm text-gray-500">
+                Management and operations teams can detect potential project stress earlier,
+                helping protect investor capital through faster intervention.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Support Functionality Section */}
+      <section className="px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <h2 className="mb-4 text-center text-3xl font-bold">Support That Stays With You</h2>
+          <p className="mx-auto mb-12 max-w-3xl text-center text-gray-500">
+            Beyond software, Investprop provides real operational support so investors and property
+            partners always know what to do next and where to get help quickly.
+          </p>
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-2 text-base font-semibold text-gray-900">Investor Onboarding</h3>
+              <p className="text-sm text-gray-500">
+                Guided setup for account, suitability checks, and FICA completion so you can
+                invest with confidence.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-2 text-base font-semibold text-gray-900">In-Platform Guidance</h3>
+              <p className="text-sm text-gray-500">
+                Clear financial breakdowns, tooltips, and calculators that explain each deal in
+                plain language before you commit capital.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-2 text-base font-semibold text-gray-900">Document & Compliance Support</h3>
+              <p className="text-sm text-gray-500">
+                Centralized certificates, statements, and tax records with auditable trails for
+                easier reporting and peace of mind.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-2 text-base font-semibold text-gray-900">Lifecycle Updates</h3>
+              <p className="text-sm text-gray-500">
+                Ongoing notifications and status updates from funding to distributions, so you stay
+                informed without chasing information.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-4xl rounded-2xl border border-gray-200 bg-gradient-to-br from-gray-50 to-white p-12 text-center shadow-sm">
           <h2 className="mb-4 text-3xl font-bold">Ready to Build Your Property Portfolio?</h2>
           <p className="mx-auto mb-8 max-w-xl text-gray-500">
             Join thousands of South African investors already building wealth through fractional
-            property ownership on Investprop.
+            property ownership on Investprop, starting from R10,000 per deal.
           </p>
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
               to="/register"
               className="inline-flex items-center rounded-lg bg-gradient-to-r from-gold-500 to-gold-600 px-8 py-3 font-semibold text-white shadow-lg shadow-gold-500/25 transition hover:from-gold-600 hover:to-gold-700"
             >
-              Create Free Account
+              Create Free Account & Get Started
             </Link>
             <Link
               to="/login"
