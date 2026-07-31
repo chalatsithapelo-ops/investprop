@@ -7,6 +7,11 @@ import { createNotification } from "~/server/trpc/procedures/notifications";
 import { calculateShareInfo } from "~/server/trpc/procedures/share-certificates";
 import { FICA_THRESHOLD } from "~/server/trpc/procedures/fica-verification";
 import { checkRateLimit, RATE_LIMITS } from "~/server/utils/rate-limiter";
+import {
+  calculateFlipMetrics,
+  calculateRentalMetrics,
+  calculateDevelopmentMetrics,
+} from "~/financial-calculations";
 
 /** Companies Act §96(1)(b): private offers limited to 50 persons per SPV. */
 export const MAX_INVESTORS_PER_SPV = 50;
@@ -177,14 +182,87 @@ export const submitInvestmentProposal = baseProcedure
       }
     }
 
-    // Calculate expected return based on property type
+    // Calculate expected return based on property type.
+    // Derived with the platform engine so the persisted rate matches the figures
+    // investors see on the opportunity page (stored ROI/CoC fields are often 0/stale).
     let expectedReturnRate = 0;
     if (property.propertyFlip) {
-      expectedReturnRate = property.propertyFlip.expectedROI;
+      const f = property.propertyFlip;
+      const fc = calculateFlipMetrics({
+        purchasePrice: f.purchasePrice || property.price || 0,
+        renovationBudget: f.renovationBudget ?? 0,
+        estimatedValue: f.estimatedValue ?? 0,
+        holdingCosts: f.holdingCosts ?? 0,
+        closingCostsPurchase: f.closingCostsPurchase ?? 0,
+        closingCostsSale: f.closingCostsSale ?? 0,
+        estimatedRepairCosts: f.estimatedRepairCosts ?? 0,
+        afterRepairValue: f.afterRepairValue ?? 0,
+        maxOfferPrice: f.maxOfferPrice ?? 0,
+        expectedROI: f.expectedROI ?? 0,
+        expectedProfitMargin: f.expectedProfitMargin ?? 0,
+        daysToComplete: f.daysToComplete ?? 0,
+        totalInvestmentBudget: f.totalInvestmentBudget ?? 0,
+        spentInvestmentBudget: f.spentInvestmentBudget ?? 0,
+      });
+      expectedReturnRate = fc.displayROI || f.expectedROI || 0;
     } else if (property.rentalBond) {
-      expectedReturnRate = property.rentalBond.cashOnCashReturn;
+      const r = property.rentalBond;
+      const rc = calculateRentalMetrics({
+        purchasePrice: r.purchasePrice || property.price || 0,
+        monthlyRent: r.monthlyRent ?? 0,
+        annualPropertyTax: r.annualPropertyTax ?? 0,
+        annualInsurance: r.annualInsurance ?? 0,
+        monthlyHOAFees: r.monthlyHOAFees ?? 0,
+        monthlyMaintenanceReserve: r.monthlyMaintenanceReserve ?? 0,
+        monthlyUtilities: r.monthlyUtilities ?? 0,
+        monthlyManagementFee: r.monthlyManagementFee ?? 0,
+        vacancyRate: r.vacancyRate ?? 5,
+        appreciationRate: r.appreciationRate ?? 3,
+        capRate: r.capRate ?? 0,
+        cashOnCashReturn: r.cashOnCashReturn ?? 0,
+        grossRentMultiplier: r.grossRentMultiplier ?? 0,
+        debtServiceCoverageRatio: r.debtServiceCoverageRatio ?? 0,
+        grossYield: r.grossYield ?? 0,
+        netYield: r.netYield ?? 0,
+        downPaymentAmount: r.downPaymentAmount ?? 0,
+        loanAmount: r.loanAmount || r.bondAmount || 0,
+        interestRate: r.interestRate ?? 0,
+        loanTermYears: r.loanTermYears ?? 0,
+        monthlyDebtService: r.monthlyDebtService ?? 0,
+        totalInvestmentBudget: r.totalInvestmentBudget ?? 0,
+        spentInvestmentBudget: r.spentInvestmentBudget ?? 0,
+      });
+      // Cash-on-cash is the investor's annual cash return; fall back to net yield
+      // for unleveraged all-cash deals where CoC and net yield converge.
+      expectedReturnRate = rc.cashOnCashReturn || rc.netYield || rc.displayCapRate || 0;
     } else if (property.propertyDevelopment) {
-      expectedReturnRate = property.propertyDevelopment.expectedROI;
+      const d = property.propertyDevelopment;
+      const dc = calculateDevelopmentMetrics({
+        developmentType: d.developmentType ?? "AFFORDABLE_RESALE",
+        landAcquisitionCost: d.landAcquisitionCost ?? 0,
+        hardCosts: d.hardCosts ?? 0,
+        softCosts: d.softCosts ?? 0,
+        financingCosts: d.financingCosts ?? 0,
+        contingencyPercent: d.contingencyPercent ?? 10,
+        contingencyAmount: d.contingencyAmount ?? 0,
+        expectedSalePricePerUnit: d.expectedSalePricePerUnit ?? 0,
+        totalExpectedRevenue: d.totalExpectedRevenue ?? 0,
+        expectedProfit: d.expectedProfit ?? 0,
+        expectedMonthlyRentPerUnit: d.expectedMonthlyRentPerUnit ?? 0,
+        annualOperatingExpenses: d.annualOperatingExpenses ?? 0,
+        stabilizedCapRate: d.stabilizedCapRate ?? 0,
+        expectedGrossYield: d.expectedGrossYield ?? 0,
+        expectedNetYield: d.expectedNetYield ?? 0,
+        expectedROI: d.expectedROI ?? 0,
+        expectedIRR: d.expectedIRR ?? 0,
+        developmentTimelineMonths: d.developmentTimelineMonths ?? 0,
+        preSaleUnits: d.preSaleUnits ?? 0,
+        costPerSquareMeter: d.costPerSquareMeter ?? 0,
+        totalSquareMeters: d.totalSquareMeters ?? 0,
+        numberOfUnits: d.numberOfUnits ?? 0,
+        totalBudget: d.totalBudget ?? 0,
+      });
+      expectedReturnRate = dc.derivedROI ?? dc.calculatedNetYield ?? d.expectedROI ?? 0;
     }
 
     const expectedReturnAmount = input.contributionAmount * (expectedReturnRate / 100);

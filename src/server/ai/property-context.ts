@@ -4,6 +4,14 @@
  * Portfolio Advisor and Auto-Update Drafts.
  */
 import { db } from "~/server/db";
+import {
+  calculateFlipMetrics,
+  calculateRentalMetrics,
+  calculateDevelopmentMetrics,
+  type PropertyFlipInput,
+  type RentalPropertyInput,
+  type PropertyDevelopmentInput,
+} from "~/financial-calculations";
 
 export interface PropertyContextOptions {
   includeFinancials?: boolean;
@@ -76,27 +84,124 @@ export async function buildPropertyContext(
         ? "development"
         : "unknown";
 
+  // IMPORTANT: financial metrics below are DERIVED with the same calculation engine
+  // (src/financial-calculations.ts) that renders the numbers investors see on the
+  // opportunity page. We deliberately do NOT surface the raw stored fields
+  // (e.g. rentalBond.capRate), which are often 0 / stale and would otherwise make
+  // the AI contradict the platform UI.
   if (property.propertyFlip) {
     const f = property.propertyFlip;
-    lines.push(``, `FLIP FINANCIALS`);
-    lines.push(`Purchase: ${fmt(f.purchasePrice)} | Reno: ${fmt(f.renovationBudget)} | ARV: ${fmt(f.afterRepairValue)}`);
-    lines.push(`Holding: ${fmt(f.holdingCosts)} | Closing buy: ${fmt(f.closingCostsPurchase)} | Closing sell: ${fmt(f.closingCostsSale)}`);
-    lines.push(`Expected ROI ${pct(f.expectedROI)} | Margin ${pct(f.expectedProfitMargin)} | Days ${f.daysToComplete}`);
+    const flipInput: PropertyFlipInput = {
+      purchasePrice: f.purchasePrice || property.price || 0,
+      renovationBudget: f.renovationBudget ?? 0,
+      estimatedValue: f.estimatedValue ?? 0,
+      holdingCosts: f.holdingCosts ?? 0,
+      closingCostsPurchase: f.closingCostsPurchase ?? 0,
+      closingCostsSale: f.closingCostsSale ?? 0,
+      estimatedRepairCosts: f.estimatedRepairCosts ?? 0,
+      afterRepairValue: f.afterRepairValue ?? 0,
+      maxOfferPrice: f.maxOfferPrice ?? 0,
+      expectedROI: f.expectedROI ?? 0,
+      expectedProfitMargin: f.expectedProfitMargin ?? 0,
+      daysToComplete: f.daysToComplete ?? 0,
+      totalInvestmentBudget: f.totalInvestmentBudget ?? 0,
+      spentInvestmentBudget: f.spentInvestmentBudget ?? 0,
+    };
+    const c = calculateFlipMetrics(flipInput);
+    lines.push(``, `FLIP FINANCIALS (computed — these match the figures shown to investors on the platform)`);
+    lines.push(`Purchase: ${fmt(flipInput.purchasePrice)} | Reno: ${fmt(flipInput.renovationBudget)} | ARV (resale value): ${fmt(c.resaleValue)}`);
+    lines.push(`Holding: ${fmt(flipInput.holdingCosts)} | Closing buy: ${fmt(flipInput.closingCostsPurchase)} | Closing sell: ${fmt(flipInput.closingCostsSale)}`);
+    lines.push(`Total investment required: ${fmt(c.totalInvestment)} | Break-even sale price: ${fmt(c.breakEvenPrice)}`);
+    lines.push(`Expected gross profit: ${fmt(c.expectedProfit)} | ROI ${pct(c.displayROI)}${c.holdingMonths > 0 ? ` | Annualised ${pct(c.annualisedROI)}` : ""}`);
+    lines.push(`Margin of safety ${pct(c.marginOfSafety)} | Net profit after 2% platform fee & est. income tax: ${fmt(c.netProfitAfterFeesAndTax)}`);
+    lines.push(`Sponsor targets (estimates, not guaranteed): ROI ${pct(flipInput.expectedROI)} | Margin ${pct(flipInput.expectedProfitMargin)} | Timeline ${flipInput.daysToComplete} days`);
   }
   if (property.rentalBond) {
     const r = property.rentalBond;
-    lines.push(``, `RENTAL FINANCIALS`);
-    lines.push(`Monthly rent: ${fmt(r.monthlyRent)} | Bond: ${fmt(r.bondAmount)}`);
-    lines.push(`Cap rate ${pct(r.capRate)} | CoC ${pct(r.cashOnCashReturn)} | DSCR ${r.debtServiceCoverageRatio.toFixed(2)}`);
-    lines.push(`Gross yield ${pct(r.grossYield)} | Net yield ${pct(r.netYield)} | Vacancy ${pct(r.vacancyRate)}`);
+    const rentalInput: RentalPropertyInput = {
+      purchasePrice: r.purchasePrice || property.price || 0,
+      monthlyRent: r.monthlyRent ?? 0,
+      annualPropertyTax: r.annualPropertyTax ?? 0,
+      annualInsurance: r.annualInsurance ?? 0,
+      monthlyHOAFees: r.monthlyHOAFees ?? 0,
+      monthlyMaintenanceReserve: r.monthlyMaintenanceReserve ?? 0,
+      monthlyUtilities: r.monthlyUtilities ?? 0,
+      monthlyManagementFee: r.monthlyManagementFee ?? 0,
+      vacancyRate: r.vacancyRate ?? 5,
+      appreciationRate: r.appreciationRate ?? 3,
+      capRate: r.capRate ?? 0,
+      cashOnCashReturn: r.cashOnCashReturn ?? 0,
+      grossRentMultiplier: r.grossRentMultiplier ?? 0,
+      debtServiceCoverageRatio: r.debtServiceCoverageRatio ?? 0,
+      grossYield: r.grossYield ?? 0,
+      netYield: r.netYield ?? 0,
+      downPaymentAmount: r.downPaymentAmount ?? 0,
+      loanAmount: r.loanAmount || r.bondAmount || 0,
+      interestRate: r.interestRate ?? 0,
+      loanTermYears: r.loanTermYears ?? 0,
+      monthlyDebtService: r.monthlyDebtService ?? 0,
+      totalInvestmentBudget: r.totalInvestmentBudget ?? 0,
+      spentInvestmentBudget: r.spentInvestmentBudget ?? 0,
+    };
+    const c = calculateRentalMetrics(rentalInput);
+    const isLeveraged = rentalInput.loanAmount > 0;
+    lines.push(``, `RENTAL FINANCIALS (computed — these match the figures shown to investors on the platform)`);
+    lines.push(`Monthly rent: ${fmt(rentalInput.monthlyRent)} | Purchase price: ${fmt(rentalInput.purchasePrice)} | Bond/loan: ${fmt(rentalInput.loanAmount)}`);
+    lines.push(`Annual gross rent: ${fmt(c.annualGrossRent)} | NOI: ${fmt(c.noi)} | Monthly cash flow: ${fmt(c.monthlyCashFlow)}`);
+    lines.push(`Cap rate ${pct(c.displayCapRate)} | Cap rate on total cost ${pct(c.capRateOnCost)} | Gross yield ${pct(c.grossYield)} | Net yield ${pct(c.netYield)}`);
+    lines.push(
+      `Cash-on-cash ${pct(c.cashOnCashReturn)} | ` +
+        `DSCR ${isLeveraged ? c.dscr.toFixed(2) : "n/a (unleveraged — no debt service)"} | ` +
+        `Gross rent multiplier ${c.grossRentMultiplier.toFixed(1)} | Vacancy ${pct(rentalInput.vacancyRate)}`
+    );
   }
   if (property.propertyDevelopment) {
     const d = property.propertyDevelopment;
-    lines.push(``, `DEVELOPMENT FINANCIALS`);
-    lines.push(`Type: ${d.developmentType} | Units: ${d.numberOfUnits} | Timeline: ${d.developmentTimelineMonths}mo`);
-    lines.push(`Total budget: ${fmt(d.totalBudget)} | Spent: ${fmt(d.spentBudget)} | Contingency: ${pct(d.contingencyPercent)}`);
-    lines.push(`Hard: ${fmt(d.hardCosts)} | Soft: ${fmt(d.softCosts)} | Land: ${fmt(d.landAcquisitionCost)} | Financing: ${fmt(d.financingCosts)}`);
-    lines.push(`Expected ROI ${pct(d.expectedROI)} | IRR ${pct(d.expectedIRR)} | Profit ${fmt(d.expectedProfit)}`);
+    const devType = d.developmentType ?? "AFFORDABLE_RESALE";
+    const devInput: PropertyDevelopmentInput = {
+      developmentType: devType,
+      landAcquisitionCost: d.landAcquisitionCost ?? 0,
+      hardCosts: d.hardCosts ?? 0,
+      softCosts: d.softCosts ?? 0,
+      financingCosts: d.financingCosts ?? 0,
+      contingencyPercent: d.contingencyPercent ?? 10,
+      contingencyAmount: d.contingencyAmount ?? 0,
+      expectedSalePricePerUnit: d.expectedSalePricePerUnit ?? 0,
+      totalExpectedRevenue: d.totalExpectedRevenue ?? 0,
+      expectedProfit: d.expectedProfit ?? 0,
+      expectedMonthlyRentPerUnit: d.expectedMonthlyRentPerUnit ?? 0,
+      annualOperatingExpenses: d.annualOperatingExpenses ?? 0,
+      stabilizedCapRate: d.stabilizedCapRate ?? 0,
+      expectedGrossYield: d.expectedGrossYield ?? 0,
+      expectedNetYield: d.expectedNetYield ?? 0,
+      expectedROI: d.expectedROI ?? 0,
+      expectedIRR: d.expectedIRR ?? 0,
+      developmentTimelineMonths: d.developmentTimelineMonths ?? 0,
+      preSaleUnits: d.preSaleUnits ?? 0,
+      costPerSquareMeter: d.costPerSquareMeter ?? 0,
+      totalSquareMeters: d.totalSquareMeters ?? 0,
+      numberOfUnits: d.numberOfUnits ?? 0,
+      totalBudget: d.totalBudget ?? 0,
+    };
+    const c = calculateDevelopmentMetrics(devInput);
+    const isResale = devType === "AFFORDABLE_RESALE";
+    lines.push(``, `DEVELOPMENT FINANCIALS (computed — these match the figures shown to investors on the platform)`);
+    lines.push(`Type: ${devType} | Units: ${devInput.numberOfUnits} | Timeline: ${devInput.developmentTimelineMonths}mo`);
+    lines.push(`Total development cost: ${fmt(c.totalCosts)} | Cost per unit: ${fmt(c.costPerUnit)} | Contingency: ${fmt(c.contingencyAmount)} (${pct(devInput.contingencyPercent)})`);
+    lines.push(`Hard: ${fmt(devInput.hardCosts)} | Soft: ${fmt(devInput.softCosts)} | Land: ${fmt(devInput.landAcquisitionCost)} | Financing: ${fmt(devInput.financingCosts)}`);
+    if (isResale) {
+      lines.push(
+        `Gross development value: ${fmt(c.grossDevelopmentValue ?? 0)} | ` +
+          `Expected profit (revenue − cost): ${fmt(c.derivedProfit ?? 0)} | ` +
+          `ROI ${pct(c.derivedROI ?? 0)}${c.annualisedROI != null && devInput.developmentTimelineMonths > 0 ? ` | Annualised ${pct(c.annualisedROI)}` : ""} | Margin ${pct(c.profitMargin)}`
+      );
+    } else {
+      lines.push(
+        `NOI: ${fmt(c.noi ?? 0)} | Cap rate ${pct(c.calculatedCapRate ?? 0)} | ` +
+          `Gross yield ${pct(c.calculatedGrossYield ?? 0)} | Net yield ${pct(c.calculatedNetYield ?? 0)} | Margin ${pct(c.profitMargin)}`
+      );
+    }
+    lines.push(`Sponsor targets (estimates, not guaranteed): ROI ${pct(devInput.expectedROI)} | IRR ${pct(devInput.expectedIRR)}`);
   }
 
   if (opts.includeMilestones && property.milestones && property.milestones.length > 0) {
@@ -174,11 +279,82 @@ export async function findComparables(
   return candidates.map((c) => {
     let metrics = "";
     if (c.propertyFlip) {
-      metrics = `ARV R${Math.round(c.propertyFlip.afterRepairValue).toLocaleString()} | ROI ${c.propertyFlip.expectedROI.toFixed(2)}%`;
+      const f = c.propertyFlip;
+      const calc = calculateFlipMetrics({
+        purchasePrice: f.purchasePrice || c.price || 0,
+        renovationBudget: f.renovationBudget ?? 0,
+        estimatedValue: f.estimatedValue ?? 0,
+        holdingCosts: f.holdingCosts ?? 0,
+        closingCostsPurchase: f.closingCostsPurchase ?? 0,
+        closingCostsSale: f.closingCostsSale ?? 0,
+        estimatedRepairCosts: f.estimatedRepairCosts ?? 0,
+        afterRepairValue: f.afterRepairValue ?? 0,
+        maxOfferPrice: f.maxOfferPrice ?? 0,
+        expectedROI: f.expectedROI ?? 0,
+        expectedProfitMargin: f.expectedProfitMargin ?? 0,
+        daysToComplete: f.daysToComplete ?? 0,
+        totalInvestmentBudget: f.totalInvestmentBudget ?? 0,
+        spentInvestmentBudget: f.spentInvestmentBudget ?? 0,
+      });
+      metrics = `ARV R${Math.round(calc.resaleValue).toLocaleString()} | ROI ${calc.displayROI.toFixed(2)}%`;
     } else if (c.rentalBond) {
-      metrics = `Rent R${Math.round(c.rentalBond.monthlyRent).toLocaleString()}/mo | Cap ${c.rentalBond.capRate.toFixed(2)}% | DSCR ${c.rentalBond.debtServiceCoverageRatio.toFixed(2)}`;
+      const r = c.rentalBond;
+      const calc = calculateRentalMetrics({
+        purchasePrice: r.purchasePrice || c.price || 0,
+        monthlyRent: r.monthlyRent ?? 0,
+        annualPropertyTax: r.annualPropertyTax ?? 0,
+        annualInsurance: r.annualInsurance ?? 0,
+        monthlyHOAFees: r.monthlyHOAFees ?? 0,
+        monthlyMaintenanceReserve: r.monthlyMaintenanceReserve ?? 0,
+        monthlyUtilities: r.monthlyUtilities ?? 0,
+        monthlyManagementFee: r.monthlyManagementFee ?? 0,
+        vacancyRate: r.vacancyRate ?? 5,
+        appreciationRate: r.appreciationRate ?? 3,
+        capRate: r.capRate ?? 0,
+        cashOnCashReturn: r.cashOnCashReturn ?? 0,
+        grossRentMultiplier: r.grossRentMultiplier ?? 0,
+        debtServiceCoverageRatio: r.debtServiceCoverageRatio ?? 0,
+        grossYield: r.grossYield ?? 0,
+        netYield: r.netYield ?? 0,
+        downPaymentAmount: r.downPaymentAmount ?? 0,
+        loanAmount: r.loanAmount || r.bondAmount || 0,
+        interestRate: r.interestRate ?? 0,
+        loanTermYears: r.loanTermYears ?? 0,
+        monthlyDebtService: r.monthlyDebtService ?? 0,
+        totalInvestmentBudget: r.totalInvestmentBudget ?? 0,
+        spentInvestmentBudget: r.spentInvestmentBudget ?? 0,
+      });
+      const dscrText = (r.loanAmount || r.bondAmount || 0) > 0 ? ` | DSCR ${calc.dscr.toFixed(2)}` : "";
+      metrics = `Rent R${Math.round(r.monthlyRent).toLocaleString()}/mo | Cap ${calc.displayCapRate.toFixed(2)}% | Net yield ${calc.netYield.toFixed(2)}%${dscrText}`;
     } else if (c.propertyDevelopment) {
-      metrics = `IRR ${c.propertyDevelopment.expectedIRR.toFixed(2)}% | ${c.propertyDevelopment.numberOfUnits} units | cost/m² R${Math.round(c.propertyDevelopment.costPerSquareMeter).toLocaleString()}`;
+      const d = c.propertyDevelopment;
+      const calc = calculateDevelopmentMetrics({
+        developmentType: d.developmentType ?? "AFFORDABLE_RESALE",
+        landAcquisitionCost: d.landAcquisitionCost ?? 0,
+        hardCosts: d.hardCosts ?? 0,
+        softCosts: d.softCosts ?? 0,
+        financingCosts: d.financingCosts ?? 0,
+        contingencyPercent: d.contingencyPercent ?? 10,
+        contingencyAmount: d.contingencyAmount ?? 0,
+        expectedSalePricePerUnit: d.expectedSalePricePerUnit ?? 0,
+        totalExpectedRevenue: d.totalExpectedRevenue ?? 0,
+        expectedProfit: d.expectedProfit ?? 0,
+        expectedMonthlyRentPerUnit: d.expectedMonthlyRentPerUnit ?? 0,
+        annualOperatingExpenses: d.annualOperatingExpenses ?? 0,
+        stabilizedCapRate: d.stabilizedCapRate ?? 0,
+        expectedGrossYield: d.expectedGrossYield ?? 0,
+        expectedNetYield: d.expectedNetYield ?? 0,
+        expectedROI: d.expectedROI ?? 0,
+        expectedIRR: d.expectedIRR ?? 0,
+        developmentTimelineMonths: d.developmentTimelineMonths ?? 0,
+        preSaleUnits: d.preSaleUnits ?? 0,
+        costPerSquareMeter: d.costPerSquareMeter ?? 0,
+        totalSquareMeters: d.totalSquareMeters ?? 0,
+        numberOfUnits: d.numberOfUnits ?? 0,
+        totalBudget: d.totalBudget ?? 0,
+      });
+      const roi = calc.derivedROI != null ? calc.derivedROI : calc.profitMargin;
+      metrics = `ROI ${roi.toFixed(2)}% | ${d.numberOfUnits} units | cost/m² R${Math.round(d.costPerSquareMeter).toLocaleString()}`;
     }
     return {
       id: c.id,

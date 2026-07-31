@@ -4,6 +4,11 @@ import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { TRPCError } from "@trpc/server";
 import { createNotification } from "./notifications";
+import {
+  calculateFlipMetrics,
+  calculateRentalMetrics,
+  calculateDevelopmentMetrics,
+} from "~/financial-calculations";
 
 // ─── Create Share Class for a Property ─────────────────────────
 
@@ -617,9 +622,9 @@ export const getInvestorPortfolio = baseProcedure
             id: true, title: true, price: true, imageUrl: true,
             city: true, state: true, investmentStatus: true,
             fundingGoal: true, fundingRaised: true,
-            rentalBond: { select: { monthlyRent: true, capRate: true, netYield: true } },
-            propertyFlip: { select: { expectedROI: true, expectedProfitMargin: true } },
-            propertyDevelopment: { select: { expectedROI: true, expectedIRR: true, expectedNetYield: true } },
+            rentalBond: true,
+            propertyFlip: true,
+            propertyDevelopment: true,
           },
         },
         shareClass: {
@@ -660,16 +665,86 @@ export const getInvestorPortfolio = baseProcedure
       let projectedROI = 0;
 
       if (rental) {
-        projectedAnnualYield = rental.netYield || rental.capRate || 0;
+        // Compute with the platform engine so projections match the figures shown on
+        // the opportunity page (stored capRate/netYield fields are frequently 0/stale).
+        const rc = calculateRentalMetrics({
+          purchasePrice: rental.purchasePrice || (h.property as any)?.price || 0,
+          monthlyRent: rental.monthlyRent ?? 0,
+          annualPropertyTax: rental.annualPropertyTax ?? 0,
+          annualInsurance: rental.annualInsurance ?? 0,
+          monthlyHOAFees: rental.monthlyHOAFees ?? 0,
+          monthlyMaintenanceReserve: rental.monthlyMaintenanceReserve ?? 0,
+          monthlyUtilities: rental.monthlyUtilities ?? 0,
+          monthlyManagementFee: rental.monthlyManagementFee ?? 0,
+          vacancyRate: rental.vacancyRate ?? 5,
+          appreciationRate: rental.appreciationRate ?? 3,
+          capRate: rental.capRate ?? 0,
+          cashOnCashReturn: rental.cashOnCashReturn ?? 0,
+          grossRentMultiplier: rental.grossRentMultiplier ?? 0,
+          debtServiceCoverageRatio: rental.debtServiceCoverageRatio ?? 0,
+          grossYield: rental.grossYield ?? 0,
+          netYield: rental.netYield ?? 0,
+          downPaymentAmount: rental.downPaymentAmount ?? 0,
+          loanAmount: rental.loanAmount || rental.bondAmount || 0,
+          interestRate: rental.interestRate ?? 0,
+          loanTermYears: rental.loanTermYears ?? 0,
+          monthlyDebtService: rental.monthlyDebtService ?? 0,
+          totalInvestmentBudget: rental.totalInvestmentBudget ?? 0,
+          spentInvestmentBudget: rental.spentInvestmentBudget ?? 0,
+        });
+        projectedAnnualYield = rc.netYield || rc.displayCapRate || 0;
         projectedAnnualIncome = (rental.monthlyRent * 12 * ownershipPct) / 100;
-        projectedROI = rental.capRate || 0;
+        projectedROI = rc.displayCapRate || 0;
       } else if (dev) {
-        projectedAnnualYield = dev.expectedNetYield || 0;
-        projectedROI = dev.expectedROI || 0;
+        const dc = calculateDevelopmentMetrics({
+          developmentType: dev.developmentType ?? "AFFORDABLE_RESALE",
+          landAcquisitionCost: dev.landAcquisitionCost ?? 0,
+          hardCosts: dev.hardCosts ?? 0,
+          softCosts: dev.softCosts ?? 0,
+          financingCosts: dev.financingCosts ?? 0,
+          contingencyPercent: dev.contingencyPercent ?? 10,
+          contingencyAmount: dev.contingencyAmount ?? 0,
+          expectedSalePricePerUnit: dev.expectedSalePricePerUnit ?? 0,
+          totalExpectedRevenue: dev.totalExpectedRevenue ?? 0,
+          expectedProfit: dev.expectedProfit ?? 0,
+          expectedMonthlyRentPerUnit: dev.expectedMonthlyRentPerUnit ?? 0,
+          annualOperatingExpenses: dev.annualOperatingExpenses ?? 0,
+          stabilizedCapRate: dev.stabilizedCapRate ?? 0,
+          expectedGrossYield: dev.expectedGrossYield ?? 0,
+          expectedNetYield: dev.expectedNetYield ?? 0,
+          expectedROI: dev.expectedROI ?? 0,
+          expectedIRR: dev.expectedIRR ?? 0,
+          developmentTimelineMonths: dev.developmentTimelineMonths ?? 0,
+          preSaleUnits: dev.preSaleUnits ?? 0,
+          costPerSquareMeter: dev.costPerSquareMeter ?? 0,
+          totalSquareMeters: dev.totalSquareMeters ?? 0,
+          numberOfUnits: dev.numberOfUnits ?? 0,
+          totalBudget: dev.totalBudget ?? 0,
+        });
+        projectedAnnualYield = dc.calculatedNetYield ?? dev.expectedNetYield ?? 0;
+        projectedROI = dc.derivedROI ?? dev.expectedROI ?? 0;
         projectedAnnualIncome = (investedAmount * projectedAnnualYield) / 100;
       } else if (flip) {
-        projectedROI = flip.expectedROI || 0;
-        projectedAnnualYield = flip.expectedProfitMargin || 0;
+        const fc = calculateFlipMetrics({
+          purchasePrice: flip.purchasePrice || (h.property as any)?.price || 0,
+          renovationBudget: flip.renovationBudget ?? 0,
+          estimatedValue: flip.estimatedValue ?? 0,
+          holdingCosts: flip.holdingCosts ?? 0,
+          closingCostsPurchase: flip.closingCostsPurchase ?? 0,
+          closingCostsSale: flip.closingCostsSale ?? 0,
+          estimatedRepairCosts: flip.estimatedRepairCosts ?? 0,
+          afterRepairValue: flip.afterRepairValue ?? 0,
+          maxOfferPrice: flip.maxOfferPrice ?? 0,
+          expectedROI: flip.expectedROI ?? 0,
+          expectedProfitMargin: flip.expectedProfitMargin ?? 0,
+          daysToComplete: flip.daysToComplete ?? 0,
+          totalInvestmentBudget: flip.totalInvestmentBudget ?? 0,
+          spentInvestmentBudget: flip.spentInvestmentBudget ?? 0,
+        });
+        // A flip is a one-off gain, not an annual yield; use the annualised return
+        // when a timeline exists so the 5-year projection stays sensible.
+        projectedROI = fc.displayROI || 0;
+        projectedAnnualYield = fc.holdingMonths > 0 ? fc.annualisedROI : fc.displayROI || 0;
         projectedAnnualIncome = (investedAmount * projectedROI) / 100;
       }
 
