@@ -70,6 +70,72 @@ export type RentalPropertyInput = {
 };
 
 /**
+ * Loosely-typed shape of a persisted RentalBond record (all numeric fields
+ * optional/nullable, as returned by Prisma). Kept structural so this module
+ * stays free of Prisma imports.
+ */
+export type RentalRecordLike = {
+  purchasePrice?: number | null;
+  monthlyRent?: number | null;
+  annualPropertyTax?: number | null;
+  annualInsurance?: number | null;
+  monthlyHOAFees?: number | null;
+  monthlyMaintenanceReserve?: number | null;
+  monthlyUtilities?: number | null;
+  monthlyManagementFee?: number | null;
+  vacancyRate?: number | null;
+  appreciationRate?: number | null;
+  capRate?: number | null;
+  cashOnCashReturn?: number | null;
+  grossRentMultiplier?: number | null;
+  debtServiceCoverageRatio?: number | null;
+  grossYield?: number | null;
+  netYield?: number | null;
+  downPaymentAmount?: number | null;
+  loanAmount?: number | null;
+  bondAmount?: number | null;
+  interestRate?: number | null;
+  loanTermYears?: number | null;
+  monthlyDebtService?: number | null;
+  totalInvestmentBudget?: number | null;
+  spentInvestmentBudget?: number | null;
+};
+
+/**
+ * Maps a persisted RentalBond record (nullable Prisma fields) to a complete
+ * {@link RentalPropertyInput}, falling back to the parent property price when
+ * the sub-type purchase price is missing. Use this everywhere a stored rental
+ * needs live metrics so stale/zero stored columns never leak to the UI or AI.
+ */
+export function buildRentalInput(r: RentalRecordLike, propertyPrice?: number | null): RentalPropertyInput {
+  return {
+    purchasePrice: r.purchasePrice || propertyPrice || 0,
+    monthlyRent: r.monthlyRent ?? 0,
+    annualPropertyTax: r.annualPropertyTax ?? 0,
+    annualInsurance: r.annualInsurance ?? 0,
+    monthlyHOAFees: r.monthlyHOAFees ?? 0,
+    monthlyMaintenanceReserve: r.monthlyMaintenanceReserve ?? 0,
+    monthlyUtilities: r.monthlyUtilities ?? 0,
+    monthlyManagementFee: r.monthlyManagementFee ?? 0,
+    vacancyRate: r.vacancyRate ?? 5,
+    appreciationRate: r.appreciationRate ?? 3,
+    capRate: r.capRate ?? 0,
+    cashOnCashReturn: r.cashOnCashReturn ?? 0,
+    grossRentMultiplier: r.grossRentMultiplier ?? 0,
+    debtServiceCoverageRatio: r.debtServiceCoverageRatio ?? 0,
+    grossYield: r.grossYield ?? 0,
+    netYield: r.netYield ?? 0,
+    downPaymentAmount: r.downPaymentAmount ?? 0,
+    loanAmount: r.loanAmount || r.bondAmount || 0,
+    interestRate: r.interestRate ?? 0,
+    loanTermYears: r.loanTermYears ?? 0,
+    monthlyDebtService: r.monthlyDebtService ?? 0,
+    totalInvestmentBudget: r.totalInvestmentBudget ?? 0,
+    spentInvestmentBudget: r.spentInvestmentBudget ?? 0,
+  };
+}
+
+/**
  * Input data for property development financial calculations.
  * These are the base values that must be provided to calculate development metrics.
  * Based on the PropertyDevelopment Prisma model.

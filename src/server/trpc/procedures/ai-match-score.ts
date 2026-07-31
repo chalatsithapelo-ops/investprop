@@ -15,6 +15,7 @@ import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
+import { calculateRentalMetrics, type RentalPropertyInput } from "~/financial-calculations";
 
 type CacheEntry = {
   score: number;
@@ -75,7 +76,16 @@ async function computeMatch(userId: number, propertyId: number): Promise<CacheEn
         city: true,
         state: true,
         propertyFlip: { select: { expectedROI: true, daysToComplete: true } },
-        rentalBond: { select: { capRate: true, cashOnCashReturn: true } },
+        rentalBond: {
+          select: {
+            purchasePrice: true, monthlyRent: true, annualPropertyTax: true, annualInsurance: true,
+            monthlyHOAFees: true, monthlyMaintenanceReserve: true, monthlyUtilities: true, monthlyManagementFee: true,
+            vacancyRate: true, appreciationRate: true, capRate: true, cashOnCashReturn: true,
+            grossRentMultiplier: true, debtServiceCoverageRatio: true, grossYield: true, netYield: true,
+            downPaymentAmount: true, loanAmount: true, bondAmount: true, interestRate: true, loanTermYears: true,
+            monthlyDebtService: true, totalInvestmentBudget: true, spentInvestmentBudget: true,
+          },
+        },
         propertyDevelopment: { select: { developmentTimelineMonths: true, expectedIRR: true, developmentType: true } },
       },
     }),
@@ -107,10 +117,42 @@ async function computeMatch(userId: number, propertyId: number): Promise<CacheEn
   const cityShare = totalCommitted > 0 ? ((byCity.get(property.city) ?? 0) / totalCommitted) * 100 : 0;
   const typeShare = totalCommitted > 0 ? ((byType.get(thisType) ?? 0) / totalCommitted) * 100 : 0;
 
+  let rentalDealLine = "";
+  if (property.rentalBond) {
+    const r = property.rentalBond;
+    const rentalInput: RentalPropertyInput = {
+      purchasePrice: r.purchasePrice || property.price || 0,
+      monthlyRent: r.monthlyRent ?? 0,
+      annualPropertyTax: r.annualPropertyTax ?? 0,
+      annualInsurance: r.annualInsurance ?? 0,
+      monthlyHOAFees: r.monthlyHOAFees ?? 0,
+      monthlyMaintenanceReserve: r.monthlyMaintenanceReserve ?? 0,
+      monthlyUtilities: r.monthlyUtilities ?? 0,
+      monthlyManagementFee: r.monthlyManagementFee ?? 0,
+      vacancyRate: r.vacancyRate ?? 5,
+      appreciationRate: r.appreciationRate ?? 3,
+      capRate: r.capRate ?? 0,
+      cashOnCashReturn: r.cashOnCashReturn ?? 0,
+      grossRentMultiplier: r.grossRentMultiplier ?? 0,
+      debtServiceCoverageRatio: r.debtServiceCoverageRatio ?? 0,
+      grossYield: r.grossYield ?? 0,
+      netYield: r.netYield ?? 0,
+      downPaymentAmount: r.downPaymentAmount ?? 0,
+      loanAmount: r.loanAmount || r.bondAmount || 0,
+      interestRate: r.interestRate ?? 0,
+      loanTermYears: r.loanTermYears ?? 0,
+      monthlyDebtService: r.monthlyDebtService ?? 0,
+      totalInvestmentBudget: r.totalInvestmentBudget ?? 0,
+      spentInvestmentBudget: r.spentInvestmentBudget ?? 0,
+    };
+    const rc = calculateRentalMetrics(rentalInput);
+    rentalDealLine = `rental, cap rate ${rc.displayCapRate.toFixed(1)}%, CoC ${rc.cashOnCashReturn.toFixed(1)}%`;
+  }
+
   const dealLine = property.propertyFlip
     ? `flip, expected ROI ${property.propertyFlip.expectedROI.toFixed(1)}%, ~${property.propertyFlip.daysToComplete}d hold`
     : property.rentalBond
-      ? `rental, cap rate ${property.rentalBond.capRate.toFixed(1)}%, CoC ${property.rentalBond.cashOnCashReturn.toFixed(1)}%`
+      ? rentalDealLine
       : property.propertyDevelopment
         ? `development (${property.propertyDevelopment.developmentType}), IRR ${property.propertyDevelopment.expectedIRR.toFixed(1)}%, ${property.propertyDevelopment.developmentTimelineMonths}mo`
         : "uncategorised";

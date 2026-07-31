@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
+import { calculateRentalMetrics, buildRentalInput } from "~/financial-calculations";
 
 export const getPropertyById = baseProcedure
   .input(z.object({ propertyId: z.number() }))
@@ -86,10 +87,15 @@ export const getPropertyById = baseProcedure
       property.propertyDevelopment?.fundingGoal ??
       0;
 
-    // Get expected returns from the property sub-type
+    // Get expected returns from the property sub-type. Rentals compute a live
+    // cap rate via the financial engine so a stale/zero stored capRate never
+    // shows as the headline return.
+    const rentalCapRate = property.rentalBond
+      ? calculateRentalMetrics(buildRentalInput(property.rentalBond, property.price)).displayCapRate
+      : undefined;
     const expectedROI =
       property.propertyFlip?.expectedROI ??
-      property.rentalBond?.capRate ??
+      rentalCapRate ??
       property.propertyDevelopment?.expectedROI ??
       0;
 

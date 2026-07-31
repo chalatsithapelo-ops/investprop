@@ -12,6 +12,7 @@ import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
+import { calculateRentalMetrics, buildRentalInput } from "~/financial-calculations";
 
 interface PortfolioInsightShape {
   summary: string;
@@ -72,7 +73,12 @@ export const generatePortfolioInsight = baseProcedure
       }).catch(() => [] as { netAmount: number; createdAt: Date }[]),
       db.property.findMany({
         where: { isPublished: true, investmentStatus: "RAISING_FUNDS", deletedAt: null },
-        select: { id: true, title: true, city: true, state: true, riskRating: true, expectedReturns: true },
+        select: {
+          id: true, title: true, city: true, state: true, riskRating: true, expectedReturns: true, price: true,
+          propertyFlip: { select: { expectedROI: true } },
+          rentalBond: true,
+          propertyDevelopment: { select: { expectedROI: true } },
+        },
         take: 8,
       }),
     ]);
@@ -136,7 +142,11 @@ CURRENT DEALS:
 ${contributions.map((c) => `- #${c.property.id} ${c.property.title} (${c.property.city}) — R${Math.round(c.contributionAmount).toLocaleString()} | ${c.property.riskRating} risk | ${c.property.investmentStatus}`).join("\n")}
 
 OPEN OPPORTUNITIES ON PLATFORM (for gap-fill candidate):
-${openOpps.map((o) => `- #${o.id} ${o.title} (${o.city}) — ${o.riskRating} risk | ${o.expectedReturns.toFixed(1)}% expected`).join("\n") || "(none open right now)"}
+${openOpps.map((o) => {
+  const rentalCap = o.rentalBond ? calculateRentalMetrics(buildRentalInput(o.rentalBond, o.price)).displayCapRate : undefined;
+  const expected = o.propertyFlip?.expectedROI ?? rentalCap ?? o.propertyDevelopment?.expectedROI ?? o.expectedReturns ?? 0;
+  return `- #${o.id} ${o.title} (${o.city}) — ${o.riskRating} risk | ${expected.toFixed(1)}% expected`;
+}).join("\n") || "(none open right now)"}
 
 Return the JSON object now.`;
 
