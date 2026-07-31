@@ -53,6 +53,15 @@ function InvestmentsHubPage() {
       bg: "bg-blue-50",
     },
     {
+      title: "Financing Calculator",
+      description:
+        "Stress-test deal financing with transfer duty, DSCR, debt yield, break-even occupancy, and equity IRR.",
+      href: "/investments/financing-calculator",
+      icon: Target,
+      color: "text-rose-600",
+      bg: "bg-rose-50",
+    },
+    {
       title: "My Certificates",
       description:
         "View your share certificates proving fractional ownership in each property you've invested in.",

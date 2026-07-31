@@ -321,6 +321,33 @@ function InvestmentOpportunitiesPage() {
                     >
                       View Details
                     </Link>
+                    <Link
+                      to="/investments/financing-calculator"
+                      search={{
+                        source: (opp.title ?? opp.name ?? "Opportunity") as string,
+                        strategy: String(opp.propertyType ?? opp.type ?? "RENTAL").toUpperCase().includes("FLIP")
+                          ? "FLIP"
+                          : String(opp.propertyType ?? opp.type ?? "RENTAL").toUpperCase().includes("DEV")
+                            ? "DEVELOPMENT"
+                            : "RENTAL",
+                        purchasePrice: Number(opp.price ?? opp.fundingGoal ?? 0),
+                        monthlyRent: Number(opp.rentalBond?.monthlyRent ?? 0),
+                        annualPropertyTax: Number(opp.rentalBond?.annualPropertyTax ?? 0),
+                        annualInsurance: Number(opp.rentalBond?.annualInsurance ?? 0),
+                        monthlyHOA: Number(opp.rentalBond?.monthlyHOAFees ?? 0),
+                        monthlyMaintenance: Number(opp.rentalBond?.monthlyMaintenanceReserve ?? 0),
+                        monthlyUtilities: Number(opp.rentalBond?.monthlyUtilities ?? 0),
+                        monthlyManagement: Number(opp.rentalBond?.monthlyManagementFee ?? 0),
+                        vacancyRate: Number(opp.rentalBond?.vacancyRate ?? 6),
+                        closingCosts: Number(opp.rentalBond?.closingCosts ?? 0),
+                        loanAmount: Number(opp.rentalBond?.loanAmount ?? opp.rentalBond?.bondAmount ?? 0),
+                        interestRate: Number(opp.rentalBond?.interestRate ?? 0),
+                        loanTermYears: Number(opp.rentalBond?.loanTermYears ?? 20),
+                      }}
+                      className="mt-2 block w-full rounded-lg border border-gold-500/40 bg-gold-500/10 py-2.5 text-center text-sm font-semibold text-gold-600 transition-colors hover:bg-gold-500/20"
+                    >
+                      Run Financing Scenario
+                    </Link>
                   </div>
                 </div>
               );

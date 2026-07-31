@@ -564,6 +564,32 @@ function OpportunityDetailPage() {
                   />
                 </div>
               </div>
+
+              <div className="mt-4">
+                <Link
+                  to="/investments/financing-calculator"
+                  search={{
+                    source: (property.title ?? property.name ?? "Opportunity") as string,
+                    strategy: property.propertyFlip ? "FLIP" : property.propertyDevelopment ? "DEVELOPMENT" : "RENTAL",
+                    purchasePrice: Number(property.price ?? property.fundingGoal ?? 0),
+                    monthlyRent: Number(property.rentalBond?.monthlyRent ?? 0),
+                    annualPropertyTax: Number(property.rentalBond?.annualPropertyTax ?? 0),
+                    annualInsurance: Number(property.rentalBond?.annualInsurance ?? 0),
+                    monthlyHOA: Number(property.rentalBond?.monthlyHOAFees ?? 0),
+                    monthlyMaintenance: Number(property.rentalBond?.monthlyMaintenanceReserve ?? 0),
+                    monthlyUtilities: Number(property.rentalBond?.monthlyUtilities ?? 0),
+                    monthlyManagement: Number(property.rentalBond?.monthlyManagementFee ?? 0),
+                    vacancyRate: Number(property.rentalBond?.vacancyRate ?? 6),
+                    closingCosts: Number(property.rentalBond?.closingCosts ?? 0),
+                    loanAmount: Number(property.rentalBond?.loanAmount ?? property.rentalBond?.bondAmount ?? 0),
+                    interestRate: Number(property.rentalBond?.interestRate ?? 0),
+                    loanTermYears: Number(property.rentalBond?.loanTermYears ?? 20),
+                  }}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gold-500/30 bg-gold-500/10 px-3 py-2 text-sm font-semibold text-gold-600 hover:bg-gold-500/20"
+                >
+                  <PiggyBank size={14} /> Use this deal in financing calculator
+                </Link>
+              </div>
             </div>
 
             {/* SPV (Legal Entity) Information */}

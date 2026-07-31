@@ -139,6 +139,13 @@ export const mainNavigationLinks: NavigationLink[] = [
     roles: ["INVESTOR"],
   },
   {
+    label: "Financing Calculator",
+    to: "/investments/financing-calculator",
+    icon: Calculator,
+    roles: ["INVESTOR"],
+    description: "Model financing scenarios with DSCR, stress tests and equity IRR",
+  },
+  {
     label: "My Certificates",
     to: "/investments/certificates",
     icon: Award,
