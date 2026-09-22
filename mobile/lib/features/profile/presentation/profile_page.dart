@@ -119,6 +119,57 @@ class ProfilePage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
+          const Text(
+            'Documents & reports',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.workspace_premium_outlined,
+                      color: AppColors.navy),
+                  title: const Text('Share certificates'),
+                  subtitle: const Text('View and download your certificates'),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () => context.push('/profile/certificates'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.receipt_long_outlined,
+                      color: AppColors.navy),
+                  title: const Text('Tax certificates'),
+                  subtitle: const Text('IT3 income summaries by tax year'),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () => context.push('/profile/tax-certificates'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.folder_open_outlined,
+                      color: AppColors.navy),
+                  title: const Text('My documents'),
+                  subtitle: const Text('Agreements and shared files'),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () => context.push('/profile/documents'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.verified_outlined,
+                      color: AppColors.navy),
+                  title: const Text('Platform track record'),
+                  subtitle: const Text('Delivery and distribution history'),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () => context.push('/profile/track-record'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
           OutlinedButton.icon(
             onPressed: () => _confirmLogout(context, ref),
             style: OutlinedButton.styleFrom(

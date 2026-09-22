@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../../../config/theme.dart';
 import '../../../core/format.dart';
@@ -8,15 +11,65 @@ import '../data/statement_repository.dart';
 import '../domain/investor_statement.dart';
 
 /// Investor statement — lifetime position, income and tax withheld.
-class StatementPage extends ConsumerWidget {
+class StatementPage extends ConsumerStatefulWidget {
   const StatementPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StatementPage> createState() => _StatementPageState();
+}
+
+class _StatementPageState extends ConsumerState<StatementPage> {
+  bool _exporting = false;
+
+  Future<void> _export(InvestorStatement s) async {
+    setState(() => _exporting = true);
+    try {
+      final doc = await _buildStatementPdf(s);
+      final bytes = await doc.save();
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: 'investor-statement-'
+            '${DateTime.now().toIso8601String().substring(0, 10)}.pdf',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not export: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final statement = ref.watch(statementProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Investor statement')),
+      appBar: AppBar(
+        title: const Text('Investor statement'),
+        actions: [
+          if (_exporting)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: SizedBox(
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            IconButton(
+              tooltip: 'Download / share PDF',
+              icon: const Icon(Icons.ios_share),
+              onPressed: () {
+                final s = statement.valueOrNull;
+                if (s != null) _export(s);
+              },
+            ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(statementProvider.future),
         child: AsyncValueView(
@@ -380,3 +433,119 @@ class _Disclaimer extends StatelessWidget {
     );
   }
 }
+
+Future<pw.Document> _buildStatementPdf(InvestorStatement s) async {
+  final doc = pw.Document();
+  final navy = PdfColor.fromInt(0xFF0B2545);
+  final grey = PdfColor.fromInt(0xFF64748B);
+  final sum = s.summary;
+
+  doc.addPage(
+    pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(32),
+      build: (context) => [
+        pw.Text('Investor Statement',
+            style: pw.TextStyle(
+                fontSize: 22, fontWeight: pw.FontWeight.bold, color: navy)),
+        pw.SizedBox(height: 4),
+        pw.Text(s.investorName,
+            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.Text(s.investorEmail,
+            style: pw.TextStyle(fontSize: 11, color: grey)),
+        pw.Text('Generated ${Fmt.dateTime(s.generatedAt)}',
+            style: pw.TextStyle(fontSize: 10, color: grey)),
+        pw.SizedBox(height: 16),
+        pw.Divider(color: navy),
+        pw.SizedBox(height: 8),
+        _pdfRow('Total invested', Fmt.money(sum.totalInvested)),
+        _pdfRow('Current value', Fmt.money(sum.totalCurrentValue)),
+        _pdfRow('Unrealised gain/loss', Fmt.money(sum.unrealisedGainLoss)),
+        _pdfRow('Total return', Fmt.percent(sum.totalReturn)),
+        _pdfRow('Income received', Fmt.money(sum.totalDividendsReceived)),
+        _pdfRow('Tax withheld', Fmt.money(sum.totalTaxWithheld)),
+        _pdfRow('Properties', '${sum.propertiesInvested}'),
+        pw.SizedBox(height: 18),
+        pw.Text('Investments',
+            style: pw.TextStyle(
+                fontSize: 14, fontWeight: pw.FontWeight.bold, color: navy)),
+        pw.SizedBox(height: 6),
+        if (s.investments.isEmpty)
+          pw.Text('No investments on record.',
+              style: pw.TextStyle(color: grey, fontSize: 10))
+        else
+          pw.TableHelper.fromTextArray(
+            headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+            headerDecoration: pw.BoxDecoration(color: navy),
+            cellStyle: const pw.TextStyle(fontSize: 9),
+            headers: const [
+              'Property',
+              'Invested',
+              'Current',
+              'Ownership',
+              'Income',
+              'Tax'
+            ],
+            data: [
+              for (final inv in s.investments)
+                [
+                  inv.title,
+                  Fmt.money(inv.totalInvested),
+                  Fmt.money(inv.currentValue),
+                  Fmt.percent(inv.ownershipPct, decimals: 2),
+                  Fmt.money(inv.totalDividendsReceived),
+                  Fmt.money(inv.totalTaxWithheld),
+                ],
+            ],
+          ),
+        if (s.recentPayouts.isNotEmpty) ...[
+          pw.SizedBox(height: 18),
+          pw.Text('Recent distributions',
+              style: pw.TextStyle(
+                  fontSize: 14, fontWeight: pw.FontWeight.bold, color: navy)),
+          pw.SizedBox(height: 6),
+          pw.TableHelper.fromTextArray(
+            headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+            headerDecoration: pw.BoxDecoration(color: navy),
+            cellStyle: const pw.TextStyle(fontSize: 9),
+            headers: const ['Date', 'Type', 'Gross', 'Tax', 'Net', 'Status'],
+            data: [
+              for (final p in s.recentPayouts)
+                [
+                  Fmt.date(p.date),
+                  p.typeLabel,
+                  Fmt.money(p.gross),
+                  Fmt.money(p.taxWithheld),
+                  Fmt.money(p.net),
+                  p.isPaid ? 'Paid' : 'Pending',
+                ],
+            ],
+          ),
+        ],
+        pw.SizedBox(height: 24),
+        pw.Text(
+          'This statement is for your records only. It is not a tax '
+          'certificate and not audited financial statements under the '
+          'Companies Act.',
+          style: pw.TextStyle(fontSize: 8, color: grey),
+        ),
+      ],
+    ),
+  );
+  return doc;
+}
+
+pw.Widget _pdfRow(String k, String v) => pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(k, style: const pw.TextStyle(fontSize: 11)),
+          pw.Text(v,
+              style:
+                  pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+        ],
+      ),
+    );

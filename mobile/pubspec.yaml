@@ -53,6 +53,12 @@ dependencies:
   url_launcher: ^6.3.0
   # Camera / gallery capture for FICA (KYC) document uploads
   image_picker: ^1.1.2
+  # Generate share certificate / statement / tax certificate PDFs
+  pdf: ^3.11.1
+  # Preview, print and share generated PDFs (save to device / share sheet)
+  printing: ^5.13.2
+  # Simple charts for the investor metrics dashboard
+  fl_chart: ^0.69.2
 
 dev_dependencies:
   flutter_test:

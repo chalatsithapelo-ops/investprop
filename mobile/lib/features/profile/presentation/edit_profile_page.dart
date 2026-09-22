@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../config/theme.dart';
 import '../../../core/api/api_exception.dart';
-import '../application/auth_controller.dart';
+import '../../auth/application/auth_controller.dart';
 
 /// Lets the signed-in investor update their display name and contact phone.
 class EditProfilePage extends ConsumerStatefulWidget {

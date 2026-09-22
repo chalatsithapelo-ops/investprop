@@ -7,10 +7,21 @@ import '../features/auth/presentation/forgot_password_page.dart';
 import '../features/auth/presentation/login_page.dart';
 import '../features/auth/presentation/register_page.dart';
 import '../features/auth/presentation/reset_password_page.dart';
+import '../features/ai/presentation/platform_track_record_page.dart';
+import '../features/ai/presentation/property_chat_page.dart';
+import '../features/certificates/presentation/certificates_page.dart';
+import '../features/contributions/presentation/contributions_page.dart';
 import '../features/dashboard/dashboard_page.dart';
+import '../features/documents/presentation/documents_page.dart';
+import '../features/governance/presentation/distributions_voting_page.dart';
 import '../features/investment/presentation/invest_page.dart';
+import '../features/ledger/presentation/share_ledger_page.dart';
+import '../features/marketplace/domain/marketplace_models.dart';
+import '../features/marketplace/presentation/market_detail_page.dart';
+import '../features/marketplace/presentation/marketplace_page.dart';
 import '../features/investment/presentation/payments_page.dart';
 import '../features/kyc/presentation/kyc_page.dart';
+import '../features/metrics/presentation/metrics_page.dart';
 import '../features/notifications/presentation/notifications_page.dart';
 import '../features/opportunities/presentation/opportunities_page.dart';
 import '../features/opportunities/presentation/opportunity_detail_page.dart';
@@ -21,6 +32,7 @@ import '../features/profile/presentation/profile_page.dart';
 import '../features/shell/home_shell.dart';
 import '../features/shell/splash_page.dart';
 import '../features/statement/presentation/statement_page.dart';
+import '../features/tax/presentation/tax_certificates_page.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
 
@@ -104,6 +116,16 @@ final routerProvider = Provider<GoRouter>((ref) {
                               int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
                         ),
                       ),
+                      GoRoute(
+                        path: 'chat',
+                        parentNavigatorKey: _rootKey,
+                        builder: (context, state) => PropertyChatPage(
+                          propertyId:
+                              int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+                          propertyTitle:
+                              state.extra is String ? state.extra as String : 'Deal',
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -128,6 +150,45 @@ final routerProvider = Provider<GoRouter>((ref) {
                       holdingId:
                           int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
                     ),
+                  ),
+                  GoRoute(
+                    path: 'distributions',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const DistributionsVotingPage(),
+                  ),
+                  GoRoute(
+                    path: 'contributions',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const ContributionsPage(),
+                  ),
+                  GoRoute(
+                    path: 'metrics',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const MetricsPage(),
+                  ),
+                  GoRoute(
+                    path: 'ledger',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const ShareLedgerPage(),
+                  ),
+                  GoRoute(
+                    path: 'marketplace',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const MarketplacePage(),
+                    routes: [
+                      GoRoute(
+                        path: ':id',
+                        parentNavigatorKey: _rootKey,
+                        builder: (context, state) => MarketDetailPage(
+                          shareClassId: int.tryParse(
+                                  state.pathParameters['id'] ?? '') ??
+                              0,
+                          shareClass: state.extra is MarketShareClass
+                              ? state.extra as MarketShareClass
+                              : null,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -161,6 +222,26 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'kyc',
                     parentNavigatorKey: _rootKey,
                     builder: (_, __) => const KycPage(),
+                  ),
+                  GoRoute(
+                    path: 'certificates',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const CertificatesPage(),
+                  ),
+                  GoRoute(
+                    path: 'tax-certificates',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const TaxCertificatesPage(),
+                  ),
+                  GoRoute(
+                    path: 'track-record',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const PlatformTrackRecordPage(),
+                  ),
+                  GoRoute(
+                    path: 'documents',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const DocumentsPage(),
                   ),
                 ],
               ),

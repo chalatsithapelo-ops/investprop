@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../config/theme.dart';
 import '../../../core/format.dart';
 import '../../../widgets/async_value_widget.dart';
+import '../../ai/presentation/portfolio_insight_card.dart';
 import '../../investment/data/investment_repository.dart';
 import '../data/portfolio_repository.dart';
 import '../domain/holding.dart';
@@ -56,6 +57,10 @@ class PortfolioPage extends ConsumerWidget {
               children: [
                 const _PaymentsDueBanner(),
                 _SummaryCard(summary: summary),
+                const SizedBox(height: 16),
+                const _PortfolioTools(),
+                const SizedBox(height: 16),
+                const PortfolioInsightCard(),
                 const SizedBox(height: 20),
                 const Text(
                   'Holdings',
@@ -77,6 +82,60 @@ class PortfolioPage extends ConsumerWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+class _PortfolioTools extends StatelessWidget {
+  const _PortfolioTools();
+
+  @override
+  Widget build(BuildContext context) {
+    final tools = <(IconData, String, String)>[
+      (Icons.payments_outlined, 'Distributions\n& Voting', '/portfolio/distributions'),
+      (Icons.receipt_long_outlined, 'My\nContributions', '/portfolio/contributions'),
+      (Icons.insights_outlined, 'Metrics', '/portfolio/metrics'),
+      (Icons.storefront_outlined, 'Marketplace', '/portfolio/marketplace'),
+      (Icons.list_alt_outlined, 'Share\nLedger', '/portfolio/ledger'),
+    ];
+    return GridView.count(
+      crossAxisCount: 4,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      childAspectRatio: 0.85,
+      children: [
+        for (final (icon, label, route) in tools)
+          InkWell(
+            onTap: () => context.push(route),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: AppColors.navy, size: 24),
+                  const SizedBox(height: 6),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontSize: 10.5,
+                        height: 1.1,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

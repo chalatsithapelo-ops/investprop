@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../config/theme.dart';
 import '../../../core/format.dart';
 import '../../../widgets/async_value_widget.dart';
+import '../../ai/presentation/match_score_card.dart';
 import '../data/opportunities_repository.dart';
 import '../domain/opportunity.dart';
 import 'opportunity_card.dart';
@@ -123,6 +124,20 @@ class _Detail extends StatelessWidget {
                 _MetricsGrid(opportunity: opportunity),
                 const SizedBox(height: 20),
                 _FundingSection(opportunity: opportunity),
+                const SizedBox(height: 20),
+                MatchScoreCard(propertyId: opportunity.id),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () => context.push(
+                    '/opportunities/${opportunity.id}/chat',
+                    extra: opportunity.title,
+                  ),
+                  icon: const Icon(Icons.smart_toy_outlined),
+                  label: const Text('Ask the AI deal co-pilot'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                ),
                 if (opportunity.description.isNotEmpty) ...[
                   const SizedBox(height: 24),
                   const Text(
