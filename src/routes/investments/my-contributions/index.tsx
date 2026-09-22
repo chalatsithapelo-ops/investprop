@@ -19,6 +19,7 @@ import { Navbar } from "~/components/Navbar";
 import { CoolingOffBanner } from "~/components/CoolingOffBanner";
 import { useTRPC } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import { useBlockPropertyOwner } from "~/utils/use-require-role";
 
 export const Route = createFileRoute("/investments/my-contributions/")({
   component: MyContributionsPage,
@@ -30,6 +31,7 @@ function MyContributionsPage() {
   const authToken = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
+  useBlockPropertyOwner();
 
   useEffect(() => {
     if (!hasHydrated) return;

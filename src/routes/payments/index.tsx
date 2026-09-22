@@ -31,6 +31,7 @@ import {
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import { useBlockPropertyOwner } from "~/utils/use-require-role";
 import toast from "react-hot-toast";
 
 export const Route = createFileRoute("/payments/")({
@@ -45,8 +46,9 @@ function PaymentsPage() {
   const qc = useQueryClient();
   const authToken = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user) as any;
-  const isManager = user?.role === "DEVELOPMENT_MANAGER" || user?.role === "PROJECT_MANAGER" || user?.role === "PROPERTY_OWNER";
+  const isManager = user?.role === "DEVELOPMENT_MANAGER" || user?.role === "PROJECT_MANAGER";
   const isInvestor = user?.role === "INVESTOR";
+  useBlockPropertyOwner();
 
   const [tab, setTab] = useState<TabKey>("overview");
   const [payAmount, setPayAmount] = useState("");

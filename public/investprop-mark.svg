@@ -1,0 +1,43 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Investprop mark">
+  <defs>
+    <linearGradient id="bgTech" x1="20" y1="20" x2="236" y2="236" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#071827"/>
+      <stop offset="1" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="techGold" x1="74" y1="58" x2="184" y2="208" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FDE68A"/>
+      <stop offset="1" stop-color="#B7791F"/>
+    </linearGradient>
+    <linearGradient id="techCyan" x1="62" y1="102" x2="196" y2="184" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="16" y="16" width="224" height="224" rx="40" fill="url(#bgTech)"/>
+  <rect x="30" y="30" width="196" height="196" rx="32" fill="#0A1628" stroke="#155E75" stroke-width="2"/>
+
+  <path d="M56 122L128 68L200 122" stroke="url(#techGold)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="72" y="120" width="112" height="80" rx="12" fill="#081221" stroke="url(#techGold)" stroke-width="4"/>
+
+  <path d="M128 160V126" stroke="url(#techGold)" stroke-width="8" stroke-linecap="round"/>
+  <path d="M114 138L128 124L142 138" stroke="url(#techGold)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <path d="M86 176H170" stroke="url(#techCyan)" stroke-width="4" stroke-linecap="round"/>
+  <rect x="92" y="156" width="12" height="20" rx="3" fill="url(#techCyan)"/>
+  <rect x="114" y="148" width="12" height="28" rx="3" fill="url(#techCyan)"/>
+  <rect x="136" y="140" width="12" height="36" rx="3" fill="url(#techCyan)"/>
+  <rect x="158" y="130" width="12" height="46" rx="3" fill="url(#techCyan)"/>
+
+  <path d="M64 96H90L104 110" stroke="#67E8F9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M192 96H166L152 110" stroke="#67E8F9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M84 84V96" stroke="#67E8F9" stroke-width="3" stroke-linecap="round"/>
+  <path d="M172 84V96" stroke="#67E8F9" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="84" cy="84" r="3" fill="#67E8F9"/>
+  <circle cx="172" cy="84" r="3" fill="#67E8F9"/>
+  <circle cx="104" cy="110" r="3" fill="#67E8F9"/>
+  <circle cx="152" cy="110" r="3" fill="#67E8F9"/>
+
+  <path d="M90 204L110 190" stroke="#22D3EE" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <path d="M166 204L146 190" stroke="#22D3EE" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+</svg>

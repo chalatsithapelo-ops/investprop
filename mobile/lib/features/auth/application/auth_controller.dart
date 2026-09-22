@@ -51,12 +51,14 @@ class AuthController extends StateNotifier<AuthState> {
     required String email,
     required String password,
     String? phone,
+    String role = 'INVESTOR',
   }) async {
     final user = await _repo.register(
       name: name,
       email: email,
       password: password,
       phone: phone,
+      role: role,
     );
     state = AuthState(status: AuthStatus.authenticated, user: user);
   }

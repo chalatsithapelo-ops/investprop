@@ -25,6 +25,10 @@ import '../features/metrics/presentation/metrics_page.dart';
 import '../features/notifications/presentation/notifications_page.dart';
 import '../features/opportunities/presentation/opportunities_page.dart';
 import '../features/opportunities/presentation/opportunity_detail_page.dart';
+import '../features/opportunities/presentation/financing_calculator_page.dart';
+import '../features/opportunities/domain/opportunity.dart';
+import '../features/owner/presentation/owner_portal_page.dart';
+import '../features/owner/presentation/owner_proposals_page.dart';
 import '../features/portfolio/presentation/holding_detail_page.dart';
 import '../features/portfolio/presentation/portfolio_page.dart';
 import '../features/profile/presentation/edit_profile_page.dart';
@@ -67,6 +71,32 @@ class _AuthRouterNotifier extends ChangeNotifier {
   }
 }
 
+/// Second tab: investors see investment opportunities, property owners see the
+/// "submit your property" portal.
+class _InvestOrSellBranch extends ConsumerWidget {
+  const _InvestOrSellBranch();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authControllerProvider).user;
+    if (user?.isPropertyOwner == true) return const OwnerPortalPage();
+    return const OpportunitiesPage();
+  }
+}
+
+/// Third tab: investors see their portfolio, property owners see their
+/// submitted deals.
+class _PortfolioOrDealsBranch extends ConsumerWidget {
+  const _PortfolioOrDealsBranch();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authControllerProvider).user;
+    if (user?.isPropertyOwner == true) return const OwnerProposalsPage();
+    return const PortfolioPage();
+  }
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _AuthRouterNotifier(ref);
 
@@ -100,7 +130,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/opportunities',
-                builder: (_, __) => const OpportunitiesPage(),
+                builder: (_, __) => const _InvestOrSellBranch(),
                 routes: [
                   GoRoute(
                     path: ':id',
@@ -126,6 +156,15 @@ final routerProvider = Provider<GoRouter>((ref) {
                               state.extra is String ? state.extra as String : 'Deal',
                         ),
                       ),
+                      GoRoute(
+                        path: 'calculator',
+                        parentNavigatorKey: _rootKey,
+                        builder: (context, state) => FinancingCalculatorPage(
+                          opportunity: state.extra is Opportunity
+                              ? state.extra as Opportunity
+                              : null,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -136,7 +175,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/portfolio',
-                builder: (_, __) => const PortfolioPage(),
+                builder: (_, __) => const _PortfolioOrDealsBranch(),
                 routes: [
                   GoRoute(
                     path: 'payments',

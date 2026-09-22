@@ -6,6 +6,7 @@ import { Navbar } from "~/components/Navbar";
 import { ReferralCard } from "~/components/ReferralCard";
 import { useTRPC } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import { useBlockPropertyOwner } from "~/utils/use-require-role";
 
 export const Route = createFileRoute("/portfolio/")({
   component: PortfolioPage,
@@ -17,6 +18,8 @@ function PortfolioPage() {
   const authToken = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
+
+  useBlockPropertyOwner();
 
   useEffect(() => {
     if (!hasHydrated) return;

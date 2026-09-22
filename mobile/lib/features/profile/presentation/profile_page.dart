@@ -13,6 +13,7 @@ class ProfilePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authControllerProvider).user;
+    final isOwner = user?.isPropertyOwner == true;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
@@ -60,11 +61,13 @@ class ProfilePage extends ConsumerWidget {
             child: Column(
               children: [
                 _InfoRow(label: 'Role', value: user?.roleLabel ?? '—'),
-                const Divider(height: 1),
-                _InfoRow(
-                  label: 'Investor code',
-                  value: user?.investorCode ?? '—',
-                ),
+                if (!isOwner) ...[
+                  const Divider(height: 1),
+                  _InfoRow(
+                    label: 'Investor code',
+                    value: user?.investorCode ?? '—',
+                  ),
+                ],
               ],
             ),
           ),
@@ -91,15 +94,17 @@ class ProfilePage extends ConsumerWidget {
                   onTap: () => context.push('/profile/edit'),
                 ),
                 const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.description_outlined,
-                      color: AppColors.navy),
-                  title: const Text('Investor statement'),
-                  subtitle: const Text('Positions, income and tax withheld'),
-                  trailing: const Icon(Icons.chevron_right, size: 20),
-                  onTap: () => context.push('/profile/statement'),
-                ),
-                const Divider(height: 1),
+                if (!isOwner) ...[
+                  ListTile(
+                    leading: const Icon(Icons.description_outlined,
+                        color: AppColors.navy),
+                    title: const Text('Investor statement'),
+                    subtitle: const Text('Positions, income and tax withheld'),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => context.push('/profile/statement'),
+                  ),
+                  const Divider(height: 1),
+                ],
                 ListTile(
                   leading: const Icon(Icons.language, color: AppColors.navy),
                   title: const Text('Manage on the web'),
@@ -131,24 +136,26 @@ class ProfilePage extends ConsumerWidget {
           Card(
             child: Column(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.workspace_premium_outlined,
-                      color: AppColors.navy),
-                  title: const Text('Share certificates'),
-                  subtitle: const Text('View and download your certificates'),
-                  trailing: const Icon(Icons.chevron_right, size: 20),
-                  onTap: () => context.push('/profile/certificates'),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.receipt_long_outlined,
-                      color: AppColors.navy),
-                  title: const Text('Tax certificates'),
-                  subtitle: const Text('IT3 income summaries by tax year'),
-                  trailing: const Icon(Icons.chevron_right, size: 20),
-                  onTap: () => context.push('/profile/tax-certificates'),
-                ),
-                const Divider(height: 1),
+                if (!isOwner) ...[
+                  ListTile(
+                    leading: const Icon(Icons.workspace_premium_outlined,
+                        color: AppColors.navy),
+                    title: const Text('Share certificates'),
+                    subtitle: const Text('View and download your certificates'),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => context.push('/profile/certificates'),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.receipt_long_outlined,
+                        color: AppColors.navy),
+                    title: const Text('Tax certificates'),
+                    subtitle: const Text('IT3 income summaries by tax year'),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => context.push('/profile/tax-certificates'),
+                  ),
+                  const Divider(height: 1),
+                ],
                 ListTile(
                   leading: const Icon(Icons.folder_open_outlined,
                       color: AppColors.navy),
@@ -157,15 +164,17 @@ class ProfilePage extends ConsumerWidget {
                   trailing: const Icon(Icons.chevron_right, size: 20),
                   onTap: () => context.push('/profile/documents'),
                 ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.verified_outlined,
-                      color: AppColors.navy),
-                  title: const Text('Platform track record'),
-                  subtitle: const Text('Delivery and distribution history'),
-                  trailing: const Icon(Icons.chevron_right, size: 20),
-                  onTap: () => context.push('/profile/track-record'),
-                ),
+                if (!isOwner) ...[
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.verified_outlined,
+                        color: AppColors.navy),
+                    title: const Text('Platform track record'),
+                    subtitle: const Text('Delivery and distribution history'),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => context.push('/profile/track-record'),
+                  ),
+                ],
               ],
             ),
           ),

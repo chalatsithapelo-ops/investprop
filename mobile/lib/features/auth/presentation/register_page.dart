@@ -21,6 +21,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   final _passwordController = TextEditingController();
   bool _obscure = true;
   bool _submitting = false;
+  String _role = 'INVESTOR';
 
   @override
   void dispose() {
@@ -42,6 +43,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             email: _emailController.text.trim(),
             password: _passwordController.text,
             phone: _phoneController.text.trim(),
+            role: _role,
           );
     } on ApiException catch (e) {
       if (mounted) {
@@ -85,6 +87,32 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 24),
+                const Text(
+                  'I want to',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 'INVESTOR',
+                      label: Text('Invest'),
+                      icon: Icon(Icons.trending_up),
+                    ),
+                    ButtonSegment(
+                      value: 'PROPERTY_OWNER',
+                      label: Text('Sell property'),
+                      icon: Icon(Icons.sell_outlined),
+                    ),
+                  ],
+                  selected: {_role},
+                  onSelectionChanged: (s) =>
+                      setState(() => _role = s.first),
+                ),
+                const SizedBox(height: 20),
                 TextFormField(
                   controller: _nameController,
                   textCapitalization: TextCapitalization.words,

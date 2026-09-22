@@ -103,7 +103,7 @@ function PropertyDetailPage() {
   const amountRaised = Number(property.fundingRaised ?? property.amountRaised ?? property.totalRaised ?? 0);
   const fundingProgress = fundingGoal > 0 ? Math.min((amountRaised / fundingGoal) * 100, 100) : 0;
 
-  const isManager = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "OWNER"].includes(user?.role ?? "");
+  const isManager = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"].includes(user?.role ?? "");
 
   const tabs = [
     { key: "overview" as const, label: "Overview", icon: Building },

@@ -7,6 +7,8 @@ import '../../core/format.dart';
 import '../auth/application/auth_controller.dart';
 import '../opportunities/data/opportunities_repository.dart';
 import '../opportunities/presentation/opportunity_card.dart';
+import '../owner/data/owner_repository.dart';
+import '../owner/domain/sale_proposal.dart';
 import '../portfolio/data/portfolio_repository.dart';
 
 class DashboardPage extends ConsumerWidget {
@@ -15,6 +17,9 @@ class DashboardPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authControllerProvider).user;
+    if (user?.isPropertyOwner == true) {
+      return const _OwnerDashboard();
+    }
     final portfolio = ref.watch(portfolioProvider);
     final opportunities = ref.watch(opportunitiesProvider);
 
@@ -124,6 +129,204 @@ class DashboardPage extends ConsumerWidget {
   String _firstName(String? name) {
     if (name == null || name.trim().isEmpty) return 'there';
     return name.trim().split(RegExp(r'\s+')).first;
+  }
+}
+
+/// Home screen shown to property owners: welcome, deal summary and a CTA to
+/// submit a new property for sale.
+class _OwnerDashboard extends ConsumerWidget {
+  const _OwnerDashboard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authControllerProvider).user;
+    final proposals = ref.watch(myProposalsProvider);
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: () => ref.refresh(myProposalsProvider.future),
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              pinned: true,
+              backgroundColor: AppColors.navy,
+              title: Text('Hi, ${_first(user?.name)}'),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.navy, AppColors.navyLight],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Sell your property to Investprop',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Submit a property or land for a cash offer, joint '
+                            'venture or development partnership.',
+                            style: TextStyle(color: Colors.white70, height: 1.4),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.gold,
+                              foregroundColor: AppColors.navy,
+                            ),
+                            onPressed: () => context.go('/opportunities'),
+                            icon: const Icon(Icons.add_business),
+                            label: const Text('Submit a property'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Your recent deals',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => context.go('/portfolio'),
+                          child: const Text('See all'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    proposals.when(
+                      data: (items) {
+                        if (items.isEmpty) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24),
+                            child: Text(
+                              'You have not submitted any properties yet.',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          );
+                        }
+                        return Column(
+                          children: [
+                            for (final p in items.take(3))
+                              _OwnerDealTile(proposal: p),
+                          ],
+                        );
+                      },
+                      loading: () => const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                      error: (e, __) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Text(
+                          '$e',
+                          style: const TextStyle(color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _first(String? name) {
+    if (name == null || name.trim().isEmpty) return 'there';
+    return name.trim().split(RegExp(r'\s+')).first;
+  }
+}
+
+class _OwnerDealTile extends StatelessWidget {
+  const _OwnerDealTile({required this.proposal});
+
+  final SaleProposal proposal;
+
+  Color get _statusColor => switch (proposal.status) {
+    SaleProposalStatus.accepted => AppColors.success,
+    SaleProposalStatus.rejected => AppColors.danger,
+    SaleProposalStatus.withdrawn => AppColors.textSecondary,
+    SaleProposalStatus.underReview => AppColors.gold,
+    SaleProposalStatus.pending => AppColors.navyLight,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  proposal.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  Fmt.money(proposal.askingPrice),
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: _statusColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              proposal.status.label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: _statusColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

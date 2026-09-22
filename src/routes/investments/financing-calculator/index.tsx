@@ -10,6 +10,7 @@ import {
   calculateTransferDuty,
 } from "~/financial-calculations";
 import { useAuthStore } from "~/stores/authStore";
+import { useBlockPropertyOwner } from "~/utils/use-require-role";
 
 type CalcInput = {
   purchasePrice: number;
@@ -187,6 +188,7 @@ function FinancingCalculatorPage() {
   const authToken = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
+  useBlockPropertyOwner();
   const [input, setInput] = useState<CalcInput>(DEFAULTS);
   const [strategy, setStrategy] = useState<StrategyPresetKey>("RENTAL");
 

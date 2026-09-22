@@ -5,6 +5,7 @@ import { BadgeDollarSign, Vote, Clock, CheckCircle, XCircle, Plus, ThumbsUp, Thu
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import { useBlockPropertyOwner } from "~/utils/use-require-role";
 import toast from "react-hot-toast";
 
 export const Route = createFileRoute("/distributions/")({
@@ -28,11 +29,13 @@ function DistributionsPage() {
   const [proposalForm, setProposalForm] = useState({ propertyId: 0, title: "", description: "", proposalType: "OTHER" as string, deadline: "" });
   const [executing, setExecuting] = useState<number | null>(null);
 
-  const isManager = user?.role === "ADMIN" || user?.role === "DEVELOPMENT_MANAGER" || user?.role === "PROPERTY_OWNER";
+  const isManager = user?.role === "ADMIN" || user?.role === "DEVELOPMENT_MANAGER";
   // Only Development Managers and Admins may raise/close governance proposals.
   const canManageProposals = user?.role === "ADMIN" || user?.role === "DEVELOPMENT_MANAGER";
   // Investors participate by voting (they are the shareholders).
   const canVote = user?.role === "INVESTOR";
+
+  useBlockPropertyOwner();
 
   useEffect(() => {
     if (!hasHydrated) return;

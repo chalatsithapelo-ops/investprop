@@ -20,6 +20,7 @@ import {
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import { useBlockPropertyOwner } from "~/utils/use-require-role";
 import { downloadCertificatePDF } from "~/utils/generate-certificate-pdf";
 import toast from "react-hot-toast";
 
@@ -34,6 +35,7 @@ function MyCertificatesPage() {
   const authToken = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user) as any;
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
+  useBlockPropertyOwner();
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);

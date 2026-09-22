@@ -5,6 +5,7 @@ import { Building, Hammer, DollarSign, Plus, ArrowRight } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import { useBlockPropertyOwner } from "~/utils/use-require-role";
 
 export const Route = createFileRoute("/developments/")({
   component: DevelopmentsPage,
@@ -16,6 +17,8 @@ function DevelopmentsPage() {
   const authToken = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
+
+  useBlockPropertyOwner();
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -35,7 +38,7 @@ function DevelopmentsPage() {
 
   if (!user || !authToken) return null;
 
-  const isManager = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "OWNER"].includes(user?.role ?? "");
+  const isManager = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"].includes(user?.role ?? "");
 
   if (propertiesQuery.isLoading) {
     return (

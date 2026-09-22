@@ -21,6 +21,10 @@ class AppUser extends Equatable {
 
   bool get isInvestor => role == 'INVESTOR';
 
+  /// Property owners are sellers submitting property/land to the platform.
+  /// They see the Owner Portal instead of investor screens.
+  bool get isPropertyOwner => role == 'PROPERTY_OWNER';
+
   String get initials {
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.isEmpty || parts.first.isEmpty) return '?';

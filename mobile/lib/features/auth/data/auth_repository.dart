@@ -29,6 +29,7 @@ class AuthRepository {
     required String email,
     required String password,
     String? phone,
+    String role = 'INVESTOR',
   }) async {
     final data = await _client.mutation(
       'register',
@@ -36,7 +37,7 @@ class AuthRepository {
         'name': name,
         'email': email,
         'password': password,
-        'role': 'INVESTOR',
+        'role': role,
         if (phone != null && phone.isNotEmpty) 'phone': phone,
       },
       authenticated: false,

@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../config/theme.dart';
+import '../auth/application/auth_controller.dart';
 import '../notifications/data/notifications_repository.dart';
 
-/// Bottom-navigation scaffold that hosts the main investor tabs. The
-/// [StatefulNavigationShell] preserves each tab's navigation state.
+/// Bottom-navigation scaffold that hosts the main tabs. The
+/// [StatefulNavigationShell] preserves each tab's navigation state. Labels
+/// adapt to the signed-in user's role (investor vs property owner).
 class HomeShell extends ConsumerWidget {
   const HomeShell({super.key, required this.navigationShell});
 
@@ -15,6 +17,8 @@ class HomeShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unread = ref.watch(unreadCountProvider);
+    final isOwner =
+        ref.watch(authControllerProvider).user?.isPropertyOwner == true;
 
     return Scaffold(
       body: navigationShell,
@@ -31,15 +35,17 @@ class HomeShell extends ConsumerWidget {
             selectedIcon: Icon(Icons.dashboard),
             label: 'Home',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.explore_outlined),
-            selectedIcon: Icon(Icons.explore),
-            label: 'Invest',
+          NavigationDestination(
+            icon: Icon(isOwner ? Icons.sell_outlined : Icons.explore_outlined),
+            selectedIcon: Icon(isOwner ? Icons.sell : Icons.explore),
+            label: isOwner ? 'Sell' : 'Invest',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.pie_chart_outline),
-            selectedIcon: Icon(Icons.pie_chart),
-            label: 'Portfolio',
+          NavigationDestination(
+            icon: Icon(
+                isOwner ? Icons.receipt_long_outlined : Icons.pie_chart_outline),
+            selectedIcon:
+                Icon(isOwner ? Icons.receipt_long : Icons.pie_chart),
+            label: isOwner ? 'My deals' : 'Portfolio',
           ),
           NavigationDestination(
             icon: _NotificationIcon(unread: unread, filled: false),

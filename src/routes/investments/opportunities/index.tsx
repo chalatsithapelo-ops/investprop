@@ -16,6 +16,7 @@ import {
 import { Navbar } from "~/components/Navbar";
 import { useTRPC } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import { useBlockPropertyOwner } from "~/utils/use-require-role";
 import { RiskBadge } from "~/components/RiskBadge";
 
 export const Route = createFileRoute("/investments/opportunities/")({
@@ -28,6 +29,7 @@ function InvestmentOpportunitiesPage() {
   const authToken = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
+  useBlockPropertyOwner();
   const [searchTerm, setSearchTerm] = useState("");
   const [propertyTypeFilter, setPropertyTypeFilter] = useState("ALL");
 

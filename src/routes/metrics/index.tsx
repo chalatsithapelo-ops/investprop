@@ -5,12 +5,13 @@ import { BarChart3, TrendingUp, DollarSign, Building, PieChart, Wallet } from "l
 import { Navbar } from "~/components/Navbar";
 import { useTRPC } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import { useBlockPropertyOwner } from "~/utils/use-require-role";
 
 export const Route = createFileRoute("/metrics/")({
   component: MetricsPage,
 });
 
-const MANAGER_ROLES = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "OWNER"];
+const MANAGER_ROLES = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"];
 
 function MetricsPage() {
   const trpc = useTRPC();
@@ -19,6 +20,8 @@ function MetricsPage() {
   const user = useAuthStore((s) => s.user);
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
   const isManager = user ? MANAGER_ROLES.includes(user.role) : false;
+
+  useBlockPropertyOwner();
 
   useEffect(() => {
     if (!hasHydrated) return;

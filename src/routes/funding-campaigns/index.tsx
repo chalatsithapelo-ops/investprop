@@ -31,8 +31,6 @@ const MANAGER_ROLES = [
   "ADMIN",
   "DEVELOPMENT_MANAGER",
   "PROJECT_MANAGER",
-  "PROPERTY_OWNER",
-  "OWNER",
 ];
 
 export const Route = createFileRoute("/funding-campaigns/")({

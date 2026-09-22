@@ -4,6 +4,7 @@ import { DollarSign, TrendingUp, Settings, Target, ArrowRight, Award } from "luc
 import { Navbar } from "~/components/Navbar";
 import { AIPortfolioInsight } from "~/components/AIPortfolioInsight";
 import { useAuthStore } from "~/stores/authStore";
+import { useBlockPropertyOwner } from "~/utils/use-require-role";
 
 export const Route = createFileRoute("/investments/")({
   component: InvestmentsHubPage,
@@ -14,6 +15,7 @@ function InvestmentsHubPage() {
   const authToken = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
+  useBlockPropertyOwner();
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -103,7 +105,7 @@ function InvestmentsHubPage() {
   ];
 
   const links =
-    role === "DEVELOPMENT_MANAGER" || role === "PROJECT_MANAGER" || role === "PROPERTY_OWNER" || role === "OWNER" ? adminLinks : investorLinks;
+    role === "DEVELOPMENT_MANAGER" || role === "PROJECT_MANAGER" ? adminLinks : investorLinks;
 
   return (
     <div className="min-h-screen bg-navy-950">

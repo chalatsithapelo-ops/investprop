@@ -9,6 +9,7 @@ import '../../../widgets/async_value_widget.dart';
 import '../../ai/presentation/match_score_card.dart';
 import '../data/opportunities_repository.dart';
 import '../domain/opportunity.dart';
+import 'investment_analysis_panel.dart';
 import 'opportunity_card.dart';
 
 class OpportunityDetailPage extends ConsumerWidget {
@@ -125,6 +126,22 @@ class _Detail extends StatelessWidget {
                 const SizedBox(height: 20),
                 _FundingSection(opportunity: opportunity),
                 const SizedBox(height: 20),
+                if (opportunity.hasAnalysis) ...[
+                  InvestmentAnalysisPanel(opportunity: opportunity),
+                  const SizedBox(height: 16),
+                ],
+                OutlinedButton.icon(
+                  onPressed: () => context.push(
+                    '/opportunities/${opportunity.id}/calculator',
+                    extra: opportunity,
+                  ),
+                  icon: const Icon(Icons.calculate_outlined),
+                  label: const Text('Open financing deal calculator'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 MatchScoreCard(propertyId: opportunity.id),
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
