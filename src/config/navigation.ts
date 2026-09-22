@@ -47,12 +47,6 @@ export type NavigationLink = {
   icon?: LucideIcon;
   roles?: UserRole[]; // If undefined, visible to all authenticated users
   description?: string;
-  /**
-   * When true, this link is hidden from ADMIN even though admins normally
-   * see every link. Use for role-specific submission views that redirect
-   * admins elsewhere (e.g. the property-owner-only Owner Portal).
-   */
-  adminHidden?: boolean;
 };
 
 /**
@@ -137,13 +131,6 @@ export const mainNavigationLinks: NavigationLink[] = [
     to: "/investments/preferences",
     icon: Settings,
     roles: ["INVESTOR"],
-  },
-  {
-    label: "Financing Calculator",
-    to: "/investments/financing-calculator",
-    icon: Calculator,
-    roles: ["INVESTOR"],
-    description: "Model financing scenarios with DSCR, stress tests and equity IRR",
   },
   {
     label: "My Certificates",
@@ -367,7 +354,6 @@ export const mainNavigationLinks: NavigationLink[] = [
     to: "/owner-portal",
     icon: Send,
     roles: ["PROPERTY_OWNER"],
-    adminHidden: true,
     description: "Submit and track your property sale proposals",
   },
   // ─── Dev Manager: Incoming Sale Proposals ────────────
@@ -375,7 +361,7 @@ export const mainNavigationLinks: NavigationLink[] = [
     label: "Sale Proposals",
     to: "/sale-proposals",
     icon: ClipboardList,
-    roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "ADMIN"],
+    roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
     description: "Review property sale submissions from owners",
   },
 ];
@@ -454,10 +440,8 @@ export function getNavigationLinksForRole(
 ): NavigationLink[] {
   if (!userRole) return [];
 
-  // ADMIN sees every link — admins are a superset of every operational role —
-  // except links explicitly marked adminHidden (role-specific submission views
-  // that redirect admins elsewhere, e.g. the Owner Portal).
-  if (userRole === "ADMIN") return links.filter((link) => !link.adminHidden);
+  // ADMIN sees every link — admins are a superset of every operational role.
+  if (userRole === "ADMIN") return links;
 
   return links.filter((link) => {
     // If no roles specified, link is visible to all authenticated users

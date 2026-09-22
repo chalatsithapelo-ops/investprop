@@ -45,7 +45,7 @@ function PaymentsPage() {
   const qc = useQueryClient();
   const authToken = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user) as any;
-  const isManager = user?.role === "DEVELOPMENT_MANAGER" || user?.role === "PROJECT_MANAGER" || user?.role === "PROPERTY_OWNER" || user?.role === "ADMIN";
+  const isManager = user?.role === "DEVELOPMENT_MANAGER" || user?.role === "PROJECT_MANAGER" || user?.role === "PROPERTY_OWNER";
   const isInvestor = user?.role === "INVESTOR";
 
   const [tab, setTab] = useState<TabKey>("overview");
@@ -308,11 +308,9 @@ function PaymentsPage() {
               <CreditCard className="h-8 w-8 text-gray-900" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{isInvestor ? "Payments" : "Payment Gateway"}</h1>
+              <h1 className="text-3xl font-bold text-gray-900">Payment Gateway</h1>
               <p className="text-gray-500">
-                {isInvestor
-                  ? "Fund your investments and track your payouts — secure, FICA-compliant transfers in ZAR"
-                  : "Secure payments via Paystack — South Africa\u2019s leading payment processor"}
+                Secure payments via Paystack — South Africa&apos;s leading payment processor
               </p>
             </div>
           </div>
@@ -320,22 +318,18 @@ function PaymentsPage() {
 
         {/* Stats Row */}
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {isManager && (
-            <StatBox
-              icon={Shield}
-              label="Gateway Status"
-              value={gateway?.configured ? "Connected" : "Not Configured"}
-              color={gateway?.configured ? "green" : "red"}
-            />
-          )}
-          {isManager && (
-            <StatBox
-              icon={Wallet}
-              label="Platform Balance"
-              value={balances.length > 0 ? fmt(balances[0].balance) : "—"}
-              color="blue"
-            />
-          )}
+          <StatBox
+            icon={Shield}
+            label="Gateway Status"
+            value={gateway?.configured ? "Connected" : "Not Configured"}
+            color={gateway?.configured ? "green" : "red"}
+          />
+          <StatBox
+            icon={Wallet}
+            label="Platform Balance"
+            value={balances.length > 0 ? fmt(balances[0].balance) : isManager ? "—" : "N/A"}
+            color="blue"
+          />
           <StatBox
             icon={ArrowDownLeft}
             label={isInvestor ? "Total Received" : "Total Distributed"}
@@ -387,16 +381,12 @@ function PaymentsPage() {
                 <div className="flex items-center gap-4">
                   <div
                     className={`flex h-14 w-14 items-center justify-center rounded-xl ${
-                      isInvestor
-                        ? "bg-blue-50"
-                        : gateway?.configured
-                          ? "bg-emerald-50"
-                          : "bg-red-50"
+                      gateway?.configured
+                        ? "bg-emerald-50"
+                        : "bg-red-50"
                     }`}
                   >
-                    {isInvestor ? (
-                      <Banknote className="h-7 w-7 text-blue-600" />
-                    ) : gateway?.configured ? (
+                    {gateway?.configured ? (
                       <CheckCircle className="h-7 w-7 text-emerald-600" />
                     ) : (
                       <XCircle className="h-7 w-7 text-red-500" />
@@ -404,26 +394,18 @@ function PaymentsPage() {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold text-gray-900">
-                      {isInvestor ? "Funding Your Investments" : "Paystack Integration"}
+                      Paystack Integration
                     </h3>
-                    {isInvestor ? (
-                      <p className="text-sm font-medium text-blue-600">
-                        EFT &amp; bank deposit · proof of payment confirmed within 1–2 business days
-                      </p>
-                    ) : (
-                      <p className={`text-sm font-medium ${gateway?.configured ? "text-emerald-600" : "text-red-500"}`}>
-                        {gateway?.configured ? "Connected & Active" : "Not Configured — Setup Required"}
-                      </p>
-                    )}
+                    <p className={`text-sm font-medium ${gateway?.configured ? "text-emerald-600" : "text-red-500"}`}>
+                      {gateway?.configured ? "Connected & Active" : "Not Configured — Setup Required"}
+                    </p>
                   </div>
                 </div>
-                {!isInvestor && (
-                  <button
-                    onClick={() => gatewayQuery.refetch()}
-                    className="rounded-lg border p-2 text-gray-500 hover:bg-navy-800/30">
-                    <RefreshCw size={16} />
-                  </button>
-                )}
+                <button
+                  onClick={() => gatewayQuery.refetch()}
+                  className="rounded-lg border p-2 text-gray-500 hover:bg-navy-800/30">
+                  <RefreshCw size={16} />
+                </button>
               </div>
 
               {gateway?.configured && (
@@ -473,7 +455,7 @@ function PaymentsPage() {
                 </div>
               )}
 
-              {!gateway?.configured && isManager && (
+              {!gateway?.configured && (
                 <div className="mt-6 rounded-lg bg-gold-50 p-4">
                   <div className="flex items-start gap-3">
                     <AlertTriangle className="mt-0.5 h-5 w-5 text-gold-600" />
@@ -502,24 +484,6 @@ function PaymentsPage() {
                           Restart the server — the gateway will auto-connect
                         </li>
                       </ol>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {!gateway?.configured && isInvestor && (
-                <div className="mt-6 rounded-lg bg-blue-50 p-4">
-                  <div className="flex items-start gap-3">
-                    <Banknote className="mt-0.5 h-5 w-5 text-blue-600" />
-                    <div>
-                      <p className="font-semibold text-blue-700">
-                        Pay by EFT / Bank Deposit
-                      </p>
-                      <p className="mt-1 text-sm text-blue-700">
-                        Instant card payments are being finalised. In the meantime you can fund your
-                        investments by EFT or bank deposit and upload your proof of payment — our team
-                        confirms it within 1–2 business days. Use the <strong>Make Payment</strong> tab to get started.
-                      </p>
                     </div>
                   </div>
                 </div>

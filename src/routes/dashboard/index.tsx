@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   Building2,
   DollarSign,
@@ -41,7 +41,6 @@ function DashboardPage() {
   const authToken = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
-  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -214,13 +213,12 @@ function DashboardPage() {
             ficaDocsSubmitted={(((ficaStatusQuery.data as any)?.documentsSubmitted) ?? 0) > 0}
             appropriatenessCompleted={!!(appropriatenessQuery.data as any)?.completed}
             hasInvested={contributionsArr.length > 0}
-            onStartQuestionnaire={() => setShowQuestionnaire(true)}
           />
         )}
         {isInvestor && appropriatenessQuery.data && !(appropriatenessQuery.data as any).completed && (
           <AppropriatenessQuestionnaireModal
-            open={showQuestionnaire}
-            onClose={() => setShowQuestionnaire(false)}
+            open
+            onClose={() => { /* gated — stays open until completed */ }}
             onComplete={() => appropriatenessQuery.refetch()}
           />
         )}

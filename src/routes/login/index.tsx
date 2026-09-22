@@ -3,6 +3,7 @@ import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { useTRPC, useTRPCClient } from '~/trpc/react'
 import { useAuthStore } from '~/stores/authStore'
+import { BrandLogo } from '~/components/BrandLogo'
 
 export const Route = createFileRoute('/login/')({
   component: LoginPage,
@@ -44,10 +45,7 @@ function LoginPage() {
         {/* Branding */}
         <div className="mb-8 text-center">
           <Link to="/" className="inline-block">
-            <h1 className="text-3xl font-bold font-display">
-              <span className="text-gold-600">Invest</span>
-              <span className="text-gray-900">prop</span>
-            </h1>
+            <BrandLogo size="lg" className="justify-center" />
           </Link>
           <p className="mt-2 text-sm text-gray-500">Secure property investment platform</p>
         </div>

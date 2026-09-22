@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { useTRPC, useTRPCClient } from '~/trpc/react'
+import { BrandLogo } from '~/components/BrandLogo'
 
 export const Route = createFileRoute('/register/investor')({
   component: InvestorRegisterPage,
@@ -65,10 +66,7 @@ function InvestorRegisterPage() {
         {/* Branding */}
         <div className="mb-8 text-center">
           <Link to="/" className="inline-block">
-            <h1 className="text-3xl font-bold">
-              <span className="text-gold-500">Invest</span>
-              <span className="text-gray-900">prop</span>
-            </h1>
+            <BrandLogo size="lg" className="justify-center" />
           </Link>
           <p className="mt-2 text-gray-500">Investor Registration</p>
           <p className="mt-1 text-sm text-gray-500">

@@ -11,7 +11,7 @@
  * Input data for property flip financial calculations.
  * These are the base values that must be provided to calculate flip metrics.
  * Based on the PropertyFlip Prisma model.
- * 
+ *
  * @remarks
  * This type represents INPUT data only. For calculated outputs, see {@link FlipCalculations}.
  */
@@ -36,7 +36,7 @@ export type PropertyFlipInput = {
  * Input data for rental property financial calculations.
  * These are the base values that must be provided to calculate rental metrics.
  * Based on the RentalBond Prisma model.
- * 
+ *
  * @remarks
  * This type represents INPUT data only. For calculated outputs, see {@link RentalCalculations}.
  */
@@ -139,7 +139,7 @@ export function buildRentalInput(r: RentalRecordLike, propertyPrice?: number | n
  * Input data for property development financial calculations.
  * These are the base values that must be provided to calculate development metrics.
  * Based on the PropertyDevelopment Prisma model.
- * 
+ *
  * @remarks
  * This type represents INPUT data only. For calculated outputs, see {@link DevelopmentCalculations}.
  */
@@ -179,7 +179,7 @@ export type PropertyDevelopmentInput = {
 /**
  * Calculated financial metrics for a property flip.
  * These values are computed based on {@link PropertyFlipInput} data.
- * 
+ *
  * @remarks
  * This type represents OUTPUT data only - the results of financial calculations.
  * Do not confuse with {@link PropertyFlipInput} which contains the input data.
@@ -209,7 +209,7 @@ export type FlipCalculations = {
 /**
  * Calculated financial metrics for a rental property.
  * These values are computed based on {@link RentalPropertyInput} data.
- * 
+ *
  * @remarks
  * This type represents OUTPUT data only - the results of financial calculations.
  * Do not confuse with {@link RentalPropertyInput} which contains the input data.
@@ -244,11 +244,11 @@ export type RentalCalculations = {
 /**
  * Calculated financial metrics for a property development.
  * These values are computed based on {@link PropertyDevelopmentInput} data.
- * 
+ *
  * @remarks
  * This type represents OUTPUT data only - the results of financial calculations.
  * Do not confuse with {@link PropertyDevelopmentInput} which contains the input data.
- * 
+ *
  * The optional fields (annualGrossRentalIncome, noi, etc.) are only populated
  * for rental-focused developments (AFFORDABLE_RENTAL, COMMERCIAL_RENTAL).
  */
@@ -427,16 +427,16 @@ export function calculateAnnualIRRFromMonthly(monthlyCashFlows: number[]): numbe
 
 /**
  * Calculate comprehensive financial metrics for a property flip investment.
- * 
+ *
  * @param data - Input data for the flip property
  * @returns Calculated financial metrics
  */
 export function calculateFlipMetrics(data: PropertyFlipInput): FlipCalculations {
   // Calculate total investment
-  const totalInvestment = 
-    data.purchasePrice + 
-    data.renovationBudget + 
-    data.holdingCosts + 
+  const totalInvestment =
+    data.purchasePrice +
+    data.renovationBudget +
+    data.holdingCosts +
     data.closingCostsPurchase;
 
   // Resale value: prefer the explicit After-Repair Value; fall back to estimatedValue.
@@ -447,16 +447,16 @@ export function calculateFlipMetrics(data: PropertyFlipInput): FlipCalculations 
 
   // Calculate expected profit (gross, before platform fee and tax)
   const expectedProfit = resaleValue - totalInvestment - data.closingCostsSale;
-  
+
   // Calculate actual ROI (always derived; never trusts a typed figure)
-  const calculatedROI = totalInvestment > 0 
-    ? (expectedProfit / totalInvestment) * 100 
+  const calculatedROI = totalInvestment > 0
+    ? (expectedProfit / totalInvestment) * 100
     : 0;
 
   // Headline ROI shown to investors is the DERIVED figure. A manager-entered
   // expectedROI is treated only as a target, surfaced separately by the UI.
   const displayROI = calculatedROI;
-  
+
   // Calculate break-even price
   const breakEvenPrice = totalInvestment + data.closingCostsSale;
 
@@ -492,7 +492,7 @@ export function calculateFlipMetrics(data: PropertyFlipInput): FlipCalculations 
 
 /**
  * Calculate the total investment required for a flip property.
- * 
+ *
  * @param purchasePrice - Purchase price of the property
  * @param renovationBudget - Budget allocated for renovations
  * @param holdingCosts - Costs to hold the property (utilities, insurance, taxes, interest)
@@ -510,7 +510,7 @@ export function calculateFlipTotalInvestment(
 
 /**
  * Calculate the expected profit from a flip property.
- * 
+ *
  * @param estimatedValue - Estimated sale value of the property
  * @param totalInvestment - Total investment in the property
  * @param closingCostsSale - Closing costs for selling the property
@@ -526,7 +526,7 @@ export function calculateFlipProfit(
 
 /**
  * Calculate the return on investment (ROI) for a flip property.
- * 
+ *
  * @param profit - Expected or actual profit
  * @param totalInvestment - Total investment in the property
  * @returns ROI as a percentage
@@ -537,7 +537,7 @@ export function calculateFlipROI(profit: number, totalInvestment: number): numbe
 
 /**
  * Calculate the break-even sale price for a flip property.
- * 
+ *
  * @param totalInvestment - Total investment in the property
  * @param closingCostsSale - Closing costs for selling the property
  * @returns Break-even price
@@ -555,7 +555,7 @@ export function calculateFlipBreakEven(
 
 /**
  * Calculate monthly debt service (P&I payment) using standard amortization formula.
- * 
+ *
  * @param loanAmount - Principal loan amount
  * @param annualInterestRate - Annual interest rate as a percentage (e.g., 5.5 for 5.5%)
  * @param loanTermYears - Loan term in years
@@ -573,51 +573,51 @@ export function calculateMonthlyDebtService(
 
   // Convert annual rate to monthly rate (divide by 100 to get decimal, then by 12)
   const monthlyRate = (annualInterestRate / 100) / 12;
-  
+
   // Total number of payments
   const numberOfPayments = loanTermYears * 12;
-  
+
   // Amortization formula: M = P * [r(1+r)^n] / [(1+r)^n - 1]
-  const monthlyPayment = loanAmount * 
-    (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / 
+  const monthlyPayment = loanAmount *
+    (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) /
     (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
-  
+
   return monthlyPayment;
 }
 
 /**
  * Calculate comprehensive financial metrics for a rental property investment.
- * 
+ *
  * @param data - Input data for the rental property
  * @returns Calculated financial metrics
  */
 export function calculateRentalMetrics(data: RentalPropertyInput): RentalCalculations {
   // Calculate annual figures
   const annualGrossRent = data.monthlyRent * 12;
-  
-  const annualOperatingExpenses = 
-    data.annualPropertyTax + 
-    data.annualInsurance + 
-    (data.monthlyHOAFees * 12) + 
-    (data.monthlyMaintenanceReserve * 12) + 
-    (data.monthlyUtilities * 12) + 
+
+  const annualOperatingExpenses =
+    data.annualPropertyTax +
+    data.annualInsurance +
+    (data.monthlyHOAFees * 12) +
+    (data.monthlyMaintenanceReserve * 12) +
+    (data.monthlyUtilities * 12) +
     (data.monthlyManagementFee * 12);
-  
+
   // Calculate NOI (Net Operating Income)
   const vacancyLoss = annualGrossRent * (data.vacancyRate / 100);
   const effectiveGrossIncome = annualGrossRent - vacancyLoss;
   const noi = effectiveGrossIncome - annualOperatingExpenses;
-  
+
   // Calculate Cap Rate if not provided
-  const calculatedCapRate = data.purchasePrice > 0 
-    ? (noi / data.purchasePrice) * 100 
+  const calculatedCapRate = data.purchasePrice > 0
+    ? (noi / data.purchasePrice) * 100
     : 0;
-  
+
   const displayCapRate = data.capRate || calculatedCapRate;
-  
+
   // Calculate debt service metrics
   const annualDebtService = data.monthlyDebtService * 12;
-  
+
   // Annual Cash Flow = NOI - Annual Debt Service
   const annualCashFlow = noi - annualDebtService;
   const monthlyCashFlow = annualCashFlow / 12;
@@ -679,7 +679,7 @@ export function calculateRentalMetrics(data: RentalPropertyInput): RentalCalcula
 
 /**
  * Calculate the annual gross rent for a rental property.
- * 
+ *
  * @param monthlyRent - Monthly rent amount
  * @returns Annual gross rent
  */
@@ -689,7 +689,7 @@ export function calculateAnnualGrossRent(monthlyRent: number): number {
 
 /**
  * Calculate the annual operating expenses for a rental property.
- * 
+ *
  * @param expenses - Object containing all expense components
  * @returns Total annual operating expenses
  */
@@ -713,7 +713,7 @@ export function calculateAnnualOperatingExpenses(expenses: {
 
 /**
  * Calculate the Net Operating Income (NOI) for a rental property.
- * 
+ *
  * @param annualGrossRent - Annual gross rental income
  * @param vacancyRate - Expected vacancy rate as a percentage
  * @param annualOperatingExpenses - Total annual operating expenses
@@ -731,7 +731,7 @@ export function calculateNOI(
 
 /**
  * Calculate the capitalization rate (cap rate) for a rental property.
- * 
+ *
  * @param noi - Net Operating Income
  * @param purchasePrice - Purchase price of the property
  * @returns Cap rate as a percentage
@@ -757,7 +757,7 @@ export function calculateMonthlyCashFlow(noi: number, annualDebtService = 0): nu
 
 /**
  * Calculate the cash-on-cash return for a rental property.
- * 
+ *
  * @param annualCashFlow - Annual cash flow after all expenses
  * @param cashInvested - Total cash invested in the property
  * @returns Cash-on-cash return as a percentage
@@ -771,7 +771,7 @@ export function calculateCashOnCashReturn(
 
 /**
  * Calculate the cash-on-cash return for a rental property with financing.
- * 
+ *
  * @param noi - Net Operating Income
  * @param annualDebtService - Annual debt service (monthly payment × 12)
  * @param cashInvested - Total cash invested (typically down payment + closing costs)
@@ -788,7 +788,7 @@ export function calculateCashOnCashReturnWithFinancing(
 
 /**
  * Calculate the debt service coverage ratio (DSCR) for a rental property.
- * 
+ *
  * @param noi - Net Operating Income
  * @param annualDebtService - Annual debt service (monthly payment × 12)
  * @returns DSCR value (NOI / Annual Debt Service)
@@ -802,7 +802,7 @@ export function calculateDebtServiceCoverageRatio(
 
 /**
  * Calculate the gross rent multiplier (GRM) for a rental property.
- * 
+ *
  * @param purchasePrice - Purchase price of the property
  * @param annualGrossRent - Annual gross rental income
  * @returns Gross rent multiplier
@@ -821,7 +821,7 @@ export function calculateGrossRentMultiplier(
 /**
  * Calculate comprehensive financial metrics for a property development project.
  * Handles both sale-focused (AFFORDABLE_RESALE) and rental-focused (AFFORDABLE_RENTAL, COMMERCIAL_RENTAL) developments.
- * 
+ *
  * @param data - Input data for the development project
  * @returns Calculated financial metrics
  */
@@ -842,15 +842,15 @@ export function calculateDevelopmentMetrics(
 
   // Calculate total costs
   const totalCosts = baseCosts + contingencyAmount;
-  
+
   // Calculate cost per unit
-  const costPerUnit = data.numberOfUnits > 0 
-    ? totalCosts / data.numberOfUnits 
+  const costPerUnit = data.numberOfUnits > 0
+    ? totalCosts / data.numberOfUnits
     : 0;
-  
+
   // Calculate pre-sale percentage (only relevant for sale-focused developments)
-  const preSalePercentage = data.numberOfUnits > 0 
-    ? (data.preSaleUnits / data.numberOfUnits) * 100 
+  const preSalePercentage = data.numberOfUnits > 0
+    ? (data.preSaleUnits / data.numberOfUnits) * 100
     : 0;
 
   const timelineMonths = data.developmentTimelineMonths;
@@ -868,8 +868,8 @@ export function calculateDevelopmentMetrics(
     const derivedROI = totalCosts > 0 ? (derivedProfit / totalCosts) * 100 : 0;
     const annualisedROI = calculateAnnualisedReturn(derivedProfit, totalCosts, timelineMonths);
 
-    const profitMargin = grossDevelopmentValue > 0 
-      ? (derivedProfit / grossDevelopmentValue) * 100 
+    const profitMargin = grossDevelopmentValue > 0
+      ? (derivedProfit / grossDevelopmentValue) * 100
       : 0;
 
     return {
@@ -885,30 +885,30 @@ export function calculateDevelopmentMetrics(
     };
   } else {
     // Rental-focused development calculations (AFFORDABLE_RENTAL or COMMERCIAL_RENTAL)
-    
+
     // Calculate annual gross rental income
     const annualGrossRentalIncome = data.numberOfUnits > 0 && data.expectedMonthlyRentPerUnit > 0
       ? data.numberOfUnits * data.expectedMonthlyRentPerUnit * 12
       : 0;
-    
+
     // Calculate NOI (Net Operating Income)
     const noi = annualGrossRentalIncome - data.annualOperatingExpenses;
-    
+
     // Calculate Cap Rate: NOI / Total Development Cost
     const calculatedCapRate = totalCosts > 0
       ? (noi / totalCosts) * 100
       : 0;
-    
+
     // Calculate Gross Yield: Annual Gross Rental Income / Total Development Cost
     const calculatedGrossYield = totalCosts > 0
       ? (annualGrossRentalIncome / totalCosts) * 100
       : 0;
-    
+
     // Calculate Net Yield: NOI / Total Development Cost (same as cap rate for developments)
     const calculatedNetYield = totalCosts > 0
       ? (noi / totalCosts) * 100
       : 0;
-    
+
     // For rental developments, profit margin is based on NOI as a percentage of gross rental income
     const profitMargin = annualGrossRentalIncome > 0
       ? (noi / annualGrossRentalIncome) * 100
@@ -931,7 +931,7 @@ export function calculateDevelopmentMetrics(
 
 /**
  * Calculate the total project costs for a development.
- * 
+ *
  * @param costs - Object containing all cost components
  * @returns Total project costs
  */
@@ -953,7 +953,7 @@ export function calculateDevelopmentTotalCosts(costs: {
 
 /**
  * Calculate the contingency amount based on a percentage of base costs.
- * 
+ *
  * @param baseCosts - Sum of land, hard, soft, and financing costs
  * @param contingencyPercent - Contingency percentage
  * @returns Contingency amount
@@ -967,7 +967,7 @@ export function calculateContingencyAmount(
 
 /**
  * Calculate the profit margin for a development project.
- * 
+ *
  * @param profit - Expected profit
  * @param totalRevenue - Total expected revenue
  * @returns Profit margin as a percentage
@@ -981,7 +981,7 @@ export function calculateDevelopmentProfitMargin(
 
 /**
  * Calculate the cost per unit for a development project.
- * 
+ *
  * @param totalCosts - Total project costs
  * @param numberOfUnits - Number of units in the development
  * @returns Cost per unit
@@ -995,7 +995,7 @@ export function calculateCostPerUnit(
 
 /**
  * Calculate the expected profit for a development project.
- * 
+ *
  * @param totalRevenue - Total expected revenue
  * @param totalCosts - Total project costs
  * @returns Expected profit
@@ -1009,7 +1009,7 @@ export function calculateDevelopmentProfit(
 
 /**
  * Calculate the return on investment (ROI) for a development project.
- * 
+ *
  * @param profit - Expected profit
  * @param totalCosts - Total project costs
  * @returns ROI as a percentage
@@ -1023,7 +1023,7 @@ export function calculateDevelopmentROI(
 
 /**
  * Calculate the pre-sale percentage for a development project.
- * 
+ *
  * @param preSaleUnits - Number of units pre-sold
  * @param totalUnits - Total number of units
  * @returns Pre-sale percentage
@@ -1037,7 +1037,7 @@ export function calculatePreSalePercentage(
 
 /**
  * Calculate the cost per square meter for a development project.
- * 
+ *
  * @param totalCosts - Total project costs
  * @param totalSquareMeters - Total square meters
  * @returns Cost per square meter

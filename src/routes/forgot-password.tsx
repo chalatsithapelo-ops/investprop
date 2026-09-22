@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Mail, ArrowLeft, CheckCircle, XCircle } from 'lucide-react'
 import { useTRPCClient } from '~/trpc/react'
+import { BrandLogo } from '~/components/BrandLogo'
 
 export const Route = createFileRoute('/forgot-password')({
   component: ForgotPassword,
@@ -35,9 +36,7 @@ function ForgotPassword() {
       <div className="w-full max-w-md">
         {/* Branding */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold">
-            <span className="text-gold-500">Invest</span><span className="text-gray-900">prop</span>
-          </h1>
+          <BrandLogo size="lg" className="justify-center" />
           <p className="text-gray-500 mt-2">Reset your password</p>
         </div>
 

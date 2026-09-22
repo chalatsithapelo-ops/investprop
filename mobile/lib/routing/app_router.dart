@@ -1,0 +1,173 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../features/auth/application/auth_controller.dart';
+import '../features/auth/presentation/forgot_password_page.dart';
+import '../features/auth/presentation/login_page.dart';
+import '../features/auth/presentation/register_page.dart';
+import '../features/auth/presentation/reset_password_page.dart';
+import '../features/dashboard/dashboard_page.dart';
+import '../features/investment/presentation/invest_page.dart';
+import '../features/investment/presentation/payments_page.dart';
+import '../features/kyc/presentation/kyc_page.dart';
+import '../features/notifications/presentation/notifications_page.dart';
+import '../features/opportunities/presentation/opportunities_page.dart';
+import '../features/opportunities/presentation/opportunity_detail_page.dart';
+import '../features/portfolio/presentation/holding_detail_page.dart';
+import '../features/portfolio/presentation/portfolio_page.dart';
+import '../features/profile/presentation/edit_profile_page.dart';
+import '../features/profile/presentation/profile_page.dart';
+import '../features/shell/home_shell.dart';
+import '../features/shell/splash_page.dart';
+import '../features/statement/presentation/statement_page.dart';
+
+final _rootKey = GlobalKey<NavigatorState>();
+
+/// Bridges the Riverpod auth state to go_router so navigation reacts to
+/// sign-in / sign-out.
+class _AuthRouterNotifier extends ChangeNotifier {
+  _AuthRouterNotifier(this._ref) {
+    _ref.listen(authControllerProvider, (_, __) => notifyListeners());
+  }
+
+  final Ref _ref;
+
+  String? redirect(BuildContext context, GoRouterState state) {
+    final auth = _ref.read(authControllerProvider);
+    final location = state.matchedLocation;
+    final onAuthScreens = location == '/login' ||
+        location == '/register' ||
+        location == '/forgot-password' ||
+        location == '/reset-password';
+
+    if (!auth.isResolved) {
+      return location == '/splash' ? null : '/splash';
+    }
+
+    if (!auth.isAuthenticated) {
+      return onAuthScreens ? null : '/login';
+    }
+
+    // Authenticated: keep users out of the splash / auth screens.
+    if (onAuthScreens || location == '/splash') return '/';
+    return null;
+  }
+}
+
+final routerProvider = Provider<GoRouter>((ref) {
+  final notifier = _AuthRouterNotifier(ref);
+
+  return GoRouter(
+    navigatorKey: _rootKey,
+    initialLocation: '/splash',
+    refreshListenable: notifier,
+    redirect: notifier.redirect,
+    routes: [
+      GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
+      GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
+      GoRoute(path: '/register', builder: (_, __) => const RegisterPage()),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (_, __) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        builder: (_, state) =>
+            ResetPasswordPage(token: state.uri.queryParameters['token']),
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => HomeShell(navigationShell: shell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/', builder: (_, __) => const DashboardPage()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/opportunities',
+                builder: (_, __) => const OpportunitiesPage(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => OpportunityDetailPage(
+                      id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+                    ),
+                    routes: [
+                      GoRoute(
+                        path: 'invest',
+                        parentNavigatorKey: _rootKey,
+                        builder: (context, state) => InvestPage(
+                          propertyId:
+                              int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/portfolio',
+                builder: (_, __) => const PortfolioPage(),
+                routes: [
+                  GoRoute(
+                    path: 'payments',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const PaymentsPage(),
+                  ),
+                  GoRoute(
+                    path: 'holding/:id',
+                    parentNavigatorKey: _rootKey,
+                    builder: (context, state) => HoldingDetailPage(
+                      holdingId:
+                          int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/notifications',
+                builder: (_, __) => const NotificationsPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                builder: (_, __) => const ProfilePage(),
+                routes: [
+                  GoRoute(
+                    path: 'edit',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const EditProfilePage(),
+                  ),
+                  GoRoute(
+                    path: 'statement',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const StatementPage(),
+                  ),
+                  GoRoute(
+                    path: 'kyc',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const KycPage(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+});

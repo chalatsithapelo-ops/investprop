@@ -7,6 +7,7 @@ import { login } from "~/server/trpc/procedures/login";
 import { logout } from "~/server/trpc/procedures/logout";
 import { refreshToken } from "~/server/trpc/procedures/refreshToken";
 import { getMe } from "~/server/trpc/procedures/getMe";
+import { updateProfile } from "~/server/trpc/procedures/update-profile";
 import { getProperties } from "~/server/trpc/procedures/getProperties";
 import { getPropertyById } from "~/server/trpc/procedures/getPropertyById";
 import { createProperty } from "~/server/trpc/procedures/createProperty";
@@ -156,6 +157,7 @@ export const appRouter = createTRPCRouter({
   logout,
   refreshToken,
   getMe,
+  updateProfile,
   getProperties,
   getPropertyById,
   createProperty,

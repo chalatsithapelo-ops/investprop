@@ -19,6 +19,7 @@ import {
   getNavigationLinksForRole,
 } from "~/config/navigation";
 import type { NavigationLink } from "~/config/navigation";
+import { BrandLogo } from "~/components/BrandLogo";
 import { useAuthStore } from "~/stores/authStore";
 import { useTRPC } from "~/trpc/react";
 
@@ -223,12 +224,7 @@ export function Navbar() {
             to="/"
             className="flex items-center gap-2.5 text-lg font-bold tracking-tight text-gray-900"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-gold-400 to-gold-600 shadow-lg shadow-gold-500/15">
-              <Building2 className="h-5 w-5 text-gray-900" />
-            </div>
-            <span className="font-display">
-              Invest<span className="text-gold-500">prop</span>
-            </span>
+            <BrandLogo size="md" />
           </Link>
 
           {/* ── Desktop links ── */}
