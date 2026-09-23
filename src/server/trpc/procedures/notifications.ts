@@ -1,7 +1,22 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { db } from "~/server/db";
+import { sendPushToUser } from "~/server/utils/push";
 import { protectedProcedure } from "../main";
+
+// Maps in-app notification categories to a sensible deep-link path.
+function pushUrlForCategory(category: string, relatedId: number | null): string {
+  switch (category) {
+    case "INVESTMENT":
+      return relatedId ? `/investments/opportunities` : "/investments";
+    case "PROPERTY":
+      return relatedId ? `/properties/${relatedId}` : "/dashboard";
+    case "MILESTONE":
+      return "/dashboard";
+    default:
+      return "/dashboard";
+  }
+}
 
 export const createNotification = async (
   userId: number,
@@ -21,6 +36,15 @@ export const createNotification = async (
         category,
         relatedId,
       },
+    });
+
+    // Best-effort push to browser + mobile devices; never blocks the caller.
+    void sendPushToUser(userId, {
+      title,
+      body: message,
+      url: pushUrlForCategory(category, relatedId),
+      tag: `${category}-${relatedId ?? "general"}`,
+      data: { type, category, relatedId },
     });
   } catch (error) {
     console.error("Failed to create notification:", error);

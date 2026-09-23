@@ -30,6 +30,18 @@ const envSchema = z.object({
   EMAIL_SERVICE_API_KEY: z.string().optional(),
   EMAIL_FROM_ADDRESS: z.string().optional(),
   EMAIL_FROM_NAME: z.string().optional(),
+  // Web Push (VAPID). Defaults are a generated dev key pair so browser push works
+  // out of the box; override in production via env for key rotation.
+  VAPID_PUBLIC_KEY: z
+    .string()
+    .default("BG7yJVB7iWD0iM4RwU1h9L0ZcAa9yysmfdwi2yT08TmU4sODmFXwvpIMF_QpMwVyfwmSIIi6vrAKmQTJR_amTvw"),
+  VAPID_PRIVATE_KEY: z.string().default("F5UiceTxtCwqHj2k93cL2mJNDflLQTupWj7g6940I38"),
+  VAPID_SUBJECT: z.string().default("mailto:support@investprop.io"),
+  // Firebase Cloud Messaging (mobile push) — service account for HTTP v1 API.
+  // Leave unset until a Firebase project is created; push simply no-ops until then.
+  FIREBASE_PROJECT_ID: z.string().optional(),
+  FIREBASE_CLIENT_EMAIL: z.string().optional(),
+  FIREBASE_PRIVATE_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
   // Payment gateway (Paystack)
   PAYSTACK_SECRET_KEY: z.string().optional(),

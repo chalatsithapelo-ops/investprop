@@ -59,6 +59,11 @@ dependencies:
   printing: ^5.13.2
   # Simple charts for the investor metrics dashboard
   fl_chart: ^0.69.2
+  # Push notifications (Firebase Cloud Messaging)
+  firebase_core: ^3.6.0
+  firebase_messaging: ^15.1.3
+  # Display notifications while the app is in the foreground
+  flutter_local_notifications: ^17.2.3
 
 dev_dependencies:
   flutter_test:

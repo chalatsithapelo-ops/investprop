@@ -198,6 +198,33 @@ model Notification {
   @@index([userId, read])
 }
 
+// Web Push (browser) subscription — one row per browser/device that opted in.
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  endpoint  String   @unique @db.Text
+  p256dh    String   @db.Text
+  auth      String   @db.Text
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Mobile push token (Firebase Cloud Messaging) — one row per app install.
+model DeviceToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique @db.Text
+  platform  String   @default("android") // android | ios | web
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 model PasswordResetToken {
   id        Int      @id @default(autoincrement())
   token     String   @unique
@@ -534,6 +561,8 @@ model User {
   proposedVariations         VariationOrder[]         @relation("VariationProposedBy")
   approvedVariations         VariationOrder[]         @relation("VariationApprovedBy")
   workOrderUpdates           WorkOrderUpdate[]        @relation("WorkOrderUpdateSubmittedBy")
+  pushSubscriptions          PushSubscription[]
+  deviceTokens               DeviceToken[]
 }
 
 enum DevelopmentType {

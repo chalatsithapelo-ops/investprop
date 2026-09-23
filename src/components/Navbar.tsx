@@ -22,6 +22,7 @@ import type { NavigationLink } from "~/config/navigation";
 import { BrandLogo } from "~/components/BrandLogo";
 import { useAuthStore } from "~/stores/authStore";
 import { useTRPC } from "~/trpc/react";
+import { usePushRegistration } from "~/hooks/usePushRegistration";
 
 /* ─── dropdown group definitions ─── */
 type NavGroup = {
@@ -202,6 +203,9 @@ export function Navbar() {
     refetchInterval: 30_000, // Poll every 30 seconds
   });
   const unreadCount = (notificationsQuery.data as any)?.unreadCount ?? 0;
+
+  // Register browser push once the user is authenticated.
+  usePushRegistration();
 
   const visibleLinks = getNavigationLinksForRole(
     mainNavigationLinks,

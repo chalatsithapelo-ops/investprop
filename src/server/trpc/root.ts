@@ -54,6 +54,7 @@ import { sendVerificationEmail, verifyEmail } from "~/server/trpc/procedures/ema
 import { requestPasswordReset, resetPassword, validateResetToken } from "~/server/trpc/procedures/password-reset";
 import { getAuditLogs } from "~/server/trpc/procedures/audit-log";
 import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from "~/server/trpc/procedures/notifications";
+import { getVapidPublicKey, savePushSubscription, deletePushSubscription, registerDeviceToken, unregisterDeviceToken } from "~/server/trpc/procedures/push";
 import { getAllUsers, getUserById, updateUser, deleteUser, resetUserPassword, getSystemStats, createUser, approveUser, suspendUser, unsuspendUser, appointComplianceOfficer } from "~/server/trpc/procedures/admin";
 import { uploadFile } from "~/server/trpc/procedures/uploadFile";
 import { cancelContributionDuringCoolingOff, screenSanctions, generateTaxCertificate, generateInvestmentReceipt } from "~/server/trpc/procedures/investor-compliance";
@@ -212,6 +213,11 @@ export const appRouter = createTRPCRouter({
   markNotificationAsRead,
   markAllNotificationsAsRead,
   deleteNotification,
+  getVapidPublicKey,
+  savePushSubscription,
+  deletePushSubscription,
+  registerDeviceToken,
+  unregisterDeviceToken,
   getAllUsers,
   getUserById,
   updateUser,
