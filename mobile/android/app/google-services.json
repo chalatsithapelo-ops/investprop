@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "724990596103",
+    "project_id": "investprop-a9271",
+    "storage_bucket": "investprop-a9271.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:724990596103:android:662f67cdc471ed920186a2",
+        "android_client_info": {
+          "package_name": "io.investprop.investprop_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB7ZzJUOgi1m-Q6e6VTREB7RlvR8j8VZlI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

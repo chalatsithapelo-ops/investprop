@@ -25,3 +25,6 @@ yarn.lock
 src/generated
 
 app.config.timestamp_*.js
+
+# Firebase Admin SDK service-account key — NEVER commit (hard secret)
+**/*-firebase-adminsdk-*.json

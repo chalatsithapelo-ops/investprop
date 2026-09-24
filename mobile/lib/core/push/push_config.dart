@@ -4,4 +4,4 @@
 ///
 /// Until then every push code path no-ops so the app builds and runs normally
 /// without a Firebase project.
-const bool kFirebaseConfigured = false;
+const bool kFirebaseConfigured = true;
