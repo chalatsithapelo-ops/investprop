@@ -11,6 +11,7 @@ import { generateText } from "ai";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { requireFeature } from "~/server/subscriptions/subscription-service";
 import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
 import { calculateRentalMetrics, buildRentalInput } from "~/financial-calculations";
 
@@ -30,6 +31,7 @@ export const generatePortfolioInsight = baseProcedure
   .input(z.object({ authToken: z.string(), force: z.boolean().optional() }))
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
+    await requireFeature(user, "AI_PORTFOLIO_ADVISOR");
     const period = currentPeriod();
 
     if (!input.force) {

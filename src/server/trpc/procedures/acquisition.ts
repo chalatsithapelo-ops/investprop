@@ -4,6 +4,7 @@ import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { TRPCError } from "@trpc/server";
 import { createNotification } from "./notifications";
+import { getFeeConfig, recordPlatformFee, computeFeeFromBps } from "~/server/fees/platform-fees";
 
 // ─── Create Acquisition ───────────────────────────────────────
 
@@ -36,7 +37,7 @@ export const createAcquisition = baseProcedure
       if (!spv) throw new TRPCError({ code: "NOT_FOUND", message: "SPV not found" });
     }
 
-    return db.acquisition.create({
+    const acquisition = await db.acquisition.create({
       data: {
         propertyId: input.propertyId,
         spvId: input.spvId,
@@ -56,6 +57,33 @@ export const createAcquisition = baseProcedure
         notes: input.notes,
       },
     });
+
+    // ── Platform monetization: capture the deal-sourcing fee ──
+    // Flat fee when configured (> 0), otherwise a % of the purchase price.
+    // Idempotent per acquisition; revenue-only, no effect on the deal.
+    try {
+      const feeConfig = await getFeeConfig();
+      if (feeConfig.enabled) {
+        const feeAmount =
+          feeConfig.sourcingFlatFee > 0
+            ? feeConfig.sourcingFlatFee
+            : computeFeeFromBps(input.purchasePrice, feeConfig.sourcingFeeBps);
+        await recordPlatformFee({
+          feeType: "SOURCING",
+          sourceType: "Acquisition",
+          sourceId: acquisition.id,
+          propertyId: input.propertyId,
+          baseAmount: input.purchasePrice,
+          feeBps: feeConfig.sourcingFlatFee > 0 ? 0 : feeConfig.sourcingFeeBps,
+          feeAmount,
+          description: `Deal-sourcing fee — ${input.acquiredByName}`,
+        });
+      }
+    } catch (err) {
+      console.error("[platform-fees] sourcing fee capture failed:", err);
+    }
+
+    return acquisition;
   });
 
 // ─── Get Acquisitions ─────────────────────────────────────────

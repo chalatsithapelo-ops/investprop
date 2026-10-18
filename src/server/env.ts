@@ -46,6 +46,10 @@ const envSchema = z.object({
   // Payment gateway (Paystack)
   PAYSTACK_SECRET_KEY: z.string().optional(),
   PAYSTACK_PUBLIC_KEY: z.string().optional(),
+  // Anonymised market-data export API (Phase 3 Enterprise/data product).
+  // When set, external callers may pass this key to access aggregate data
+  // without an Enterprise subscription. Leave unset to require a subscription.
+  MARKET_DATA_API_KEY: z.string().optional(),
   // Distressed scraper credentials (login-required sources)
   SHERIFFHQ_EMAIL: z.string().optional(),
   SHERIFFHQ_PASSWORD: z.string().optional(),

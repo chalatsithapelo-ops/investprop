@@ -5,6 +5,7 @@ import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { TRPCError } from "@trpc/server";
 import { createNotification } from "./notifications";
 import { ensureShareHoldingForContribution } from "./share-certificates";
+import { getFeeConfig, recordPlatformFee } from "~/server/fees/platform-fees";
 
 // ─── Create Distribution ──────────────────────────────────────
 
@@ -290,6 +291,30 @@ export const executeDistribution = baseProcedure
           distributedAt: now,
         },
       });
+
+      // ── Platform monetization: book the distribution/management fee ──
+      // The managementFee was already withheld from gross when the
+      // distribution was created, so this only records existing revenue in
+      // the ledger — it does not change any payout amount. Idempotent per
+      // distribution and joins this transaction for atomicity.
+      try {
+        const feeConfig = await getFeeConfig(tx);
+        if (feeConfig.enabled && distribution.managementFee > 0) {
+          await recordPlatformFee({
+            tx,
+            feeType: "DISTRIBUTION",
+            sourceType: "Distribution",
+            sourceId: distribution.id,
+            propertyId: distribution.propertyId,
+            baseAmount: distribution.grossAmount,
+            feeBps: feeConfig.distributionFeeBps,
+            feeAmount: distribution.managementFee,
+            description: `Management fee on ${distribution.type} distribution`,
+          });
+        }
+      } catch (err) {
+        console.error("[platform-fees] distribution fee capture failed:", err);
+      }
 
       return {
         success: true,

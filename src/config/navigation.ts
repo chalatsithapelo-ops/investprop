@@ -195,6 +195,27 @@ export const mainNavigationLinks: NavigationLink[] = [
     description: "Live system metrics, queue depths and recent activity",
   },
   {
+    label: "Platform Revenue",
+    to: "/admin/revenue",
+    icon: DollarSign,
+    roles: ["ADMIN", "DEVELOPMENT_MANAGER"],
+    description: "Track every platform fee earned and tune fee rates",
+  },
+  {
+    label: "Subscriptions",
+    to: "/admin/subscriptions",
+    icon: CreditCard,
+    roles: ["ADMIN", "DEVELOPMENT_MANAGER"],
+    description: "SaaS plan performance, MRR and recent payments",
+  },
+  {
+    label: "Referral Partners",
+    to: "/admin/referrals",
+    icon: BadgeDollarSign,
+    roles: ["ADMIN", "DEVELOPMENT_MANAGER"],
+    description: "Manage referral partners and commission ledger",
+  },
+  {
     label: "Bulk Operations",
     to: "/admin/bulk-ops",
     icon: Users,
@@ -347,6 +368,20 @@ export const mainNavigationLinks: NavigationLink[] = [
     icon: Zap,
     roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
     description: "AI-powered distressed property scanner for Gauteng bargains",
+  },
+  {
+    label: "Deal Alerts",
+    to: "/distressed-alerts",
+    icon: Gavel,
+    roles: ["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER"],
+    description: "Configure distressed-deal alerts matched to your filters",
+  },
+  {
+    label: "Billing",
+    to: "/billing",
+    icon: CreditCard,
+    roles: ["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "CONTRACTOR"],
+    description: "Manage your subscription plan and payments",
   },
   // ─── Owner Portal ────────────────────────────────────
   {

@@ -16,6 +16,7 @@ import { generateText } from "ai";
 import { db } from "~/server/db";
 import { baseProcedure, createTRPCRouter } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { requireFeature } from "~/server/subscriptions/subscription-service";
 import { getModel, getModelId, runAIWithGuard } from "~/server/ai/client";
 import { buildPropertyContext, findComparables } from "~/server/ai/property-context";
 
@@ -48,6 +49,7 @@ export const chatAboutProperty = baseProcedure
   )
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
+    await requireFeature(user, "AI_COPILOT");
 
     const ctx = await buildPropertyContext(input.propertyId, {
       includeFinancials: true,

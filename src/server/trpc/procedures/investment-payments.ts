@@ -7,6 +7,7 @@ import { createNotification } from "./notifications";
 import { createAuditLog } from "./audit-log";
 import { env } from "~/server/env";
 import { issueCertificate, ensureShareHoldingForContribution } from "./share-certificates";
+import { getFeeConfig, recordPlatformFee } from "~/server/fees/platform-fees";
 
 // ═══════════════════════════════════════════════════════════════
 //  Investment Payment Flow
@@ -95,6 +96,26 @@ async function confirmPaymentAndUpdateFunding(
       fundingRaised: actualPaidTotal,
     },
   });
+
+  // ── Platform monetization: capture the capital-raise fee ──
+  // Booked once per contribution (idempotent on the ledger). Revenue only;
+  // does not alter the investor's contribution or the property funding math.
+  try {
+    const feeConfig = await getFeeConfig();
+    if (feeConfig.enabled) {
+      await recordPlatformFee({
+        feeType: "CAPITAL_RAISE",
+        sourceType: "InvestorContribution",
+        sourceId: contribution.id,
+        propertyId: contribution.propertyId,
+        baseAmount: contribution.contributionAmount,
+        feeBps: feeConfig.capitalRaiseFeeBps,
+        description: `Capital-raise fee on ${contribution.property.title}`,
+      });
+    }
+  } catch (err) {
+    console.error("[platform-fees] capital-raise capture failed:", err);
+  }
 
   // Use sub-type funding goal for the FUNDED check
   const propertyWithSubTypes = await db.property.findUnique({

@@ -4,7 +4,7 @@ import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { TRPCError } from "@trpc/server";
 import { createNotification } from "./notifications";
-
+import { getFeeConfig, recordPlatformFee } from "~/server/fees/platform-fees";
 // ─── Place Order (Buy or Sell) ─────────────────────────────────
 
 export const placeShareOrder = baseProcedure
@@ -504,6 +504,26 @@ async function matchOrders(newOrderId: number): Promise<any[]> {
           volume: fillQty,
         },
       });
+
+      // ── Platform monetization: capture the secondary-trade fee ──
+      // Booked once per executed trade (idempotent) within this transaction.
+      try {
+        const feeConfig = await getFeeConfig(tx);
+        if (feeConfig.enabled) {
+          await recordPlatformFee({
+            tx,
+            feeType: "SECONDARY_TRADE",
+            sourceType: "ShareTrade",
+            sourceId: trade.id,
+            propertyId: sc!.propertyId,
+            baseAmount: totalAmount,
+            feeBps: feeConfig.secondaryTradeFeeBps,
+            description: `Secondary share trade fee (${fillQty} shares)`,
+          });
+        }
+      } catch (err) {
+        console.error("[platform-fees] secondary-trade fee capture failed:", err);
+      }
     });
   }
 

@@ -324,6 +324,7 @@ model Property {
   updateDrafts              InvestorUpdateDraft[]
   distressPredictions       DistressPrediction[]
   distressedSource          DistressedListing?       @relation("PropertyFromDistressed")
+  platformRevenues          PlatformRevenue[]
 
   @@index([createdAt])
   @@index([investmentStatus])
@@ -563,6 +564,10 @@ model User {
   workOrderUpdates           WorkOrderUpdate[]        @relation("WorkOrderUpdateSubmittedBy")
   pushSubscriptions          PushSubscription[]
   deviceTokens               DeviceToken[]
+  subscription               Subscription?
+  subscriptionPayments       SubscriptionPayment[]
+  distressedAlertSub         DistressedAlertSubscription?
+  referralLeads              ReferralLead[]
 }
 
 enum DevelopmentType {
@@ -1548,6 +1553,213 @@ model OwnerSaleProposal {
   @@index([status])
   @@index([createdAt])
   @@index([urgencyLevel])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 1: Platform monetization — fee ledger + fee configuration
+// ─────────────────────────────────────────────────────────────
+
+/// Immutable ledger of every platform fee captured across the app.
+/// Each row represents realized platform revenue (ZAR) booked at the
+/// moment money moved (capital raise, distribution, secondary trade,
+/// property sourcing). This is the single source of truth for revenue
+/// reporting in the admin dashboard.
+model PlatformRevenue {
+  id          Int      @id @default(autoincrement())
+  feeType     String // CAPITAL_RAISE | DISTRIBUTION | SECONDARY_TRADE | SOURCING
+  sourceType  String // InvestorContribution | Distribution | ShareTrade | Acquisition
+  sourceId    Int // id of the originating record
+  propertyId  Int?
+  baseAmount  Float // the amount the fee was calculated on (ZAR)
+  feeBps      Int // basis points applied (100 bps = 1%)
+  feeAmount   Float // realized platform fee (ZAR)
+  currency    String   @default("ZAR")
+  description String?
+  createdAt   DateTime @default(now())
+
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
+  @@unique([feeType, sourceType, sourceId])
+  @@index([feeType])
+  @@index([sourceType, sourceId])
+  @@index([propertyId])
+  @@index([createdAt])
+}
+
+/// Singleton configuration (id = 1) for platform fee rates. Admin-editable
+/// from the revenue dashboard. All rates are in basis points (100 = 1%).
+model PlatformFeeConfig {
+  id                   Int      @id @default(autoincrement())
+  capitalRaiseFeeBps   Int      @default(250) // 2.5% on investor contributions
+  distributionFeeBps   Int      @default(200) // 2.0% management fee booked on distributions
+  secondaryTradeFeeBps Int      @default(100) // 1.0% on secondary share trades
+  sourcingFeeBps       Int      @default(100) // 1.0% on property acquisition price
+  sourcingFlatFee      Float    @default(0) // optional flat sourcing fee (ZAR); used when > 0
+  enabled              Boolean  @default(true) // master switch for fee capture
+  updatedAt            DateTime @default(now()) @updatedAt
+  updatedById          Int?
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 2: SaaS subscriptions  +  Phase 3: Distressed standalone
+// ─────────────────────────────────────────────────────────────
+
+enum SubscriptionTier {
+  FREE
+  INVESTOR_PLUS
+  PRO
+  ENTERPRISE
+  DISTRESSED // standalone "DistressedDeals SA" product SKU
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+/// Catalog of purchasable plans (admin-editable prices + Paystack plan codes).
+/// Feature-gating logic lives in code (src/server/subscriptions/plans.ts); this
+/// table is the editable price/metadata source of truth surfaced to the UI.
+model SubscriptionPlan {
+  id                      Int              @id @default(autoincrement())
+  tier                    SubscriptionTier @unique
+  name                    String
+  description             String?
+  monthlyPrice            Float            @default(0) // ZAR
+  annualPrice             Float            @default(0) // ZAR
+  features                Json? // string[] of marketing bullet points
+  paystackPlanCodeMonthly String? // Paystack recurring plan code (optional)
+  paystackPlanCodeAnnual  String?
+  active                  Boolean          @default(true)
+  updatedAt               DateTime         @default(now()) @updatedAt
+}
+
+/// One row per user — their current subscription state.
+model Subscription {
+  id                       Int                @id @default(autoincrement())
+  userId                   Int                @unique
+  tier                     SubscriptionTier   @default(FREE)
+  status                   SubscriptionStatus @default(ACTIVE)
+  billingCycle             BillingCycle       @default(MONTHLY)
+  priceAmount              Float              @default(0) // ZAR currently billed
+  trialEndsAt              DateTime?
+  currentPeriodEnd         DateTime?
+  cancelAtPeriodEnd        Boolean            @default(false)
+  cancelledAt              DateTime?
+  paystackCustomerCode     String?
+  paystackSubscriptionCode String?
+  lastPaymentReference     String?
+  lastPaymentAt            DateTime?
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @default(now()) @updatedAt
+  user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tier])
+  @@index([status])
+}
+
+/// Immutable ledger of subscription charges (recurring + trial conversions).
+model SubscriptionPayment {
+  id           Int              @id @default(autoincrement())
+  userId       Int
+  tier         SubscriptionTier
+  billingCycle BillingCycle
+  amount       Float // ZAR
+  reference    String           @unique
+  status       String           @default("PENDING") // PENDING | PAID | FAILED
+  paidAt       DateTime?
+  periodStart  DateTime?
+  periodEnd    DateTime?
+  createdAt    DateTime         @default(now())
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// Phase 3 — a standalone subscriber's distressed-deal alert preferences.
+model DistressedAlertSubscription {
+  id             Int       @id @default(autoincrement())
+  userId         Int       @unique
+  active         Boolean   @default(true)
+  provinces      Json? // string[]
+  cities         Json? // string[]
+  maxPrice       Float?
+  minDiscountPct Float?
+  minAIGrade     String? // A | B | C | D | E
+  propertyTypes  Json? // string[]
+  channelEmail   Boolean   @default(true)
+  channelPush    Boolean   @default(true)
+  lastAlertedAt  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now()) @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum ReferralPartnerType {
+  BOND_ORIGINATOR
+  CONVEYANCER
+  AUCTION_HOUSE
+  INSURANCE
+  OTHER
+}
+
+enum ReferralLeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  LOST
+}
+
+/// Phase 3 — referral partners we send distressed-deal users to for a fee.
+model ReferralPartner {
+  id             Int                 @id @default(autoincrement())
+  name           String
+  type           ReferralPartnerType
+  contactEmail   String?
+  contactPhone   String?
+  commissionBps  Int                 @default(0) // % of deal value, in basis points
+  commissionFlat Float               @default(0) // flat ZAR per conversion
+  active         Boolean             @default(true)
+  notes          String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @default(now()) @updatedAt
+  leads          ReferralLead[]
+}
+
+/// Commission ledger — each lead sent to a partner; commissionAmount realized
+/// when status becomes CONVERTED.
+model ReferralLead {
+  id               Int                @id @default(autoincrement())
+  partnerId        Int
+  userId           Int?
+  listingId        Int?
+  contactName      String?
+  contactEmail     String?
+  contactPhone     String?
+  status           ReferralLeadStatus @default(NEW)
+  estimatedValue   Float? // deal size used for commission calc
+  commissionAmount Float              @default(0) // realized on CONVERTED
+  convertedAt      DateTime?
+  notes            String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @default(now()) @updatedAt
+  partner          ReferralPartner    @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  user             User?              @relation(fields: [userId], references: [id])
+
+  @@index([partnerId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 enum SaleUrgency {

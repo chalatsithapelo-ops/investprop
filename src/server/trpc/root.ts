@@ -67,6 +67,8 @@ import { createAcquisition, getAcquisitions, updateAcquisitionStatus } from "~/s
 import { createShareClass, getShareInfo, purchaseShares, transferShares, getShareLedger, getInvestorPortfolio, requestCoolingOffWithdrawal, getMyShareHoldings, lookupInvestorByCode } from "~/server/trpc/procedures/shares";
 // Distribution Engine
 import { createDistribution, getDistributions, executeDistribution, getMyDistributions } from "~/server/trpc/procedures/distributions";
+// Platform Revenue (Phase 1 monetization)
+import { getPlatformRevenueSummary, getPlatformRevenueLedger, getPlatformFeeConfig, updatePlatformFeeConfig } from "~/server/trpc/procedures/platform-revenue";
 // Investor Statements
 import { generateInvestorStatement } from "~/server/trpc/procedures/statements";
 // Governance & Voting
@@ -151,7 +153,12 @@ import { startOnboardingSession, continueOnboardingSession } from "~/server/trpc
 import { predictDistress, getLatestDistress, listDistressedPortfolio } from "~/server/trpc/procedures/ai-distress";
 import { getSponsorTrackRecord } from "~/server/trpc/procedures/ai-sponsor-track";
 import { getPlatformTrackRecord } from "~/server/trpc/procedures/platform-track";
-
+// Phase 2: SaaS Subscriptions
+import { getSubscriptionPlans, getMySubscription, startFreeTrial, initializeSubscription, verifySubscription, cancelSubscription, getSubscriptionStats } from "~/server/trpc/procedures/subscriptions";
+// Phase 3: Distressed standalone — alerts, referrals, market data
+import { getMyDistressedAlerts, upsertDistressedAlerts, runDistressedSubscriberAlerts } from "~/server/trpc/procedures/distressed-alerts";
+import { requestReferralIntro, getReferralPartners, upsertReferralPartner, getReferralLeads, updateReferralLead, getReferralSummary } from "~/server/trpc/procedures/referrals";
+import { getAnonymisedMarketData } from "~/server/trpc/procedures/market-data";
 export const appRouter = createTRPCRouter({
   register,
   login,
@@ -229,6 +236,10 @@ export const appRouter = createTRPCRouter({
   suspendUser,
   unsuspendUser,
   appointComplianceOfficer,
+  getPlatformRevenueSummary,
+  getPlatformRevenueLedger,
+  getPlatformFeeConfig,
+  updatePlatformFeeConfig,
   uploadFile,
   cancelContributionDuringCoolingOff,
   screenSanctions,
@@ -442,6 +453,25 @@ export const appRouter = createTRPCRouter({
   listDistressedPortfolio,
   getSponsorTrackRecord,
   getPlatformTrackRecord,
+  // Phase 2: SaaS Subscriptions
+  getSubscriptionPlans,
+  getMySubscription,
+  startFreeTrial,
+  initializeSubscription,
+  verifySubscription,
+  cancelSubscription,
+  getSubscriptionStats,
+  // Phase 3: Distressed standalone
+  getMyDistressedAlerts,
+  upsertDistressedAlerts,
+  runDistressedSubscriberAlerts,
+  requestReferralIntro,
+  getReferralPartners,
+  upsertReferralPartner,
+  getReferralLeads,
+  updateReferralLead,
+  getReferralSummary,
+  getAnonymisedMarketData,
 });
 
 export type AppRouter = typeof appRouter;
