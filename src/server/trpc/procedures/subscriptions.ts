@@ -13,6 +13,7 @@ import {
   type PlanDefinition,
 } from "~/server/subscriptions/plans";
 import { getEffectiveSubscription, isStaff } from "~/server/subscriptions/subscription-service";
+import { activatePaidSubscription } from "~/server/subscriptions/activate";
 import type { SubscriptionTier } from "@prisma/client";
 
 // ═══════════════════════════════════════════════════════════════
@@ -56,13 +57,6 @@ async function paystackRequest(path: string, method: string, body?: any) {
     });
   }
   return data;
-}
-
-function addPeriod(from: Date, cycle: "MONTHLY" | "ANNUAL"): Date {
-  const d = new Date(from);
-  if (cycle === "ANNUAL") d.setFullYear(d.getFullYear() + 1);
-  else d.setMonth(d.getMonth() + 1);
-  return d;
 }
 
 /** Merge code catalog with admin DB price overrides. */
@@ -207,6 +201,16 @@ export const initializeSubscription = baseProcedure
 
     const reference = `sub-${user.id}-${input.tier}-${Date.now()}`;
 
+    // If an admin has synced a Paystack recurring plan for this tier+cycle,
+    // pass its code so Paystack auto-manages renewals (true recurring billing).
+    // Otherwise fall back to a one-off charge for this period.
+    const plans = await resolvePlans();
+    const plan = plans.find((p) => p.tier === input.tier);
+    const planCode =
+      input.billingCycle === "ANNUAL"
+        ? plan?.paystackPlanCodeAnnual
+        : plan?.paystackPlanCodeMonthly;
+
     // Record a pending payment for idempotent verification later.
     await db.subscriptionPayment.create({
       data: {
@@ -225,6 +229,7 @@ export const initializeSubscription = baseProcedure
       reference,
       currency: "ZAR",
       callback_url: input.callbackUrl,
+      ...(planCode ? { plan: planCode } : {}),
       metadata: {
         type: "SUBSCRIPTION_PAYMENT",
         userId: user.id,
@@ -282,73 +287,22 @@ export const verifySubscription = baseProcedure
     }
 
     const now = new Date();
-    const periodEnd = addPeriod(now, pending.billingCycle);
     const customerCode = verification.data.customer?.customer_code ?? null;
+    const subscriptionCode = verification.data.subscription?.subscription_code ?? null;
 
-    const sub = await db.$transaction(async (tx) => {
-      await tx.subscriptionPayment.update({
-        where: { reference: input.reference },
-        data: { status: "PAID", paidAt: now, periodStart: now, periodEnd },
-      });
-
-      const upserted = await tx.subscription.upsert({
-        where: { userId: user.id },
-        create: {
-          userId: user.id,
-          tier: pending.tier,
-          status: "ACTIVE",
-          billingCycle: pending.billingCycle,
-          priceAmount: pending.amount,
-          currentPeriodEnd: periodEnd,
-          paystackCustomerCode: customerCode,
-          lastPaymentReference: input.reference,
-          lastPaymentAt: now,
-          cancelAtPeriodEnd: false,
-        },
-        update: {
-          tier: pending.tier,
-          status: "ACTIVE",
-          billingCycle: pending.billingCycle,
-          priceAmount: pending.amount,
-          currentPeriodEnd: periodEnd,
-          paystackCustomerCode: customerCode ?? undefined,
-          lastPaymentReference: input.reference,
-          lastPaymentAt: now,
-          cancelAtPeriodEnd: false,
-          cancelledAt: null,
-        },
-      });
-
-      // Book subscription revenue into the unified platform-revenue ledger
-      // so it appears in the existing admin revenue dashboard. Idempotent via
-      // the (feeType, sourceType, sourceId) unique constraint.
-      try {
-        await tx.platformRevenue.create({
-          data: {
-            feeType: "SUBSCRIPTION",
-            sourceType: "SubscriptionPayment",
-            sourceId: pending.id,
-            baseAmount: pending.amount,
-            feeBps: 10000,
-            feeAmount: pending.amount,
-            description: `${getPlan(pending.tier).name} (${pending.billingCycle.toLowerCase()})`,
-          },
-        });
-      } catch {
-        // Unique-constraint collision → already booked; ignore.
-      }
-
-      return upserted;
+    const result = await activatePaidSubscription({
+      pending,
+      customerCode,
+      subscriptionCode,
+      paidAt: now,
     });
 
-    await createAuditLog(user.id, "ACTIVATE_SUBSCRIPTION", "Subscription", sub.id, {
-      tier: sub.tier,
-      billingCycle: sub.billingCycle,
-      amount: pending.amount,
-      reference: input.reference,
-    });
-
-    return { success: true, tier: sub.tier, status: sub.status, currentPeriodEnd: periodEnd };
+    return {
+      success: true,
+      tier: result.tier,
+      status: result.status,
+      currentPeriodEnd: result.currentPeriodEnd,
+    };
   });
 
 // ─── Cancel (at period end) ────────────────────────────────────
@@ -442,3 +396,76 @@ export const getSubscriptionStats = baseProcedure
       })),
     };
   });
+
+// ─── Admin: create/sync Paystack recurring plans ───────────────
+// Creates a Paystack Plan for each paid tier + billing cycle (if the plan
+// code isn't already stored) and persists the returned plan_code onto the
+// SubscriptionPlan row. Once synced, initializeSubscription passes the plan
+// code so Paystack auto-charges renewals (true recurring billing).
+export const syncPaystackPlans = baseProcedure
+  .input(z.object({ authToken: z.string() }))
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    if (!["ADMIN", "DEVELOPMENT_MANAGER"].includes(user.role)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required." });
+    }
+
+    const created: { tier: SubscriptionTier; cycle: "MONTHLY" | "ANNUAL"; planCode: string }[] = [];
+    const skipped: { tier: SubscriptionTier; cycle: "MONTHLY" | "ANNUAL"; reason: string }[] = [];
+
+    for (const tier of SELF_SERVE_TIERS) {
+      const existing = await db.subscriptionPlan.findUnique({ where: { tier } });
+      const def = PLAN_CATALOG[tier];
+
+      for (const cycle of ["MONTHLY", "ANNUAL"] as const) {
+        const amount = getPrice(tier, cycle);
+        if (amount <= 0) {
+          skipped.push({ tier, cycle, reason: "free" });
+          continue;
+        }
+
+        const codeField = cycle === "ANNUAL" ? "paystackPlanCodeAnnual" : "paystackPlanCodeMonthly";
+        if (existing?.[codeField]) {
+          skipped.push({ tier, cycle, reason: "already synced" });
+          continue;
+        }
+
+        const res = await paystackRequest("/plan", "POST", {
+          name: `${def.name} (${cycle === "ANNUAL" ? "Annual" : "Monthly"})`,
+          amount: Math.round(amount * 100),
+          interval: cycle === "ANNUAL" ? "annually" : "monthly",
+          currency: "ZAR",
+          description: def.tagline,
+        });
+        const planCode = res.data?.plan_code as string;
+        if (!planCode) {
+          skipped.push({ tier, cycle, reason: "no plan_code returned" });
+          continue;
+        }
+
+        await db.subscriptionPlan.upsert({
+          where: { tier },
+          create: {
+            tier,
+            name: def.name,
+            description: def.description,
+            monthlyPrice: def.monthlyPrice,
+            annualPrice: def.annualPrice,
+            features: def.features,
+            [codeField]: planCode,
+          },
+          update: { [codeField]: planCode },
+        });
+
+        created.push({ tier, cycle, planCode });
+      }
+    }
+
+    await createAuditLog(user.id, "SYNC_PAYSTACK_PLANS", "SubscriptionPlan", user.id, {
+      created: created.length,
+      skipped: skipped.length,
+    });
+
+    return { created, skipped };
+  });
+

@@ -154,7 +154,7 @@ import { predictDistress, getLatestDistress, listDistressedPortfolio } from "~/s
 import { getSponsorTrackRecord } from "~/server/trpc/procedures/ai-sponsor-track";
 import { getPlatformTrackRecord } from "~/server/trpc/procedures/platform-track";
 // Phase 2: SaaS Subscriptions
-import { getSubscriptionPlans, getMySubscription, startFreeTrial, initializeSubscription, verifySubscription, cancelSubscription, getSubscriptionStats } from "~/server/trpc/procedures/subscriptions";
+import { getSubscriptionPlans, getMySubscription, startFreeTrial, initializeSubscription, verifySubscription, cancelSubscription, getSubscriptionStats, syncPaystackPlans } from "~/server/trpc/procedures/subscriptions";
 // Phase 3: Distressed standalone — alerts, referrals, market data
 import { getMyDistressedAlerts, upsertDistressedAlerts, runDistressedSubscriberAlerts } from "~/server/trpc/procedures/distressed-alerts";
 import { requestReferralIntro, getReferralPartners, upsertReferralPartner, getReferralLeads, updateReferralLead, getReferralSummary } from "~/server/trpc/procedures/referrals";
@@ -461,6 +461,7 @@ export const appRouter = createTRPCRouter({
   verifySubscription,
   cancelSubscription,
   getSubscriptionStats,
+  syncPaystackPlans,
   // Phase 3: Distressed standalone
   getMyDistressedAlerts,
   upsertDistressedAlerts,

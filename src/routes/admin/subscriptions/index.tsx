@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { Users, TrendingUp, CreditCard, Repeat } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Users, TrendingUp, CreditCard, Repeat, RefreshCw } from "lucide-react";
+import toast from "react-hot-toast";
 import { Navbar } from "~/components/Navbar";
-import { useTRPC } from "~/trpc/react";
+import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 
 export const Route = createFileRoute("/admin/subscriptions/")({
@@ -22,10 +23,12 @@ const fmtDate = (d: string | Date | null) =>
 
 function AdminSubscriptionsPage() {
   const trpc = useTRPC();
+  const trpcClient = useTRPCClient();
   const navigate = useNavigate();
   const authToken = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user) as any;
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -39,6 +42,22 @@ function AdminSubscriptionsPage() {
     enabled: !!authToken && isManager,
   });
   const stats = statsQuery.data as any;
+
+  const handleSyncPlans = async () => {
+    setSyncing(true);
+    try {
+      const res = await trpcClient.syncPaystackPlans.mutate({ authToken: authToken ?? "" });
+      if (res.created.length > 0) {
+        toast.success(`Created ${res.created.length} Paystack plan(s). Recurring billing is now active.`);
+      } else {
+        toast.success("All Paystack plans already synced.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to sync Paystack plans.");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   if (!user || !authToken) return null;
   if (!isManager) {
@@ -69,9 +88,19 @@ function AdminSubscriptionsPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Subscriptions</h1>
-          <p className="text-sm text-gray-500">SaaS plan performance and recurring revenue.</p>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Subscriptions</h1>
+            <p className="text-sm text-gray-500">SaaS plan performance and recurring revenue.</p>
+          </div>
+          <button
+            onClick={handleSyncPlans}
+            disabled={syncing}
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+          >
+            <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
+            {syncing ? "Syncing…" : "Sync Paystack Plans"}
+          </button>
         </div>
 
         {statsQuery.isLoading ? (
