@@ -1593,85 +1593,62 @@ async function scrapeAuctionInc(): Promise<ScrapeResult> {
 
     const $ = cheerio.load(html);
 
-    // Find all property links on the page
-    const propLinks = new Set<string>();
-    $("a[href*='propertyinfo.aspx']").each((_, el) => {
-      const href = $(el).attr("href") || "";
-      if (href) propLinks.add(href.startsWith("http") ? href : `https://www.auctioninc.co.za${href}`);
+    // AuctionInc rebuilt on a new CMS: individual lots now live at
+    //   /auctions/<slug>/<id>/   and   /multi-property-auction/.../<id>/
+    // (the old propertyinfo.aspx / auctions.aspx?date= scheme is gone).
+    // Collect each lot link once, keyed by its trailing numeric id.
+    const lotLinks = new Map<string, { href: string; id: string }>();
+    $("a[href*='/auctions/'], a[href*='/multi-property-auction/']").each((_, el) => {
+      const raw = $(el).attr("href") || "";
+      // Must end in /<digits>/ to be a real lot (skip the bare /auctions/ index).
+      const idMatch = raw.match(/\/(\d+)\/?$/);
+      if (!idMatch?.[1]) return;
+      const href = raw.startsWith("http") ? raw : `https://www.auctioninc.co.za${raw}`;
+      lotLinks.set(idMatch[1], { href, id: idMatch[1] });
     });
 
-    // Also find auction date pages to scrape for more properties
-    const auctionPages = new Set<string>();
-    $("a[href*='auctions.aspx?date=']").each((_, el) => {
-      const href = $(el).attr("href") || "";
-      if (href) auctionPages.add(href.startsWith("http") ? href : `https://www.auctioninc.co.za${href}`);
-    });
-
-    // Scrape auction date pages for more property links
-    for (const auctionUrl of [...auctionPages].slice(0, 5)) {
-      const { html: aucHtml } = await safeFetch(auctionUrl);
-      if (!aucHtml) continue;
-      pagesScraped++;
-      const $a = cheerio.load(aucHtml);
-      $a("a[href*='propertyinfo.aspx']").each((_, el) => {
-        const href = $a(el).attr("href") || "";
-        if (href) propLinks.add(href.startsWith("http") ? href : `https://www.auctioninc.co.za${href}`);
-      });
-    }
-
-    // Extract data for each property from homepage cards
-    // Properties appear in blocks with images and details
-    $("a[href*='propertyinfo.aspx']").each((_, el) => {
-      const $el = $(el);
-      const href = $el.attr("href") || "";
-      const sourceUrl = href.startsWith("http") ? href : `https://www.auctioninc.co.za${href}`;
-      const idMatch = href.match(/prpID=(\d+)/);
-
-      // Get surrounding context for location and price
-      const $parent = $el.closest(".multipropcard, .propcard, .row, .col-md-4, .col-md-6, .col-lg-4, div");
+    // Extract data for each lot from its homepage card.
+    for (const { href, id } of lotLinks.values()) {
+      const $anchor = $(`a[href*='/${id}/']`).first();
+      const $parent = $anchor.closest(".card, .lot, .auction-item, .col-md-4, .col-md-6, .col-lg-4, article, div");
       const parentText = $parent.text().replace(/\s+/g, " ").trim();
 
-      // Image from sibling img tag
-      const img = $el.find("img").first();
-      let imageUrl = img.attr("src") || "";
-      if (!imageUrl) {
-        const siblingImg = $parent.find("img").first();
-        imageUrl = siblingImg.attr("src") || "";
-      }
-      if (imageUrl && !imageUrl.startsWith("http")) {
-        imageUrl = `https://www.auctioninc.co.za${imageUrl}`;
-      }
+      // Image
+      let imageUrl = $parent.find("img").first().attr("src") || $parent.find("img").first().attr("data-src") || "";
+      if (imageUrl && !imageUrl.startsWith("http")) imageUrl = `https://www.auctioninc.co.za${imageUrl}`;
 
-      // Price
-      const priceMatch = parentText.match(/R[\s]*([\d,\s]+)/);
-      const price = priceMatch ? extractPrice(`R${priceMatch[1]}`) : null;
+      // Price (auction lots often have none — skip rather than inject 0).
+      const priceToken = parentText.match(/R\s?(\d{1,3}(?:[\s,]\d{3})+|\d{4,})/)?.[0] || "";
+      const price = extractPrice(priceToken);
+      if (!price || price > MAX_PRICE) continue;
 
-      // Title from img alt or parent text
-      const title = img.attr("alt") || $parent.find("h3, h4, h5, .title, strong").first().text().trim() || "Auction Inc Property";
+      // Title from the slug (readable) or any heading in the card.
+      const slugTitle = href.match(/\/auctions\/([a-z0-9-]+)\/\d+/i)?.[1]?.replace(/-/g, " ");
+      const title = $parent.find("h3, h4, h5, .title").first().text().trim() ||
+        (slugTitle ? slugTitle.replace(/\b\w/g, (c) => c.toUpperCase()) : "Auction Inc Property");
 
-      // Location from parent text
-      if (isGauteng(parentText) || !parentText.includes(",")) {
-        allListings.push({
-          externalId: idMatch?.[1] || `aucinc-${allListings.length}`,
-          source: "auction_inc",
-          sourceUrl,
-          title: title.replace(/^Property Auction Date:.*$/i, "").trim() || "Auction Inc Property",
-          description: parentText.substring(0, 300),
-          propertyType: "HOUSE",
-          city: extractCity(parentText) || "Gauteng",
-          province: TARGET_PROVINCE,
-          askingPrice: price || 0,
-          imageUrl: imageUrl || undefined,
-          auctionDate: parseDate(parentText) ?? undefined,
-          auctionType: "LIVE_AUCTION",
-          auctioneer: "Auction Inc",
-          bedrooms: extractBeds(parentText),
-          bathrooms: extractBaths(parentText),
-          floorSize: extractSize(parentText),
-          erfSize: extractErf(parentText),
-        });
-      }
-    });
+      if (!isGauteng(`${parentText} ${href}`)) continue;
+
+      allListings.push({
+        externalId: id,
+        source: "auction_inc",
+        sourceUrl: href,
+        title,
+        description: parentText.substring(0, 300),
+        propertyType: "HOUSE",
+        city: extractCity(`${parentText} ${title}`) || "Gauteng",
+        province: TARGET_PROVINCE,
+        askingPrice: price,
+        imageUrl: imageUrl || undefined,
+        auctionDate: parseDate(parentText) ?? undefined,
+        auctionType: "LIVE_AUCTION",
+        auctioneer: "Auction Inc",
+        bedrooms: extractBeds(parentText),
+        bathrooms: extractBaths(parentText),
+        floorSize: extractSize(parentText),
+        erfSize: extractErf(parentText),
+      });
+    }
   } catch (err) {
     return { source: "auction_inc", status: "FAILED", listings: [], error: String(err), durationMs: Date.now() - start };
   }
@@ -1688,9 +1665,17 @@ async function scrapeRealnet(): Promise<ScrapeResult> {
   const allListings: ScrapedListing[] = [];
   let pagesScraped = 0;
 
+  // Realnet has no province filter param — results are national, cheapest-first.
+  // We page through the sub-MAX_PRICE results and gate to Gauteng via isGauteng()
+  // (the suburb/city lives in the listing URL path, e.g. /springs/, /pretoria/).
+  const query = `search-category=residential&listings-type=sale&max-price=${MAX_PRICE}&orderby=price-ascending`;
   const urls = [
-    `https://www.realnet.co.za/results/residential/for-sale/?province=Gauteng&max_price=${MAX_PRICE}`,
-    `https://www.realnet.co.za/results/residential/for-sale/?province=Gauteng&max_price=${MAX_PRICE}&page=2`,
+    `https://realnet.co.za/listings/?${query}`,
+    `https://realnet.co.za/listings/page/2/?${query}`,
+    `https://realnet.co.za/listings/page/3/?${query}`,
+    `https://realnet.co.za/listings/page/4/?${query}`,
+    `https://realnet.co.za/listings/page/5/?${query}`,
+    `https://realnet.co.za/listings/page/6/?${query}`,
   ];
 
   for (const url of urls) {
@@ -1701,55 +1686,72 @@ async function scrapeRealnet(): Promise<ScrapeResult> {
 
       const $ = cheerio.load(html);
 
-      // Realnet uses .property-list-listing cards with data-href attribute
-      $(".property-list-listing, [class*='property-list-listing']").each((_, el) => {
+      // Realnet (WordPress "listings" theme): each card is a .listings-post block.
+      // The visible content lives in an <a class="listing-link"> and the canonical
+      // URL + image gallery are on the container's data-preload-* attributes.
+      $(".listings-post").each((_, el) => {
         const $el = $(el);
-        const text = $el.text().replace(/\s+/g, " ").trim();
+        const $link = $el.find("a.listing-link").first();
+        const text = ($link.text() || $el.text()).replace(/\s+/g, " ").trim();
 
-        // Link from data-href attribute
-        const dataHref = $el.attr("data-href") || "";
-        const link = $el.find("a").first().attr("href") || dataHref;
-        const sourceUrl = link.startsWith("http") ? link : `https://www.realnet.co.za${link}`;
+        const link = $el.attr("data-preload-href") || $link.attr("href") || "";
+        const sourceUrl = link.startsWith("http") ? link : `https://realnet.co.za${link}`;
 
-        // Price from itemprop="price" or .property-list-price-heading
-        const priceText = $el.find("[itemprop='price'], .property-list-price-heading").first().text().trim();
-        const price = extractPrice(priceText);
+        // Price is the first "R <amount>" token (grouped thousands) in the card text.
+        // NB: extractPrice() strips all non-digits, so never hand it the whole card
+        // text — isolate the price token first or it concatenates every number.
+        const priceToken = text.match(/R\s?(\d{1,3}(?:[\s,]\d{3})+|\d{4,})/)?.[0] || "";
+        const price = extractPrice(priceToken);
+        if (!price || price < 1000) return;
+        if (price > MAX_PRICE) return;
 
-        // Skip if over max price
-        if (price && price > MAX_PRICE) return;
+        // First gallery image from the data-preload-images JSON blob.
+        let imageUrl: string | undefined;
+        const imagesAttr = $el.attr("data-preload-images");
+        if (imagesAttr) {
+          try {
+            const parsed = JSON.parse(imagesAttr) as { above?: string[]; gallery?: string[] };
+            imageUrl = parsed.above?.[0] || parsed.gallery?.[0];
+          } catch { /* ignore malformed blob */ }
+        }
+        if (!imageUrl) {
+          const img = $el.find("img").first();
+          imageUrl = img.attr("src") || img.attr("data-src") || undefined;
+        }
 
-        // Image
-        const img = $el.find(".property-list-image-thumb img, img[itemprop='image']").first();
-        const imageUrl = img.attr("src") || img.attr("data-src") || undefined;
+        // Title = the "<n> Bedroom <type> for Sale in <suburb>" headline when present.
+        // Strip only the matched price token so the leading bedroom count survives.
+        const afterPrice = (priceToken ? text.slice(text.indexOf(priceToken) + priceToken.length) : text).trim();
+        const title =
+          afterPrice.match(/^(.*?for sale in\s+[A-Za-z][A-Za-z\s]*?)(?:\s+[A-Za-z][A-Za-z\s]*,|\s{2,}|$)/i)?.[1]?.trim() ||
+          afterPrice.split(/\bGauteng\b/)[0]?.trim().slice(0, 90) ||
+          "Realnet Property";
 
-        // Title from alt text or heading
-        const title = img.attr("alt") || $el.find("h3, h4, .property-list-title").first().text().trim() || "Realnet Property";
+        // Address = "<suburb>, <city>, Gauteng" segment when present.
+        const address = (afterPrice.match(/([A-Za-z][A-Za-z\s]+,\s*[A-Za-z][A-Za-z\s]+,\s*Gauteng)/)?.[1] || "").trim();
 
-        // Address
-        const address = $el.find(".property-list-address, [itemprop='address']").first().text().trim();
+        // Property type + ref from the canonical URL path.
+        const typeSeg = link.match(/\/(apartment|house|townhouse|flat|vacant-land|farm|commercial|industrial|office|retail)\//i)?.[1];
+        const propertyType = typeSeg ? typeSeg.replace(/-/g, "_").toUpperCase() : "RESIDENTIAL";
+        const ref = link.match(/\/(RLS\d+)\//i)?.[1];
+        const idMatch = ($el.attr("id") || "").match(/post-(\d+)/)?.[1];
 
-        // Property type from data-model attribute
-        const model = $el.attr("data-model") || "residential";
-
-        // Extract ID
-        const idMatch = $el.attr("data-id") || link.match(/\/(\d+)\/?$/)?.[1];
-
-        // Location check
-        const fullText = `${text} ${address}`;
+        // Gate to Gauteng using the card text AND the URL path (which carries the city).
+        const fullText = `${text} ${address} ${link}`;
         if (!isGauteng(fullText)) return;
 
         allListings.push({
-          externalId: (typeof idMatch === "string" ? idMatch : idMatch) || `realnet-${allListings.length}`,
+          externalId: ref || idMatch || `realnet-${allListings.length}`,
           source: "realnet",
           sourceUrl,
           title,
-          description: text.substring(0, 300),
-          propertyType: model.toUpperCase(),
+          description: afterPrice.slice(0, 300),
+          propertyType,
           address,
           city: extractCity(fullText),
           province: TARGET_PROVINCE,
-          askingPrice: price || 0,
-          imageUrl: imageUrl?.startsWith("http") ? imageUrl : imageUrl ? `https://www.realnet.co.za${imageUrl}` : undefined,
+          askingPrice: price,
+          imageUrl,
           bedrooms: extractBeds(text),
           bathrooms: extractBaths(text),
           floorSize: extractSize(text),
