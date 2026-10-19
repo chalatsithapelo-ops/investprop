@@ -20,7 +20,7 @@ export const getAllUsers = adminProcedure
     z.object({
       role: z.enum(["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "CONTRACTOR", "ADMIN", "ALL"]).default("ALL"),
       page: z.number().int().positive().default(1),
-      limit: z.number().int().positive().max(100).default(20),
+      limit: z.number().int().positive().max(500).default(20),
       search: z.string().optional(),
     })
   )

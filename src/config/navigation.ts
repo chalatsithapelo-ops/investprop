@@ -50,6 +50,10 @@ export type NavigationLink = {
   icon?: LucideIcon;
   roles?: UserRole[]; // If undefined, visible to all authenticated users
   description?: string;
+  /** Hide from ADMIN even though admins are a superset of every role.
+   *  Used for client/investor-facing areas (e.g. Plans) that admins manage
+   *  through the dedicated Admin menu instead. */
+  hideFromAdmin?: boolean;
 };
 
 /**
@@ -405,6 +409,7 @@ export const mainNavigationLinks: NavigationLink[] = [
     to: "/distressed-deals/browse",
     icon: TrendingDown,
     roles: ["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER"],
+    hideFromAdmin: true,
     description: "Browse live AI-graded distressed & auction listings",
   },
   {
@@ -412,12 +417,14 @@ export const mainNavigationLinks: NavigationLink[] = [
     to: "/distressed-alerts",
     icon: Gavel,
     roles: ["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER"],
+    hideFromAdmin: true,
     description: "Configure distressed-deal alerts matched to your filters",
   },
   {
     label: "Plans & Pricing",
     to: "/pricing",
     icon: Sparkles,
+    hideFromAdmin: true,
     description: "Compare plans and subscribe",
   },
   {
@@ -425,6 +432,7 @@ export const mainNavigationLinks: NavigationLink[] = [
     to: "/billing",
     icon: CreditCard,
     roles: ["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "CONTRACTOR"],
+    hideFromAdmin: true,
     description: "Manage your subscription plan and payments",
   },
   // ─── Owner Portal ────────────────────────────────────
@@ -519,8 +527,9 @@ export function getNavigationLinksForRole(
 ): NavigationLink[] {
   if (!userRole) return [];
 
-  // ADMIN sees every link — admins are a superset of every operational role.
-  if (userRole === "ADMIN") return links;
+  // ADMIN sees every link — admins are a superset of every operational role —
+  // except client/investor-facing areas explicitly flagged hideFromAdmin.
+  if (userRole === "ADMIN") return links.filter((link) => !link.hideFromAdmin);
 
   return links.filter((link) => {
     // If no roles specified, link is visible to all authenticated users

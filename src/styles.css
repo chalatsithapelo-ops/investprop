@@ -38,3 +38,58 @@ body {
     @apply rounded-xl border border-gray-200 bg-white shadow-sm;
   }
 }
+
+/* ─── Light-theme readability overrides ─────────────────────────────
+   The navy palette is inverted for light mode (navy-950 = #ffffff), so
+   legacy dark-theme `text-white` renders white-on-white (invisible) and
+   muted greys are too faint to read. Force all white/muted text to a
+   readable near-black across the whole app. */
+.text-white,
+.text-gray-300,
+.text-gray-400,
+.text-gray-500,
+.text-gray-600,
+.text-slate-300,
+.text-slate-400,
+.text-slate-500,
+.text-slate-600,
+.text-navy-400,
+.text-navy-500,
+.text-navy-600,
+.text-navy-700 {
+  color: #111827 !important;
+}
+
+/* Keep white labels on buttons and coloured-background CTAs, where
+   white-on-colour is intentional and readable. Higher specificity than
+   the force-dark rule above, so it wins for these cases only. */
+button.text-white,
+button .text-white,
+[role="button"].text-white,
+[role="button"] .text-white,
+[type="button"].text-white,
+[type="submit"].text-white,
+a[class*="bg-"].text-white,
+a[class*="bg-"] .text-white,
+[class*="bg-emerald"].text-white,
+[class*="bg-emerald"] .text-white,
+[class*="bg-green"].text-white,
+[class*="bg-green"] .text-white,
+[class*="bg-red"].text-white,
+[class*="bg-red"] .text-white,
+[class*="bg-rose"].text-white,
+[class*="bg-rose"] .text-white,
+[class*="bg-gold"].text-white,
+[class*="bg-gold"] .text-white,
+[class*="bg-amber"].text-white,
+[class*="bg-amber"] .text-white,
+[class*="bg-blue"].text-white,
+[class*="bg-blue"] .text-white,
+[class*="bg-indigo"].text-white,
+[class*="bg-indigo"] .text-white,
+[class*="bg-accent"].text-white,
+[class*="bg-accent"] .text-white,
+[class*="from-"].text-white,
+[class*="from-"] .text-white {
+  color: #ffffff !important;
+}

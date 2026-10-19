@@ -211,27 +211,27 @@ function RevenuePage() {
                   <h2 className="text-sm font-semibold text-gray-700">Fee configuration</h2>
                 </div>
                 <p className="mb-4 text-xs text-gray-400">
-                  Rates are in basis points (100 bps = 1%). Changes apply to all future fee captures.
+                  Rates are percentages of each transaction. Changes apply to all future fee captures.
                 </p>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <BpsField
+                  <PercentField
                     label="Capital-raise fee"
-                    value={cfg.capitalRaiseFeeBps}
+                    bps={cfg.capitalRaiseFeeBps}
                     onChange={(v) => setCfg({ ...cfg, capitalRaiseFeeBps: v })}
                   />
-                  <BpsField
+                  <PercentField
                     label="Distribution fee"
-                    value={cfg.distributionFeeBps}
+                    bps={cfg.distributionFeeBps}
                     onChange={(v) => setCfg({ ...cfg, distributionFeeBps: v })}
                   />
-                  <BpsField
+                  <PercentField
                     label="Secondary-trade fee"
-                    value={cfg.secondaryTradeFeeBps}
+                    bps={cfg.secondaryTradeFeeBps}
                     onChange={(v) => setCfg({ ...cfg, secondaryTradeFeeBps: v })}
                   />
-                  <BpsField
+                  <PercentField
                     label="Sourcing fee"
-                    value={cfg.sourcingFeeBps}
+                    bps={cfg.sourcingFeeBps}
                     onChange={(v) => setCfg({ ...cfg, sourcingFeeBps: v })}
                   />
                   <div>
@@ -354,28 +354,39 @@ function StatCard({
   );
 }
 
-function BpsField({
+function PercentField({
   label,
-  value,
+  bps,
   onChange,
 }: {
   label: string;
-  value: number;
-  onChange: (v: number) => void;
+  bps: number;
+  onChange: (bps: number) => void;
 }) {
+  // UI works in percent; the backend stores basis points (1% = 100 bps).
+  const pct = bps / 100;
   return (
     <div>
       <label className="mb-1 block text-xs font-medium text-gray-600">
-        {label} <span className="text-gray-400">({(value / 100).toFixed(2)}%)</span>
+        {label}
       </label>
-      <input
-        type="number"
-        min={0}
-        max={5000}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-      />
+      <div className="relative">
+        <input
+          type="number"
+          min={0}
+          max={50}
+          step={0.05}
+          value={pct}
+          onChange={(e) => {
+            const p = Number(e.target.value);
+            onChange(Number.isFinite(p) ? Math.round(p * 100) : 0);
+          }}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-8 text-sm focus:border-emerald-500 focus:outline-none"
+        />
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+          %
+        </span>
+      </div>
     </div>
   );
 }
