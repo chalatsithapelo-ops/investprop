@@ -469,3 +469,54 @@ export const syncPaystackPlans = baseProcedure
     return { created, skipped };
   });
 
+// ─── Admin: edit a subscription plan (price/name/features/active) ──
+// Persists an override row on SubscriptionPlan. These values are merged
+// over the code catalog by resolvePlans(), so the /pricing page and billing
+// flow immediately reflect the new price. Re-run "Sync Paystack Plans" after
+// a price change so Paystack recurring plans match.
+export const upsertSubscriptionPlan = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      tier: z.enum(["FREE", "INVESTOR_PLUS", "PRO", "ENTERPRISE", "DISTRESSED"]),
+      name: z.string().min(1).max(60),
+      description: z.string().max(300).nullish(),
+      monthlyPrice: z.number().min(0).max(1_000_000),
+      annualPrice: z.number().min(0).max(10_000_000),
+      features: z.array(z.string().max(200)).max(20),
+      active: z.boolean(),
+    }),
+  )
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    if (!["ADMIN", "DEVELOPMENT_MANAGER"].includes(user.role)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required." });
+    }
+
+    const { authToken: _t, tier, ...fields } = input;
+    const data = {
+      name: fields.name,
+      description: fields.description ?? null,
+      monthlyPrice: fields.monthlyPrice,
+      annualPrice: fields.annualPrice,
+      features: fields.features,
+      active: fields.active,
+    };
+
+    const saved = await db.subscriptionPlan.upsert({
+      where: { tier },
+      create: { tier, ...data },
+      update: data,
+    });
+
+    await createAuditLog(user.id, "UPDATE_SUBSCRIPTION_PLAN", "SubscriptionPlan", saved.id, {
+      tier,
+      monthlyPrice: data.monthlyPrice,
+      annualPrice: data.annualPrice,
+      active: data.active,
+    });
+
+    return { tier, saved: true };
+  });
+
+
