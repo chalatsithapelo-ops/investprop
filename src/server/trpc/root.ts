@@ -158,6 +158,7 @@ import { getSubscriptionPlans, getMySubscription, startFreeTrial, initializeSubs
 // Phase 3: Distressed standalone — alerts, referrals, market data
 import { getMyDistressedAlerts, upsertDistressedAlerts, runDistressedSubscriberAlerts } from "~/server/trpc/procedures/distressed-alerts";
 import { requestReferralIntro, getReferralPartners, upsertReferralPartner, getReferralLeads, updateReferralLead, getReferralSummary } from "~/server/trpc/procedures/referrals";
+import { getSubscriberDistressedDeals, getSubscriberDistressedDetail, screenSubscriberDistressedDeal } from "~/server/trpc/procedures/distressed-subscriber";
 import { getAnonymisedMarketData } from "~/server/trpc/procedures/market-data";
 export const appRouter = createTRPCRouter({
   register,
@@ -467,6 +468,9 @@ export const appRouter = createTRPCRouter({
   getMyDistressedAlerts,
   upsertDistressedAlerts,
   runDistressedSubscriberAlerts,
+  getSubscriberDistressedDeals,
+  getSubscriberDistressedDetail,
+  screenSubscriberDistressedDeal,
   requestReferralIntro,
   getReferralPartners,
   upsertReferralPartner,

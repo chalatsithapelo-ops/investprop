@@ -51,12 +51,13 @@ const envSchema = z.object({
   // without an Enterprise subscription. Leave unset to require a subscription.
   MARKET_DATA_API_KEY: z.string().optional(),
   // Distressed scraper credentials (login-required sources)
-  SHERIFFHQ_EMAIL: z.string().optional(),
-  SHERIFFHQ_PASSWORD: z.string().optional(),
+  SHERIFFHQ_EMAIL: z.string().optional(),  SHERIFFHQ_PASSWORD: z.string().optional(),
   SHERIFFHQ_COOKIES: z.string().optional(),
   SASHERIFF_EMAIL: z.string().optional(),
   SASHERIFF_PASSWORD: z.string().optional(),
   SASHERIFF_COOKIES: z.string().optional(),
+  // Shared secret for the /api/cron/distressed endpoint. Leave unset to disable it.
+  CRON_SECRET: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

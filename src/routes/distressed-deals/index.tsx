@@ -99,7 +99,7 @@ function DistressedDealsLanding() {
               {plan ? `Start for ${ZAR(plan.monthlyPrice)}/mo` : "Get started"}
             </button>
             <Link
-              to="/distressed-finder"
+              to="/distressed-deals/browse"
               className="rounded-lg border border-white/30 px-6 py-3 font-semibold text-white hover:bg-white/10"
             >
               Browse live deals

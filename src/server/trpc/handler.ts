@@ -2,6 +2,10 @@ import { defineEventHandler, toWebRequest } from "@tanstack/react-start/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./root";
 import { createContext } from "./context";
+import { startDistressedScheduler } from "~/server/distressed/scheduler";
+
+// Start the daily distressed pipeline scheduler on first server use (idempotent).
+startDistressedScheduler();
 
 export default defineEventHandler(async (event) => {
   const request = toWebRequest(event);

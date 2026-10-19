@@ -1,0 +1,517 @@
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import {
+  Loader2,
+  Lock,
+  MapPin,
+  TrendingDown,
+  Sparkles,
+  ExternalLink,
+  Gavel,
+  X,
+  ArrowLeft,
+  ArrowRight,
+} from "lucide-react";
+import { Navbar } from "~/components/Navbar";
+import { useTRPC, useTRPCClient } from "~/trpc/react";
+import { useAuthStore } from "~/stores/authStore";
+import toast from "react-hot-toast";
+
+export const Route = createFileRoute("/distressed-deals/browse/")({
+  component: SubscriberBrowsePage,
+});
+
+const PROVINCES = [
+  "all",
+  "Gauteng",
+  "Western Cape",
+  "KwaZulu-Natal",
+  "Eastern Cape",
+  "Free State",
+  "Limpopo",
+  "Mpumalanga",
+  "North West",
+  "Northern Cape",
+];
+const PROPERTY_TYPES = ["all", "HOUSE", "RESIDENTIAL", "STUDENT", "VACANT LAND", "OFFICE", "INDUSTRIAL"];
+const GRADES = ["", "A", "B", "C", "D", "E"];
+
+const ZAR = (n: number) =>
+  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", maximumFractionDigits: 0 }).format(n ?? 0);
+
+const GRADE_STYLES: Record<string, string> = {
+  A: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  B: "bg-teal-100 text-teal-700 border-teal-200",
+  C: "bg-amber-100 text-amber-700 border-amber-200",
+  D: "bg-orange-100 text-orange-700 border-orange-200",
+  E: "bg-red-100 text-red-700 border-red-200",
+};
+
+function GradeBadge({ grade }: { grade: string | null }) {
+  if (!grade) {
+    return (
+      <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-500">
+        Ungraded
+      </span>
+    );
+  }
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-bold ${GRADE_STYLES[grade] ?? "bg-gray-100 text-gray-700"}`}>
+      Grade {grade}
+    </span>
+  );
+}
+
+function SubscriberBrowsePage() {
+  const trpc = useTRPC();
+  const trpcClient = useTRPCClient();
+  const navigate = useNavigate();
+  const authToken = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user) as any;
+  const hasHydrated = useAuthStore((s) => s._hasHydrated);
+
+  const [province, setProvince] = useState("all");
+  const [propertyType, setPropertyType] = useState("all");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [minDiscountPct, setMinDiscountPct] = useState("");
+  const [minAIGrade, setMinAIGrade] = useState("");
+  const [onlyGraded, setOnlyGraded] = useState(false);
+  const [sortBy, setSortBy] = useState<"newest" | "discount" | "price_asc" | "ai_grade">("newest");
+  const [page, setPage] = useState(1);
+  const [detailId, setDetailId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!hasHydrated) return;
+    if (!user || !authToken) navigate({ to: "/login" });
+  }, [user, authToken, hasHydrated]);
+
+  const dealsQuery = useQuery({
+    ...trpc.getSubscriberDistressedDeals.queryOptions({
+      authToken: authToken ?? "",
+      province,
+      propertyType,
+      maxPrice: maxPrice ? Number(maxPrice) : undefined,
+      minDiscountPct: minDiscountPct ? Number(minDiscountPct) : undefined,
+      minAIGrade: (minAIGrade || undefined) as any,
+      onlyGraded,
+      sortBy,
+      page,
+    }),
+    enabled: !!authToken,
+  });
+
+  const data = dealsQuery.data as any;
+  const entitled = data?.entitled ?? true;
+  const listings: any[] = data?.listings ?? [];
+
+  // Not entitled → upgrade prompt.
+  if (data && entitled === false) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="mx-auto max-w-2xl px-4 py-20 text-center">
+          <div className="mx-auto mb-5 inline-flex rounded-full bg-teal-100 p-4 text-teal-600">
+            <Lock size={28} />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Distressed deals are a premium feature</h1>
+          <p className="mt-3 text-gray-600">
+            Browse every AI-graded sheriff sale, bank repossession and auction listing in one place.
+            Upgrade to Pro or DistressedDeals SA to unlock full access.
+          </p>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <Link
+              to="/pricing"
+              className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-6 py-3 font-semibold text-white hover:bg-teal-700"
+            >
+              <Sparkles size={18} /> View plans
+            </Link>
+            <Link
+              to="/distressed-deals"
+              className="rounded-lg border border-gray-300 px-6 py-3 font-semibold text-gray-700 hover:bg-gray-100"
+            >
+              Learn more
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const resetPageAnd = (fn: () => void) => () => {
+    setPage(1);
+    fn();
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-teal-100 px-3 py-1 text-sm font-medium text-teal-700">
+              <TrendingDown size={14} /> Distressed deals
+            </div>
+            <h1 className="mt-3 text-2xl font-bold text-gray-900">Browse live distressed deals</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              AI-graded auction, sheriff and bank-repossession listings, refreshed daily.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {data?.newThisWeek > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">
+                <Sparkles size={14} /> {data.newThisWeek} new this week
+              </span>
+            )}
+            <Link
+              to="/distressed-alerts"
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Alert settings
+            </Link>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="mt-6 grid grid-cols-2 gap-3 rounded-xl border border-gray-200 bg-white p-4 sm:grid-cols-3 lg:grid-cols-7">
+          <label className="text-xs font-medium text-gray-600">
+            Province
+            <select
+              value={province}
+              onChange={(e) => resetPageAnd(() => setProvince(e.target.value))()}
+              className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm text-gray-900"
+            >
+              {PROVINCES.map((p) => (
+                <option key={p} value={p}>{p === "all" ? "All provinces" : p}</option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs font-medium text-gray-600">
+            Type
+            <select
+              value={propertyType}
+              onChange={(e) => resetPageAnd(() => setPropertyType(e.target.value))()}
+              className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm text-gray-900"
+            >
+              {PROPERTY_TYPES.map((p) => (
+                <option key={p} value={p}>{p === "all" ? "All types" : p}</option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs font-medium text-gray-600">
+            Max price
+            <input
+              type="number"
+              value={maxPrice}
+              onChange={(e) => resetPageAnd(() => setMaxPrice(e.target.value))()}
+              placeholder="Any"
+              className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm text-gray-900"
+            />
+          </label>
+          <label className="text-xs font-medium text-gray-600">
+            Min discount %
+            <input
+              type="number"
+              value={minDiscountPct}
+              onChange={(e) => resetPageAnd(() => setMinDiscountPct(e.target.value))()}
+              placeholder="Any"
+              className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm text-gray-900"
+            />
+          </label>
+          <label className="text-xs font-medium text-gray-600">
+            Min AI grade
+            <select
+              value={minAIGrade}
+              onChange={(e) => resetPageAnd(() => setMinAIGrade(e.target.value))()}
+              className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm text-gray-900"
+            >
+              {GRADES.map((g) => (
+                <option key={g} value={g}>{g === "" ? "Any" : `${g} or better`}</option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs font-medium text-gray-600">
+            Sort by
+            <select
+              value={sortBy}
+              onChange={(e) => resetPageAnd(() => setSortBy(e.target.value as any))()}
+              className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm text-gray-900"
+            >
+              <option value="newest">Newest</option>
+              <option value="discount">Biggest discount</option>
+              <option value="price_asc">Lowest price</option>
+              <option value="ai_grade">Best AI grade</option>
+            </select>
+          </label>
+          <label className="flex items-end gap-2 text-xs font-medium text-gray-600">
+            <input
+              type="checkbox"
+              checked={onlyGraded}
+              onChange={(e) => resetPageAnd(() => setOnlyGraded(e.target.checked))()}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            Graded only
+          </label>
+        </div>
+
+        {/* Results */}
+        {dealsQuery.isLoading ? (
+          <div className="flex items-center justify-center py-24 text-gray-500">
+            <Loader2 className="animate-spin" size={28} />
+          </div>
+        ) : listings.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-300 bg-white py-20 text-center text-gray-500">
+            No deals match your filters yet. Try widening them.
+          </div>
+        ) : (
+          <>
+            <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {listings.map((l) => (
+                <button
+                  key={l.id}
+                  onClick={() => setDetailId(l.id)}
+                  className="group flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white text-left shadow-sm transition hover:shadow-md"
+                >
+                  <div className="relative h-40 w-full bg-gray-100">
+                    {l.imageUrl ? (
+                      <img src={l.imageUrl} alt={l.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-gray-300">
+                        <Gavel size={36} />
+                      </div>
+                    )}
+                    <div className="absolute left-2 top-2">
+                      <GradeBadge grade={l.aiGrade} />
+                    </div>
+                    {l.discount != null && l.discount > 0 && (
+                      <div className="absolute right-2 top-2 rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-bold text-white">
+                        {Math.round(l.discount)}% off
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col p-4">
+                    <h3 className="line-clamp-2 font-semibold text-gray-900">{l.title}</h3>
+                    <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+                      <MapPin size={13} /> {[l.suburb, l.city].filter(Boolean).join(", ") || l.province}
+                    </p>
+                    <div className="mt-auto pt-3">
+                      <div className="text-lg font-bold text-gray-900">{ZAR(l.askingPrice)}</div>
+                      {l.marketValue ? (
+                        <div className="text-xs text-gray-500">Market est. {ZAR(l.marketValue)}</div>
+                      ) : null}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            <div className="mt-8 flex items-center justify-center gap-4">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-40"
+              >
+                <ArrowLeft size={16} /> Prev
+              </button>
+              <span className="text-sm text-gray-600">
+                Page {data?.currentPage ?? 1} of {Math.max(1, data?.totalPages ?? 1)} · {data?.totalCount ?? 0} deals
+              </span>
+              <button
+                disabled={page >= (data?.totalPages ?? 1)}
+                onClick={() => setPage((p) => p + 1)}
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-40"
+              >
+                Next <ArrowRight size={16} />
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {detailId != null && (
+        <DealDetailModal
+          listingId={detailId}
+          authToken={authToken ?? ""}
+          onClose={() => setDetailId(null)}
+          onGraded={() => dealsQuery.refetch()}
+          trpc={trpc}
+          trpcClient={trpcClient}
+        />
+      )}
+    </div>
+  );
+}
+
+function DealDetailModal({
+  listingId,
+  authToken,
+  onClose,
+  onGraded,
+  trpc,
+  trpcClient,
+}: {
+  listingId: number;
+  authToken: string;
+  onClose: () => void;
+  onGraded: () => void;
+  trpc: ReturnType<typeof useTRPC>;
+  trpcClient: ReturnType<typeof useTRPCClient>;
+}) {
+  const [grading, setGrading] = useState(false);
+  const detailQuery = useQuery({
+    ...trpc.getSubscriberDistressedDetail.queryOptions({ authToken, listingId }),
+    enabled: !!authToken,
+  });
+  const l = detailQuery.data as any;
+  const uw = (l?.aiUnderwriting ?? null) as
+    | { pros?: string[]; cons?: string[]; redFlags?: string[]; recommendations?: string[] }
+    | null;
+
+  const handleGrade = async () => {
+    setGrading(true);
+    try {
+      await trpcClient.screenSubscriberDistressedDeal.mutate({ authToken, listingId });
+      await detailQuery.refetch();
+      onGraded();
+      toast.success("AI grade ready");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Could not grade this deal.");
+    } finally {
+      setGrading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-8">
+      <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-xl">
+        <button
+          onClick={onClose}
+          className="absolute right-3 top-3 rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+        >
+          <X size={20} />
+        </button>
+
+        {detailQuery.isLoading || !l ? (
+          <div className="flex items-center justify-center py-24 text-gray-500">
+            <Loader2 className="animate-spin" size={28} />
+          </div>
+        ) : (
+          <div>
+            {l.imageUrl ? (
+              <img src={l.imageUrl} alt={l.title} className="h-56 w-full rounded-t-2xl object-cover" />
+            ) : null}
+            <div className="p-6">
+              <div className="flex flex-wrap items-center gap-2">
+                <GradeBadge grade={l.aiGrade} />
+                {l.discount != null && l.discount > 0 && (
+                  <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-bold text-white">
+                    {Math.round(l.discount)}% below market
+                  </span>
+                )}
+                {l.auctionType && (
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                    {l.auctionType}
+                  </span>
+                )}
+              </div>
+
+              <h2 className="mt-3 text-xl font-bold text-gray-900">{l.title}</h2>
+              <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+                <MapPin size={14} /> {[l.suburb, l.city, l.province].filter(Boolean).join(", ")}
+              </p>
+
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <Stat label="Asking price" value={ZAR(l.askingPrice)} />
+                {l.marketValue ? <Stat label="Market est." value={ZAR(l.marketValue)} /> : null}
+                {l.bedrooms ? <Stat label="Beds" value={String(l.bedrooms)} /> : null}
+                {l.bathrooms ? <Stat label="Baths" value={String(l.bathrooms)} /> : null}
+                {l.erfSize ? <Stat label="Erf" value={`${l.erfSize} m²`} /> : null}
+                {l.auctionDate ? (
+                  <Stat label="Auction" value={new Date(l.auctionDate).toLocaleDateString("en-ZA")} />
+                ) : null}
+              </div>
+
+              {/* AI breakdown */}
+              <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="flex items-center gap-2 font-semibold text-gray-900">
+                    <Sparkles size={16} className="text-teal-600" /> AI deal breakdown
+                  </h3>
+                  {!l.aiGrade && (
+                    <button
+                      onClick={handleGrade}
+                      disabled={grading}
+                      className="inline-flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+                    >
+                      {grading && <Loader2 className="animate-spin" size={14} />}
+                      Grade this deal
+                    </button>
+                  )}
+                </div>
+
+                {l.aiSummary ? (
+                  <p className="mt-3 text-sm text-gray-700">{l.aiSummary}</p>
+                ) : (
+                  <p className="mt-3 text-sm text-gray-500">
+                    Not graded yet. Run the AI screen to get an A–E grade, risk score and underwriting notes.
+                  </p>
+                )}
+
+                {uw && (
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <BreakdownList title="Pros" items={uw.pros} tone="text-emerald-700" />
+                    <BreakdownList title="Cons" items={uw.cons} tone="text-amber-700" />
+                    <BreakdownList title="Red flags" items={uw.redFlags} tone="text-red-700" />
+                    <BreakdownList title="Recommendations" items={uw.recommendations} tone="text-teal-700" />
+                  </div>
+                )}
+              </div>
+
+              {l.description ? (
+                <p className="mt-5 whitespace-pre-line text-sm text-gray-600">{l.description}</p>
+              ) : null}
+
+              {l.sourceUrl ? (
+                <a
+                  href={l.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-teal-700 hover:underline"
+                >
+                  View original listing ({l.source}) <ExternalLink size={14} />
+                </a>
+              ) : null}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-2.5">
+      <div className="text-xs text-gray-500">{label}</div>
+      <div className="font-semibold text-gray-900">{value}</div>
+    </div>
+  );
+}
+
+function BreakdownList({ title, items, tone }: { title: string; items?: string[]; tone: string }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div>
+      <div className={`text-xs font-bold uppercase tracking-wide ${tone}`}>{title}</div>
+      <ul className="mt-1 space-y-1">
+        {items.map((it, i) => (
+          <li key={i} className="text-sm text-gray-700">
+            • {it}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

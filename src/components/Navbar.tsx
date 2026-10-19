@@ -93,7 +93,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Plans",
     icon: Sparkles,
-    matchLabels: ["Plans & Pricing", "Deal Alerts", "Billing"],
+    matchLabels: ["Plans & Pricing", "Browse Deals", "Deal Alerts", "Billing"],
   },
   {
     label: "Admin",

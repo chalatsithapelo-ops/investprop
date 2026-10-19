@@ -166,14 +166,9 @@ function buildAlertEmail(
 }
 
 // ─── Run subscriber alerts (admin / scheduled) ─────────────────
-export const runDistressedSubscriberAlerts = baseProcedure
-  .input(z.object({ authToken: z.string(), dryRun: z.boolean().optional() }))
-  .mutation(async ({ input }) => {
-    const user = await getAuthenticatedUser(input.authToken);
-    if (!["ADMIN", "DEVELOPMENT_MANAGER"].includes(user.role)) {
-      throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required." });
-    }
-
+/** Core subscriber-alert run. Reusable by the admin procedure and the scheduler. */
+export async function runSubscriberAlertsCore(opts: { dryRun?: boolean }) {
+    const dryRun = opts.dryRun ?? false;
     const subs = await db.distressedAlertSubscription.findMany({
       where: { active: true },
       include: { user: { select: { id: true, name: true, email: true, role: true } } },
@@ -211,7 +206,7 @@ export const runDistressedSubscriberAlerts = baseProcedure
       matchedSubscribers += 1;
       totalMatches += matches.length;
 
-      if (input.dryRun) continue;
+      if (dryRun) continue;
 
       if (sub.channelPush) {
         await createNotification(
@@ -252,7 +247,7 @@ export const runDistressedSubscriberAlerts = baseProcedure
     }
 
     let emailsSent = 0;
-    if (!input.dryRun && emailItems.length > 0) {
+    if (!dryRun && emailItems.length > 0) {
       emailsSent = await sendBatchEmails(emailItems);
     }
 
@@ -261,6 +256,16 @@ export const runDistressedSubscriberAlerts = baseProcedure
       matchedSubscribers,
       totalMatches,
       emailsSent,
-      dryRun: input.dryRun ?? false,
+      dryRun,
     };
+}
+
+export const runDistressedSubscriberAlerts = baseProcedure
+  .input(z.object({ authToken: z.string(), dryRun: z.boolean().optional() }))
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    if (!["ADMIN", "DEVELOPMENT_MANAGER"].includes(user.role)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required." });
+    }
+    return runSubscriberAlertsCore({ dryRun: input.dryRun });
   });

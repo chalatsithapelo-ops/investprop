@@ -38,6 +38,7 @@ import {
   FileBarChart,
   BellRing,
   Sparkles,
+  TrendingDown,
 } from "lucide-react";
 
 /**
@@ -398,6 +399,13 @@ export const mainNavigationLinks: NavigationLink[] = [
     icon: Zap,
     roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
     description: "AI-powered distressed property scanner for Gauteng bargains",
+  },
+  {
+    label: "Browse Deals",
+    to: "/distressed-deals/browse",
+    icon: TrendingDown,
+    roles: ["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER"],
+    description: "Browse live AI-graded distressed & auction listings",
   },
   {
     label: "Deal Alerts",

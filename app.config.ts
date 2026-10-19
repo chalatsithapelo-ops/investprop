@@ -126,6 +126,38 @@ export default createApp({
       ],
     },
     {
+      type: "http",
+      name: "cron-distressed",
+      base: "/api/cron/distressed",
+      handler: "./src/server/distressed/cron-handler.ts",
+      target: "server",
+      plugins: () => [
+        config("allowedHosts", {
+          // @ts-ignore
+          server: {
+            allowedHosts: BASE_URL
+              ? [BASE_URL.split("://")[1]]
+              : undefined,
+          },
+        }),
+        config("cron-ssr-externals", {
+          ssr: {
+            external: [
+              ...([/\.prisma/, /@prisma\/client/] as unknown as string[]),
+              "bcryptjs",
+              "jsonwebtoken",
+            ],
+          },
+          resolve: {
+            conditions: ["import", "module", "default"],
+          },
+        }),
+        tsConfigPaths({
+          projects: ["./tsconfig.json"],
+        }),
+      ],
+    },
+    {
       type: "spa",
       name: "client",
       handler: "./index.html",

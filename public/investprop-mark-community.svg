@@ -1,0 +1,39 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Investprop collaboration community mark">
+  <defs>
+    <linearGradient id="bgCommunity" x1="20" y1="20" x2="236" y2="236" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#1F2937"/>
+    </linearGradient>
+    <linearGradient id="goldCommunity" x1="68" y1="62" x2="186" y2="204" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F8D66D"/>
+      <stop offset="1" stop-color="#B7791F"/>
+    </linearGradient>
+    <linearGradient id="greenCommunity" x1="52" y1="138" x2="202" y2="172" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4ADE80"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="16" y="16" width="224" height="224" rx="40" fill="url(#bgCommunity)"/>
+  <circle cx="128" cy="128" r="94" fill="#0B1324" stroke="#334155" stroke-width="2"/>
+
+  <path d="M66 124L128 76L190 124" stroke="url(#goldCommunity)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="80" y="122" width="96" height="70" rx="10" fill="#0A1220" stroke="url(#goldCommunity)" stroke-width="4"/>
+
+  <path d="M128 176V138" stroke="url(#goldCommunity)" stroke-width="8" stroke-linecap="round"/>
+  <path d="M114 150L128 136L142 150" stroke="url(#goldCommunity)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <path d="M62 162C86 142 108 138 126 149" stroke="url(#greenCommunity)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M194 162C170 142 148 138 130 149" stroke="url(#greenCommunity)" stroke-width="6" stroke-linecap="round"/>
+
+  <circle cx="54" cy="164" r="11" fill="#22C55E"/>
+  <circle cx="202" cy="164" r="11" fill="#14B8A6"/>
+  <circle cx="128" cy="148" r="9" fill="#34D399"/>
+
+  <path d="M64 96L88 108" stroke="#67E8F9" stroke-width="3" stroke-linecap="round"/>
+  <path d="M192 96L168 108" stroke="#67E8F9" stroke-width="3" stroke-linecap="round"/>
+  <path d="M128 60V76" stroke="#67E8F9" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="64" cy="96" r="3" fill="#67E8F9"/>
+  <circle cx="192" cy="96" r="3" fill="#67E8F9"/>
+  <circle cx="128" cy="60" r="3" fill="#67E8F9"/>
+</svg>

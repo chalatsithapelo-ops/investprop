@@ -76,16 +76,16 @@ async function buildListingContext(listingId: number) {
   return { listing: l, text: lines.join("\n") };
 }
 
-export const screenDistressedListing = baseProcedure
-  .input(z.object({ authToken: z.string(), listingId: z.number(), force: z.boolean().optional() }))
-  .mutation(async ({ input }) => {
-    const user = await getAuthenticatedUser(input.authToken);
-    requireRole(user, ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"]);
-
-    const ctx = await buildListingContext(input.listingId);
+/** Core single-listing AI screen, reusable by procedures and the scheduler. */
+export async function screenListingCore(opts: {
+  actorUserId: number | null;
+  listingId: number;
+  force?: boolean;
+}) {
+    const ctx = await buildListingContext(opts.listingId);
     if (!ctx) throw new TRPCError({ code: "NOT_FOUND", message: "Listing not found" });
 
-    if (!input.force && ctx.listing.aiGrade) {
+    if (!opts.force && ctx.listing.aiGrade) {
       return {
         grade: ctx.listing.aiGrade,
         riskScore: ctx.listing.aiRiskScore,
@@ -127,10 +127,10 @@ South African context: factor in transfer duty, bond registration, rates clearan
     const userPrompt = `LISTING:\n${ctx.text}\n\nReturn the JSON object now.`;
 
     const result = await runAIWithGuard({
-      userId: user.id,
+      userId: opts.actorUserId,
       feature: "distress",
       model: getModelId("cheap"),
-      metadata: { listingId: input.listingId },
+      metadata: { listingId: opts.listingId },
       run: () => generateText({ model: getModel("cheap"), system: systemPrompt, prompt: userPrompt }),
       extractUsage: (r) => ({ promptTokens: r.usage?.promptTokens, completionTokens: r.usage?.completionTokens }),
     });
@@ -139,7 +139,7 @@ South African context: factor in transfer duty, bond registration, rates clearan
     if (!parsed) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned an unparseable screen." });
 
     await db.distressedListing.update({
-      where: { id: input.listingId },
+      where: { id: opts.listingId },
       data: {
         aiGrade: parsed.grade,
         aiRiskScore: parsed.riskScore,
@@ -155,14 +155,18 @@ South African context: factor in transfer duty, bond registration, rates clearan
     });
 
     return { ...parsed, cached: false };
-  });
+}
 
-export const screenDistressedBatch = baseProcedure
-  .input(z.object({ authToken: z.string(), limit: z.number().min(1).max(50).optional().default(20) }))
+export const screenDistressedListing = baseProcedure
+  .input(z.object({ authToken: z.string(), listingId: z.number(), force: z.boolean().optional() }))
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
     requireRole(user, ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"]);
+    return screenListingCore({ actorUserId: user.id, listingId: input.listingId, force: input.force });
+  });
 
+/** Core batch AI screen of unscreened/stale listings. Reusable by the scheduler. */
+export async function screenBatchCore(opts: { actorUserId: number | null; limit: number }) {
     // Find listings that have never been screened (or are stale > 30 days)
     const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const listings = await db.distressedListing.findMany({
@@ -170,7 +174,7 @@ export const screenDistressedBatch = baseProcedure
         status: { in: ["ACTIVE", "WATCHED"] },
         OR: [{ aiGrade: null }, { aiScoredAt: { lt: cutoff } }],
       },
-      take: input.limit,
+      take: opts.limit,
       orderBy: [{ isFavourited: "desc" }, { createdAt: "desc" }],
     });
 
@@ -182,7 +186,7 @@ export const screenDistressedBatch = baseProcedure
         if (!ctx) { failed++; continue; }
         const systemPrompt = `Return ONLY JSON: {"grade":"A-E","riskScore":0-100,"summary":"2-3 plain sentences","pros":["..."],"cons":["..."],"redFlags":["..."],"recommendations":["..."]}. Grade harshly. South African distressed property context.`;
         const result = await runAIWithGuard({
-          userId: user.id,
+          userId: opts.actorUserId,
           feature: "distress",
           model: getModelId("cheap"),
           metadata: { listingId: l.id, batch: true },
@@ -209,6 +213,14 @@ export const screenDistressedBatch = baseProcedure
       }
     }
     return { screened, failed, attempted: listings.length };
+}
+
+export const screenDistressedBatch = baseProcedure
+  .input(z.object({ authToken: z.string(), limit: z.number().min(1).max(50).optional().default(20) }))
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"]);
+    return screenBatchCore({ actorUserId: user.id, limit: input.limit });
   });
 
 export const getDistressedPriceHistory = baseProcedure
@@ -397,12 +409,7 @@ function normaliseString(s: string | null | undefined): string {
   return (s ?? "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export const runDistressedDedup = baseProcedure
-  .input(z.object({ authToken: z.string() }))
-  .mutation(async ({ input }) => {
-    const user = await getAuthenticatedUser(input.authToken);
-    requireRole(user, ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"]);
-
+export async function runDedupCore() {
     const listings = await db.distressedListing.findMany({
       where: { status: { in: ["ACTIVE", "WATCHED"] } },
       orderBy: { createdAt: "asc" },
@@ -482,16 +489,20 @@ export const runDistressedDedup = baseProcedure
 
     const liveGroups = groups.filter((g) => g.members.length > 0);
     return { groupsFound: liveGroups.length, listingsGrouped: updated, totalListings: listings.length };
+}
+
+export const runDistressedDedup = baseProcedure
+  .input(z.object({ authToken: z.string() }))
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"]);
+    return runDedupCore();
   });
 
 // ─── Reminders (manual trigger for now; wire to cron when scheduler exists) ───
 
-export const runDistressedReminders = baseProcedure
-  .input(z.object({ authToken: z.string(), priceDropThresholdPct: z.number().optional().default(10) }))
-  .mutation(async ({ input }) => {
-    const user = await getAuthenticatedUser(input.authToken);
-    requireRole(user, ["ADMIN", "DEVELOPMENT_MANAGER"]);
-
+export async function runRemindersCore(opts: { priceDropThresholdPct?: number }) {
+    const priceDropThresholdPct = opts.priceDropThresholdPct ?? 10;
     const now = new Date();
     const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
@@ -551,7 +562,7 @@ export const runDistressedReminders = baseProcedure
       const current = l.askingPrice;
       if (first <= 0 || current >= first) continue;
       const dropPct = ((first - current) / first) * 100;
-      if (dropPct < input.priceDropThresholdPct) continue;
+      if (dropPct < priceDropThresholdPct) continue;
       // Only notify once per fresh drop threshold
       if (sent.priceDropFromR && sent.priceDropFromR <= current) continue;
 
@@ -574,4 +585,12 @@ export const runDistressedReminders = baseProcedure
     }
 
     return { auctionReminders, priceDropAlerts, watchedScanned: watchedAll.length };
+}
+
+export const runDistressedReminders = baseProcedure
+  .input(z.object({ authToken: z.string(), priceDropThresholdPct: z.number().optional().default(10) }))
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, ["ADMIN", "DEVELOPMENT_MANAGER"]);
+    return runRemindersCore({ priceDropThresholdPct: input.priceDropThresholdPct });
   });
