@@ -190,6 +190,7 @@ export async function screenBatchCore(opts: { actorUserId: number | null; limit:
           feature: "distress",
           model: getModelId("cheap"),
           metadata: { listingId: l.id, batch: true },
+          bypassRateLimit: true,
           run: () => generateText({ model: getModel("cheap"), system: systemPrompt, prompt: ctx.text }),
           extractUsage: (r) => ({ promptTokens: r.usage?.promptTokens, completionTokens: r.usage?.completionTokens }),
         });

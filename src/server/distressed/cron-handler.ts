@@ -22,12 +22,12 @@ export default defineEventHandler(async (event) => {
   if (!request) return json({ ok: false, reason: "no request" }, 400);
   if (request.method !== "POST") return json({ ok: false, reason: "method not allowed" }, 405);
 
-  const secret = env.CRON_SECRET;
+  const secret = env.CRON_SECRET?.trim();
   if (!secret) return json({ ok: false, reason: "cron not configured" }, 503);
 
   const header = request.headers.get("authorization") ?? "";
   const bearer = header.replace(/^Bearer\s+/i, "").trim();
-  const key = new URL(request.url).searchParams.get("key");
+  const key = new URL(request.url).searchParams.get("key")?.trim();
   if (bearer !== secret && key !== secret) {
     return json({ ok: false, reason: "unauthorized" }, 401);
   }

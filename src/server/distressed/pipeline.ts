@@ -57,7 +57,7 @@ export async function runDistressedPipeline(opts?: {
 
   // 2. AI batch-grade
   try {
-    summary.grade = await screenBatchCore({ actorUserId, limit: opts?.gradeLimit ?? 20 });
+    summary.grade = await screenBatchCore({ actorUserId, limit: opts?.gradeLimit ?? 40 });
   } catch (e) {
     errors.push(`grade: ${e instanceof Error ? e.message : String(e)}`);
   }

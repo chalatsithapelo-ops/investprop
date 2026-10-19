@@ -183,10 +183,12 @@ export async function runAIWithGuard<T>(opts: {
   feature: AIFeature;
   model: string;
   metadata?: Record<string, unknown>;
+  /** Skip the per-user rate limiter. Only for trusted backend jobs (e.g. the nightly pipeline). */
+  bypassRateLimit?: boolean;
   run: () => Promise<T>;
   extractUsage?: (result: T) => { promptTokens?: number; completionTokens?: number };
 }): Promise<T> {
-  const limit = checkRateLimit(opts.userId, opts.feature);
+  const limit = opts.bypassRateLimit ? ({ ok: true } as const) : checkRateLimit(opts.userId, opts.feature);
   if (!limit.ok) {
     await logAIUsage({
       userId: opts.userId,
@@ -201,7 +203,7 @@ export async function runAIWithGuard<T>(opts: {
     err.retryAfterSec = limit.retryAfterSec;
     throw err;
   }
-  recordRateLimitHit(opts.userId, opts.feature);
+  if (!opts.bypassRateLimit) recordRateLimitHit(opts.userId, opts.feature);
 
   const t0 = Date.now();
   try {
