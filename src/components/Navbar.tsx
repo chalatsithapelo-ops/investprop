@@ -12,6 +12,7 @@ import {
   DollarSign,
   Briefcase,
   ShieldCheck,
+  Shield,
   Banknote,
 } from "lucide-react";
 import {
@@ -85,6 +86,27 @@ const navGroups: NavGroup[] = [
       "Compliance Dashboard",
       "Legal Documents",
       "My Documents",
+    ],
+  },
+  {
+    label: "Admin",
+    icon: Shield,
+    matchLabels: [
+      "Admin Dashboard",
+      "Subscriptions",
+      "Platform Revenue",
+      "Referral Partners",
+      "Reconciliation",
+      "Payment Review",
+      "Action Required",
+      "Distress Watchlist",
+      "Team Performance",
+      "Variations",
+      "Announcements",
+      "Audit Log",
+      "System Health",
+      "Bulk Operations",
+      "POPIA Subject Access",
     ],
   },
 ];

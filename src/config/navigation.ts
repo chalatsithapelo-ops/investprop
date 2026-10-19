@@ -160,6 +160,13 @@ export const mainNavigationLinks: NavigationLink[] = [
     description: "Verify investor identities and track FICA compliance status",
   },
   {
+    label: "Admin Dashboard",
+    to: "/admin",
+    icon: Shield,
+    roles: ["DEVELOPMENT_MANAGER", "ADMIN"],
+    description: "User management, stats and all admin tools",
+  },
+  {
     label: "Action Required",
     to: "/admin/action-required",
     icon: Inbox,
@@ -207,6 +214,20 @@ export const mainNavigationLinks: NavigationLink[] = [
     icon: CreditCard,
     roles: ["ADMIN", "DEVELOPMENT_MANAGER"],
     description: "SaaS plan performance, MRR and recent payments",
+  },
+  {
+    label: "Reconciliation",
+    to: "/admin/reconciliation",
+    icon: Scale,
+    roles: ["ADMIN", "DEVELOPMENT_MANAGER"],
+    description: "Match payments against ledger entries",
+  },
+  {
+    label: "Payment Review",
+    to: "/admin/payment-review",
+    icon: Receipt,
+    roles: ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
+    description: "Approve investor proof-of-payment submissions",
   },
   {
     label: "Referral Partners",
