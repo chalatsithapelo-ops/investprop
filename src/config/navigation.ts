@@ -37,6 +37,7 @@ import {
   Receipt,
   FileBarChart,
   BellRing,
+  Sparkles,
 } from "lucide-react";
 
 /**
@@ -404,6 +405,12 @@ export const mainNavigationLinks: NavigationLink[] = [
     icon: Gavel,
     roles: ["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER"],
     description: "Configure distressed-deal alerts matched to your filters",
+  },
+  {
+    label: "Plans & Pricing",
+    to: "/pricing",
+    icon: Sparkles,
+    description: "Compare plans and subscribe",
   },
   {
     label: "Billing",

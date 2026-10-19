@@ -53,6 +53,12 @@ function LandingPage() {
               Sell or Partner With Us
             </Link>
             <Link
+              to="/pricing"
+              className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-8 py-3.5 text-lg font-semibold text-gray-700 transition hover:bg-gray-50"
+            >
+              View Plans
+            </Link>
+            <Link
               to="/login"
               className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-8 py-3.5 text-lg font-semibold text-gray-700 transition hover:bg-gray-50"
             >

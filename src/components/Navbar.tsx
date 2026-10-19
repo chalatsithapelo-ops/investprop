@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   Shield,
   Banknote,
+  CreditCard,
+  Sparkles,
 } from "lucide-react";
 import {
   mainNavigationLinks,
@@ -87,6 +89,11 @@ const navGroups: NavGroup[] = [
       "Legal Documents",
       "My Documents",
     ],
+  },
+  {
+    label: "Plans",
+    icon: Sparkles,
+    matchLabels: ["Plans & Pricing", "Deal Alerts", "Billing"],
   },
   {
     label: "Admin",
