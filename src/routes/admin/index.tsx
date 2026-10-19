@@ -1,7 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Shield, Users, Building, Activity, Settings, X, AlertTriangle, Pencil, KeyRound, Trash2 } from "lucide-react";
+import {
+  Shield, Users, Building, Activity, Settings, X, AlertTriangle, Pencil, KeyRound, Trash2,
+  CreditCard, DollarSign, BadgeDollarSign, Scale, Receipt, Inbox, GitBranch, Award,
+  ShieldCheck, Send, Server, Database, ChevronRight,
+} from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
@@ -47,6 +51,26 @@ function AdminPage() {
 
   const isManager = user?.role === "ADMIN" || user?.role === "DEVELOPMENT_MANAGER";
   const isAdmin = user?.role === "ADMIN";
+
+  const adminTools: { label: string; to: string; icon: typeof Shield; desc: string; adminOnly: boolean }[] = [
+    { label: "Subscriptions", to: "/admin/subscriptions", icon: CreditCard, desc: "SaaS plans, MRR, Paystack sync & recent payments", adminOnly: false },
+    { label: "Platform Revenue", to: "/admin/revenue", icon: DollarSign, desc: "Every platform fee earned & fee-rate tuning", adminOnly: false },
+    { label: "Referral Partners", to: "/admin/referrals", icon: BadgeDollarSign, desc: "Partners & commission ledger", adminOnly: false },
+    { label: "Reconciliation", to: "/admin/reconciliation", icon: Scale, desc: "Match payments against ledger entries", adminOnly: false },
+    { label: "Payment Review", to: "/admin/payment-review", icon: Receipt, desc: "Approve investor proof-of-payment", adminOnly: false },
+    { label: "Action Required", to: "/admin/action-required", icon: Inbox, desc: "Everything needing attention in one inbox", adminOnly: false },
+    { label: "Distress Watchlist", to: "/admin/ai-distress", icon: Activity, desc: "AI early-warning deal scores", adminOnly: false },
+    { label: "Team Performance", to: "/admin/team", icon: Users, desc: "Per-manager delivery scorecards", adminOnly: false },
+    { label: "Variations", to: "/admin/variations", icon: GitBranch, desc: "Approve contractor variation orders", adminOnly: false },
+    { label: "Certificate Mgmt", to: "/admin/certificates", icon: Award, desc: "Validate & track share certificates", adminOnly: false },
+    { label: "FICA Verification", to: "/admin/fica-verification", icon: ShieldCheck, desc: "Verify investor identities", adminOnly: false },
+    { label: "Announcements", to: "/admin/announcements", icon: Send, desc: "Broadcast to investors & owners", adminOnly: false },
+    { label: "Audit Log", to: "/admin/audit-log", icon: ShieldCheck, desc: "Full privileged-action trail", adminOnly: false },
+    { label: "System Health", to: "/admin/system-health", icon: Server, desc: "Live metrics, queues & activity", adminOnly: true },
+    { label: "Bulk Operations", to: "/admin/bulk-ops", icon: Users, desc: "Approve/suspend many users at once", adminOnly: true },
+    { label: "POPIA Subject Access", to: "/admin/popia-sar", icon: Database, desc: "Export a user's full data record", adminOnly: true },
+  ];
+  const visibleTools = adminTools.filter((t) => isAdmin || !t.adminOnly);
 
   const statsQuery = useQuery({
     ...trpc.getSystemStats.queryOptions(),
@@ -210,20 +234,54 @@ function AdminPage() {
 
         {/* Overview Tab */}
         {tab === "overview" && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {statCards.map((card) => (
-              <div key={card.label} className="rounded-xl border border-navy-800/50 bg-navy-900/50 p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">{card.label}</p>
-                    <p className="mt-1 text-2xl font-bold text-gray-900">{card.value}</p>
-                  </div>
-                  <div className={`rounded-lg ${card.bg} p-3`}>
-                    <card.icon className={card.color} size={24} />
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {statCards.map((card) => (
+                <div key={card.label} className="rounded-xl border border-navy-800/50 bg-navy-900/50 p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">{card.label}</p>
+                      <p className="mt-1 text-2xl font-bold text-gray-900">{card.value}</p>
+                    </div>
+                    <div className={`rounded-lg ${card.bg} p-3`}>
+                      <card.icon className={card.color} size={24} />
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
+
+            {/* Admin Tools */}
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <Settings className="text-gold-600" size={18} />
+                <h2 className="text-lg font-bold text-gray-900">Admin Tools</h2>
+                <span className="rounded-full bg-navy-800 px-2 py-0.5 text-xs text-gray-500">{visibleTools.length}</span>
               </div>
-            ))}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {visibleTools.map((t) => (
+                  <Link
+                    key={t.to}
+                    to={t.to}
+                    className="group flex items-start gap-3 rounded-xl border border-navy-800/50 bg-navy-900/50 p-4 transition hover:border-gold-500/50 hover:bg-navy-900"
+                  >
+                    <div className="rounded-lg bg-gold-500/10 p-2.5">
+                      <t.icon className="text-gold-600" size={20} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-semibold text-gray-900">{t.label}</p>
+                        {t.adminOnly && (
+                          <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] font-medium uppercase text-red-600">Admin</span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-xs text-gray-500">{t.desc}</p>
+                    </div>
+                    <ChevronRight className="mt-1 shrink-0 text-gray-600 transition group-hover:text-gold-600" size={16} />
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 

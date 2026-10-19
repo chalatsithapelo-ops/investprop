@@ -44,7 +44,7 @@ function PaymentReviewPage() {
       navigate({ to: "/login" });
       return;
     }
-    const allowed = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"];
+    const allowed = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"];
     if (!allowed.includes(user.role)) {
       navigate({ to: "/dashboard" });
     }
