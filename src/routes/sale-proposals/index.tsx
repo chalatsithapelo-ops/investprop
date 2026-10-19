@@ -60,6 +60,9 @@ function SaleProposalsPage() {
   const [counterOfferFor, setCounterOfferFor] = useState<any>(null);
   const [counterAmount, setCounterAmount] = useState("");
   const [counterTerms, setCounterTerms] = useState("");
+  const [feeInputs, setFeeInputs] = useState<
+    Record<number, { kind: "JV_PROMOTE" | "LEASE_BACK_MGMT"; amount: string; period: string }>
+  >({});
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -114,6 +117,30 @@ function SaleProposalsPage() {
       queryClient.invalidateQueries({ queryKey: trpc.getSaleProposals.queryKey() });
     },
     onError: (err: any) => toast.error(err.message ?? "Counter-offer failed"),
+  });
+
+  const bookFeeMutation = useMutation({
+    mutationFn: (params: {
+      proposalId: number;
+      feeType: "JV_PROMOTE" | "LEASE_BACK_MGMT";
+      baseAmount: number;
+      period?: string;
+    }) =>
+      (trpcClient as any).bookOwnerRecurringFee.mutate({
+        authToken: authToken ?? "",
+        ...params,
+      }),
+    onSuccess: (res: any, vars) => {
+      toast.success(
+        `Booked ${vars.feeType === "JV_PROMOTE" ? "JV promote" : "lease-back management"} fee of R${Number(res?.feeAmount ?? 0).toLocaleString()}`
+      );
+      setFeeInputs((prev) => {
+        const next = { ...prev };
+        delete next[vars.proposalId];
+        return next;
+      });
+    },
+    onError: (err: any) => toast.error(err.message ?? "Could not book fee"),
   });
 
   const downloadLOI = async (proposalId: number) => {
@@ -570,6 +597,91 @@ function SaleProposalsPage() {
                                   Re-download LOI
                                 </button>
                               </div>
+                            </div>
+                          )}
+
+                          {/* Recurring owner-fee booking (JV promote / lease-back mgmt) */}
+                          {proposal.status === "ACCEPTED" && (
+                            <div className="rounded-lg border border-gold-200 bg-gold-50 p-3">
+                              <p className="mb-2 text-xs font-medium text-gray-800">
+                                Book a recurring owner fee (JV promote / lease-back management)
+                              </p>
+                              <div className="flex flex-wrap items-end gap-2">
+                                <select
+                                  value={feeInputs[proposal.id]?.kind ?? "JV_PROMOTE"}
+                                  onChange={(e) =>
+                                    setFeeInputs((prev) => ({
+                                      ...prev,
+                                      [proposal.id]: {
+                                        kind: e.target.value as "JV_PROMOTE" | "LEASE_BACK_MGMT",
+                                        amount: prev[proposal.id]?.amount ?? "",
+                                        period: prev[proposal.id]?.period ?? "",
+                                      },
+                                    }))
+                                  }
+                                  className="rounded-lg border border-gray-300 px-2 py-1.5 text-xs focus:border-gold-500 focus:outline-none"
+                                >
+                                  <option value="JV_PROMOTE">JV promote (on owner payout)</option>
+                                  <option value="LEASE_BACK_MGMT">Lease-back mgmt (on rent)</option>
+                                </select>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  placeholder="Base amount (ZAR)"
+                                  value={feeInputs[proposal.id]?.amount ?? ""}
+                                  onChange={(e) =>
+                                    setFeeInputs((prev) => ({
+                                      ...prev,
+                                      [proposal.id]: {
+                                        kind: prev[proposal.id]?.kind ?? "JV_PROMOTE",
+                                        amount: e.target.value,
+                                        period: prev[proposal.id]?.period ?? "",
+                                      },
+                                    }))
+                                  }
+                                  className="w-36 rounded-lg border border-gray-300 px-2 py-1.5 text-xs focus:border-gold-500 focus:outline-none"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Period (e.g. 2026-06)"
+                                  value={feeInputs[proposal.id]?.period ?? ""}
+                                  onChange={(e) =>
+                                    setFeeInputs((prev) => ({
+                                      ...prev,
+                                      [proposal.id]: {
+                                        kind: prev[proposal.id]?.kind ?? "JV_PROMOTE",
+                                        amount: prev[proposal.id]?.amount ?? "",
+                                        period: e.target.value,
+                                      },
+                                    }))
+                                  }
+                                  className="w-32 rounded-lg border border-gray-300 px-2 py-1.5 text-xs focus:border-gold-500 focus:outline-none"
+                                />
+                                <button
+                                  disabled={bookFeeMutation.isPending}
+                                  onClick={() => {
+                                    const inp = feeInputs[proposal.id];
+                                    const amount = Number(inp?.amount);
+                                    if (!amount || amount <= 0) {
+                                      toast.error("Enter a positive base amount");
+                                      return;
+                                    }
+                                    bookFeeMutation.mutate({
+                                      proposalId: proposal.id,
+                                      feeType: inp?.kind ?? "JV_PROMOTE",
+                                      baseAmount: amount,
+                                      ...(inp?.period ? { period: inp.period } : {}),
+                                    });
+                                  }}
+                                  className="rounded-lg bg-gold-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gold-600 disabled:opacity-50"
+                                >
+                                  Book fee
+                                </button>
+                              </div>
+                              <p className="mt-2 text-[11px] text-gray-500">
+                                The configured rate (set in Platform Revenue) is applied to the base
+                                amount and recorded in the revenue ledger.
+                              </p>
                             </div>
                           )}
 

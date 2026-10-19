@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { db } from "~/server/db";
 import { protectedProcedure } from "../main";
+import { baseProcedure } from "~/server/trpc/main";
 import { createAuditLog } from "./audit-log";
 import {
   PLATFORM_FEE_CONFIG_ID,
@@ -107,7 +108,19 @@ export const getPlatformRevenueLedger = adminProcedure
   .input(
     z.object({
       feeType: z
-        .enum(["CAPITAL_RAISE", "DISTRIBUTION", "SECONDARY_TRADE", "SOURCING", "ALL"])
+        .enum([
+          "CAPITAL_RAISE",
+          "DISTRIBUTION",
+          "SECONDARY_TRADE",
+          "SOURCING",
+          "SELLER_FACILITATION",
+          "ASSESSMENT_PACK",
+          "JV_PROMOTE",
+          "LEASE_BACK_SETUP",
+          "LEASE_BACK_MGMT",
+          "BOND_REFERRAL",
+          "ALL",
+        ])
         .default("ALL"),
       page: z.number().int().positive().default(1),
       limit: z.number().int().positive().max(100).default(25),
@@ -143,6 +156,22 @@ export const getPlatformFeeConfig = adminProcedure.query(async () => {
   return getFeeConfig();
 });
 
+// ─── Owner-facing fee schedule (public, disclosure) ────────────
+// Returns only the seller-side rates owners need for transparent, itemised
+// disclosure (CPA). Never exposes internal buy-side margins.
+export const getOwnerFeeSchedule = baseProcedure.query(async () => {
+  const cfg = await getFeeConfig();
+  return {
+    enabled: cfg.enabled,
+    sellerFacilitationPct: cfg.sellerFacilitationFeeBps / 100,
+    assessmentPackFee: cfg.assessmentPackFee,
+    jvPromotePct: cfg.jvPromoteFeeBps / 100,
+    leaseBackSetupFee: cfg.leaseBackSetupFee,
+    leaseBackMgmtPct: cfg.leaseBackMgmtFeeBps / 100,
+    bondReferralFee: cfg.bondReferralFee,
+  };
+});
+
 // ─── Update fee configuration ──────────────────────────────────
 
 export const updatePlatformFeeConfig = adminProcedure
@@ -153,6 +182,12 @@ export const updatePlatformFeeConfig = adminProcedure
       secondaryTradeFeeBps: z.number().int().min(0).max(5000).optional(),
       sourcingFeeBps: z.number().int().min(0).max(5000).optional(),
       sourcingFlatFee: z.number().min(0).max(10_000_000).optional(),
+      sellerFacilitationFeeBps: z.number().int().min(0).max(5000).optional(),
+      assessmentPackFee: z.number().min(0).max(10_000_000).optional(),
+      jvPromoteFeeBps: z.number().int().min(0).max(5000).optional(),
+      leaseBackSetupFee: z.number().min(0).max(10_000_000).optional(),
+      leaseBackMgmtFeeBps: z.number().int().min(0).max(5000).optional(),
+      bondReferralFee: z.number().min(0).max(10_000_000).optional(),
       enabled: z.boolean().optional(),
     }),
   )
@@ -163,6 +198,14 @@ export const updatePlatformFeeConfig = adminProcedure
     if (input.secondaryTradeFeeBps !== undefined) data.secondaryTradeFeeBps = input.secondaryTradeFeeBps;
     if (input.sourcingFeeBps !== undefined) data.sourcingFeeBps = input.sourcingFeeBps;
     if (input.sourcingFlatFee !== undefined) data.sourcingFlatFee = input.sourcingFlatFee;
+    if (input.sellerFacilitationFeeBps !== undefined)
+      data.sellerFacilitationFeeBps = input.sellerFacilitationFeeBps;
+    if (input.assessmentPackFee !== undefined) data.assessmentPackFee = input.assessmentPackFee;
+    if (input.jvPromoteFeeBps !== undefined) data.jvPromoteFeeBps = input.jvPromoteFeeBps;
+    if (input.leaseBackSetupFee !== undefined) data.leaseBackSetupFee = input.leaseBackSetupFee;
+    if (input.leaseBackMgmtFeeBps !== undefined)
+      data.leaseBackMgmtFeeBps = input.leaseBackMgmtFeeBps;
+    if (input.bondReferralFee !== undefined) data.bondReferralFee = input.bondReferralFee;
     if (input.enabled !== undefined) data.enabled = input.enabled;
 
     const updated = await db.platformFeeConfig.upsert({
@@ -181,6 +224,12 @@ export const updatePlatformFeeConfig = adminProcedure
       secondaryTradeFeeBps: updated.secondaryTradeFeeBps,
       sourcingFeeBps: updated.sourcingFeeBps,
       sourcingFlatFee: updated.sourcingFlatFee,
+      sellerFacilitationFeeBps: updated.sellerFacilitationFeeBps,
+      assessmentPackFee: updated.assessmentPackFee,
+      jvPromoteFeeBps: updated.jvPromoteFeeBps,
+      leaseBackSetupFee: updated.leaseBackSetupFee,
+      leaseBackMgmtFeeBps: updated.leaseBackMgmtFeeBps,
+      bondReferralFee: updated.bondReferralFee,
       enabled: updated.enabled,
     };
   });

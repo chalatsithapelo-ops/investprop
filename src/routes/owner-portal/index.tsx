@@ -87,6 +87,19 @@ function OwnerPortalPage() {
 
   const proposals = (proposalsQuery.data as any[]) ?? [];
 
+  // Owner-facing fee schedule (transparent, itemised disclosure — CPA).
+  const feeScheduleQuery = useQuery({
+    ...trpc.getOwnerFeeSchedule.queryOptions(),
+    enabled: !!authToken && user?.role === "PROPERTY_OWNER",
+  });
+  const feeSchedule = feeScheduleQuery.data as any;
+  const ZAR = (n: number) =>
+    new Intl.NumberFormat("en-ZA", {
+      style: "currency",
+      currency: "ZAR",
+      maximumFractionDigits: 0,
+    }).format(n ?? 0);
+
   // Withdraw mutation
   const withdrawMutation = useMutation({
     mutationFn: (proposalId: number) =>
@@ -223,6 +236,90 @@ function OwnerPortalPage() {
             <p className="mt-4 text-xs text-gray-500">
               You stay informed at every step — we email you when the status changes and you can message us anytime via this portal.
             </p>
+          </div>
+        )}
+
+        {/* Transparent fee disclosure (CPA — every charge shown as a line item) */}
+        {!showForm && feeSchedule && feeSchedule.enabled && (
+          <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="mb-3 flex items-center gap-2">
+              <DollarSign className="text-gold-600" size={18} />
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+                What it costs to sell with Investprop
+              </h2>
+            </div>
+            <p className="mb-4 text-xs text-gray-500">
+              Full transparency — these are the only fees you may be charged, each shown as a
+              separate line item. Nothing is deducted until your sale actually closes (the
+              assessment pack is credited back on close).
+            </p>
+            <ul className="divide-y divide-gray-100 text-sm">
+              <li className="flex items-center justify-between py-2">
+                <span className="text-gray-700">
+                  Seller facilitation fee{" "}
+                  <span className="text-gray-400">(on the agreed sale price, at close)</span>
+                </span>
+                <span className="font-semibold text-gray-900">
+                  {feeSchedule.sellerFacilitationPct}%
+                </span>
+              </li>
+              <li className="flex items-center justify-between py-2">
+                <span className="text-gray-700">
+                  Assessment / due-diligence pack{" "}
+                  <span className="text-gray-400">(credited back on close)</span>
+                </span>
+                <span className="font-semibold text-gray-900">
+                  {ZAR(feeSchedule.assessmentPackFee)}
+                </span>
+              </li>
+              {feeSchedule.jvPromotePct > 0 && (
+                <li className="flex items-center justify-between py-2">
+                  <span className="text-gray-700">
+                    Joint-venture promote{" "}
+                    <span className="text-gray-400">(only on JV / partnership payouts)</span>
+                  </span>
+                  <span className="font-semibold text-gray-900">{feeSchedule.jvPromotePct}%</span>
+                </li>
+              )}
+              {feeSchedule.leaseBackSetupFee > 0 && (
+                <li className="flex items-center justify-between py-2">
+                  <span className="text-gray-700">
+                    Lease-back setup{" "}
+                    <span className="text-gray-400">(only if you lease back the property)</span>
+                  </span>
+                  <span className="font-semibold text-gray-900">
+                    {ZAR(feeSchedule.leaseBackSetupFee)}
+                  </span>
+                </li>
+              )}
+              {feeSchedule.leaseBackMgmtPct > 0 && (
+                <li className="flex items-center justify-between py-2">
+                  <span className="text-gray-700">
+                    Lease-back rental management{" "}
+                    <span className="text-gray-400">(on collected rent, if applicable)</span>
+                  </span>
+                  <span className="font-semibold text-gray-900">
+                    {feeSchedule.leaseBackMgmtPct}%
+                  </span>
+                </li>
+              )}
+            </ul>
+            {/* Seller Pro upsell */}
+            <div className="mt-4 flex flex-col items-start justify-between gap-3 rounded-lg border border-gold-200 bg-gold-50 p-4 sm:flex-row sm:items-center">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Selling more than one property?</p>
+                <p className="text-xs text-gray-600">
+                  Seller Pro unlocks multi-listing, an AI valuation report, priority review and a
+                  lower facilitation fee on close.
+                </p>
+              </div>
+              <button
+                onClick={() => navigate({ to: "/pricing" })}
+                className="shrink-0 rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-gold-600"
+              >
+                View Seller Pro
+              </button>
+            </div>
           </div>
         )}
 

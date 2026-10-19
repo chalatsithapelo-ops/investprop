@@ -13,7 +13,14 @@ export type PlatformFeeType =
   | "CAPITAL_RAISE"
   | "DISTRIBUTION"
   | "SECONDARY_TRADE"
-  | "SOURCING";
+  | "SOURCING"
+  // ─── Owner (seller-side) monetization ───
+  | "SELLER_FACILITATION"
+  | "ASSESSMENT_PACK"
+  | "JV_PROMOTE"
+  | "LEASE_BACK_SETUP"
+  | "LEASE_BACK_MGMT"
+  | "BOND_REFERRAL";
 
 export type FeeConfig = {
   capitalRaiseFeeBps: number;
@@ -21,6 +28,12 @@ export type FeeConfig = {
   secondaryTradeFeeBps: number;
   sourcingFeeBps: number;
   sourcingFlatFee: number;
+  sellerFacilitationFeeBps: number;
+  assessmentPackFee: number;
+  jvPromoteFeeBps: number;
+  leaseBackSetupFee: number;
+  leaseBackMgmtFeeBps: number;
+  bondReferralFee: number;
   enabled: boolean;
 };
 
@@ -31,6 +44,12 @@ export const DEFAULT_FEE_CONFIG: FeeConfig = {
   secondaryTradeFeeBps: 100, // 1.0%
   sourcingFeeBps: 100, // 1.0%
   sourcingFlatFee: 0,
+  sellerFacilitationFeeBps: 200, // 2.0%
+  assessmentPackFee: 2500, // flat ZAR
+  jvPromoteFeeBps: 1000, // 10%
+  leaseBackSetupFee: 5000, // flat ZAR
+  leaseBackMgmtFeeBps: 800, // 8%
+  bondReferralFee: 0, // flat ZAR
   enabled: true,
 };
 
@@ -63,6 +82,12 @@ export async function getFeeConfig(
         secondaryTradeFeeBps: existing.secondaryTradeFeeBps,
         sourcingFeeBps: existing.sourcingFeeBps,
         sourcingFlatFee: existing.sourcingFlatFee,
+        sellerFacilitationFeeBps: existing.sellerFacilitationFeeBps,
+        assessmentPackFee: existing.assessmentPackFee,
+        jvPromoteFeeBps: existing.jvPromoteFeeBps,
+        leaseBackSetupFee: existing.leaseBackSetupFee,
+        leaseBackMgmtFeeBps: existing.leaseBackMgmtFeeBps,
+        bondReferralFee: existing.bondReferralFee,
         enabled: existing.enabled,
       };
     }
@@ -75,6 +100,12 @@ export async function getFeeConfig(
       secondaryTradeFeeBps: created.secondaryTradeFeeBps,
       sourcingFeeBps: created.sourcingFeeBps,
       sourcingFlatFee: created.sourcingFlatFee,
+      sellerFacilitationFeeBps: created.sellerFacilitationFeeBps,
+      assessmentPackFee: created.assessmentPackFee,
+      jvPromoteFeeBps: created.jvPromoteFeeBps,
+      leaseBackSetupFee: created.leaseBackSetupFee,
+      leaseBackMgmtFeeBps: created.leaseBackMgmtFeeBps,
+      bondReferralFee: created.bondReferralFee,
       enabled: created.enabled,
     };
   } catch (err) {
@@ -85,7 +116,12 @@ export async function getFeeConfig(
 
 export type RecordPlatformFeeArgs = {
   feeType: PlatformFeeType;
-  sourceType: "InvestorContribution" | "Distribution" | "ShareTrade" | "Acquisition";
+  sourceType:
+    | "InvestorContribution"
+    | "Distribution"
+    | "ShareTrade"
+    | "Acquisition"
+    | "OwnerSaleProposal";
   sourceId: number;
   baseAmount: number;
   feeBps: number;

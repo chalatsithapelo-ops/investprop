@@ -408,7 +408,7 @@ export const mainNavigationLinks: NavigationLink[] = [
     label: "Browse Deals",
     to: "/distressed-deals/browse",
     icon: TrendingDown,
-    roles: ["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER"],
+    roles: ["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
     hideFromAdmin: true,
     description: "Browse live AI-graded distressed & auction listings",
   },
@@ -416,7 +416,7 @@ export const mainNavigationLinks: NavigationLink[] = [
     label: "Deal Alerts",
     to: "/distressed-alerts",
     icon: Gavel,
-    roles: ["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER"],
+    roles: ["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
     hideFromAdmin: true,
     description: "Configure distressed-deal alerts matched to your filters",
   },
@@ -442,6 +442,13 @@ export const mainNavigationLinks: NavigationLink[] = [
     icon: Send,
     roles: ["PROPERTY_OWNER"],
     description: "Submit and track your property sale proposals",
+  },
+  {
+    label: "Seller Pro",
+    to: "/pricing",
+    icon: Sparkles,
+    roles: ["PROPERTY_OWNER"],
+    description: "Multi-listing, AI valuation & priority review for sellers",
   },
   // ─── Dev Manager: Incoming Sale Proposals ────────────
   {

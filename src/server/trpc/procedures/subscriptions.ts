@@ -30,8 +30,9 @@ const SELF_SERVE_TIERS: SubscriptionTier[] = [
   "PRO",
   "ENTERPRISE",
   "DISTRESSED",
+  "SELLER_PRO",
 ];
-const tierEnum = z.enum(["INVESTOR_PLUS", "PRO", "ENTERPRISE", "DISTRESSED"]);
+const tierEnum = z.enum(["INVESTOR_PLUS", "PRO", "ENTERPRISE", "DISTRESSED", "SELLER_PRO"]);
 const cycleEnum = z.enum(["MONTHLY", "ANNUAL"]);
 
 async function paystackRequest(path: string, method: string, body?: any) {

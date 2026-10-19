@@ -15,7 +15,11 @@ export type Feature =
   | "DISTRESSED_ALERTS" // Email/push distressed-deal alerts
   | "DISTRESSED_FULL_ACCESS" // Full distressed finder + AI grades
   | "MARKET_DATA_EXPORT" // Anonymised aggregate market data API
-  | "PRIORITY_SUPPORT";
+  | "PRIORITY_SUPPORT"
+  // ─── Seller / landlord (supply side) ───
+  | "SELLER_MULTI_LISTING" // List multiple properties for sale concurrently
+  | "SELLER_AI_VALUATION" // AI valuation & offer-readiness report
+  | "SELLER_PRIORITY_REVIEW"; // Priority / fast-tracked proposal review
 
 export type PlanDefinition = {
   tier: SubscriptionTier;
@@ -138,6 +142,29 @@ export const PLAN_CATALOG: Record<SubscriptionTier, PlanDefinition> = {
     ],
     capabilities: ["DISTRESSED_ALERTS", "DISTRESSED_FULL_ACCESS"],
   },
+  SELLER_PRO: {
+    tier: "SELLER_PRO",
+    name: "Seller Pro",
+    tagline: "Sell faster, on your terms",
+    description:
+      "Standalone toolkit for property owners selling to Investprop — multi-listing, AI valuation and priority deal review.",
+    monthlyPrice: 499,
+    annualPrice: 4990,
+    rank: 2,
+    standalone: true,
+    features: [
+      "List multiple properties for sale concurrently",
+      "AI valuation & offer-readiness report",
+      "Priority / fast-tracked proposal review",
+      "Lower seller facilitation fee on close",
+      "Direct line to the acquisitions team",
+    ],
+    capabilities: [
+      "SELLER_MULTI_LISTING",
+      "SELLER_AI_VALUATION",
+      "SELLER_PRIORITY_REVIEW",
+    ],
+  },
 };
 
 export const ALL_TIERS: SubscriptionTier[] = [
@@ -146,6 +173,7 @@ export const ALL_TIERS: SubscriptionTier[] = [
   "PRO",
   "ENTERPRISE",
   "DISTRESSED",
+  "SELLER_PRO",
 ];
 
 export function getPlan(tier: SubscriptionTier): PlanDefinition {

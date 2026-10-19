@@ -136,6 +136,15 @@ class OwnerRepository {
         .toList();
   }
 
+  /// Owner-facing fee schedule for transparent, itemised disclosure.
+  Future<OwnerFeeSchedule> feeSchedule() async {
+    final data = await _client.query('getOwnerFeeSchedule');
+    if (data is Map) {
+      return OwnerFeeSchedule.fromJson(Map<String, dynamic>.from(data));
+    }
+    return const OwnerFeeSchedule.empty();
+  }
+
   /// Uploads a file (base64, no data-URI prefix) and returns its public URL.
   Future<String> uploadFile({
     required String fileName,
@@ -189,3 +198,53 @@ final myProposalsProvider =
     FutureProvider.autoDispose<List<SaleProposal>>((ref) async {
   return ref.watch(ownerRepositoryProvider).myProposals();
 });
+
+final ownerFeeScheduleProvider =
+    FutureProvider.autoDispose<OwnerFeeSchedule>((ref) async {
+  return ref.watch(ownerRepositoryProvider).feeSchedule();
+});
+
+/// Seller-side fee schedule shown to owners for transparent disclosure.
+class OwnerFeeSchedule {
+  const OwnerFeeSchedule({
+    required this.enabled,
+    required this.sellerFacilitationPct,
+    required this.assessmentPackFee,
+    required this.jvPromotePct,
+    required this.leaseBackSetupFee,
+    required this.leaseBackMgmtPct,
+    required this.bondReferralFee,
+  });
+
+  const OwnerFeeSchedule.empty()
+      : enabled = false,
+        sellerFacilitationPct = 0,
+        assessmentPackFee = 0,
+        jvPromotePct = 0,
+        leaseBackSetupFee = 0,
+        leaseBackMgmtPct = 0,
+        bondReferralFee = 0;
+
+  final bool enabled;
+  final double sellerFacilitationPct;
+  final double assessmentPackFee;
+  final double jvPromotePct;
+  final double leaseBackSetupFee;
+  final double leaseBackMgmtPct;
+  final double bondReferralFee;
+
+  static double _d(dynamic v) =>
+      v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
+
+  factory OwnerFeeSchedule.fromJson(Map<String, dynamic> json) {
+    return OwnerFeeSchedule(
+      enabled: json['enabled'] == true,
+      sellerFacilitationPct: _d(json['sellerFacilitationPct']),
+      assessmentPackFee: _d(json['assessmentPackFee']),
+      jvPromotePct: _d(json['jvPromotePct']),
+      leaseBackSetupFee: _d(json['leaseBackSetupFee']),
+      leaseBackMgmtPct: _d(json['leaseBackMgmtPct']),
+      bondReferralFee: _d(json['bondReferralFee']),
+    );
+  }
+}

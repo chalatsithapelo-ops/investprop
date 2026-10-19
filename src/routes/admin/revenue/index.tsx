@@ -11,6 +11,12 @@ import {
   ArrowLeftRight,
   Building2,
   PiggyBank,
+  Home,
+  Handshake,
+  KeyRound,
+  FileText,
+  Landmark,
+  RefreshCw,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
@@ -33,6 +39,12 @@ const FEE_TYPE_META: Record<string, { label: string; icon: any; color: string }>
   DISTRIBUTION: { label: "Distributions", icon: PiggyBank, color: "text-blue-600" },
   SECONDARY_TRADE: { label: "Secondary Trades", icon: ArrowLeftRight, color: "text-purple-600" },
   SOURCING: { label: "Deal Sourcing", icon: Building2, color: "text-amber-600" },
+  SELLER_FACILITATION: { label: "Seller Facilitation", icon: Home, color: "text-rose-600" },
+  ASSESSMENT_PACK: { label: "Assessment Pack", icon: FileText, color: "text-cyan-600" },
+  JV_PROMOTE: { label: "JV Promote", icon: Handshake, color: "text-indigo-600" },
+  LEASE_BACK_SETUP: { label: "Lease-back Setup", icon: KeyRound, color: "text-teal-600" },
+  LEASE_BACK_MGMT: { label: "Lease-back Mgmt", icon: RefreshCw, color: "text-lime-600" },
+  BOND_REFERRAL: { label: "Bond Referral", icon: Landmark, color: "text-fuchsia-600" },
 };
 
 function RevenuePage() {
@@ -66,6 +78,12 @@ function RevenuePage() {
     secondaryTradeFeeBps: number;
     sourcingFeeBps: number;
     sourcingFlatFee: number;
+    sellerFacilitationFeeBps: number;
+    assessmentPackFee: number;
+    jvPromoteFeeBps: number;
+    leaseBackSetupFee: number;
+    leaseBackMgmtFeeBps: number;
+    bondReferralFee: number;
     enabled: boolean;
   } | null>(null);
 
@@ -77,6 +95,12 @@ function RevenuePage() {
         secondaryTradeFeeBps: summary.config.secondaryTradeFeeBps,
         sourcingFeeBps: summary.config.sourcingFeeBps,
         sourcingFlatFee: summary.config.sourcingFlatFee,
+        sellerFacilitationFeeBps: summary.config.sellerFacilitationFeeBps,
+        assessmentPackFee: summary.config.assessmentPackFee,
+        jvPromoteFeeBps: summary.config.jvPromoteFeeBps,
+        leaseBackSetupFee: summary.config.leaseBackSetupFee,
+        leaseBackMgmtFeeBps: summary.config.leaseBackMgmtFeeBps,
+        bondReferralFee: summary.config.bondReferralFee,
         enabled: summary.config.enabled,
       });
     }
@@ -258,6 +282,76 @@ function RevenuePage() {
                       />
                       Fee capture enabled
                     </label>
+                  </div>
+                </div>
+
+                {/* Owner / seller-side fees */}
+                <div className="mt-6 border-t border-gray-100 pt-5">
+                  <h3 className="mb-1 text-sm font-semibold text-gray-700">
+                    Owner / seller-side fees
+                  </h3>
+                  <p className="mb-4 text-xs text-gray-400">
+                    Charged to property owners who sell or partner with Investprop. Percentage
+                    fees apply to the agreed price / payout; flat fees are in ZAR.
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <PercentField
+                      label="Seller facilitation fee"
+                      bps={cfg.sellerFacilitationFeeBps}
+                      onChange={(v) => setCfg({ ...cfg, sellerFacilitationFeeBps: v })}
+                    />
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        Assessment / DD pack fee (ZAR)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={cfg.assessmentPackFee}
+                        onChange={(e) =>
+                          setCfg({ ...cfg, assessmentPackFee: Number(e.target.value) || 0 })
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
+                    <PercentField
+                      label="JV promote fee"
+                      bps={cfg.jvPromoteFeeBps}
+                      onChange={(v) => setCfg({ ...cfg, jvPromoteFeeBps: v })}
+                    />
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        Lease-back setup fee (ZAR)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={cfg.leaseBackSetupFee}
+                        onChange={(e) =>
+                          setCfg({ ...cfg, leaseBackSetupFee: Number(e.target.value) || 0 })
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
+                    <PercentField
+                      label="Lease-back management margin"
+                      bps={cfg.leaseBackMgmtFeeBps}
+                      onChange={(v) => setCfg({ ...cfg, leaseBackMgmtFeeBps: v })}
+                    />
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        Bond / conveyancing referral (ZAR)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={cfg.bondReferralFee}
+                        onChange={(e) =>
+                          setCfg({ ...cfg, bondReferralFee: Number(e.target.value) || 0 })
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
                   </div>
                 </div>
                 <button

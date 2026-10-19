@@ -68,7 +68,7 @@ import { createShareClass, getShareInfo, purchaseShares, transferShares, getShar
 // Distribution Engine
 import { createDistribution, getDistributions, executeDistribution, getMyDistributions } from "~/server/trpc/procedures/distributions";
 // Platform Revenue (Phase 1 monetization)
-import { getPlatformRevenueSummary, getPlatformRevenueLedger, getPlatformFeeConfig, updatePlatformFeeConfig } from "~/server/trpc/procedures/platform-revenue";
+import { getPlatformRevenueSummary, getPlatformRevenueLedger, getPlatformFeeConfig, updatePlatformFeeConfig, getOwnerFeeSchedule } from "~/server/trpc/procedures/platform-revenue";
 // Investor Statements
 import { generateInvestorStatement } from "~/server/trpc/procedures/statements";
 // Governance & Voting
@@ -89,7 +89,7 @@ import { initiateDistributionPayout, verifyPaystackTransfer, initializePayment, 
 import { getDistressedListings, triggerDistressedScrape, getDistressedDashboardSummary, getScrapeLogs, getDistressedSources, toggleDistressedFavourite, addDistressedListing, updateDistressedStatus, deleteDistressedListing } from "~/server/trpc/procedures/distressed-finder";
 import { screenDistressedListing, screenDistressedBatch, promoteDistressedToProperty, getDistressedPriceHistory, getDistressedComparables, runDistressedDedup, runDistressedReminders } from "~/server/trpc/procedures/distressed-ai";
 // Owner Sale Proposals
-import { submitSaleProposal, getMySaleProposals, getSaleProposals, reviewSaleProposal, withdrawSaleProposal } from "~/server/trpc/procedures/owner-proposals";
+import { submitSaleProposal, getMySaleProposals, getSaleProposals, reviewSaleProposal, withdrawSaleProposal, bookOwnerRecurringFee } from "~/server/trpc/procedures/owner-proposals";
 // Investment Payments (POP + Paystack)
 import { initiateInvestmentPayment, verifyInvestmentPayment, submitProofOfPayment, reviewProofOfPayment, getPendingPayments, getMyAwaitingPayment } from "~/server/trpc/procedures/investment-payments";
 // Share Certificates
@@ -241,6 +241,7 @@ export const appRouter = createTRPCRouter({
   getPlatformRevenueLedger,
   getPlatformFeeConfig,
   updatePlatformFeeConfig,
+  getOwnerFeeSchedule,
   uploadFile,
   cancelContributionDuringCoolingOff,
   screenSanctions,
@@ -346,6 +347,7 @@ export const appRouter = createTRPCRouter({
   getSaleProposals,
   reviewSaleProposal,
   withdrawSaleProposal,
+  bookOwnerRecurringFee,
   // Investment Payments
   initiateInvestmentPayment,
   verifyInvestmentPayment,

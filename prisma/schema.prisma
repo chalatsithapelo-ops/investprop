@@ -1595,6 +1595,13 @@ model PlatformFeeConfig {
   secondaryTradeFeeBps Int      @default(100) // 1.0% on secondary share trades
   sourcingFeeBps       Int      @default(100) // 1.0% on property acquisition price
   sourcingFlatFee      Float    @default(0) // optional flat sourcing fee (ZAR); used when > 0
+  // ─── Owner (seller-side) monetization ───
+  sellerFacilitationFeeBps Int   @default(200) // 2.0% facilitation fee on a successful owner sale
+  assessmentPackFee        Float @default(2500) // flat due-diligence / valuation pack fee (ZAR)
+  jvPromoteFeeBps          Int   @default(1000) // 10% promote on owner JV / partnership distributions
+  leaseBackSetupFee        Float @default(5000) // flat lease-back arrangement setup fee (ZAR)
+  leaseBackMgmtFeeBps      Int   @default(800) // 8% rental-management margin on lease-back income
+  bondReferralFee          Float @default(0) // flat bond / conveyancing referral commission (ZAR)
   enabled              Boolean  @default(true) // master switch for fee capture
   updatedAt            DateTime @default(now()) @updatedAt
   updatedById          Int?
@@ -1610,6 +1617,7 @@ enum SubscriptionTier {
   PRO
   ENTERPRISE
   DISTRESSED // standalone "DistressedDeals SA" product SKU
+  SELLER_PRO // standalone seller / landlord product SKU (supply side)
 }
 
 enum SubscriptionStatus {

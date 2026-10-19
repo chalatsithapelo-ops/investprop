@@ -10,7 +10,7 @@ import {
 
 describe("subscription plan catalog", () => {
   it("defines every tier", () => {
-    expect(ALL_TIERS).toEqual(["FREE", "INVESTOR_PLUS", "PRO", "ENTERPRISE", "DISTRESSED"]);
+    expect(ALL_TIERS).toEqual(["FREE", "INVESTOR_PLUS", "PRO", "ENTERPRISE", "DISTRESSED", "SELLER_PRO"]);
     for (const tier of ALL_TIERS) {
       expect(PLAN_CATALOG[tier]).toBeDefined();
       expect(PLAN_CATALOG[tier].tier).toBe(tier);

@@ -104,6 +104,16 @@ class ProfilePage extends ConsumerWidget {
                     onTap: () => context.push('/profile/statement'),
                   ),
                   const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.gavel_outlined,
+                        color: AppColors.navy),
+                    title: const Text('Distressed deals'),
+                    subtitle: const Text(
+                        'AI-graded auction & distressed properties'),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => context.push('/profile/distressed'),
+                  ),
+                  const Divider(height: 1),
                 ],
                 ListTile(
                   leading: const Icon(Icons.language, color: AppColors.navy),

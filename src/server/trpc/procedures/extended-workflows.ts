@@ -5,6 +5,7 @@ import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 import { createNotification } from "./notifications";
 import { createAuditLog } from "./audit-log";
+import { bookAssessmentPackFee, bookOwnerAcceptanceFees } from "./owner-proposals";
 import jwt from "jsonwebtoken";
 import { env } from "~/server/env";
 
@@ -78,6 +79,13 @@ export const respondToCounterOffer = baseProcedure
       where: { id: input.proposalId },
       data: { status: newStatus },
     });
+
+    // Owner accepted the counter-offer → the deal is agreed; book seller-side
+    // fees (facilitation / lease-back / bond referral) on the agreed price.
+    if (input.action === "ACCEPT") {
+      await bookAssessmentPackFee(proposal.id);
+      await bookOwnerAcceptanceFees(proposal);
+    }
 
     if (proposal.reviewedById) {
       await createNotification(

@@ -4,6 +4,95 @@ import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 import { createNotification } from "./notifications";
+import { createAuditLog } from "./audit-log";
+import {
+  getFeeConfig,
+  recordPlatformFee,
+  computeFeeFromBps,
+} from "~/server/fees/platform-fees";
+
+// ═══════════════════════════════════════════════════════════════
+//  Owner (seller-side) fee booking helpers.
+//  All bookings are idempotent per (feeType, sourceType, sourceId) and are
+//  wrapped in try/catch so revenue bookkeeping never breaks the workflow.
+// ═══════════════════════════════════════════════════════════════
+
+/** Flat due-diligence / valuation pack fee — booked once per proposal. */
+export async function bookAssessmentPackFee(proposalId: number): Promise<void> {
+  try {
+    const cfg = await getFeeConfig();
+    if (!cfg.enabled || cfg.assessmentPackFee <= 0) return;
+    await recordPlatformFee({
+      feeType: "ASSESSMENT_PACK",
+      sourceType: "OwnerSaleProposal",
+      sourceId: proposalId,
+      baseAmount: cfg.assessmentPackFee,
+      feeBps: 0,
+      feeAmount: cfg.assessmentPackFee,
+      description: `Assessment / due-diligence pack — proposal #${proposalId}`,
+    });
+  } catch (err) {
+    console.error("[owner-fees] assessment pack booking failed:", err);
+  }
+}
+
+/**
+ * Fees due when an owner sale proposal is ACCEPTED:
+ *   • seller facilitation fee (% of the agreed price)
+ *   • lease-back setup fee (flat) when the engagement is a lease-back
+ *   • bond / conveyancing referral commission (flat) when a bond exists
+ * Each fee type is idempotent per proposal.
+ */
+export async function bookOwnerAcceptanceFees(proposal: {
+  id: number;
+  askingPrice: number;
+  counterOfferAmount: number | null;
+  engagementType: string;
+  bondStatus: string;
+}): Promise<void> {
+  try {
+    const cfg = await getFeeConfig();
+    if (!cfg.enabled) return;
+    const agreedPrice = proposal.counterOfferAmount ?? proposal.askingPrice;
+
+    if (cfg.sellerFacilitationFeeBps > 0 && agreedPrice > 0) {
+      await recordPlatformFee({
+        feeType: "SELLER_FACILITATION",
+        sourceType: "OwnerSaleProposal",
+        sourceId: proposal.id,
+        baseAmount: agreedPrice,
+        feeBps: cfg.sellerFacilitationFeeBps,
+        description: `Seller facilitation fee — proposal #${proposal.id}`,
+      });
+    }
+
+    if (proposal.engagementType === "LEASE_BACK" && cfg.leaseBackSetupFee > 0) {
+      await recordPlatformFee({
+        feeType: "LEASE_BACK_SETUP",
+        sourceType: "OwnerSaleProposal",
+        sourceId: proposal.id,
+        baseAmount: cfg.leaseBackSetupFee,
+        feeBps: 0,
+        feeAmount: cfg.leaseBackSetupFee,
+        description: `Lease-back setup fee — proposal #${proposal.id}`,
+      });
+    }
+
+    if (proposal.bondStatus === "EXISTING" && cfg.bondReferralFee > 0) {
+      await recordPlatformFee({
+        feeType: "BOND_REFERRAL",
+        sourceType: "OwnerSaleProposal",
+        sourceId: proposal.id,
+        baseAmount: cfg.bondReferralFee,
+        feeBps: 0,
+        feeAmount: cfg.bondReferralFee,
+        description: `Bond / conveyancing referral — proposal #${proposal.id}`,
+      });
+    }
+  } catch (err) {
+    console.error("[owner-fees] acceptance fee booking failed:", err);
+  }
+}
 
 // ─── Submit a sale proposal (Property Owner) ─────────────────────────
 
@@ -258,6 +347,16 @@ export const reviewSaleProposal = baseProcedure
       },
     });
 
+    // ── Platform monetization (owner / seller side) ──
+    // Assessment pack is booked once the proposal enters active review;
+    // facilitation / lease-back / bond-referral fees book on acceptance.
+    if (input.action === "UNDER_REVIEW") {
+      await bookAssessmentPackFee(proposal.id);
+    } else if (input.action === "ACCEPTED") {
+      await bookAssessmentPackFee(proposal.id);
+      await bookOwnerAcceptanceFees(proposal);
+    }
+
     // Notify the property owner
     const statusLabel =
       input.action === "UNDER_REVIEW"
@@ -312,4 +411,87 @@ export const withdrawSaleProposal = baseProcedure
     });
 
     return updated;
+  });
+
+// ─── Book a recurring owner fee (Dev Manager) ──────────────────────
+// JV promote (% of an owner JV / partnership payout) and lease-back
+// management margin (% of rental income) are recurring, so each booking is
+// recorded against an occurrence-unique ledger key to avoid collisions on
+// the (feeType, sourceType, sourceId) unique index.
+export const bookOwnerRecurringFee = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      proposalId: z.number(),
+      feeType: z.enum(["JV_PROMOTE", "LEASE_BACK_MGMT"]),
+      baseAmount: z.number().positive(),
+      period: z.string().optional(),
+    })
+  )
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(
+      user,
+      ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "ADMIN"],
+      "Only managers can book owner fees"
+    );
+
+    const proposal = await db.ownerSaleProposal.findUnique({
+      where: { id: input.proposalId },
+    });
+    if (!proposal) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Sale proposal not found" });
+    }
+    if (proposal.status !== "ACCEPTED") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Recurring fees can only be booked on an accepted proposal",
+      });
+    }
+
+    const cfg = await getFeeConfig();
+    if (!cfg.enabled) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Fee capture is currently disabled" });
+    }
+    const bps =
+      input.feeType === "JV_PROMOTE" ? cfg.jvPromoteFeeBps : cfg.leaseBackMgmtFeeBps;
+    if (bps <= 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "This fee is disabled (rate is 0). Set a rate in the revenue settings first.",
+      });
+    }
+
+    const feeAmount = computeFeeFromBps(input.baseAmount, bps);
+    const label = input.feeType === "JV_PROMOTE" ? "JV promote" : "Lease-back management";
+    const period = input.period ?? new Date().toISOString().slice(0, 7);
+
+    // Occurrence-unique sourceId keeps each recurring booking distinct.
+    const occurrence = await db.platformRevenue.count({
+      where: {
+        feeType: input.feeType,
+        sourceType: "OwnerSaleProposal",
+        description: { contains: `proposal #${input.proposalId}/` },
+      },
+    });
+    const sourceId = input.proposalId * 100000 + occurrence;
+
+    const booked = await recordPlatformFee({
+      feeType: input.feeType,
+      sourceType: "OwnerSaleProposal",
+      sourceId,
+      baseAmount: input.baseAmount,
+      feeBps: bps,
+      feeAmount,
+      description: `${label} fee — proposal #${input.proposalId}/${period}`,
+    });
+
+    await createAuditLog(user.id, "BOOK_OWNER_FEE", "OwnerSaleProposal", input.proposalId, {
+      feeType: input.feeType,
+      baseAmount: input.baseAmount,
+      feeAmount: booked,
+      period,
+    });
+
+    return { success: true, feeType: input.feeType, feeAmount: booked, period };
   });

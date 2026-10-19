@@ -337,6 +337,7 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
                 style: const TextStyle(color: AppColors.textSecondary),
               ),
             const SizedBox(height: 16),
+            _feeDisclosureCard(),
             _section('Property details', [
               _text(_title, 'Listing title *', minLen: 3),
               _text(_description, 'Description *', minLen: 10, lines: 3),
@@ -539,6 +540,90 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Transparent, itemised seller-fee disclosure (CPA). Nothing is charged
+  /// until the sale closes; the assessment pack is credited back on close.
+  Widget _feeDisclosureCard() {
+    final async = ref.watch(ownerFeeScheduleProvider);
+    return async.maybeWhen(
+      orElse: () => const SizedBox.shrink(),
+      data: (fee) {
+        if (!fee.enabled) return const SizedBox.shrink();
+        final rows = <Widget>[
+          _feeRow('Seller facilitation (on agreed price, at close)',
+              Fmt.percent(fee.sellerFacilitationPct)),
+          _feeRow('Assessment / DD pack (credited on close)',
+              Fmt.money(fee.assessmentPackFee)),
+          if (fee.jvPromotePct > 0)
+            _feeRow('JV promote (only on JV / partnership payouts)',
+                Fmt.percent(fee.jvPromotePct)),
+          if (fee.leaseBackSetupFee > 0)
+            _feeRow('Lease-back setup (only if you lease back)',
+                Fmt.money(fee.leaseBackSetupFee)),
+          if (fee.leaseBackMgmtPct > 0)
+            _feeRow('Lease-back rental management (on rent)',
+                Fmt.percent(fee.leaseBackMgmtPct)),
+        ];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'What it costs to sell with Investprop',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Full transparency — each charge is a separate line item, and '
+                'nothing is deducted until your sale actually closes.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              ...rows,
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _feeRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                  fontSize: 13, color: AppColors.textSecondary),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -12,6 +12,8 @@ import '../features/ai/presentation/property_chat_page.dart';
 import '../features/certificates/presentation/certificates_page.dart';
 import '../features/contributions/presentation/contributions_page.dart';
 import '../features/dashboard/dashboard_page.dart';
+import '../features/distressed/presentation/distressed_deals_page.dart';
+import '../features/distressed/presentation/distressed_deal_detail_page.dart';
 import '../features/documents/presentation/documents_page.dart';
 import '../features/governance/presentation/distributions_voting_page.dart';
 import '../features/investment/presentation/invest_page.dart';
@@ -281,6 +283,22 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'documents',
                     parentNavigatorKey: _rootKey,
                     builder: (_, __) => const DocumentsPage(),
+                  ),
+                  GoRoute(
+                    path: 'distressed',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const DistressedDealsPage(),
+                    routes: [
+                      GoRoute(
+                        path: ':id',
+                        parentNavigatorKey: _rootKey,
+                        builder: (context, state) => DistressedDealDetailPage(
+                          listingId: int.tryParse(
+                                  state.pathParameters['id'] ?? '') ??
+                              0,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
