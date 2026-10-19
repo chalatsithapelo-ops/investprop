@@ -36,6 +36,7 @@ import {
   Inbox,
   Receipt,
   FileBarChart,
+  BellRing,
 } from "lucide-react";
 
 /**
@@ -179,6 +180,13 @@ export const mainNavigationLinks: NavigationLink[] = [
     icon: Activity,
     roles: ["DEVELOPMENT_MANAGER", "ADMIN"],
     description: "AI early-warning scores for deals trending toward trouble",
+  },
+  {
+    label: "Distressed Alerts",
+    to: "/admin/distressed-alerts",
+    icon: BellRing,
+    roles: ["DEVELOPMENT_MANAGER", "ADMIN"],
+    description: "Trigger subscriber distressed-deal alert emails",
   },
   {
     label: "Team Performance",

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   Shield, Users, Building, Activity, Settings, X, AlertTriangle, Pencil, KeyRound, Trash2,
   CreditCard, DollarSign, BadgeDollarSign, Scale, Receipt, Inbox, GitBranch, Award,
-  ShieldCheck, Send, Server, Database, ChevronRight,
+  ShieldCheck, Send, Server, Database, ChevronRight, BellRing,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
@@ -60,6 +60,7 @@ function AdminPage() {
     { label: "Payment Review", to: "/admin/payment-review", icon: Receipt, desc: "Approve investor proof-of-payment", adminOnly: false },
     { label: "Action Required", to: "/admin/action-required", icon: Inbox, desc: "Everything needing attention in one inbox", adminOnly: false },
     { label: "Distress Watchlist", to: "/admin/ai-distress", icon: Activity, desc: "AI early-warning deal scores", adminOnly: false },
+    { label: "Distressed Alerts", to: "/admin/distressed-alerts", icon: BellRing, desc: "Trigger subscriber deal-alert emails", adminOnly: false },
     { label: "Team Performance", to: "/admin/team", icon: Users, desc: "Per-manager delivery scorecards", adminOnly: false },
     { label: "Variations", to: "/admin/variations", icon: GitBranch, desc: "Approve contractor variation orders", adminOnly: false },
     { label: "Certificate Mgmt", to: "/admin/certificates", icon: Award, desc: "Validate & track share certificates", adminOnly: false },

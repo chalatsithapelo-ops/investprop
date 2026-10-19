@@ -100,6 +100,7 @@ const navGroups: NavGroup[] = [
       "Payment Review",
       "Action Required",
       "Distress Watchlist",
+      "Distressed Alerts",
       "Team Performance",
       "Variations",
       "Announcements",
