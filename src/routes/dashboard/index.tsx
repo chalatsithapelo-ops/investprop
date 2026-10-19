@@ -85,6 +85,11 @@ function DashboardPage() {
     enabled: !!authToken && isInvestor,
   });
 
+  const subscriptionQuery = useQuery({
+    ...trpc.getMySubscription.queryOptions({ authToken: authToken ?? "" }),
+    enabled: !!authToken && isInvestor,
+  });
+
   const ficaStatusQuery = useQuery({
     ...trpc.getMyFicaStatus.queryOptions({ authToken: authToken ?? "" }),
     enabled: !!authToken && isInvestor,
@@ -287,6 +292,31 @@ function DashboardPage() {
             </div>
           ))}
         </div>
+
+        {/* ─── Upgrade nudge (free-tier investors) ─── */}
+        {isInvestor && (subscriptionQuery.data as any)?.tier === "FREE" && (
+          <Link
+            to="/pricing"
+            className="mb-8 block rounded-xl border border-teal-200 bg-gradient-to-r from-teal-50 via-white to-white p-5 shadow-sm transition hover:border-teal-300 hover:shadow"
+          >
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="rounded-lg bg-teal-100 p-3">
+                  <Sparkles className="text-teal-700" size={24} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Unlock AI deal analysis & distressed alerts</h2>
+                  <p className="mt-0.5 text-sm text-gray-500">
+                    Upgrade for the AI Deal Co-Pilot, portfolio insights and real-time distressed-deal alerts.
+                  </p>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-2 self-start rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white md:self-auto">
+                View plans <ArrowRight size={16} />
+              </span>
+            </div>
+          </Link>
+        )}
 
         {/* ─── Distressed Finder live tile (managers only) ─── */}
         {isManager && (() => {
