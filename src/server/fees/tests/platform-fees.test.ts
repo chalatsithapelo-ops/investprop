@@ -44,6 +44,12 @@ describe("DEFAULT_FEE_CONFIG", () => {
       secondaryTradeFeeBps: 100,
       sourcingFeeBps: 100,
       sourcingFlatFee: 0,
+      sellerFacilitationFeeBps: 200,
+      assessmentPackFee: 2500,
+      jvPromoteFeeBps: 1000,
+      leaseBackSetupFee: 5000,
+      leaseBackMgmtFeeBps: 800,
+      bondReferralFee: 0,
       enabled: true,
     });
   });
