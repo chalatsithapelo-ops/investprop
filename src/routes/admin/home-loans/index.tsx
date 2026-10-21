@@ -200,6 +200,28 @@ function AdminHomeLoansPage() {
                     </select>
                   </div>
 
+                  {(app.documents as any[])?.length > 0 && (
+                    <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Submitted documents
+                      </p>
+                      <ul className="mt-1 flex flex-wrap gap-2">
+                        {(app.documents as any[]).map((doc) => (
+                          <li key={doc.id}>
+                            <a
+                              href={doc.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded border border-teal-200 bg-white px-2 py-1 text-xs font-medium text-teal-700 hover:bg-teal-50"
+                            >
+                              {doc.docType.replace(/_/g, " ")} · {doc.fileName}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
                   {offers.length > 0 && (
                     <div className="mt-4 overflow-x-auto">
                       <table className="w-full text-sm">

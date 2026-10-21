@@ -8,6 +8,8 @@ import {
   ShieldCheck,
   Info,
   ArrowRight,
+  Paperclip,
+  X,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
@@ -22,6 +24,17 @@ const R = (n: number) =>
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   })}`;
+
+const DOC_TYPES = [
+  { value: "PAYSLIP", label: "Payslip (latest 3 months)" },
+  { value: "BANK_STATEMENT", label: "Bank statement (3 months)" },
+  { value: "ID_DOCUMENT", label: "ID document" },
+  { value: "PROOF_OF_ADDRESS", label: "Proof of address" },
+  { value: "OFFER_TO_PURCHASE", label: "Offer to purchase" },
+  { value: "OTHER", label: "Other supporting document" },
+] as const;
+
+type AppliedDoc = { docType: string; fileName: string; fileUrl: string };
 
 type FormState = {
   grossMonthlyIncome: number;
@@ -124,6 +137,9 @@ function PrequalifyPage() {
   const [applyConsent, setApplyConsent] = useState(false);
   const [applicantPhone, setApplicantPhone] = useState("");
   const [applying, setApplying] = useState(false);
+  const [docType, setDocType] = useState<string>("PAYSLIP");
+  const [docs, setDocs] = useState<AppliedDoc[]>([]);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
 
   useEffect(() => {
     if (hasHydrated && !authToken) navigate({ to: "/login" });
@@ -202,6 +218,34 @@ function PrequalifyPage() {
     }
   };
 
+  const uploadDoc = async (file: File) => {
+    if (!authToken) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File is too large (max 5 MB).");
+      return;
+    }
+    setUploadingDoc(true);
+    try {
+      const reader = new FileReader();
+      const base64: string = await new Promise((resolve) => {
+        reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
+        reader.readAsDataURL(file);
+      });
+      const res = await (trpcClient as any).uploadFile.mutate({
+        authToken,
+        fileName: file.name,
+        fileType: file.type,
+        fileBase64: base64,
+      });
+      setDocs((prev) => [...prev, { docType, fileName: file.name, fileUrl: res.publicUrl }]);
+      toast.success("Document attached.");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Could not upload the document.");
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
   const handleApply = async () => {
     if (!authToken) {
       navigate({ to: "/login" });
@@ -230,6 +274,7 @@ function PrequalifyPage() {
         loanTermYears: form.loanTermYears,
         applicantPhone: applicantPhone || undefined,
         consentShareData: applyConsent,
+        documents: docs.length ? docs : undefined,
       });
       if (!res.success) {
         toast.error(res.error ?? "Could not submit your application.");
@@ -240,6 +285,7 @@ function PrequalifyPage() {
             : "Application received. We'll match you to a bond originator.",
         );
         setApplyConsent(false);
+        setDocs([]);
         void applicationsQuery.refetch();
         navigate({ to: "/finance/home-loan" });
       }
@@ -454,6 +500,70 @@ function PrequalifyPage() {
                     placeholder="Contact number (optional)"
                     className="mt-3 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-teal-500"
                   />
+
+                  {/* Supporting documents (payslips, bank statements, etc.) */}
+                  <div className="mt-3 rounded-md border border-teal-200 bg-white p-3">
+                    <p className="text-sm font-medium text-gray-800">Supporting documents</p>
+                    <p className="text-xs text-gray-500">
+                      The bank needs your latest payslips and 3 months' bank statements. Attach them
+                      now (PDF or image, max 5 MB each).
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <select
+                        value={docType}
+                        onChange={(e) => setDocType(e.target.value)}
+                        className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900"
+                      >
+                        {DOC_TYPES.map((d) => (
+                          <option key={d.value} value={d.value}>
+                            {d.label}
+                          </option>
+                        ))}
+                      </select>
+                      <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-teal-300 bg-teal-50 px-3 py-1.5 text-sm font-medium text-teal-700 hover:bg-teal-100">
+                        {uploadingDoc ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Paperclip size={14} />
+                        )}
+                        Attach
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          className="hidden"
+                          disabled={uploadingDoc}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) void uploadDoc(file);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {docs.length > 0 && (
+                      <ul className="mt-2 space-y-1">
+                        {docs.map((d, i) => (
+                          <li
+                            key={`${d.fileUrl}-${i}`}
+                            className="flex items-center justify-between rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-700"
+                          >
+                            <span className="truncate">
+                              {DOC_TYPES.find((t) => t.value === d.docType)?.label ?? d.docType} —{" "}
+                              {d.fileName}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setDocs((prev) => prev.filter((_, j) => j !== i))}
+                              className="ml-2 text-gray-400 hover:text-red-500"
+                              aria-label="Remove document"
+                            >
+                              <X size={14} />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
 
                   <label className="mt-3 flex items-start gap-2 text-sm text-gray-700">
                     <input

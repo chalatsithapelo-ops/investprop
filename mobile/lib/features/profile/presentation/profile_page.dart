@@ -114,6 +114,26 @@ class ProfilePage extends ConsumerWidget {
                     onTap: () => context.push('/profile/distressed'),
                   ),
                   const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.calculate_outlined,
+                        color: AppColors.navy),
+                    title: const Text('Home-loan prequalification'),
+                    subtitle: const Text(
+                        'See how much you qualify for in minutes'),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => context.push('/profile/prequalify'),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.account_balance_outlined,
+                        color: AppColors.navy),
+                    title: const Text('My home-loan applications'),
+                    subtitle: const Text(
+                        'Apply to all major banks & compare offers'),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => context.push('/profile/home-loan'),
+                  ),
+                  const Divider(height: 1),
                 ],
                 ListTile(
                   leading: const Icon(Icons.language, color: AppColors.navy),

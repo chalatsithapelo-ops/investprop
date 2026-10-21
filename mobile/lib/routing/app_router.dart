@@ -15,6 +15,9 @@ import '../features/dashboard/dashboard_page.dart';
 import '../features/distressed/presentation/distressed_deals_page.dart';
 import '../features/distressed/presentation/distressed_deal_detail_page.dart';
 import '../features/documents/presentation/documents_page.dart';
+import '../features/finance/presentation/home_loan_applications_page.dart';
+import '../features/finance/presentation/home_loan_apply_page.dart';
+import '../features/finance/presentation/prequalification_page.dart';
 import '../features/governance/presentation/distributions_voting_page.dart';
 import '../features/investment/presentation/invest_page.dart';
 import '../features/ledger/presentation/share_ledger_page.dart';
@@ -296,6 +299,27 @@ final routerProvider = Provider<GoRouter>((ref) {
                           listingId: int.tryParse(
                                   state.pathParameters['id'] ?? '') ??
                               0,
+                        ),
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: 'prequalify',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const PrequalificationPage(),
+                  ),
+                  GoRoute(
+                    path: 'home-loan',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const HomeLoanApplicationsPage(),
+                    routes: [
+                      GoRoute(
+                        path: 'apply',
+                        parentNavigatorKey: _rootKey,
+                        builder: (context, state) => HomeLoanApplyPage(
+                          prefill: state.extra is Map<String, dynamic>
+                              ? state.extra as Map<String, dynamic>
+                              : null,
                         ),
                       ),
                     ],

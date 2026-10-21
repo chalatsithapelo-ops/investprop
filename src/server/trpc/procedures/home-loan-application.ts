@@ -22,6 +22,15 @@ function requireAdmin(role: string) {
   }
 }
 
+const docTypeEnum = z.enum([
+  "PAYSLIP",
+  "BANK_STATEMENT",
+  "ID_DOCUMENT",
+  "PROOF_OF_ADDRESS",
+  "OFFER_TO_PURCHASE",
+  "OTHER",
+]);
+
 /** Shared projection for an application + its bank offers. */
 function serialiseApplication(app: {
   id: number;
@@ -51,6 +60,13 @@ function serialiseApplication(app: {
     loanTermYears: number;
     status: string;
     notes: string | null;
+    createdAt: Date;
+  }[];
+  documents?: {
+    id: number;
+    docType: string;
+    fileName: string;
+    fileUrl: string;
     createdAt: Date;
   }[];
 }) {
@@ -83,6 +99,13 @@ function serialiseApplication(app: {
       notes: o.notes,
       createdAt: o.createdAt,
     })),
+    documents: (app.documents ?? []).map((d) => ({
+      id: d.id,
+      docType: d.docType,
+      fileName: d.fileName,
+      fileUrl: d.fileUrl,
+      createdAt: d.createdAt,
+    })),
   };
 }
 
@@ -103,6 +126,16 @@ export const submitHomeLoanApplication = baseProcedure
       applicantPhone: z.string().max(40).optional(),
       notes: z.string().max(1000).optional(),
       consentShareData: z.boolean(),
+      documents: z
+        .array(
+          z.object({
+            docType: docTypeEnum,
+            fileName: z.string().min(1).max(260),
+            fileUrl: z.string().url().max(2000),
+          }),
+        )
+        .max(20)
+        .optional(),
     }),
   )
   .mutation(async ({ input }) => {
@@ -164,10 +197,22 @@ export const submitHomeLoanApplication = baseProcedure
       },
     });
 
+    if (input.documents?.length) {
+      await db.homeLoanDocument.createMany({
+        data: input.documents.map((d) => ({
+          applicationId: app.id,
+          docType: d.docType,
+          fileName: d.fileName,
+          fileUrl: d.fileUrl,
+        })),
+      });
+    }
+
     await createAuditLog(user.id, "SUBMIT_HOME_LOAN_APPLICATION", "HomeLoanApplication", app.id, {
       requestedBondAmount: input.requestedBondAmount,
       propertyId: input.propertyId ?? null,
       originatorAssigned: Boolean(partner),
+      documentsSubmitted: input.documents?.length ?? 0,
     });
 
     return {
@@ -187,7 +232,10 @@ export const getMyHomeLoanApplications = baseProcedure
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
       take: 50,
-      include: { offers: { orderBy: { annualInterestRate: "asc" } } },
+      include: {
+        offers: { orderBy: { annualInterestRate: "asc" } },
+        documents: { orderBy: { createdAt: "asc" } },
+      },
     });
     return { applications: apps.map(serialiseApplication) };
   });
@@ -281,6 +329,7 @@ export const getHomeLoanApplicationsAdmin = baseProcedure
       take: 200,
       include: {
         offers: { orderBy: { annualInterestRate: "asc" } },
+        documents: { orderBy: { createdAt: "asc" } },
         user: { select: { name: true, email: true } },
       },
     });

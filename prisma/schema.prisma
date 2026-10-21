@@ -1863,10 +1863,35 @@ model HomeLoanApplication {
   updatedAt          DateTime                   @default(now()) @updatedAt
   user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   offers             HomeLoanOffer[]
+  documents          HomeLoanDocument[]
 
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+/// Type of supporting document attached to a home-loan application.
+enum HomeLoanDocumentType {
+  PAYSLIP
+  BANK_STATEMENT
+  ID_DOCUMENT
+  PROOF_OF_ADDRESS
+  OFFER_TO_PURCHASE
+  OTHER
+}
+
+/// A supporting document (payslip, bank statement, etc.) the applicant
+/// submits with a home-loan application for the originator / banks.
+model HomeLoanDocument {
+  id            Int                  @id @default(autoincrement())
+  applicationId Int
+  docType       HomeLoanDocumentType @default(OTHER)
+  fileName      String
+  fileUrl       String
+  createdAt     DateTime             @default(now())
+  application   HomeLoanApplication  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
 }
 
 /// A single bank's offer returned (via the originator) on an application.
