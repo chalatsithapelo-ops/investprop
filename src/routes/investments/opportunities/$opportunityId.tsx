@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   XCircle,
   Building2,
+  Landmark,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { AICopilotChat } from "~/components/AICopilotChat";
@@ -588,6 +589,16 @@ function OpportunityDetailPage() {
                   className="inline-flex items-center gap-2 rounded-lg border border-gold-500/30 bg-gold-500/10 px-3 py-2 text-sm font-semibold text-gold-600 hover:bg-gold-500/20"
                 >
                   <PiggyBank size={14} /> Use this deal in financing calculator
+                </Link>
+                <Link
+                  to="/finance/prequalify"
+                  search={{
+                    propertyId: Number(property.id),
+                    propertyPrice: Number(property.price ?? property.fundingGoal ?? 0),
+                  }}
+                  className="mt-2 inline-flex items-center gap-2 rounded-lg border border-teal-500/30 bg-teal-500/10 px-3 py-2 text-sm font-semibold text-teal-600 hover:bg-teal-500/20"
+                >
+                  <Landmark size={14} /> Get prequalified for a home loan
                 </Link>
               </div>
             </div>

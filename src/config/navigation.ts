@@ -140,6 +140,20 @@ export const mainNavigationLinks: NavigationLink[] = [
     roles: ["INVESTOR"],
   },
   {
+    label: "Home Loan Prequalification",
+    to: "/finance/prequalify",
+    icon: Landmark,
+    roles: ["INVESTOR"],
+    description: "Get an indicative home-loan affordability estimate for property deals",
+  },
+  {
+    label: "Home Loan Applications",
+    to: "/finance/home-loan",
+    icon: Landmark,
+    roles: ["INVESTOR"],
+    description: "Track your multi-bank home-loan applications and compare bank offers",
+  },
+  {
     label: "My Certificates",
     to: "/investments/certificates",
     icon: Award,
@@ -249,6 +263,13 @@ export const mainNavigationLinks: NavigationLink[] = [
     icon: BadgeDollarSign,
     roles: ["ADMIN", "DEVELOPMENT_MANAGER"],
     description: "Manage referral partners and commission ledger",
+  },
+  {
+    label: "Home-Loan Applications",
+    to: "/admin/home-loans",
+    icon: Landmark,
+    roles: ["ADMIN", "DEVELOPMENT_MANAGER"],
+    description: "Process multi-bank home-loan applications and record bank offers",
   },
   {
     label: "Bulk Operations",

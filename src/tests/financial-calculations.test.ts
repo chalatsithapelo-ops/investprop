@@ -17,6 +17,9 @@ import {
   calculateIRRPerPeriod,
   calculateAnnualIRRFromMonthly,
   calculateMonthlyCashFlow,
+  calculatePrequalification,
+  bondAmountFromInstalment,
+  calculateMonthlyDebtService as _mds,
 } from '../financial-calculations';
 
 describe('Financial Calculations', () => {
@@ -242,6 +245,76 @@ describe('Financial Calculations', () => {
 
     it('treats debt service as 0 by default', () => {
       expect(calculateMonthlyCashFlow(90_000)).toBe(7500);
+    });
+  });
+
+  describe('bondAmountFromInstalment', () => {
+    it('is the inverse of calculateMonthlyDebtService', () => {
+      // A R1 000 000 bond at 11.75% over 20 years has a known instalment;
+      // feeding that instalment back must recover ~R1 000 000.
+      const instalment = _mds(1_000_000, 11.75, 20);
+      const bond = bondAmountFromInstalment(instalment, 11.75, 20);
+      expect(bond).toBeCloseTo(1_000_000, 0);
+    });
+
+    it('returns 0 for a non-positive instalment', () => {
+      expect(bondAmountFromInstalment(0, 11.75, 20)).toBe(0);
+    });
+  });
+
+  describe('calculatePrequalification', () => {
+    it('caps the affordable instalment at 30% of gross income', () => {
+      const r = calculatePrequalification({ grossMonthlyIncome: 50_000 });
+      expect(r.maxInstalment).toBeCloseTo(15_000, 5);
+      expect(r.maxBondAmount).toBeGreaterThan(0);
+      expect(r.maxPropertyPrice).toBeCloseTo(r.maxBondAmount, 5);
+    });
+
+    it('subtracts existing debt via the total-debt cap', () => {
+      // 36% of 50 000 = 18 000; minus 6 000 existing debt = 12 000, which is
+      // lower than the 30% instalment cap (15 000) so it wins.
+      const r = calculatePrequalification({
+        grossMonthlyIncome: 50_000,
+        existingDebtRepayments: 6_000,
+      });
+      expect(r.maxInstalment).toBeCloseTo(12_000, 5);
+    });
+
+    it('adds the deposit to the max property price', () => {
+      const noDeposit = calculatePrequalification({ grossMonthlyIncome: 60_000 });
+      const withDeposit = calculatePrequalification({
+        grossMonthlyIncome: 60_000,
+        depositAmount: 200_000,
+      });
+      expect(withDeposit.maxPropertyPrice).toBeCloseTo(
+        noDeposit.maxBondAmount + 200_000,
+        0
+      );
+    });
+
+    it('qualifies an affordable deal and flags an unaffordable one', () => {
+      const affordable = calculatePrequalification({
+        grossMonthlyIncome: 80_000,
+        propertyPrice: 1_200_000,
+      });
+      expect(affordable.qualifies).toBe(true);
+      expect(affordable.estimatedInstalment).toBeGreaterThan(0);
+
+      const tooBig = calculatePrequalification({
+        grossMonthlyIncome: 25_000,
+        propertyPrice: 3_000_000,
+      });
+      expect(tooBig.qualifies).toBe(false);
+      expect(tooBig.band).toBe('WEAK');
+    });
+
+    it('computes loan-to-value against the requested price and deposit', () => {
+      const r = calculatePrequalification({
+        grossMonthlyIncome: 90_000,
+        propertyPrice: 1_000_000,
+        depositAmount: 100_000,
+      });
+      expect(r.loanToValue).toBeCloseTo(90, 5);
     });
   });
 });

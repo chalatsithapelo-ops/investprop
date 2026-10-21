@@ -1048,3 +1048,145 @@ export function calculateCostPerSquareMeter(
 ): number {
   return totalSquareMeters > 0 ? totalCosts / totalSquareMeters : 0;
 }
+
+// ============================================================================
+// Home-Loan Prequalification (South Africa)
+// ============================================================================
+
+/**
+ * Standard SA mortgage assumptions used for an indicative prequalification.
+ * These are affordability guidelines, NOT a bank's underwriting rules.
+ */
+export const PREQUAL_DEFAULTS = {
+  /** Banks typically cap the home-loan instalment at ~30% of gross income. */
+  instalmentToIncomeRatio: 0.3,
+  /** Total debt (incl. the new bond) should not exceed ~36% of gross income. */
+  totalDebtToIncomeRatio: 0.36,
+  /** Prime-linked indicative rate (mirrors the financing calculator default). */
+  annualInterestRate: 11.75,
+  /** Standard SA bond term. */
+  loanTermYears: 20,
+} as const;
+
+export type PrequalBand = "STRONG" | "MODERATE" | "WEAK";
+
+export type PrequalificationInput = {
+  grossMonthlyIncome: number;
+  /** Optional — defaults to 0 if unknown. */
+  monthlyExpenses?: number;
+  /** Existing monthly debt repayments (cards, car, other loans). */
+  existingDebtRepayments?: number;
+  /** Cash deposit the investor can put down. */
+  depositAmount?: number;
+  /** The specific deal/property price, if prequalifying against a deal. */
+  propertyPrice?: number;
+  annualInterestRate?: number;
+  loanTermYears?: number;
+};
+
+export type PrequalificationResult = {
+  /** Maximum monthly bond instalment the applicant can afford. */
+  maxInstalment: number;
+  /** Maximum bond (loan) amount backed out from the max instalment. */
+  maxBondAmount: number;
+  /** Maximum property price = max bond + deposit. */
+  maxPropertyPrice: number;
+  /** Estimated instalment for the requested property price (if given). */
+  estimatedInstalment: number;
+  /** Loan-to-value for the requested property price (0 if none given). */
+  loanToValue: number;
+  /** Whether the requested property price is affordable (true if no price given but income supports a bond). */
+  qualifies: boolean;
+  band: PrequalBand;
+  annualInterestRate: number;
+  loanTermYears: number;
+};
+
+/**
+ * Invert the amortisation formula: given an affordable monthly instalment,
+ * return the maximum principal (bond amount) it can service.
+ *
+ * P = M * [(1+r)^n - 1] / [r(1+r)^n]
+ */
+export function bondAmountFromInstalment(
+  monthlyInstalment: number,
+  annualInterestRate: number,
+  loanTermYears: number
+): number {
+  if (monthlyInstalment <= 0 || loanTermYears <= 0) return 0;
+  const monthlyRate = annualInterestRate / 100 / 12;
+  const n = loanTermYears * 12;
+  if (monthlyRate <= 0) return monthlyInstalment * n;
+  const factor = Math.pow(1 + monthlyRate, n);
+  return monthlyInstalment * ((factor - 1) / (monthlyRate * factor));
+}
+
+/**
+ * Produce an INDICATIVE home-loan prequalification for an investor.
+ *
+ * This is an affordability estimate only — it is not a credit check, a bank
+ * decision, or a guarantee of finance. It mirrors the DTI guidelines SA banks
+ * apply so the investor gets a realistic sense of what they could borrow.
+ */
+export function calculatePrequalification(
+  input: PrequalificationInput
+): PrequalificationResult {
+  const rate = input.annualInterestRate ?? PREQUAL_DEFAULTS.annualInterestRate;
+  const term = input.loanTermYears ?? PREQUAL_DEFAULTS.loanTermYears;
+  const gross = Math.max(0, input.grossMonthlyIncome);
+  const existingDebt = Math.max(0, input.existingDebtRepayments ?? 0);
+  const deposit = Math.max(0, input.depositAmount ?? 0);
+
+  // Affordable instalment is the lower of the two DTI caps, net of existing debt.
+  const instalmentCap = gross * PREQUAL_DEFAULTS.instalmentToIncomeRatio;
+  const totalDebtCap =
+    gross * PREQUAL_DEFAULTS.totalDebtToIncomeRatio - existingDebt;
+  const maxInstalment = Math.max(0, Math.min(instalmentCap, totalDebtCap));
+
+  const maxBondAmount = bondAmountFromInstalment(maxInstalment, rate, term);
+  const maxPropertyPrice = maxBondAmount + deposit;
+
+  // If prequalifying against a specific deal, work out the instalment for it.
+  const requestedPrice = Math.max(0, input.propertyPrice ?? 0);
+  const requestedBond = Math.max(0, requestedPrice - deposit);
+  const estimatedInstalment =
+    requestedPrice > 0
+      ? calculateMonthlyDebtService(requestedBond, rate, term)
+      : 0;
+  const loanToValue =
+    requestedPrice > 0 ? (requestedBond / requestedPrice) * 100 : 0;
+
+  // Qualifies: if a deal price was given, the deal instalment must fit the cap;
+  // otherwise, qualifies when income supports any meaningful bond.
+  const qualifies =
+    requestedPrice > 0
+      ? estimatedInstalment > 0 && estimatedInstalment <= maxInstalment
+      : maxBondAmount > 0;
+
+  // Band reflects how comfortably the applicant qualifies.
+  let band: PrequalBand = "WEAK";
+  if (requestedPrice > 0) {
+    if (maxInstalment > 0) {
+      const headroom = estimatedInstalment / maxInstalment;
+      if (qualifies && headroom <= 0.75) band = "STRONG";
+      else if (qualifies) band = "MODERATE";
+      else band = "WEAK";
+    }
+  } else {
+    if (maxInstalment >= 12_000) band = "STRONG";
+    else if (maxInstalment >= 5_000) band = "MODERATE";
+    else band = "WEAK";
+  }
+
+  return {
+    maxInstalment,
+    maxBondAmount,
+    maxPropertyPrice,
+    estimatedInstalment,
+    loanToValue,
+    qualifies,
+    band,
+    annualInterestRate: rate,
+    loanTermYears: term,
+  };
+}

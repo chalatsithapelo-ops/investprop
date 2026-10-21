@@ -568,6 +568,8 @@ model User {
   subscriptionPayments       SubscriptionPayment[]
   distressedAlertSub         DistressedAlertSubscription?
   referralLeads              ReferralLead[]
+  prequalifications          Prequalification[]
+  homeLoanApplications       HomeLoanApplication[]
 }
 
 enum DevelopmentType {
@@ -1768,6 +1770,121 @@ model ReferralLead {
   @@index([partnerId])
   @@index([status])
   @@index([createdAt])
+}
+
+/// Affordability band for a home-loan prequalification result.
+enum PrequalificationBand {
+  STRONG
+  MODERATE
+  WEAK
+}
+
+/// Home-loan prequalification — an INDICATIVE in-app affordability check an
+/// investor runs against a property deal. NOT a credit approval. Phase 2 will
+/// turn qualifying results into actual multi-bank applications via a bond
+/// originator partner (see home-loan-feature memory).
+model Prequalification {
+  id                   Int                  @id @default(autoincrement())
+  userId               Int
+  propertyId           Int?
+  // Applicant inputs (ZAR, monthly unless noted)
+  grossMonthlyIncome   Float
+  netMonthlyIncome     Float                @default(0)
+  monthlyExpenses      Float                @default(0)
+  existingDebtRepayments Float              @default(0)
+  depositAmount        Float                @default(0)
+  propertyPrice        Float                @default(0)
+  // Assumptions used for the calc
+  annualInterestRate   Float                @default(11.75)
+  loanTermYears        Int                  @default(20)
+  // Computed indicative result
+  maxInstalment        Float                @default(0)
+  maxBondAmount        Float                @default(0)
+  maxPropertyPrice     Float                @default(0)
+  estimatedInstalment  Float                @default(0)
+  loanToValue          Float                @default(0)
+  band                 PrequalificationBand @default(WEAK)
+  qualifies            Boolean              @default(false)
+  notes                String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @default(now()) @updatedAt
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([propertyId])
+  @@index([createdAt])
+}
+
+/// Lifecycle of a one-button multi-bank home-loan application handed to a
+/// bond-originator partner (Phase 2). We stay a REFERRER — the originator
+/// holds the NCA/FSP licence and submits to all major banks.
+enum HomeLoanApplicationStatus {
+  SUBMITTED // received by us, awaiting originator hand-off
+  BANKS_REVIEWING // originator has submitted to the banks
+  OFFERS_IN // one or more bank offers returned
+  ACCEPTED // applicant accepted an offer
+  DECLINED // all banks declined / applicant did not qualify
+  WITHDRAWN // applicant withdrew the application
+}
+
+/// Status of a single bank's offer on an application.
+enum HomeLoanOfferStatus {
+  OFFERED
+  ACCEPTED
+  DECLINED
+}
+
+/// A multi-bank home-loan application. Created from a (usually qualifying)
+/// prequalification; books a ReferralLead against the active BOND_ORIGINATOR
+/// partner so commission is realised when the deal converts.
+model HomeLoanApplication {
+  id                 Int                        @id @default(autoincrement())
+  userId             Int
+  prequalificationId Int?
+  propertyId         Int?
+  referralLeadId     Int?
+  // Snapshot of what the applicant is applying for (ZAR)
+  requestedBondAmount Float                     @default(0)
+  propertyPrice      Float                      @default(0)
+  depositAmount      Float                      @default(0)
+  grossMonthlyIncome Float                      @default(0)
+  estimatedInstalment Float                     @default(0)
+  annualInterestRate Float                      @default(11.75)
+  loanTermYears      Int                        @default(20)
+  // Hand-off + lifecycle
+  originatorName     String?
+  status             HomeLoanApplicationStatus  @default(SUBMITTED)
+  consentShareData   Boolean                    @default(false)
+  applicantPhone     String?
+  notes              String?
+  statusNote         String?
+  submittedAt        DateTime                   @default(now())
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @default(now()) @updatedAt
+  user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offers             HomeLoanOffer[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// A single bank's offer returned (via the originator) on an application.
+model HomeLoanOffer {
+  id              Int                 @id @default(autoincrement())
+  applicationId   Int
+  bankName        String
+  approvedAmount  Float               @default(0)
+  annualInterestRate Float            @default(0)
+  monthlyInstalment Float             @default(0)
+  loanTermYears   Int                 @default(20)
+  status          HomeLoanOfferStatus @default(OFFERED)
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @default(now()) @updatedAt
+  application     HomeLoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
 }
 
 enum SaleUrgency {
