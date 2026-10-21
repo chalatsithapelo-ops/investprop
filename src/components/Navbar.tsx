@@ -177,7 +177,7 @@ function NavDropdown({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gold-600"
+        className="flex items-center gap-1 rounded-lg px-2 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gold-600"
       >
         <Icon className="h-4 w-4" />
         {group.label}
@@ -263,14 +263,14 @@ export function Navbar() {
 
           {/* ── Desktop links ── */}
           {isLoggedIn && (
-            <div className="hidden items-center gap-1 lg:flex">
+            <div className="hidden items-center gap-0.5 xl:flex">
               {standalone.map((link) => {
                 const Icon = link.icon;
                 return (
                   <Link
                     key={link.to}
                     to={link.to}
-                    className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gold-600"
+                    className="flex items-center gap-1 rounded-lg px-2 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gold-600"
                   >
                     {Icon && <Icon className="h-4 w-4" />}
                     {link.label}
@@ -308,7 +308,7 @@ export function Navbar() {
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gold-50 text-sm font-semibold text-gold-600">
                     {user?.name?.charAt(0)?.toUpperCase() ?? "U"}
                   </div>
-                  <div className="hidden flex-col xl:flex">
+                  <div className="hidden flex-col 2xl:flex">
                     <span className="text-sm font-medium text-gray-900">
                       {user?.name}
                     </span>
@@ -326,14 +326,14 @@ export function Navbar() {
                   title="Sign out"
                 >
                   <LogOut className="h-4 w-4" />
-                  <span className="hidden lg:inline">Logout</span>
+                  <span className="hidden 2xl:inline">Logout</span>
                 </button>
 
                 {/* Mobile hamburger */}
                 <button
                   type="button"
                   onClick={() => setMobileOpen((o) => !o)}
-                  className="rounded-lg p-2 text-gray-600 transition hover:bg-gray-100 lg:hidden"
+                  className="rounded-lg p-2 text-gray-600 transition hover:bg-gray-100 xl:hidden"
                   aria-label="Toggle menu"
                 >
                   {mobileOpen ? (
@@ -365,7 +365,7 @@ export function Navbar() {
 
       {/* ── Mobile slide-down panel ── */}
       {isLoggedIn && mobileOpen && (
-        <div className="border-t border-gray-200 bg-white lg:hidden">
+        <div className="border-t border-gray-200 bg-white xl:hidden">
           <div className="space-y-1 px-4 py-4">
             {/* Standalone links */}
             {standalone.map((link) => {
