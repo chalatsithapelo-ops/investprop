@@ -95,8 +95,18 @@ function PricingPage() {
             <span className="text-sm text-gray-500">/{cycle === "ANNUAL" ? "year" : "month"}</span>
           )}
         </div>
+        <p className="mt-1 text-xs text-gray-500">
+          {price === 0
+            ? "No card required — free forever"
+            : cycle === "ANNUAL"
+              ? "Billed yearly · 2 months free · cancel anytime"
+              : "Billed monthly · cancel anytime · no lock-in"}
+        </p>
         <p className="mt-2 text-sm text-gray-600">{p.description}</p>
-        <ul className="mt-5 flex-1 space-y-2">
+        <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
+          What&apos;s included
+        </p>
+        <ul className="mt-2 flex-1 space-y-2">
           {p.features.map((f) => (
             <li key={f} className="flex items-start gap-2 text-sm text-gray-700">
               <Check className="mt-0.5 shrink-0 text-teal-600" size={16} />
@@ -132,8 +142,9 @@ function PricingPage() {
             Invest smarter with the right plan
           </h1>
           <p className="mx-auto mt-3 max-w-2xl text-gray-600">
-            Upgrade for AI-powered deal analysis, portfolio insights and South Africa's distressed
-            property engine. Cancel anytime.
+            InvestProp lets everyday South Africans co-invest in vetted property deals from
+            R1,000 — the platform itself is free to join. These plans are optional add-ons that
+            unlock AI tools and our distressed-property engine. Cancel anytime.
           </p>
 
           <div className="mt-6 inline-flex items-center rounded-lg border border-gray-200 bg-white p-1">
@@ -156,6 +167,34 @@ function PricingPage() {
           </div>
         </div>
 
+        {/* New-visitor explainer */}
+        <div className="mx-auto mt-10 grid max-w-5xl gap-4 sm:grid-cols-3">
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <h3 className="text-sm font-bold text-gray-900">What is InvestProp?</h3>
+            <p className="mt-1.5 text-sm text-gray-600">
+              A South African platform for fractional property investing. We vet a property,
+              place it in a ring-fenced company (SPV), and you buy shares from R1,000 — earning
+              a share of the rental income and any growth in value.
+            </p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <h3 className="text-sm font-bold text-gray-900">Who is it for?</h3>
+            <p className="mt-1.5 text-sm text-gray-600">
+              Everyday investors who want property exposure without buying a whole house,
+              bargain hunters chasing distressed &amp; auction deals, and property owners who
+              want to sell to us. There&apos;s a plan for each.
+            </p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <h3 className="text-sm font-bold text-gray-900">What am I paying for?</h3>
+            <p className="mt-1.5 text-sm text-gray-600">
+              Browsing and investing are free. A paid plan is a monthly subscription that adds
+              extra tools — the AI deal co-pilot, portfolio insights, and full access to our
+              distressed-property engine with alerts. It is not the cost of the property itself.
+            </p>
+          </div>
+        </div>
+
         {plansQuery.isLoading ? (
           <div className="mt-12 text-center text-gray-500">Loading plans…</div>
         ) : (
@@ -168,8 +207,10 @@ function PricingPage() {
               <div className="mt-16">
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-gray-900">Standalone products</h2>
-                  <p className="mt-2 text-gray-600">
-                    Specialist tools you can subscribe to on their own.
+                  <p className="mx-auto mt-2 max-w-2xl text-gray-600">
+                    Specialist subscriptions you can buy on their own — you don&apos;t need an
+                    investor plan. Pick these if you only want distressed-deal alerts, or if
+                    you&apos;re a property owner selling to us.
                   </p>
                 </div>
                 <div className="mx-auto mt-8 grid max-w-md gap-6">

@@ -479,7 +479,7 @@ export const upsertSubscriptionPlan = baseProcedure
   .input(
     z.object({
       authToken: z.string(),
-      tier: z.enum(["FREE", "INVESTOR_PLUS", "PRO", "ENTERPRISE", "DISTRESSED"]),
+      tier: z.enum(["FREE", "INVESTOR_PLUS", "PRO", "ENTERPRISE", "DISTRESSED", "SELLER_PRO"]),
       name: z.string().min(1).max(60),
       description: z.string().max(300).nullish(),
       monthlyPrice: z.number().min(0).max(1_000_000),
