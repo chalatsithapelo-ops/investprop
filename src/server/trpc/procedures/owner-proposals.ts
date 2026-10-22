@@ -10,6 +10,11 @@ import {
   recordPlatformFee,
   computeFeeFromBps,
 } from "~/server/fees/platform-fees";
+import { getEffectiveSubscription } from "~/server/subscriptions/subscription-service";
+import { tierHasFeature } from "~/server/subscriptions/plans";
+
+/** Discounted seller facilitation rate for active Seller Pro subscribers. */
+const SELLER_PRO_FACILITATION_BPS = 100; // 1.0% vs the 2.0% standard
 
 // ═══════════════════════════════════════════════════════════════
 //  Owner (seller-side) fee booking helpers.
@@ -45,6 +50,7 @@ export async function bookAssessmentPackFee(proposalId: number): Promise<void> {
  */
 export async function bookOwnerAcceptanceFees(proposal: {
   id: number;
+  ownerId: number;
   askingPrice: number;
   counterOfferAmount: number | null;
   engagementType: string;
@@ -56,13 +62,21 @@ export async function bookOwnerAcceptanceFees(proposal: {
     const agreedPrice = proposal.counterOfferAmount ?? proposal.askingPrice;
 
     if (cfg.sellerFacilitationFeeBps > 0 && agreedPrice > 0) {
+      // Active Seller Pro subscribers pay a reduced facilitation fee on close.
+      const ownerSub = await getEffectiveSubscription(proposal.ownerId);
+      const isSellerPro =
+        ownerSub.active && tierHasFeature(ownerSub.tier, "SELLER_MULTI_LISTING");
+      const facilitationBps = isSellerPro
+        ? Math.min(cfg.sellerFacilitationFeeBps, SELLER_PRO_FACILITATION_BPS)
+        : cfg.sellerFacilitationFeeBps;
+
       await recordPlatformFee({
         feeType: "SELLER_FACILITATION",
         sourceType: "OwnerSaleProposal",
         sourceId: proposal.id,
         baseAmount: agreedPrice,
-        feeBps: cfg.sellerFacilitationFeeBps,
-        description: `Seller facilitation fee — proposal #${proposal.id}`,
+        feeBps: facilitationBps,
+        description: `Seller facilitation fee${isSellerPro ? " (Seller Pro rate)" : ""} — proposal #${proposal.id}`,
       });
     }
 
@@ -145,6 +159,24 @@ export const submitSaleProposal = baseProcedure
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
     requireRole(user, ["PROPERTY_OWNER"], "Only property owners can submit sale proposals");
+
+    // Listing cap: Seller Pro subscribers list unlimited properties; everyone
+    // else may keep a single active (PENDING/UNDER_REVIEW) listing at a time.
+    const ownerSub = await getEffectiveSubscription(user.id);
+    const sellerPro =
+      ownerSub.active && tierHasFeature(ownerSub.tier, "SELLER_MULTI_LISTING");
+    if (!sellerPro) {
+      const activeListings = await db.ownerSaleProposal.count({
+        where: { ownerId: user.id, status: { in: ["PENDING", "UNDER_REVIEW"] } },
+      });
+      if (activeListings >= 1) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "You already have an active listing. Upgrade to Seller Pro on the Pricing page to list multiple properties at once.",
+        });
+      }
+    }
 
     // Cross-field validation
     if (input.bondStatus === "EXISTING" && (!input.bondOutstanding || input.bondOutstanding <= 0)) {

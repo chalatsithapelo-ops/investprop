@@ -86,8 +86,8 @@ export const PLAN_CATALOG: Record<SubscriptionTier, PlanDefinition> = {
     rank: 2,
     features: [
       "Everything in Investor Plus",
-      "Independent AI underwriting — a sponsor-agnostic A–E grade on every deal",
-      "Full distressed & auction engine with AI deal grades (A–E)",
+      "Independent AI underwriting — full assumption breakdown & risk read on every deal",
+      "AI deal grades (A–E) across SA's full distressed & auction engine",
       "Real-time, strategy-filtered distressed deal alerts",
       "Priority support",
     ],
