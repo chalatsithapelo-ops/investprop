@@ -18,6 +18,24 @@ import { screenListingCore } from "~/server/trpc/procedures/distressed-ai";
 
 const GRADE_RANK: Record<string, number> = { A: 5, B: 4, C: 3, D: 2, E: 1 };
 
+/**
+ * Derives a display-friendly price drop by comparing the current asking price
+ * to the highest previously-recorded price. Returns nulls when there is no
+ * meaningful (≥1%) drop. Mirrors the alert pipeline's drop semantics.
+ */
+function computePriceDrop(
+  history: { askingPrice: number }[],
+  current: number,
+): { priceDropPct: number | null; previousPrice: number | null } {
+  if (!history.length || current <= 0) return { priceDropPct: null, previousPrice: null };
+  const prevMax = Math.max(...history.map((h) => h.askingPrice).filter((p) => p > 0), current);
+  if (prevMax <= current) return { priceDropPct: null, previousPrice: null };
+  const pct = ((prevMax - current) / prevMax) * 100;
+  if (pct < 1) return { priceDropPct: null, previousPrice: null };
+  return { priceDropPct: pct, previousPrice: prevMax };
+}
+
+
 const listingSelect = {
   id: true,
   title: true,
@@ -107,9 +125,27 @@ export const getSubscriberDistressedDeals = baseProcedure
       where: { status: { in: ["ACTIVE", "WATCHED"] }, createdAt: { gte: weekAgo } },
     });
 
+    // Price-drop annotation: one grouped query over the page's listings.
+    const priceRows = listings.length
+      ? await db.distressedListingPriceHistory.findMany({
+          where: { listingId: { in: listings.map((l) => l.id) } },
+          select: { listingId: true, askingPrice: true },
+        })
+      : [];
+    const historyByListing = new Map<number, { askingPrice: number }[]>();
+    for (const row of priceRows) {
+      const arr = historyByListing.get(row.listingId) ?? [];
+      arr.push({ askingPrice: row.askingPrice });
+      historyByListing.set(row.listingId, arr);
+    }
+    const annotated = listings.map((l) => ({
+      ...l,
+      ...computePriceDrop(historyByListing.get(l.id) ?? [], l.askingPrice),
+    }));
+
     return {
       entitled: true as const,
-      listings,
+      listings: annotated,
       totalCount,
       totalPages,
       currentPage: input.page,
@@ -138,7 +174,10 @@ export const getSubscriberDistressedDetail = baseProcedure
       },
     });
     if (!listing) throw new TRPCError({ code: "NOT_FOUND", message: "Listing not found" });
-    return listing;
+    return {
+      ...listing,
+      ...computePriceDrop(listing.priceHistory, listing.askingPrice),
+    };
   });
 
 // ─── On-demand AI grade (entitlement-gated, rate-limited) ──────
