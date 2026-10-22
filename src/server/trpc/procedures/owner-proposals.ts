@@ -15,7 +15,7 @@ import { requireFeature } from "~/server/subscriptions/subscription-service";
 import { tierHasFeature } from "~/server/subscriptions/plans";
 import { generateText } from "ai";
 import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
-import { recordAiPrediction } from "~/server/ai/prediction-log";
+import { recordAiPrediction, resolveAiPrediction } from "~/server/ai/prediction-log";
 
 /** Discounted seller facilitation rate for active Seller Pro subscribers. */
 const SELLER_PRO_FACILITATION_BPS = 100; // 1.0% vs the 2.0% standard
@@ -600,6 +600,13 @@ export const reviewSaleProposal = baseProcedure
     } else if (input.action === "ACCEPTED") {
       await bookAssessmentPackFee(proposal.id);
       await bookOwnerAcceptanceFees(proposal);
+      // Close the loop on any AI valuation: the accepted price is the real
+      // outcome we can later calibrate the estimate against.
+      void resolveAiPrediction("SELLER_VALUATION", proposal.id, {
+        outcome: "ACCEPTED",
+        agreedPrice: proposal.counterOfferAmount ?? proposal.askingPrice,
+        acceptedAt: new Date().toISOString(),
+      });
     }
 
     // Notify the property owner
