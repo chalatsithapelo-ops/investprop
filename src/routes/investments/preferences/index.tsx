@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Settings, DollarSign, MapPin, Shield } from "lucide-react";
+import { Settings, DollarSign, MapPin, Shield, Mail } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
@@ -62,6 +62,8 @@ function InvestmentPreferencesPage() {
   const [preferredLocations, setPreferredLocations] = useState<string[]>([]);
   const [riskTolerance, setRiskTolerance] = useState("medium");
   const [preferredReturnRate, setPreferredReturnRate] = useState("");
+  const [digestOptedOut, setDigestOptedOut] = useState(false);
+  const [digestSaving, setDigestSaving] = useState(false);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -77,6 +79,32 @@ function InvestmentPreferencesPage() {
 
   const prefs = preferencesQuery.data as any;
   const prefsData = prefs?.preferences;
+
+  const digestQuery = useQuery({
+    ...trpc.getAiDigestPrefs.queryOptions({ authToken: authToken ?? "" }),
+    enabled: !!authToken,
+  });
+
+  useEffect(() => {
+    const d = digestQuery.data as { optedOut?: boolean } | undefined;
+    if (d) setDigestOptedOut(Boolean(d.optedOut));
+  }, [digestQuery.data]);
+
+  const handleDigestToggle = async () => {
+    const next = !digestOptedOut;
+    setDigestOptedOut(next);
+    setDigestSaving(true);
+    try {
+      await trpcClient.setAiDigestOptOut.mutate({
+        authToken: authToken ?? "",
+        optOut: next,
+      });
+    } catch {
+      setDigestOptedOut(!next);
+    } finally {
+      setDigestSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (prefsData) {
@@ -347,6 +375,38 @@ function InvestmentPreferencesPage() {
                   %
                 </span>
               </div>
+            </div>
+          </div>
+
+          {/* Weekly AI Deal Digest */}
+          <div className="rounded-xl border border-navy-800/50 bg-navy-900/50 p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <Mail className="text-gold-600" size={18} />
+              <h2 className="text-lg font-semibold text-gray-900">
+                Weekly AI Deal Digest
+              </h2>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm text-gray-500">
+                Get a weekly email and in-app alert with the top opportunities
+                and below-market deals matched to your preferences by our AI.
+              </p>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={!digestOptedOut}
+                disabled={digestSaving}
+                onClick={handleDigestToggle}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                  digestOptedOut ? "bg-navy-700" : "bg-gold-500"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    digestOptedOut ? "translate-x-1" : "translate-x-6"
+                  }`}
+                />
+              </button>
             </div>
           </div>
 

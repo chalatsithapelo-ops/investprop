@@ -44,6 +44,7 @@ import { getRisks } from "~/server/trpc/procedures/getRisks";
 import { updateRisk } from "~/server/trpc/procedures/updateRisk";
 import { getInvestorPreferences } from "~/server/trpc/procedures/getInvestorPreferences";
 import { updateInvestorPreferences } from "~/server/trpc/procedures/updateInvestorPreferences";
+import { getAiDigestPrefs, setAiDigestOptOut, runAiDigestNow } from "~/server/trpc/procedures/ai-digest";
 import { getInvestmentOpportunities } from "~/server/trpc/procedures/getInvestmentOpportunities";
 import { submitInvestmentProposal } from "~/server/trpc/procedures/submitInvestmentProposal";
 import { updateInvestmentProposal, cancelInvestmentProposal, getMyPropertyInvestments } from "~/server/trpc/procedures/updateInvestmentProposal";
@@ -205,6 +206,9 @@ export const appRouter = createTRPCRouter({
   updateRisk,
   getInvestorPreferences,
   updateInvestorPreferences,
+  getAiDigestPrefs,
+  setAiDigestOptOut,
+  runAiDigestNow,
   getInvestmentOpportunities,
   submitInvestmentProposal,
   updateInvestmentProposal,

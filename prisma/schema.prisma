@@ -523,6 +523,9 @@ model User {
   // Phase 10 — investor appropriateness questionnaire (FSCA suitability)
   appropriatenessCompletedAt DateTime?
   appropriatenessAssessment  Json? // {experience, income, netWorth, tolerance, ack flags, completedAt}
+  // AI insights — proactive weekly deal digest (in-app + email)
+  aiDigestOptOut             Boolean                  @default(false)
+  aiDigestLastSentAt         DateTime?
   // AI Strategy
   chatMessages               PropertyChatMessage[]
   portfolioInsights          PortfolioInsight[]
