@@ -16,7 +16,7 @@ import {
 /** Companies Act §96(1)(b): private offers limited to 50 persons per SPV. */
 export const MAX_INVESTORS_PER_SPV = 50;
 /** Platform-wide minimum investment to keep admin overhead viable. */
-export const MIN_INVESTMENT_ZAR = 1000;
+export const MIN_INVESTMENT_ZAR = 10000;
 /** CPA-style cooling-off window in days. */
 export const COOLING_OFF_DAYS = 5;
 
@@ -63,7 +63,7 @@ export const submitInvestmentProposal = baseProcedure
       });
     }
 
-    // Enforce R1,000 platform minimum
+    // Enforce platform minimum
     if (input.contributionAmount < MIN_INVESTMENT_ZAR) {
       throw new TRPCError({
         code: "BAD_REQUEST",

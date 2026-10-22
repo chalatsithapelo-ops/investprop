@@ -143,7 +143,7 @@ function PricingPage() {
           </h1>
           <p className="mx-auto mt-3 max-w-2xl text-gray-600">
             InvestProp lets everyday South Africans co-invest in vetted property deals from
-            R1,000 — the platform itself is free to join. These plans are optional add-ons that
+            R10,000 — the platform itself is free to join. These plans are optional add-ons that
             unlock AI tools and our distressed-property engine. Cancel anytime.
           </p>
 

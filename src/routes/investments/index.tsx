@@ -174,7 +174,7 @@ function InvestmentsHubPage() {
               </p>
               <p className="text-xs text-gray-500">
                 Start investing in premium SA properties from as little as
-                R1,000
+                R10,000
               </p>
             </div>
             <div className="rounded-lg bg-navy-800/30 p-4">

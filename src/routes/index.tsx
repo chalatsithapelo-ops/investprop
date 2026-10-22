@@ -23,7 +23,7 @@ function LandingPage() {
           <p className="mx-auto mb-10 max-w-3xl text-lg text-gray-600 sm:text-xl">
             Investprop enables everyday South Africans to invest in premium real estate through
             dedicated SPV structures, with full transparency on each opportunity. Investment
-            from R1,000 per property.
+            from R10,000 per property.
           </p>
           <div className="mx-auto -mt-6 mb-10 flex max-w-3xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium text-gray-600">
             <span className="inline-flex items-center gap-1.5">

@@ -4,7 +4,7 @@ class InvestmentRules {
   const InvestmentRules._();
 
   /// Minimum contribution per the backend `MIN_INVESTMENT_ZAR`.
-  static const double minInvestment = 1000;
+  static const double minInvestment = 10000;
 
   /// FICA verification becomes mandatory once cumulative investment reaches
   /// this threshold (`FICA_THRESHOLD`).
