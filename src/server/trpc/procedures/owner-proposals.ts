@@ -15,6 +15,7 @@ import { requireFeature } from "~/server/subscriptions/subscription-service";
 import { tierHasFeature } from "~/server/subscriptions/plans";
 import { generateText } from "ai";
 import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
+import { recordAiPrediction } from "~/server/ai/prediction-log";
 
 /** Discounted seller facilitation rate for active Seller Pro subscribers. */
 const SELLER_PRO_FACILITATION_BPS = 100; // 1.0% vs the 2.0% standard
@@ -465,6 +466,21 @@ Rules:
     await db.ownerSaleProposal.update({
       where: { id: proposal.id },
       data: { aiValuation: valuation as object, aiValuatedAt: generatedAt },
+    });
+
+    void recordAiPrediction({
+      kind: "SELLER_VALUATION",
+      subjectType: "OwnerSaleProposal",
+      subjectId: proposal.id,
+      userId: user.id,
+      modelId: getModelId("cheap"),
+      confidence: valuation.confidence,
+      predicted: {
+        estimatedValueLow: valuation.estimatedValueLow,
+        estimatedValueMid: valuation.estimatedValueMid,
+        estimatedValueHigh: valuation.estimatedValueHigh,
+        askingPrice: proposal.askingPrice,
+      },
     });
 
     return { proposalId: proposal.id, generatedAt: generatedAt.toISOString(), cached: false, ...valuation };

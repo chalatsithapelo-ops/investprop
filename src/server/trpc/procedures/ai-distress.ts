@@ -16,6 +16,7 @@ import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
 import { buildPropertyContext } from "~/server/ai/property-context";
+import { recordAiPrediction } from "~/server/ai/prediction-log";
 
 interface DistressShape {
   score: number;
@@ -109,7 +110,7 @@ Return the JSON object now.`;
     const score = Math.max(0, Math.min(100, Math.round(parsed.score ?? 0)));
     const band = BANDS.has(parsed.band) ? parsed.band : bandFromScore(score);
 
-    return db.distressPrediction.create({
+    const prediction = await db.distressPrediction.create({
       data: {
         propertyId: input.propertyId,
         score,
@@ -118,6 +119,18 @@ Return the JSON object now.`;
         narrative: parsed.narrative,
       },
     });
+
+    void recordAiPrediction({
+      kind: "DISTRESS_SCORE",
+      subjectType: "Property",
+      subjectId: input.propertyId,
+      userId: user.id,
+      modelId: getModelId("premium"),
+      confidence: band,
+      predicted: { score, band },
+    });
+
+    return prediction;
   });
 
 export const getLatestDistress = baseProcedure

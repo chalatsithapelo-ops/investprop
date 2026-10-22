@@ -15,6 +15,7 @@ import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
 import { buildPropertyContext, findComparables } from "~/server/ai/property-context";
+import { recordAiPrediction } from "~/server/ai/prediction-log";
 
 interface UnderwritingShape {
   confidenceRating: "A" | "B" | "C" | "D" | "E";
@@ -136,6 +137,16 @@ Return the JSON object now.`;
         },
         aiUnderwrittenAt: new Date(),
       },
+    });
+
+    void recordAiPrediction({
+      kind: "UNDERWRITING_GRADE",
+      subjectType: "Property",
+      subjectId: input.propertyId,
+      userId: user.id,
+      modelId: getModelId("premium"),
+      confidence: parsed.confidenceRating,
+      predicted: { confidenceRating: parsed.confidenceRating, riskScore: parsed.riskScore },
     });
 
     return parsed;

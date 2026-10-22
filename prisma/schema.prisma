@@ -2079,3 +2079,25 @@ model DistressPrediction {
   @@index([propertyId, generatedAt])
   @@index([band])
 }
+
+// Lightweight register of AI predictions for later calibration against outcomes.
+model AiPrediction {
+  id          Int       @id @default(autoincrement())
+  kind        String // UNDERWRITING_GRADE | DISTRESS_SCORE | SELLER_VALUATION | MATCH_SCORE
+  subjectType String // Property | OwnerSaleProposal | DistressedListing
+  subjectId   Int
+  userId      Int?
+  modelId     String?
+  confidence  String? // grade letter / LOW|MEDIUM|HIGH / band, per kind
+  predicted   Json // the structured prediction at the time
+  outcome     Json? // recorded later when the real-world result is known
+  outcomeAt   DateTime?
+  resolved    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@index([kind, subjectId])
+  @@index([subjectType, subjectId])
+  @@index([resolved])
+  @@index([createdAt])
+}
+
