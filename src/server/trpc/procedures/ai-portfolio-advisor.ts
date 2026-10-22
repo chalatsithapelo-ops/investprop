@@ -7,6 +7,7 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import type { UserRole } from "@prisma/client";
 import { generateText } from "ai";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
@@ -27,14 +28,19 @@ function currentPeriod(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export const generatePortfolioInsight = baseProcedure
-  .input(z.object({ authToken: z.string(), force: z.boolean().optional() }))
-  .mutation(async ({ input }) => {
-    const user = await getAuthenticatedUser(input.authToken);
-    await requireFeature(user, "AI_PORTFOLIO_ADVISOR");
+/**
+ * Generate (or return cached) the monthly portfolio insight for one investor.
+ * Reusable by the tRPC mutation and the scheduled portfolio watchdog. Assumes
+ * the caller has already verified AI_PORTFOLIO_ADVISOR entitlement.
+ * Throws TRPCError BAD_REQUEST when the investor has no portfolio activity yet.
+ */
+export async function generatePortfolioInsightCore(
+  user: { id: number; role: UserRole },
+  opts: { force?: boolean } = {},
+) {
     const period = currentPeriod();
 
-    if (!input.force) {
+    if (!opts.force) {
       const existing = await db.portfolioInsight.findUnique({
         where: { investorId_period: { investorId: user.id, period } },
       });
@@ -186,6 +192,14 @@ Return the JSON object now.`;
       period: saved.period,
       generatedAt: saved.generatedAt,
     };
+}
+
+export const generatePortfolioInsight = baseProcedure
+  .input(z.object({ authToken: z.string(), force: z.boolean().optional() }))
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    await requireFeature(user, "AI_PORTFOLIO_ADVISOR");
+    return generatePortfolioInsightCore(user, { force: input.force });
   });
 
 export const getPortfolioInsight = baseProcedure

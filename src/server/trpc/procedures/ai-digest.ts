@@ -6,6 +6,7 @@ import {
   requireAuthenticatedUser,
 } from "~/server/trpc/auth-helpers";
 import { runWeeklyDigestCore } from "~/server/ai/insights-digest";
+import { runPortfolioWatchdogCore } from "~/server/ai/portfolio-watchdog";
 
 /** Read the current investor's weekly-digest email/notification preference. */
 export const getAiDigestPrefs = baseProcedure
@@ -44,5 +45,18 @@ export const runAiDigestNow = baseProcedure
       "Only admins can trigger the AI digest",
     );
     const summary = await runWeeklyDigestCore({ dryRun: input.dryRun ?? false });
+    return { success: true, summary };
+  });
+
+/** Admin/dev trigger to run (or dry-run) the monthly portfolio watchdog immediately. */
+export const runPortfolioWatchdogNow = baseProcedure
+  .input(z.object({ authToken: z.string(), dryRun: z.boolean().optional() }))
+  .mutation(async ({ input }) => {
+    await requireAuthenticatedUser(
+      input.authToken,
+      ["ADMIN", "DEVELOPMENT_MANAGER"],
+      "Only admins can trigger the portfolio watchdog",
+    );
+    const summary = await runPortfolioWatchdogCore({ dryRun: input.dryRun ?? false });
     return { success: true, summary };
   });

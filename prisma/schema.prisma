@@ -2018,6 +2018,7 @@ model PortfolioInsight {
   insights    Json // [{type, severity, message, action?}]
   generatedAt DateTime  @default(now())
   dismissedAt DateTime?
+  notifiedAt  DateTime? // set when the watchdog has pushed this insight (in-app + email)
   investor    User      @relation(fields: [investorId], references: [id], onDelete: Cascade)
 
   @@unique([investorId, period])
