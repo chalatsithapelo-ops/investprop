@@ -188,9 +188,10 @@ function PricingPage() {
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h3 className="text-sm font-bold text-gray-900">What am I paying for?</h3>
             <p className="mt-1.5 text-sm text-gray-600">
-              Browsing and investing are free. A paid plan is a monthly subscription that adds
-              extra tools — the AI deal co-pilot, portfolio insights, and full access to our
-              distressed-property engine with alerts. It is not the cost of the property itself.
+              Better decisions on real money. A plan adds tools that help you understand a deal,
+              grade it independently, and spot bargains first — so one avoided mistake or one
+              below-market deal pays for the subscription many times over. It is not the cost of
+              the property itself, and you can cancel anytime.
             </p>
           </div>
         </div>
