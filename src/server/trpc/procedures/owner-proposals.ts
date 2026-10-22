@@ -334,7 +334,7 @@ function normaliseValuation(parsed: unknown): SellerValuationShape | null {
 }
 
 export const valuateSaleProposal = baseProcedure
-  .input(z.object({ authToken: z.string(), proposalId: z.number() }))
+  .input(z.object({ authToken: z.string(), proposalId: z.number(), force: z.boolean().optional() }))
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
     // Seller Pro feature — staff bypass; everyone else gets an upgrade hint.
@@ -347,6 +347,20 @@ export const valuateSaleProposal = baseProcedure
     const isStaffRole = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"].includes(user.role);
     if (proposal.ownerId !== user.id && !isStaffRole) {
       throw new TRPCError({ code: "FORBIDDEN", message: "You can only value your own listings" });
+    }
+
+    // Serve the cached valuation unless the caller forces a refresh. Keeps the
+    // premium feature cheap: repeat views never re-run the LLM.
+    if (!input.force && proposal.aiValuation && proposal.aiValuatedAt) {
+      const cached = normaliseValuation(proposal.aiValuation);
+      if (cached) {
+        return {
+          proposalId: proposal.id,
+          generatedAt: proposal.aiValuatedAt.toISOString(),
+          cached: true,
+          ...cached,
+        };
+      }
     }
 
     // Comparable homes: other owner listings in the same city (fallback province),
@@ -447,7 +461,13 @@ Rules:
       });
     }
 
-    return { proposalId: proposal.id, generatedAt: new Date().toISOString(), ...valuation };
+    const generatedAt = new Date();
+    await db.ownerSaleProposal.update({
+      where: { id: proposal.id },
+      data: { aiValuation: valuation as object, aiValuatedAt: generatedAt },
+    });
+
+    return { proposalId: proposal.id, generatedAt: generatedAt.toISOString(), cached: false, ...valuation };
   });
 
 export const getSaleProposals = baseProcedure

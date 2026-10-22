@@ -1545,6 +1545,9 @@ model OwnerSaleProposal {
   counterOfferTerms  String?            @db.Text
   contactPhone       String?
   contactEmail       String?
+  // ─── Seller AI valuation cache (avoids re-running the LLM on every view) ───
+  aiValuation        Json? // last SellerValuationShape produced by valuateSaleProposal
+  aiValuatedAt       DateTime?
   status             SaleProposalStatus @default(PENDING)
   reviewedById       Int?
   reviewNotes        String?

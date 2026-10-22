@@ -135,12 +135,13 @@ function OwnerPortalPage() {
   );
 
   // Seller Pro: request an on-demand AI valuation report for a listing.
-  const runValuation = async (proposalId: number) => {
+  const runValuation = async (proposalId: number, force = false) => {
     setValuatingId(proposalId);
     try {
       const res = await (trpcClient as any).valuateSaleProposal.mutate({
         authToken: authToken ?? "",
         proposalId,
+        force,
       });
       setValuations((prev) => ({ ...prev, [proposalId]: res }));
     } catch (err: any) {
@@ -548,7 +549,7 @@ function OwnerPortalPage() {
                     {/* Seller Pro — AI valuation */}
                     <div className="mt-4 border-t border-gray-100 pt-3">
                       <button
-                        onClick={() => runValuation(proposal.id)}
+                        onClick={() => runValuation(proposal.id, Boolean(valuations[proposal.id]))}
                         disabled={valuatingId === proposal.id}
                         className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
                       >
