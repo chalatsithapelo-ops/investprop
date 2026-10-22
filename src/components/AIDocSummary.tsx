@@ -15,11 +15,23 @@ interface GlossaryItem {
   term: string;
   definition: string;
 }
+interface RiskFlag {
+  category: string;
+  severity: "INFO" | "ATTENTION" | "WARNING";
+  detail: string;
+  recommendation: string;
+}
 
 const SEVERITY_CLS: Record<string, string> = {
   INFO: "border-slate-200 bg-slate-50",
   ATTENTION: "border-amber-200 bg-amber-50",
   WARNING: "border-rose-200 bg-rose-50",
+};
+
+const RISK_LEVEL_CLS: Record<string, string> = {
+  LOW: "bg-emerald-100 text-emerald-700",
+  MODERATE: "bg-amber-100 text-amber-700",
+  HIGH: "bg-rose-100 text-rose-700",
 };
 
 export function AIDocSummary({ documentId }: Props) {
@@ -79,6 +91,47 @@ export function AIDocSummary({ documentId }: Props) {
           {summary && (
             <>
               <p className="leading-relaxed text-slate-700">{summary.summary}</p>
+
+              {(summary as { riskLevel?: string }).riskLevel && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Document risk
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${RISK_LEVEL_CLS[(summary as { riskLevel?: string }).riskLevel ?? "MODERATE"] ?? RISK_LEVEL_CLS.MODERATE}`}
+                  >
+                    {(summary as { riskLevel?: string }).riskLevel}
+                  </span>
+                </div>
+              )}
+
+              {Array.isArray((summary as { riskFlags?: RiskFlag[] }).riskFlags) &&
+                ((summary as { riskFlags?: RiskFlag[] }).riskFlags?.length ?? 0) > 0 && (
+                  <div>
+                    <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Risk register
+                    </h4>
+                    <ul className="space-y-2">
+                      {((summary as { riskFlags?: RiskFlag[] }).riskFlags ?? []).map((r, i) => (
+                        <li
+                          key={i}
+                          className={`rounded-lg border px-3 py-2 text-xs ${SEVERITY_CLS[r.severity] ?? SEVERITY_CLS.INFO}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-slate-800">
+                              {r.category.replace(/_/g, " ")}
+                            </span>
+                            <span className="text-[10px] font-bold uppercase text-slate-500">{r.severity}</span>
+                          </div>
+                          <div className="mt-0.5 text-slate-600">{r.detail}</div>
+                          {r.recommendation && (
+                            <div className="mt-1 text-slate-500">→ {r.recommendation}</div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
               {Array.isArray(summary.keyClauses) && summary.keyClauses.length > 0 && (
                 <div>

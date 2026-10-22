@@ -16,9 +16,12 @@ interface AISummaryShape {
   summary: string;
   keyClauses: { clause: string; plainEnglish: string; severity: "INFO" | "ATTENTION" | "WARNING" }[];
   glossary: { term: string; definition: string }[];
+  riskFlags: { category: string; severity: "INFO" | "ATTENTION" | "WARNING"; detail: string; recommendation: string }[];
+  riskLevel: "LOW" | "MODERATE" | "HIGH";
 }
 
 const ALLOWED_SEVERITIES = new Set(["INFO", "ATTENTION", "WARNING"]);
+const ALLOWED_RISK_LEVELS = new Set(["LOW", "MODERATE", "HIGH"]);
 
 function normalise(parsed: unknown): AISummaryShape | null {
   if (!parsed || typeof parsed !== "object") return null;
@@ -43,14 +46,37 @@ function normalise(parsed: unknown): AISummaryShape | null {
         )
         .slice(0, 12)
     : [];
-  return { summary: p.summary, keyClauses, glossary };
+  const riskFlags = Array.isArray(p.riskFlags)
+    ? p.riskFlags
+        .filter((r): r is AISummaryShape["riskFlags"][number] =>
+          !!r && typeof (r as { category: unknown }).category === "string" && typeof (r as { detail: unknown }).detail === "string"
+        )
+        .slice(0, 10)
+        .map((r) => ({
+          category: r.category,
+          severity: ALLOWED_SEVERITIES.has(r.severity) ? r.severity : "INFO",
+          detail: r.detail,
+          recommendation: typeof r.recommendation === "string" ? r.recommendation : "",
+        }))
+    : [];
+  const riskLevel = ALLOWED_RISK_LEVELS.has(p.riskLevel as string)
+    ? (p.riskLevel as AISummaryShape["riskLevel"])
+    : "MODERATE";
+  return { summary: p.summary, keyClauses, glossary, riskFlags, riskLevel };
 }
 
 async function summariseInternal(
   userId: number,
   documentId: number,
   force = false
-): Promise<{ summary: string; keyClauses: AISummaryShape["keyClauses"]; glossary: AISummaryShape["glossary"]; generatedAt: Date }> {
+): Promise<{
+  summary: string;
+  keyClauses: AISummaryShape["keyClauses"];
+  glossary: AISummaryShape["glossary"];
+  riskFlags: AISummaryShape["riskFlags"];
+  riskLevel: AISummaryShape["riskLevel"];
+  generatedAt: Date;
+}> {
   const doc = await db.legalDocument.findUnique({
     where: { id: documentId },
     select: {
@@ -61,6 +87,8 @@ async function summariseInternal(
       aiSummary: true,
       aiKeyClauses: true,
       aiGlossary: true,
+      aiRiskFlags: true,
+      aiRiskLevel: true,
       aiSummarisedAt: true,
     },
   });
@@ -71,6 +99,8 @@ async function summariseInternal(
       summary: doc.aiSummary,
       keyClauses: (doc.aiKeyClauses as AISummaryShape["keyClauses"]) ?? [],
       glossary: (doc.aiGlossary as AISummaryShape["glossary"]) ?? [],
+      riskFlags: (doc.aiRiskFlags as AISummaryShape["riskFlags"]) ?? [],
+      riskLevel: (doc.aiRiskLevel as AISummaryShape["riskLevel"]) ?? "MODERATE",
       generatedAt: doc.aiSummarisedAt,
     };
   }
@@ -90,13 +120,19 @@ For the document below, return ONLY a JSON object in this exact shape (no prose,
   ],
   "glossary": [
     { "term": "<jargon term>", "definition": "<1-sentence plain definition>" }
-  ]
+  ],
+  "riskFlags": [
+    { "category": "<one of: TITLE_RESTRICTION | BOND_ENCUMBRANCE | ARREARS | LEASE_ENCUMBRANCE | MISSING_COMPLIANCE_CERT | PENALTY_CLAUSE | AUTO_RENEWAL | LIABILITY_WAIVER | DEADLINE | FICA_FSCA_GAP | OTHER>", "severity": "INFO" | "ATTENTION" | "WARNING", "detail": "<1 sentence: what the risk is, quoting the figure/date if present>", "recommendation": "<imperative, short, what the reader should do>" }
+  ],
+  "riskLevel": "LOW" | "MODERATE" | "HIGH"
 }
 
 Rules:
 - Plain English, grade-9 reading level. Use 'you' / 'your'.
-- South African legal context (Companies Act, FSCA, FICA, CPA, Sec 96 prospectus, OTP, transfer duty).
-- Severity rubric: WARNING = clause that could cost the investor money or rights; ATTENTION = important deadline or condition; INFO = standard boilerplate.
+- South African legal context (Companies Act, FSCA, FICA, CPA, Sec 96 prospectus, OTP, transfer duty, electrical/gas/beetle/plumbing CoCs, body-corporate levies).
+- Severity rubric: WARNING = clause/issue that could cost the investor money or rights; ATTENTION = important deadline or condition; INFO = standard boilerplate.
+- riskFlags: list ONLY genuine issues found in THIS document (0-10). Do NOT invent flags. An absent, unsigned or expired compliance certificate, outstanding bond/rates arrears, restrictive title conditions, penalty/auto-renewal clauses and broad liability waivers are the highest-value flags.
+- riskLevel: HIGH if any WARNING-severity flag exists; MODERATE if only ATTENTION flags; LOW if none.
 - Include 3-8 keyClauses and 4-12 glossary entries. Skip terms a layperson already knows.
 - NEVER give legal advice — describe, don't prescribe. End anything advice-ish with "Confirm with an attorney before signing."`;
 
@@ -129,6 +165,8 @@ Return the JSON object now.`;
       aiSummary: parsed.summary,
       aiKeyClauses: parsed.keyClauses,
       aiGlossary: parsed.glossary,
+      aiRiskFlags: parsed.riskFlags,
+      aiRiskLevel: parsed.riskLevel,
       aiSummarisedAt: now,
     },
   });
@@ -149,7 +187,14 @@ export const getLegalDocumentSummary = baseProcedure
     await getAuthenticatedUser(input.authToken);
     const doc = await db.legalDocument.findUnique({
       where: { id: input.documentId },
-      select: { aiSummary: true, aiKeyClauses: true, aiGlossary: true, aiSummarisedAt: true },
+      select: {
+        aiSummary: true,
+        aiKeyClauses: true,
+        aiGlossary: true,
+        aiRiskFlags: true,
+        aiRiskLevel: true,
+        aiSummarisedAt: true,
+      },
     });
     if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Document not found" });
     if (!doc.aiSummary) return null;
@@ -157,6 +202,8 @@ export const getLegalDocumentSummary = baseProcedure
       summary: doc.aiSummary,
       keyClauses: (doc.aiKeyClauses as AISummaryShape["keyClauses"]) ?? [],
       glossary: (doc.aiGlossary as AISummaryShape["glossary"]) ?? [],
+      riskFlags: (doc.aiRiskFlags as AISummaryShape["riskFlags"]) ?? [],
+      riskLevel: (doc.aiRiskLevel as AISummaryShape["riskLevel"]) ?? "MODERATE",
       generatedAt: doc.aiSummarisedAt,
     };
   });

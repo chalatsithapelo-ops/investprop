@@ -992,6 +992,8 @@ model LegalDocument {
   aiSummary      String?        @db.Text // 3-bullet plain-language summary
   aiKeyClauses   Json? // [{clause, plainEnglish, severity}]
   aiGlossary     Json? // [{term, definition}]
+  aiRiskFlags    Json? // [{category, severity, detail, recommendation}] — structured SA-compliance risk register
+  aiRiskLevel    String? // LOW | MODERATE | HIGH — overall document risk
   aiSummarisedAt DateTime?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @default(now()) @updatedAt
