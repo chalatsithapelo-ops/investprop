@@ -128,24 +128,35 @@ function buildAlertEmail(
     askingPrice: number;
     discount: number | null;
     aiGrade: string | null;
+    priceDropPct?: number | null;
+    previousPrice?: number | null;
   }[],
 ): { subject: string; htmlContent: string; textContent: string } {
   const count = listings.length;
-  const subject = `${count} new distressed ${count === 1 ? "deal" : "deals"} match your alerts`;
+  const dropCount = listings.filter((l) => l.priceDropPct != null).length;
+  const newCount = count - dropCount;
+  const subjectParts: string[] = [];
+  if (newCount > 0) subjectParts.push(`${newCount} new`);
+  if (dropCount > 0) subjectParts.push(`${dropCount} price-dropped`);
+  const subject = `${subjectParts.join(" + ")} distressed ${count === 1 ? "deal" : "deals"} match your alerts`;
   const base = env.BASE_URL ?? "";
   const rows = listings
     .map((l) => {
       const disc = l.discount != null ? `${Math.round(l.discount)}% below market` : "";
       const grade = l.aiGrade ? ` · Grade ${l.aiGrade}` : "";
+      const drop =
+        l.priceDropPct != null
+          ? `<br/><span style="color:#dc2626;font-weight:600;">↓ Price dropped ${Math.round(l.priceDropPct)}%${l.previousPrice != null ? ` from R${Math.round(l.previousPrice).toLocaleString()}` : ""}</span>`
+          : "";
       return `<tr><td style="padding:10px 0;border-bottom:1px solid #eee;">
         <strong>${l.title}</strong><br/>
-        <span style="color:#555;">${l.city}, ${l.province} · R${Math.round(l.askingPrice).toLocaleString()} ${disc}${grade}</span>
+        <span style="color:#555;">${l.city}, ${l.province} · R${Math.round(l.askingPrice).toLocaleString()} ${disc}${grade}</span>${drop}
       </td></tr>`;
     })
     .join("");
   const htmlContent = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-    <h2>New distressed deals for you, ${name}</h2>
-    <p>${count} new ${count === 1 ? "listing matches" : "listings match"} your saved alert filters:</p>
+    <h2>Distressed deals for you, ${name}</h2>
+    <p>${count} ${count === 1 ? "listing matches" : "listings match"} your saved alert filters:</p>
     <table style="width:100%;border-collapse:collapse;">${rows}</table>
     <p style="margin-top:20px;">
       <a href="${base}/distressed-deals" style="background:#0d9488;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;">View all deals</a>
@@ -153,12 +164,13 @@ function buildAlertEmail(
     <p style="color:#999;font-size:12px;margin-top:24px;">Manage your alerts at ${base}/distressed-alerts</p>
   </div>`;
   const textContent =
-    `New distressed deals for you, ${name}:\n\n` +
+    `Distressed deals for you, ${name}:\n\n` +
     listings
       .map(
         (l) =>
           `- ${l.title} — ${l.city}, ${l.province} — R${Math.round(l.askingPrice).toLocaleString()}` +
-          (l.discount != null ? ` (${Math.round(l.discount)}% below market)` : ""),
+          (l.discount != null ? ` (${Math.round(l.discount)}% below market)` : "") +
+          (l.priceDropPct != null ? ` [↓ dropped ${Math.round(l.priceDropPct)}%]` : ""),
       )
       .join("\n") +
     `\n\nView all: ${base}/distressed-deals`;
@@ -178,6 +190,7 @@ export async function runSubscriberAlertsCore(opts: { dryRun?: boolean }) {
     const emailItems: BatchEmailItem[] = [];
     let matchedSubscribers = 0;
     let totalMatches = 0;
+    let totalPriceDrops = 0;
 
     for (const sub of subs) {
       // Only entitled subscribers receive alerts.
@@ -200,19 +213,88 @@ export async function runSubscriberAlertsCore(opts: { dryRun?: boolean }) {
         propertyTypes: (sub.propertyTypes as string[] | null) ?? [],
       };
 
-      const matches = candidates.filter((l) => matchesFilters(l, filters)).slice(0, 10);
+      type MatchItem = {
+        id: number;
+        title: string;
+        city: string;
+        province: string;
+        askingPrice: number;
+        discount: number | null;
+        aiGrade: string | null;
+        priceDropPct?: number | null;
+        previousPrice?: number | null;
+      };
+
+      const newMatches: MatchItem[] = candidates
+        .filter((l) => matchesFilters(l, filters))
+        .slice(0, 10)
+        .map((m) => ({
+          id: m.id,
+          title: m.title,
+          city: m.city,
+          province: m.province,
+          askingPrice: m.askingPrice,
+          discount: m.discount,
+          aiGrade: m.aiGrade,
+        }));
+
+      // ─── Price-drop re-alerts on pre-existing listings ─────────
+      // Existing listings (created before this subscriber's window) that logged
+      // a new price point since `since`, where the current price is below the
+      // last price on/before `since` — i.e. a genuine drop.
+      const dropCandidates = await db.distressedListing.findMany({
+        where: {
+          status: "ACTIVE",
+          createdAt: { lte: since },
+          priceHistory: { some: { recordedAt: { gt: since } } },
+        },
+        include: { priceHistory: { orderBy: { recordedAt: "desc" }, take: 20 } },
+        take: 100,
+      });
+
+      const alreadyIncluded = new Set(newMatches.map((m) => m.id));
+      const dropMatches: MatchItem[] = [];
+      for (const l of dropCandidates) {
+        if (alreadyIncluded.has(l.id)) continue;
+        if (!matchesFilters(l, filters)) continue;
+        // Baseline = most recent recorded price at/before the window start.
+        const baseline = l.priceHistory.find((p) => p.recordedAt.getTime() <= since.getTime());
+        if (!baseline) continue;
+        if (l.askingPrice >= baseline.askingPrice) continue; // no drop
+        const dropPct = ((baseline.askingPrice - l.askingPrice) / baseline.askingPrice) * 100;
+        if (dropPct < 1) continue; // ignore sub-1% noise
+        dropMatches.push({
+          id: l.id,
+          title: l.title,
+          city: l.city,
+          province: l.province,
+          askingPrice: l.askingPrice,
+          discount: l.discount,
+          aiGrade: l.aiGrade,
+          priceDropPct: dropPct,
+          previousPrice: baseline.askingPrice,
+        });
+      }
+
+      const matches = [...newMatches, ...dropMatches.slice(0, 10)];
       if (matches.length === 0) continue;
 
       matchedSubscribers += 1;
       totalMatches += matches.length;
+      totalPriceDrops += dropMatches.length;
 
       if (dryRun) continue;
 
       if (sub.channelPush) {
+        const dropN = dropMatches.length;
+        const newN = newMatches.length;
+        const parts: string[] = [];
+        if (newN > 0) parts.push(`${newN} new`);
+        if (dropN > 0) parts.push(`${dropN} price-dropped`);
         await createNotification(
           sub.user.id,
-          `${matches.length} new distressed ${matches.length === 1 ? "deal" : "deals"}`,
-          `${matches.length} new ${matches.length === 1 ? "listing matches" : "listings match"} your distressed-deal alerts.`,
+          `${parts.join(" + ")} distressed ${matches.length === 1 ? "deal" : "deals"}`,
+          `${parts.join(" and ")} ${matches.length === 1 ? "listing matches" : "listings match"} your distressed-deal alerts.`,
           "INFO",
           "PROPERTY",
           matches[0]!.id,
@@ -222,15 +304,7 @@ export async function runSubscriberAlertsCore(opts: { dryRun?: boolean }) {
       if (sub.channelEmail && sub.user.email) {
         const { subject, htmlContent, textContent } = buildAlertEmail(
           sub.user.name ?? "Investor",
-          matches.map((m) => ({
-            id: m.id,
-            title: m.title,
-            city: m.city,
-            province: m.province,
-            askingPrice: m.askingPrice,
-            discount: m.discount,
-            aiGrade: m.aiGrade,
-          })),
+          matches,
         );
         emailItems.push({
           to: { email: sub.user.email, name: sub.user.name ?? "Investor" },
@@ -255,6 +329,7 @@ export async function runSubscriberAlertsCore(opts: { dryRun?: boolean }) {
       subscribersChecked: subs.length,
       matchedSubscribers,
       totalMatches,
+      totalPriceDrops,
       emailsSent,
       dryRun,
     };
