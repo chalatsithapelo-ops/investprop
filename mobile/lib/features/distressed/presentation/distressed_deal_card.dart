@@ -80,6 +80,19 @@ class DistressedDealCard extends StatelessWidget {
                                 color: AppColors.navy,
                               ),
                             ),
+                            if (deal.hasPriceDrop)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  '↓ ${deal.priceDropPct!.toStringAsFixed(0)}%'
+                                  '${deal.previousPrice != null ? ' from ${Fmt.compactMoney(deal.previousPrice!)}' : ''}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.danger,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),

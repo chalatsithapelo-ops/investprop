@@ -31,6 +31,8 @@ class DistressedDeal {
     required this.aiSummary,
     required this.aiScoredAt,
     required this.createdAt,
+    this.priceDropPct,
+    this.previousPrice,
   });
 
   final int id;
@@ -58,8 +60,12 @@ class DistressedDeal {
   final String? aiSummary;
   final DateTime? aiScoredAt;
   final DateTime? createdAt;
+  final double? priceDropPct; // recent drop from a prior higher asking price
+  final double? previousPrice;
 
   bool get hasGrade => (aiGrade ?? '').isNotEmpty;
+
+  bool get hasPriceDrop => (priceDropPct ?? 0) >= 1;
 
   bool get isAuction => (auctionType ?? '').isNotEmpty || auctionDate != null;
 
@@ -131,6 +137,10 @@ class DistressedDeal {
       aiSummary: json['aiSummary'] as String?,
       aiScoredAt: asDate(json['aiScoredAt']),
       createdAt: asDate(json['createdAt']),
+      priceDropPct:
+          json['priceDropPct'] == null ? null : asDouble(json['priceDropPct']),
+      previousPrice:
+          json['previousPrice'] == null ? null : asDouble(json['previousPrice']),
     );
   }
 }

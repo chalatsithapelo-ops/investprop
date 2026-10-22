@@ -248,6 +248,16 @@ class _PriceRow extends StatelessWidget {
                   style: const TextStyle(
                       fontSize: 12, color: AppColors.textSecondary),
                 ),
+              if (deal.hasPriceDrop)
+                Text(
+                  '↓ ${deal.priceDropPct!.toStringAsFixed(0)}% drop'
+                  '${deal.previousPrice != null ? ' from ${Fmt.compactMoney(deal.previousPrice!)}' : ''}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.danger,
+                  ),
+                ),
             ],
           ),
         ),
