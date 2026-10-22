@@ -19,6 +19,7 @@ import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { requireFeature } from "~/server/subscriptions/subscription-service";
 import { getModel, getModelId, runAIWithGuard } from "~/server/ai/client";
 import { buildPropertyContext, findComparables } from "~/server/ai/property-context";
+import { financialTools } from "~/server/ai/copilot-tools";
 
 const MAX_HISTORY = 12; // turns of context sent to model
 
@@ -99,6 +100,7 @@ Your job:
 - Be direct and concise — under 200 words unless they ask for more.
 - Explain financial jargon in plain English (cap rate, DSCR, IRR, cooling-off, Sec 96 prospectus). Use Rand (R) and South African context.
 - When discussing risk or returns, be balanced: surface downsides, not just upsides.
+- You have calculator tools (transfer_duty, bond_repayment, rental_yield, flip_roi, fractional_return). ALWAYS use them for any arithmetic "what if" question instead of computing in your head — quote the numbers they return. Draw the inputs from the property data below; if a needed number is missing, ask the investor for it rather than guessing.
 - NEVER give personalised financial, tax or legal advice. You provide research and education only. If a question crosses into advice territory, redirect: "That's a question for an FSCA-licensed advisor."
 - Format with short paragraphs and bullets where helpful. Use markdown.
 
@@ -121,6 +123,8 @@ ${compsText}`;
           model: getModel("cheap"),
           system: systemPrompt,
           messages,
+          tools: financialTools,
+          maxSteps: 5,
         }),
       extractUsage: (r) => ({
         promptTokens: r.usage?.promptTokens,
