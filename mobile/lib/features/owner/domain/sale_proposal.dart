@@ -71,6 +71,8 @@ class SaleProposal {
     required this.reviewNotes,
     required this.reviewedByName,
     required this.createdAt,
+    this.valuation,
+    this.valuatedAt,
   });
 
   final int id;
@@ -91,6 +93,8 @@ class SaleProposal {
   final String? reviewNotes;
   final String? reviewedByName;
   final DateTime? createdAt;
+  final SaleValuation? valuation;
+  final DateTime? valuatedAt;
 
   bool get hasPendingCounterOffer =>
       counterOfferAmount != null &&
@@ -131,6 +135,60 @@ class SaleProposal {
           : null,
       reviewedByName: reviewer is Map ? reviewer['name']?.toString() : null,
       createdAt: asDate(json['createdAt']),
+      valuation: SaleValuation.fromJson(json['aiValuation']),
+      valuatedAt: asDate(json['aiValuatedAt']),
+    );
+  }
+}
+
+/// AI valuation report attached to a sale proposal (Seller Pro feature).
+class SaleValuation {
+  const SaleValuation({
+    required this.estimatedValueLow,
+    required this.estimatedValueMid,
+    required this.estimatedValueHigh,
+    required this.confidence,
+    required this.askingPriceAssessment,
+    required this.pricePerSqm,
+    required this.summary,
+    required this.comparableAnalysis,
+    required this.sellingPoints,
+    required this.risks,
+    required this.recommendations,
+  });
+
+  final double estimatedValueLow;
+  final double estimatedValueMid;
+  final double estimatedValueHigh;
+  final String confidence; // LOW | MEDIUM | HIGH
+  final String askingPriceAssessment;
+  final String pricePerSqm;
+  final String summary;
+  final String comparableAnalysis;
+  final List<String> sellingPoints;
+  final List<String> risks;
+  final List<String> recommendations;
+
+  /// Parses either the persisted JSON (from getMySaleProposals) or the
+  /// valuate mutation result. Returns null when there is no valid report.
+  static SaleValuation? fromJson(dynamic raw) {
+    if (raw is! Map) return null;
+    final j = Map<String, dynamic>.from(raw);
+    if (asString(j['summary']).isEmpty) return null;
+    List<String> list(dynamic v) =>
+        v is List ? v.map((e) => e.toString()).toList() : const [];
+    return SaleValuation(
+      estimatedValueLow: asDouble(j['estimatedValueLow']),
+      estimatedValueMid: asDouble(j['estimatedValueMid']),
+      estimatedValueHigh: asDouble(j['estimatedValueHigh']),
+      confidence: asString(j['confidence'], 'MEDIUM'),
+      askingPriceAssessment: asString(j['askingPriceAssessment']),
+      pricePerSqm: asString(j['pricePerSqm']),
+      summary: asString(j['summary']),
+      comparableAnalysis: asString(j['comparableAnalysis']),
+      sellingPoints: list(j['sellingPoints']),
+      risks: list(j['risks']),
+      recommendations: list(j['recommendations']),
     );
   }
 }

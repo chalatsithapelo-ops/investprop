@@ -38,6 +38,7 @@ import '../features/portfolio/presentation/holding_detail_page.dart';
 import '../features/portfolio/presentation/portfolio_page.dart';
 import '../features/profile/presentation/edit_profile_page.dart';
 import '../features/profile/presentation/profile_page.dart';
+import '../features/subscription/presentation/subscription_page.dart';
 import '../features/shell/home_shell.dart';
 import '../features/shell/splash_page.dart';
 import '../features/statement/presentation/statement_page.dart';
@@ -256,6 +257,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'edit',
                     parentNavigatorKey: _rootKey,
                     builder: (_, __) => const EditProfilePage(),
+                  ),
+                  GoRoute(
+                    path: 'subscription',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const SubscriptionPage(),
                   ),
                   GoRoute(
                     path: 'statement',

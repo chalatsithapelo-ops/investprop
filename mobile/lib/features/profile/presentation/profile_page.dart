@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../config/env.dart';
 import '../../../config/theme.dart';
+import '../../../core/format.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../kyc/data/kyc_repository.dart';
+import '../data/profile_prefs_repository.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -134,7 +136,17 @@ class ProfilePage extends ConsumerWidget {
                     onTap: () => context.push('/profile/home-loan'),
                   ),
                   const Divider(height: 1),
+                  const _DigestToggle(),
+                  const Divider(height: 1),
                 ],
+                ListTile(
+                  leading: const Icon(Icons.workspace_premium, color: AppColors.gold),
+                  title: const Text('My plan'),
+                  subtitle: const Text('Subscription, features and billing'),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () => context.push('/profile/subscription'),
+                ),
+                const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.language, color: AppColors.navy),
                   title: const Text('Manage on the web'),
@@ -309,6 +321,54 @@ class _FicaTile extends ConsumerWidget {
       subtitle: Text(subtitle, style: TextStyle(color: color)),
       trailing: const Icon(Icons.chevron_right, size: 20),
       onTap: () => context.push('/profile/kyc'),
+    );
+  }
+}
+
+/// Toggle for the weekly AI deal digest (email + in-app). Opt-out writes
+/// through `setAiDigestOptOut`; the switch shows the digest as *enabled*.
+class _DigestToggle extends ConsumerStatefulWidget {
+  const _DigestToggle();
+
+  @override
+  ConsumerState<_DigestToggle> createState() => _DigestToggleState();
+}
+
+class _DigestToggleState extends ConsumerState<_DigestToggle> {
+  bool _busy = false;
+
+  Future<void> _set(bool enabled) async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(profilePrefsRepositoryProvider).setAiDigestOptOut(!enabled);
+      ref.invalidate(aiDigestPrefsProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prefs = ref.watch(aiDigestPrefsProvider);
+    final enabled = !(prefs.valueOrNull?.optedOut ?? false);
+    final lastSent = prefs.valueOrNull?.lastSentAt;
+    return SwitchListTile(
+      secondary: const Icon(Icons.auto_awesome_outlined, color: AppColors.navy),
+      title: const Text('Weekly AI deal digest'),
+      subtitle: Text(
+        lastSent != null
+            ? 'Top matched deals by email · last sent ${Fmt.date(lastSent)}'
+            : 'Top matched deals delivered to you each week',
+        style: const TextStyle(color: AppColors.textSecondary),
+      ),
+      value: enabled,
+      activeColor: AppColors.gold,
+      onChanged: (_busy || prefs.isLoading) ? null : _set,
     );
   }
 }

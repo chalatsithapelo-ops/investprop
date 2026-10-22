@@ -188,6 +188,16 @@ class OwnerRepository {
       },
     );
   }
+
+  /// Runs (or refreshes) the AI valuation for a proposal. Requires the
+  /// Seller Pro entitlement server-side; returns the parsed report.
+  Future<SaleValuation?> valuate(int proposalId, {bool force = false}) async {
+    final data = await _client.mutation(
+      'valuateSaleProposal',
+      input: {'proposalId': proposalId, 'force': force},
+    );
+    return SaleValuation.fromJson(data);
+  }
 }
 
 final ownerRepositoryProvider = Provider<OwnerRepository>((ref) {

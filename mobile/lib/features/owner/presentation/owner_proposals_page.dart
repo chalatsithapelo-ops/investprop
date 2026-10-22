@@ -107,6 +107,32 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
     }
   }
 
+  Future<void> _valuate() async {
+    setState(() => _busy = true);
+    try {
+      final force = widget.proposal.valuation != null;
+      await ref
+          .read(ownerRepositoryProvider)
+          .valuate(widget.proposal.id, force: force);
+      ref.invalidate(myProposalsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text(force ? 'Valuation refreshed.' : 'Valuation ready.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _withdraw() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -225,6 +251,7 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
             ),
           ],
           if (p.hasPendingCounterOffer) _counterOffer(p),
+          if (p.status != SaleProposalStatus.withdrawn) _valuationSection(p),
           if (p.canWithdraw && !p.hasPendingCounterOffer) ...[
             const SizedBox(height: 12),
             Align(
@@ -302,6 +329,119 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _valuationSection(SaleProposal p) {
+    final v = p.valuation;
+    if (v == null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed: _busy ? null : _valuate,
+            icon: const Icon(Icons.auto_awesome_outlined, size: 18),
+            label: const Text('Get AI valuation'),
+            style: OutlinedButton.styleFrom(foregroundColor: AppColors.navy),
+          ),
+        ),
+      );
+    }
+    final confColor = switch (v.confidence) {
+      'HIGH' => AppColors.success,
+      'LOW' => AppColors.danger,
+      _ => AppColors.warning,
+    };
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.navy.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.navy.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome, size: 16, color: AppColors.gold),
+              const SizedBox(width: 6),
+              const Text(
+                'AI VALUATION',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                  color: AppColors.navy,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: confColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${v.confidence} confidence',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: confColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${Fmt.compactMoney(v.estimatedValueLow)} – ${Fmt.compactMoney(v.estimatedValueHigh)}',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const Text(
+            'Estimated market value',
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            v.summary,
+            style: const TextStyle(
+                fontSize: 12, color: AppColors.textPrimary, height: 1.4),
+          ),
+          if (v.askingPriceAssessment.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              v.askingPriceAssessment,
+              style: const TextStyle(
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                color: AppColors.textSecondary,
+                height: 1.4,
+              ),
+            ),
+          ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _busy ? null : _valuate,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: Text(
+                p.valuatedAt != null
+                    ? 'Refresh (updated ${Fmt.date(p.valuatedAt)})'
+                    : 'Refresh valuation',
+              ),
+              style: TextButton.styleFrom(foregroundColor: AppColors.navy),
+            ),
           ),
         ],
       ),
