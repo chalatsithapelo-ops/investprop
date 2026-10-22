@@ -151,6 +151,7 @@ function HomeLoanApplicationsPage() {
             </p>
             <Link
               to="/finance/prequalify"
+              search={{ propertyId: undefined, propertyPrice: undefined }}
               className="mt-4 inline-flex items-center gap-1 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500"
             >
               Start a prequalification <ArrowRight size={14} />
@@ -159,7 +160,7 @@ function HomeLoanApplicationsPage() {
         ) : (
           <div className="mt-6 space-y-5">
             {applications.map((app) => {
-              const meta = STATUS_META[app.status] ?? STATUS_META.SUBMITTED;
+              const meta = (STATUS_META[app.status] ?? STATUS_META.SUBMITTED)!;
               const terminal = app.status === "DECLINED" || app.status === "WITHDRAWN";
               const flowIndex = STATUS_FLOW.indexOf(app.status);
               const offers = (app.offers as any[]) ?? [];
@@ -322,6 +323,7 @@ function HomeLoanApplicationsPage() {
         <div className="mt-8 text-center">
           <Link
             to="/finance/prequalify"
+            search={{ propertyId: undefined, propertyPrice: undefined }}
             className="inline-flex items-center gap-1 text-sm font-medium text-teal-700 hover:text-teal-600"
           >
             Run another prequalification <ArrowRight size={14} />

@@ -11,7 +11,10 @@ import {
   computeFeeFromBps,
 } from "~/server/fees/platform-fees";
 import { getEffectiveSubscription } from "~/server/subscriptions/subscription-service";
+import { requireFeature } from "~/server/subscriptions/subscription-service";
 import { tierHasFeature } from "~/server/subscriptions/plans";
+import { generateText } from "ai";
+import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
 
 /** Discounted seller facilitation rate for active Seller Pro subscribers. */
 const SELLER_PRO_FACILITATION_BPS = 100; // 1.0% vs the 2.0% standard
@@ -293,7 +296,159 @@ export const getMySaleProposals = baseProcedure
     return proposals;
   });
 
-// ─── Get all sale proposals (Dev Manager view) ──────────────────────
+// ─── Seller Pro: AI valuation report for a sale proposal ────────────
+
+interface SellerValuationShape {
+  estimatedValueLow: number;
+  estimatedValueMid: number;
+  estimatedValueHigh: number;
+  confidence: "LOW" | "MEDIUM" | "HIGH";
+  askingPriceAssessment: string;
+  pricePerSqm: string;
+  summary: string;
+  comparableAnalysis: string;
+  sellingPoints: string[];
+  risks: string[];
+  recommendations: string[];
+}
+
+function normaliseValuation(parsed: unknown): SellerValuationShape | null {
+  if (!parsed || typeof parsed !== "object") return null;
+  const p = parsed as Partial<SellerValuationShape>;
+  if (typeof p.summary !== "string") return null;
+  const num = (v: unknown) => Math.max(0, Math.round(Number(v ?? 0)));
+  const conf = p.confidence === "LOW" || p.confidence === "HIGH" ? p.confidence : "MEDIUM";
+  return {
+    estimatedValueLow: num(p.estimatedValueLow),
+    estimatedValueMid: num(p.estimatedValueMid),
+    estimatedValueHigh: num(p.estimatedValueHigh),
+    confidence: conf,
+    askingPriceAssessment: p.askingPriceAssessment ?? "",
+    pricePerSqm: p.pricePerSqm ?? "",
+    summary: p.summary,
+    comparableAnalysis: p.comparableAnalysis ?? "",
+    sellingPoints: Array.isArray(p.sellingPoints) ? p.sellingPoints.slice(0, 8) : [],
+    risks: Array.isArray(p.risks) ? p.risks.slice(0, 8) : [],
+    recommendations: Array.isArray(p.recommendations) ? p.recommendations.slice(0, 8) : [],
+  };
+}
+
+export const valuateSaleProposal = baseProcedure
+  .input(z.object({ authToken: z.string(), proposalId: z.number() }))
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    // Seller Pro feature — staff bypass; everyone else gets an upgrade hint.
+    await requireFeature(user, "SELLER_AI_VALUATION");
+
+    const proposal = await db.ownerSaleProposal.findUnique({
+      where: { id: input.proposalId },
+    });
+    if (!proposal) throw new TRPCError({ code: "NOT_FOUND", message: "Proposal not found" });
+    const isStaffRole = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"].includes(user.role);
+    if (proposal.ownerId !== user.id && !isStaffRole) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "You can only value your own listings" });
+    }
+
+    // Comparable homes: other owner listings in the same city (fallback province),
+    // preferring the same property type.
+    const comps = await db.ownerSaleProposal.findMany({
+      where: {
+        id: { not: proposal.id },
+        OR: [{ city: proposal.city }, { province: proposal.province }],
+      },
+      orderBy: [{ city: proposal.city ? "asc" : "desc" }, { createdAt: "desc" }],
+      take: 10,
+      select: {
+        propertyType: true,
+        city: true,
+        askingPrice: true,
+        marketValue: true,
+        bedrooms: true,
+        bathrooms: true,
+        squareMeters: true,
+        conditionRating: true,
+      },
+    });
+
+    const fmt = (n: number | null | undefined) =>
+      n && n > 0 ? `R${Math.round(n).toLocaleString()}` : "n/a";
+
+    const subject = [
+      `Subject property (owner is selling):`,
+      `- Type: ${proposal.propertyType}`,
+      `- Location: ${proposal.address}, ${proposal.city}, ${proposal.province}`,
+      `- Asking price: ${fmt(proposal.askingPrice)}`,
+      `- Owner's market-value estimate: ${fmt(proposal.marketValue)}`,
+      `- Beds/Baths: ${proposal.bedrooms ?? "?"}/${proposal.bathrooms ?? "?"}`,
+      `- Floor area: ${proposal.squareMeters ? `${proposal.squareMeters} m²` : "?"}`,
+      `- Erf size: ${proposal.erfSize ? `${proposal.erfSize} m²` : "?"}`,
+      `- Condition: ${proposal.conditionRating}`,
+      `- Estimated renovation cost: ${fmt(proposal.estimatedRenoCost)}`,
+      `- Tenancy: ${proposal.tenancyStatus}${proposal.monthlyRent ? ` (rent ${fmt(proposal.monthlyRent)}/mo)` : ""}`,
+    ].join("\n");
+
+    const compText =
+      comps.length > 0
+        ? comps
+            .map(
+              (c) =>
+                `- ${c.propertyType} in ${c.city}: asking ${fmt(c.askingPrice)}${c.marketValue ? `, est. value ${fmt(c.marketValue)}` : ""}, ${c.bedrooms ?? "?"}bd/${c.bathrooms ?? "?"}ba, ${c.squareMeters ? `${c.squareMeters}m²` : "?"}, ${c.conditionRating}`,
+            )
+            .join("\n")
+        : "(no comparable listings on the platform yet — be explicit about this limitation)";
+
+    const systemPrompt = `You are Investprop's seller-side valuation analyst for the South African residential market. A property owner wants an independent estimate of what their home is worth before selling.
+
+Return ONLY JSON in this exact shape (no prose, no fences):
+{
+  "estimatedValueLow": <integer Rand>,
+  "estimatedValueMid": <integer Rand>,
+  "estimatedValueHigh": <integer Rand>,
+  "confidence": "LOW" | "MEDIUM" | "HIGH",
+  "askingPriceAssessment": "<is the asking price realistic vs your estimate? 1-2 sentences, be direct>",
+  "pricePerSqm": "<estimated R/m² for this area and condition, with a short note>",
+  "summary": "<120-160 words, second person to the owner, balanced, South African context (Rand, transfer duty, typical agent commission 5-7%, condition impact). State the fair-market range plainly.>",
+  "comparableAnalysis": "<80-140 words comparing the subject to the comparable listings; quantify with numbers>",
+  "sellingPoints": ["<short bullet, max 12 words>"],
+  "risks": ["<short bullet on what could reduce value or slow the sale>"],
+  "recommendations": ["<imperative bullet, max 12 words>"]
+}
+
+Rules:
+- Ground your range in the comparables and the subject's condition/size. If data is thin, widen the range and set confidence LOW.
+- Deduct for renovation cost and poor condition; add for larger erf/floor area and good condition.
+- Never invent comparables beyond those provided. Be honest about uncertainty.`;
+
+    const userPrompt = `${subject}\n\nCOMPARABLE LISTINGS ON THE PLATFORM:\n${compText}\n\nReturn the JSON object now.`;
+
+    let result: Awaited<ReturnType<typeof generateText>>;
+    try {
+      result = await runAIWithGuard({
+        userId: user.id,
+        feature: "analyze-property",
+        model: getModelId("cheap"),
+        metadata: { proposalId: proposal.id },
+        run: () => generateText({ model: getModel("cheap"), system: systemPrompt, prompt: userPrompt }),
+        extractUsage: (r) => ({
+          promptTokens: r.usage?.promptTokens,
+          completionTokens: r.usage?.completionTokens,
+        }),
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Valuation failed: ${msg}` });
+    }
+
+    const valuation = normaliseValuation(safeParseJson(result.text));
+    if (!valuation) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "The AI valuation could not be generated. Please try again.",
+      });
+    }
+
+    return { proposalId: proposal.id, generatedAt: new Date().toISOString(), ...valuation };
+  });
 
 export const getSaleProposals = baseProcedure
   .input(
@@ -328,6 +483,28 @@ export const getSaleProposals = baseProcedure
       },
     });
 
+    // Seller Pro priority review: flag proposals from active Seller Pro owners
+    // and float them to the top of the queue (within their urgency ordering).
+    const ownerIds = [...new Set(proposals.map((p) => p.owner.id))];
+    const sellerProOwnerIds = new Set<number>();
+    if (ownerIds.length > 0) {
+      const now = new Date();
+      const subs = await db.subscription.findMany({
+        where: { userId: { in: ownerIds }, tier: "SELLER_PRO" },
+        select: { userId: true, status: true, trialEndsAt: true, currentPeriodEnd: true },
+      });
+      for (const s of subs) {
+        const trialOk =
+          s.status === "TRIALING" ? !s.trialEndsAt || s.trialEndsAt.getTime() >= now.getTime() : true;
+        const periodOk = !s.currentPeriodEnd || s.currentPeriodEnd.getTime() >= now.getTime();
+        const entitled = (s.status === "ACTIVE" || s.status === "TRIALING") && trialOk && periodOk;
+        if (entitled) sellerProOwnerIds.add(s.userId);
+      }
+    }
+    const annotated = proposals
+      .map((p) => ({ ...p, sellerPro: sellerProOwnerIds.has(p.owner.id) }))
+      .sort((a, b) => Number(b.sellerPro) - Number(a.sellerPro));
+
     // Also get counts per status
     const counts = await db.ownerSaleProposal.groupBy({
       by: ["status"],
@@ -339,7 +516,7 @@ export const getSaleProposals = baseProcedure
       statusCounts[c.status] = c._count;
     });
 
-    return { proposals, statusCounts };
+    return { proposals: annotated, statusCounts };
   });
 
 // ─── Review a sale proposal (Dev Manager) ───────────────────────────

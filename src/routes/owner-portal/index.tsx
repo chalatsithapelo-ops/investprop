@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   Loader2,
   Ban,
+  Sparkles,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
@@ -70,6 +71,10 @@ function OwnerPortalPage() {
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
 
   const [showForm, setShowForm] = useState(false);
+
+  // Seller Pro: on-demand AI valuation reports, keyed by proposal id.
+  const [valuations, setValuations] = useState<Record<number, any>>({});
+  const [valuatingId, setValuatingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -128,6 +133,22 @@ function OwnerPortalPage() {
   const counterOffered = proposals.filter(
     (p: any) => p.counterOfferAmount != null && p.status === "UNDER_REVIEW"
   );
+
+  // Seller Pro: request an on-demand AI valuation report for a listing.
+  const runValuation = async (proposalId: number) => {
+    setValuatingId(proposalId);
+    try {
+      const res = await (trpcClient as any).valuateSaleProposal.mutate({
+        authToken: authToken ?? "",
+        proposalId,
+      });
+      setValuations((prev) => ({ ...prev, [proposalId]: res }));
+    } catch (err: any) {
+      toast.error(err?.message ?? "Valuation failed");
+    } finally {
+      setValuatingId(null);
+    }
+  };
 
   // Stats
   const pending = proposals.filter((p: any) => p.status === "PENDING" || p.status === "UNDER_REVIEW").length;
@@ -523,6 +544,62 @@ function OwnerPortalPage() {
                           </button>
                         )}
                       </div>
+                    </div>
+                    {/* Seller Pro — AI valuation */}
+                    <div className="mt-4 border-t border-gray-100 pt-3">
+                      <button
+                        onClick={() => runValuation(proposal.id)}
+                        disabled={valuatingId === proposal.id}
+                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                      >
+                        {valuatingId === proposal.id ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Sparkles size={14} />
+                        )}
+                        {valuations[proposal.id] ? "Refresh AI valuation" : "Get AI valuation"}
+                        <span className="rounded bg-white/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">
+                          Seller Pro
+                        </span>
+                      </button>
+                      {valuations[proposal.id] && (
+                        <div className="mt-3 rounded-lg border border-indigo-100 bg-indigo-50/60 p-4 text-sm text-gray-700">
+                          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                            <span className="text-base font-bold text-indigo-900">
+                              {ZAR(valuations[proposal.id].estimatedValueLow)} –{" "}
+                              {ZAR(valuations[proposal.id].estimatedValueHigh)}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              Mid estimate {ZAR(valuations[proposal.id].estimatedValueMid)} ·{" "}
+                              {valuations[proposal.id].confidence} confidence
+                            </span>
+                          </div>
+                          {valuations[proposal.id].askingPriceAssessment && (
+                            <p className="mt-2 font-medium text-gray-800">
+                              {valuations[proposal.id].askingPriceAssessment}
+                            </p>
+                          )}
+                          <p className="mt-2 text-gray-600">{valuations[proposal.id].summary}</p>
+                          {valuations[proposal.id].comparableAnalysis && (
+                            <p className="mt-2 text-gray-600">
+                              {valuations[proposal.id].comparableAnalysis}
+                            </p>
+                          )}
+                          {Array.isArray(valuations[proposal.id].recommendations) &&
+                            valuations[proposal.id].recommendations.length > 0 && (
+                              <ul className="mt-2 list-disc space-y-0.5 pl-5 text-gray-600">
+                                {valuations[proposal.id].recommendations.map(
+                                  (r: string, i: number) => (
+                                    <li key={i}>{r}</li>
+                                  ),
+                                )}
+                              </ul>
+                            )}
+                          <p className="mt-3 text-[10px] text-gray-400">
+                            AI estimate for guidance only — not a professional valuation.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

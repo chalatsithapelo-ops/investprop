@@ -34,7 +34,8 @@ const DOC_TYPES = [
   { value: "OTHER", label: "Other supporting document" },
 ] as const;
 
-type AppliedDoc = { docType: string; fileName: string; fileUrl: string };
+type DocTypeValue = (typeof DOC_TYPES)[number]["value"];
+type AppliedDoc = { docType: DocTypeValue; fileName: string; fileUrl: string };
 
 type FormState = {
   grossMonthlyIncome: number;
@@ -137,7 +138,7 @@ function PrequalifyPage() {
   const [applyConsent, setApplyConsent] = useState(false);
   const [applicantPhone, setApplicantPhone] = useState("");
   const [applying, setApplying] = useState(false);
-  const [docType, setDocType] = useState<string>("PAYSLIP");
+  const [docType, setDocType] = useState<DocTypeValue>("PAYSLIP");
   const [docs, setDocs] = useState<AppliedDoc[]>([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
@@ -176,7 +177,7 @@ function PrequalifyPage() {
   });
 
   const hasIncome = form.grossMonthlyIncome > 0;
-  const band = BAND_META[result.band] ?? BAND_META.WEAK;
+  const band = (BAND_META[result.band] ?? BAND_META.WEAK)!;
 
   const handleSave = async () => {
     if (!authToken) {
@@ -511,7 +512,7 @@ function PrequalifyPage() {
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <select
                         value={docType}
-                        onChange={(e) => setDocType(e.target.value)}
+                        onChange={(e) => setDocType(e.target.value as DocTypeValue)}
                         className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900"
                       >
                         {DOC_TYPES.map((d) => (
@@ -620,10 +621,10 @@ function PrequalifyPage() {
                   </div>
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      (BAND_META[p.band] ?? BAND_META.WEAK).badge
+                      (BAND_META[p.band] ?? BAND_META.WEAK)!.badge
                     }`}
                   >
-                    {(BAND_META[p.band] ?? BAND_META.WEAK).label}
+                    {(BAND_META[p.band] ?? BAND_META.WEAK)!.label}
                   </span>
                 </div>
               ))}
