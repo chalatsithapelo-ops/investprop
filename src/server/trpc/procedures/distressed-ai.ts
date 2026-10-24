@@ -21,6 +21,7 @@ import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
+import { buildMarketContextLines } from "~/server/distressed/market-analysis";
 
 const RATINGS = new Set(["A", "B", "C", "D", "E"]);
 
@@ -73,6 +74,10 @@ async function buildListingContext(listingId: number) {
   if (l.noReserve) lines.push(`No reserve: yes`);
   if (l.caseNumber) lines.push(`Case number: ${l.caseNumber}`);
   if (l.description) lines.push(`Description: ${l.description.slice(0, 1500)}`);
+  // Comparable-market context (area median price, R/m², benchmark value, trend)
+  // so the grade reflects real peers rather than this listing's own fields alone.
+  const marketContext = await buildMarketContextLines(listingId);
+  if (marketContext) lines.push(`\nMARKET CONTEXT:\n${marketContext}`);
   return { listing: l, text: lines.join("\n") };
 }
 
@@ -122,7 +127,9 @@ Risk score:
 - 51-75: high
 - 76-100: very high / avoid
 
-South African context: factor in transfer duty, bond registration, rates clearance, occupants-in-possession, sheriff auction quirks (cash deposit, no cooling-off).`;
+South African context: factor in transfer duty, bond registration, rates clearance, occupants-in-possession, sheriff auction quirks (cash deposit, no cooling-off).
+
+If a MARKET CONTEXT block is present, weigh the comparable area pricing, benchmark value and trend heavily when setting the grade and when writing the summary (e.g. mention whether it is cheap or dear versus the area).`;
 
     const userPrompt = `LISTING:\n${ctx.text}\n\nReturn the JSON object now.`;
 

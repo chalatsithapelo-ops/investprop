@@ -282,6 +282,201 @@ class DistressedDealDetail {
   }
 }
 
+/// A market signal (positive / neutral / caution) backing the verdict.
+class DistressedMarketSignal {
+  DistressedMarketSignal({
+    required this.label,
+    required this.status,
+    required this.detail,
+  });
+
+  final String label;
+  final String status; // POSITIVE | NEUTRAL | CAUTION
+  final String detail;
+
+  Color get color {
+    switch (status) {
+      case 'POSITIVE':
+        return AppColors.success;
+      case 'CAUTION':
+        return AppColors.danger;
+      default:
+        return AppColors.textSecondary;
+    }
+  }
+
+  factory DistressedMarketSignal.fromJson(Map<String, dynamic> json) {
+    return DistressedMarketSignal(
+      label: asString(json['label'], ''),
+      status: asString(json['status'], 'NEUTRAL'),
+      detail: asString(json['detail'], ''),
+    );
+  }
+}
+
+/// A comparable listing used to benchmark the subject property.
+class DistressedComparable {
+  DistressedComparable({
+    required this.id,
+    required this.title,
+    required this.suburb,
+    required this.city,
+    required this.askingPrice,
+    required this.pricePerSqm,
+  });
+
+  final int id;
+  final String title;
+  final String? suburb;
+  final String? city;
+  final double askingPrice;
+  final double? pricePerSqm;
+
+  String get location =>
+      [suburb, city].where((s) => (s ?? '').isNotEmpty).join(', ');
+
+  factory DistressedComparable.fromJson(Map<String, dynamic> json) {
+    return DistressedComparable(
+      id: asInt(json['id']),
+      title: asString(json['title'], 'Listing'),
+      suburb: json['suburb'] as String?,
+      city: json['city'] as String?,
+      askingPrice: asDouble(json['askingPrice']),
+      pricePerSqm:
+          json['pricePerSqm'] == null ? null : asDouble(json['pricePerSqm']),
+    );
+  }
+}
+
+/// Deterministic comparable-sales / area-benchmark analysis for a listing.
+class DistressedMarketAnalysis {
+  DistressedMarketAnalysis({
+    required this.insufficientData,
+    required this.areaLevel,
+    required this.areaName,
+    required this.sampleSize,
+    required this.medianAskingPrice,
+    required this.medianPricePerSqm,
+    required this.subjectPricePerSqm,
+    required this.vsAreaMedianPct,
+    required this.vsAreaPricePerSqmPct,
+    required this.pricePercentile,
+    required this.estimatedValue,
+    required this.impliedMarginPct,
+    required this.trendDirection,
+    required this.areaPriceChangePct,
+    required this.verdictScore,
+    required this.verdictLabel,
+    required this.verdictRationale,
+    required this.signals,
+    required this.comparables,
+  });
+
+  final bool insufficientData;
+  final String areaLevel; // suburb | city | province
+  final String areaName;
+  final int sampleSize;
+  final double? medianAskingPrice;
+  final double? medianPricePerSqm;
+  final double? subjectPricePerSqm;
+  final double? vsAreaMedianPct;
+  final double? vsAreaPricePerSqmPct;
+  final int? pricePercentile;
+  final double? estimatedValue;
+  final double? impliedMarginPct;
+  final String trendDirection; // RISING | FALLING | FLAT | UNKNOWN
+  final double? areaPriceChangePct;
+  final int verdictScore;
+  final String verdictLabel; // Strong | Solid | Fair | Weak | Avoid
+  final String verdictRationale;
+  final List<DistressedMarketSignal> signals;
+  final List<DistressedComparable> comparables;
+
+  bool get hasComparables => sampleSize > 0;
+
+  Color get verdictColor {
+    switch (verdictLabel) {
+      case 'Strong':
+        return AppColors.success;
+      case 'Solid':
+        return const Color(0xFF65A30D);
+      case 'Fair':
+        return AppColors.gold;
+      case 'Weak':
+        return AppColors.warning;
+      case 'Avoid':
+        return AppColors.danger;
+      default:
+        return AppColors.textSecondary;
+    }
+  }
+
+  static double? _optDouble(dynamic v) => v == null ? null : asDouble(v);
+
+  factory DistressedMarketAnalysis.fromJson(Map<String, dynamic> json) {
+    final area = json['area'] is Map
+        ? Map<String, dynamic>.from(json['area'] as Map)
+        : <String, dynamic>{};
+    final subject = json['subject'] is Map
+        ? Map<String, dynamic>.from(json['subject'] as Map)
+        : <String, dynamic>{};
+    final positioning = json['positioning'] is Map
+        ? Map<String, dynamic>.from(json['positioning'] as Map)
+        : <String, dynamic>{};
+    final valuation = json['valuation'] is Map
+        ? Map<String, dynamic>.from(json['valuation'] as Map)
+        : <String, dynamic>{};
+    final trend = json['trend'] is Map
+        ? Map<String, dynamic>.from(json['trend'] as Map)
+        : <String, dynamic>{};
+    final verdict = json['verdict'] is Map
+        ? Map<String, dynamic>.from(json['verdict'] as Map)
+        : <String, dynamic>{};
+
+    final signalsRaw = json['signals'];
+    final signals = signalsRaw is List
+        ? signalsRaw
+            .whereType<Map>()
+            .map((e) =>
+                DistressedMarketSignal.fromJson(Map<String, dynamic>.from(e)))
+            .toList()
+        : <DistressedMarketSignal>[];
+
+    final compsRaw = json['comparables'];
+    final comps = compsRaw is List
+        ? compsRaw
+            .whereType<Map>()
+            .map((e) =>
+                DistressedComparable.fromJson(Map<String, dynamic>.from(e)))
+            .toList()
+        : <DistressedComparable>[];
+
+    return DistressedMarketAnalysis(
+      insufficientData: json['insufficientData'] == true,
+      areaLevel: asString(area['level'], 'area'),
+      areaName: asString(area['name'], ''),
+      sampleSize: asInt(area['sampleSize']),
+      medianAskingPrice: _optDouble(area['medianAskingPrice']),
+      medianPricePerSqm: _optDouble(area['medianPricePerSqm']),
+      subjectPricePerSqm: _optDouble(subject['pricePerSqm']),
+      vsAreaMedianPct: _optDouble(positioning['vsAreaMedianPct']),
+      vsAreaPricePerSqmPct: _optDouble(positioning['vsAreaPricePerSqmPct']),
+      pricePercentile: positioning['pricePercentile'] == null
+          ? null
+          : asInt(positioning['pricePercentile']),
+      estimatedValue: _optDouble(valuation['estimatedValue']),
+      impliedMarginPct: _optDouble(valuation['impliedMarginPct']),
+      trendDirection: asString(trend['direction'], 'UNKNOWN'),
+      areaPriceChangePct: _optDouble(trend['areaPriceChangePct']),
+      verdictScore: asInt(verdict['score']),
+      verdictLabel: asString(verdict['label'], 'Fair'),
+      verdictRationale: asString(verdict['rationale'], ''),
+      signals: signals,
+      comparables: comps,
+    );
+  }
+}
+
 /// Filter + sort state for the browse list.
 class DistressedFilter {
   const DistressedFilter({

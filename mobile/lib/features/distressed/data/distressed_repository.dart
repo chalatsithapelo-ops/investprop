@@ -93,6 +93,17 @@ class DistressedRepository {
     }
     throw StateError('Grading failed');
   }
+
+  Future<DistressedMarketAnalysis> fetchMarketAnalysis(int listingId) async {
+    final data = await _client.query(
+      'getSubscriberDistressedMarketAnalysis',
+      input: {'listingId': listingId},
+    );
+    if (data is Map) {
+      return DistressedMarketAnalysis.fromJson(Map<String, dynamic>.from(data));
+    }
+    throw StateError('Market analysis unavailable for $listingId');
+  }
 }
 
 final distressedRepositoryProvider = Provider<DistressedRepository>((ref) {
@@ -102,4 +113,9 @@ final distressedRepositoryProvider = Provider<DistressedRepository>((ref) {
 final distressedDetailProvider = FutureProvider.autoDispose
     .family<DistressedDealDetail, int>((ref, id) async {
   return ref.watch(distressedRepositoryProvider).fetchDetail(id);
+});
+
+final distressedMarketAnalysisProvider = FutureProvider.autoDispose
+    .family<DistressedMarketAnalysis, int>((ref, id) async {
+  return ref.watch(distressedRepositoryProvider).fetchMarketAnalysis(id);
 });

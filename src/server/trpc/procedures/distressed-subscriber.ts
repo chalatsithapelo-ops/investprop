@@ -15,6 +15,7 @@ import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { userHasFeature } from "~/server/subscriptions/subscription-service";
 import { screenListingCore } from "~/server/trpc/procedures/distressed-ai";
+import { computeDistressedMarketAnalysis } from "~/server/distressed/market-analysis";
 
 const GRADE_RANK: Record<string, number> = { A: 5, B: 4, C: 3, D: 2, E: 1 };
 
@@ -189,4 +190,18 @@ export const screenSubscriberDistressedDeal = baseProcedure
     if (!entitled) throw new TRPCError({ code: "FORBIDDEN", message: "Upgrade to a plan with distressed access." });
     // force:false returns the cached grade if already scored, otherwise screens.
     return screenListingCore({ actorUserId: user.id, listingId: input.listingId, force: false });
+  });
+
+// ─── Market analysis (comparables, valuation, trend) ───────────
+// Deterministic, no AI spend. Tells the subscriber whether a listing is a
+// worthwhile investment using comparable distressed listings in the area.
+export const getSubscriberDistressedMarketAnalysis = baseProcedure
+  .input(z.object({ authToken: z.string(), listingId: z.number() }))
+  .query(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    const entitled = await userHasFeature(user.id, user.role, "DISTRESSED_FULL_ACCESS");
+    if (!entitled) throw new TRPCError({ code: "FORBIDDEN", message: "Upgrade to a plan with distressed access." });
+    const analysis = await computeDistressedMarketAnalysis(input.listingId);
+    if (!analysis) throw new TRPCError({ code: "NOT_FOUND", message: "Listing not found" });
+    return analysis;
   });

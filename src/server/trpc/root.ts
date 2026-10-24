@@ -161,7 +161,7 @@ import { getMyDistressedAlerts, upsertDistressedAlerts, runDistressedSubscriberA
 import { requestReferralIntro, getReferralPartners, upsertReferralPartner, getReferralLeads, updateReferralLead, getReferralSummary } from "~/server/trpc/procedures/referrals";
 import { previewPrequalification, submitPrequalification, getMyPrequalifications } from "~/server/trpc/procedures/prequalification";
 import { submitHomeLoanApplication, getMyHomeLoanApplications, withdrawHomeLoanApplication, acceptHomeLoanOffer, getHomeLoanApplicationsAdmin, updateHomeLoanApplicationAdmin } from "~/server/trpc/procedures/home-loan-application";
-import { getSubscriberDistressedDeals, getSubscriberDistressedDetail, screenSubscriberDistressedDeal } from "~/server/trpc/procedures/distressed-subscriber";
+import { getSubscriberDistressedDeals, getSubscriberDistressedDetail, screenSubscriberDistressedDeal, getSubscriberDistressedMarketAnalysis } from "~/server/trpc/procedures/distressed-subscriber";
 import { getAnonymisedMarketData } from "~/server/trpc/procedures/market-data";
 export const appRouter = createTRPCRouter({
   register,
@@ -482,6 +482,7 @@ export const appRouter = createTRPCRouter({
   getSubscriberDistressedDeals,
   getSubscriberDistressedDetail,
   screenSubscriberDistressedDeal,
+  getSubscriberDistressedMarketAnalysis,
   requestReferralIntro,
   getReferralPartners,
   upsertReferralPartner,

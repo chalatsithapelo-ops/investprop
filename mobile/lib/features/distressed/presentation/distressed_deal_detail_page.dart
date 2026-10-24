@@ -158,6 +158,8 @@ class _DetailBody extends StatelessWidget {
               ],
               const SizedBox(height: 20),
               _AICard(detail: detail, grading: grading, onGrade: onGrade),
+              const SizedBox(height: 20),
+              _MarketAnalysisCard(listingId: deal.id),
               if ((detail.description ?? '').isNotEmpty) ...[
                 const SizedBox(height: 20),
                 const _SectionTitle('Description'),
@@ -646,6 +648,313 @@ class _SectionTitle extends StatelessWidget {
         fontSize: 16,
         fontWeight: FontWeight.w700,
         color: AppColors.textPrimary,
+      ),
+    );
+  }
+}
+
+/// Deterministic comparable-sales / area-benchmark panel. Loads its own data so
+/// the parent body can stay stateless.
+class _MarketAnalysisCard extends ConsumerWidget {
+  const _MarketAnalysisCard({required this.listingId});
+
+  final int listingId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(distressedMarketAnalysisProvider(listingId));
+    return async.when(
+      loading: () => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (a) => _MarketAnalysisBody(analysis: a),
+    );
+  }
+}
+
+class _MarketAnalysisBody extends StatelessWidget {
+  const _MarketAnalysisBody({required this.analysis});
+
+  final DistressedMarketAnalysis analysis;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = analysis;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.insights_outlined,
+                  size: 18, color: AppColors.navy),
+              const SizedBox(width: 8),
+              const Text(
+                'Market analysis',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: a.verdictColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${a.verdictLabel} · ${a.verdictScore}/100',
+                  style: TextStyle(
+                    color: a.verdictColor,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (a.verdictRationale.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              a.verdictRationale,
+              style: const TextStyle(color: AppColors.textPrimary, height: 1.5),
+            ),
+          ],
+          if (a.hasComparables) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                if (a.estimatedValue != null)
+                  _MetricTile(
+                    label: 'Benchmark value',
+                    value: Fmt.compactMoney(a.estimatedValue!),
+                  ),
+                if (a.impliedMarginPct != null)
+                  _MetricTile(
+                    label: 'Margin of safety',
+                    value:
+                        '${a.impliedMarginPct! >= 0 ? '+' : ''}${a.impliedMarginPct!.toStringAsFixed(0)}%',
+                    color: a.impliedMarginPct! >= 0
+                        ? AppColors.success
+                        : AppColors.danger,
+                  ),
+                if (a.medianPricePerSqm != null)
+                  _MetricTile(
+                    label: 'Area median R/m²',
+                    value: Fmt.compactMoney(a.medianPricePerSqm!),
+                  ),
+                if (a.subjectPricePerSqm != null)
+                  _MetricTile(
+                    label: 'This deal R/m²',
+                    value: Fmt.compactMoney(a.subjectPricePerSqm!),
+                  ),
+                if (a.pricePercentile != null)
+                  _MetricTile(
+                    label: 'Cheaper than',
+                    value: '${a.pricePercentile}% of comps',
+                  ),
+                if (a.trendDirection != 'UNKNOWN')
+                  _MetricTile(
+                    label: 'Area trend',
+                    value: a.trendDirection == 'RISING'
+                        ? 'Rising'
+                        : a.trendDirection == 'FALLING'
+                            ? 'Softening'
+                            : 'Flat',
+                    color: a.trendDirection == 'RISING'
+                        ? AppColors.success
+                        : a.trendDirection == 'FALLING'
+                            ? AppColors.danger
+                            : AppColors.textSecondary,
+                  ),
+              ],
+            ),
+          ],
+          if (a.signals.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            ...a.signals.map(
+              (s) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 5, right: 8),
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: s.color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: RichText(
+                        text: TextSpan(
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            height: 1.4,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: '${s.label}: ',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: s.color,
+                              ),
+                            ),
+                            TextSpan(text: s.detail),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          if (a.comparables.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(
+              'Comparable listings · ${a.areaLevel} ${a.areaName}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ...a.comparables.map(
+              (c) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            c.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          if (c.location.isNotEmpty)
+                            Text(
+                              c.location,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 11,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          Fmt.compactMoney(c.askingPrice),
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                        if (c.pricePerSqm != null)
+                          Text(
+                            '${Fmt.compactMoney(c.pricePerSqm!)}/m²',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          const Text(
+            'Benchmark derived from comparable distressed/auction asking prices '
+            'in the area — a guide, not a formal valuation. Always do your own '
+            'due diligence.',
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({required this.label, required this.value, this.color});
+
+  final String label;
+  final String value;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 150,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: color ?? AppColors.textPrimary,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -6,12 +6,17 @@ import {
   Lock,
   MapPin,
   TrendingDown,
+  TrendingUp,
   Sparkles,
   ExternalLink,
   Gavel,
   X,
   ArrowLeft,
   ArrowRight,
+  BarChart3,
+  Scale,
+  Gauge,
+  Minus,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
@@ -364,6 +369,10 @@ function DealDetailModal({
     ...trpc.getSubscriberDistressedDetail.queryOptions({ authToken, listingId }),
     enabled: !!authToken,
   });
+  const marketQuery = useQuery({
+    ...trpc.getSubscriberDistressedMarketAnalysis.queryOptions({ authToken, listingId }),
+    enabled: !!authToken,
+  });
   const l = detailQuery.data as any;
   const uw = (l?.aiUnderwriting ?? null) as
     | { pros?: string[]; cons?: string[]; redFlags?: string[]; recommendations?: string[] }
@@ -469,6 +478,12 @@ function DealDetailModal({
                 )}
               </div>
 
+              {/* Market analysis */}
+              <MarketAnalysisPanel
+                data={marketQuery.data as any}
+                isLoading={marketQuery.isLoading}
+              />
+
               {l.description ? (
                 <p className="mt-5 whitespace-pre-line text-sm text-gray-600">{l.description}</p>
               ) : null}
@@ -515,3 +530,138 @@ function BreakdownList({ title, items, tone }: { title: string; items?: string[]
     </div>
   );
 }
+
+const VERDICT_STYLES: Record<string, string> = {
+  Strong: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  Solid: "bg-teal-100 text-teal-800 border-teal-200",
+  Fair: "bg-amber-100 text-amber-800 border-amber-200",
+  Weak: "bg-orange-100 text-orange-800 border-orange-200",
+  Avoid: "bg-red-100 text-red-800 border-red-200",
+};
+
+const SIGNAL_STYLES: Record<string, { dot: string; text: string }> = {
+  POSITIVE: { dot: "bg-emerald-500", text: "text-emerald-700" },
+  NEUTRAL: { dot: "bg-gray-400", text: "text-gray-600" },
+  CAUTION: { dot: "bg-red-500", text: "text-red-700" },
+};
+
+function MarketAnalysisPanel({ data, isLoading }: { data: any; isLoading: boolean }) {
+  if (isLoading) {
+    return (
+      <div className="mt-6 flex items-center justify-center rounded-xl border border-gray-200 bg-white py-8 text-gray-400">
+        <Loader2 className="animate-spin" size={22} />
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  const a = data;
+  const v = a.verdict;
+  const estValue = a.valuation?.estimatedValue as number | null;
+  const margin = a.valuation?.impliedMarginPct as number | null;
+  const trendDir = a.trend?.direction as string;
+  const TrendIcon = trendDir === "RISING" ? TrendingUp : trendDir === "FALLING" ? TrendingDown : Minus;
+
+  return (
+    <div className="mt-6 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 font-semibold text-gray-900">
+          <BarChart3 size={16} className="text-indigo-600" /> Market analysis
+        </h3>
+        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-bold ${VERDICT_STYLES[v?.label] ?? "bg-gray-100 text-gray-700"}`}>
+          <Gauge size={12} /> {v?.label} · {v?.score}/100
+        </span>
+      </div>
+
+      {v?.rationale && <p className="mt-2 text-sm text-gray-700">{v.rationale}</p>}
+
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {estValue != null && (
+          <Stat
+            label="Benchmark value"
+            value={ZAR(estValue)}
+          />
+        )}
+        {margin != null && (
+          <div className="rounded-lg border border-gray-200 bg-white p-2.5">
+            <div className="text-xs text-gray-500">Margin of safety</div>
+            <div className={`font-semibold ${margin >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+              {margin >= 0 ? "+" : ""}
+              {margin.toFixed(0)}%
+            </div>
+          </div>
+        )}
+        {a.area?.medianPricePerSqm != null && (
+          <Stat label="Area median R/m²" value={ZAR(a.area.medianPricePerSqm)} />
+        )}
+        {a.subject?.pricePerSqm != null && (
+          <Stat label="This deal R/m²" value={ZAR(a.subject.pricePerSqm)} />
+        )}
+        {a.positioning?.pricePercentile != null && (
+          <Stat label="Cheaper than" value={`${a.positioning.pricePercentile}% of comps`} />
+        )}
+        {trendDir && trendDir !== "UNKNOWN" && (
+          <div className="rounded-lg border border-gray-200 bg-white p-2.5">
+            <div className="text-xs text-gray-500">Area trend</div>
+            <div className="flex items-center gap-1 font-semibold text-gray-900">
+              <TrendIcon size={14} className={trendDir === "RISING" ? "text-emerald-600" : trendDir === "FALLING" ? "text-red-600" : "text-gray-500"} />
+              {trendDir === "RISING" ? "Rising" : trendDir === "FALLING" ? "Softening" : "Flat"}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {Array.isArray(a.signals) && a.signals.length > 0 && (
+        <div className="mt-4 space-y-1.5">
+          {a.signals.map((s: any, i: number) => {
+            const st = SIGNAL_STYLES[s.status] ?? SIGNAL_STYLES.NEUTRAL;
+            return (
+              <div key={i} className="flex items-start gap-2 text-sm">
+                <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${st.dot}`} />
+                <span className="text-gray-700">
+                  <span className={`font-medium ${st.text}`}>{s.label}:</span> {s.detail}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {Array.isArray(a.comparables) && a.comparables.length > 0 && (
+        <div className="mt-4">
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-500">
+            <Scale size={12} /> Comparable listings ({a.area?.level} · {a.area?.name})
+          </div>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="text-gray-400">
+                <tr>
+                  <th className="pb-1 pr-2 font-medium">Property</th>
+                  <th className="pb-1 pr-2 font-medium">Asking</th>
+                  <th className="pb-1 font-medium">R/m²</th>
+                </tr>
+              </thead>
+              <tbody className="text-gray-700">
+                {a.comparables.map((c: any) => (
+                  <tr key={c.id} className="border-t border-gray-100">
+                    <td className="py-1 pr-2">
+                      <span className="line-clamp-1">{c.title}</span>
+                      <span className="text-gray-400">{[c.suburb, c.city].filter(Boolean).join(", ")}</span>
+                    </td>
+                    <td className="py-1 pr-2 font-medium">{ZAR(c.askingPrice)}</td>
+                    <td className="py-1">{c.pricePerSqm != null ? ZAR(c.pricePerSqm) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <p className="mt-3 text-[11px] leading-snug text-gray-400">
+        Benchmark derived from comparable distressed/auction asking prices in the area — a guide, not a formal valuation. Always verify with your own due diligence.
+      </p>
+    </div>
+  );
+}
+
