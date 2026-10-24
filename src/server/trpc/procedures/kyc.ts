@@ -195,7 +195,10 @@ export const getKYCDocuments = baseProcedure
       });
     }
 
-    const targetId = input.investorId ?? user.id;
+    // Only staff may read another investor's documents; investors are
+    // restricted to their own records regardless of the investorId input.
+    const isStaff = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"].includes(user.role);
+    const targetId = input.investorId && isStaff ? input.investorId : user.id;
 
     return db.kYCDocument.findMany({
       where: { investorId: targetId },

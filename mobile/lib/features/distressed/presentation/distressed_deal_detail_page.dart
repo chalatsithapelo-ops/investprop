@@ -837,6 +837,223 @@ class _MarketAnalysisBody extends StatelessWidget {
               ),
             ),
           ],
+          if (a.flip != null || a.rental != null) ...[
+            const SizedBox(height: 14),
+            const _SectionLabel(
+                icon: Icons.handyman_outlined, text: 'Projected returns'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                if (a.flip != null) ...[
+                  _MetricTile(
+                    label: 'Flip net ROI',
+                    value: '${a.flip!.roiPct.toStringAsFixed(0)}%',
+                    color: AppColors.success,
+                  ),
+                  _MetricTile(
+                    label: 'Flip net profit',
+                    value: Fmt.compactMoney(a.flip!.netProfit),
+                  ),
+                  _MetricTile(
+                    label: 'Annualised',
+                    value: '${a.flip!.annualisedPct.toStringAsFixed(0)}%',
+                  ),
+                  _MetricTile(
+                    label: 'Benchmark ARV',
+                    value: Fmt.compactMoney(a.flip!.arv),
+                  ),
+                ],
+                if (a.rental != null) ...[
+                  _MetricTile(
+                    label: 'Est. monthly rent',
+                    value: Fmt.compactMoney(a.rental!.estimatedMonthlyRent),
+                  ),
+                  _MetricTile(
+                    label: 'Gross yield',
+                    value: '${a.rental!.grossYieldPct.toStringAsFixed(1)}%',
+                  ),
+                  _MetricTile(
+                    label: 'Net yield',
+                    value: '${a.rental!.netYieldPct.toStringAsFixed(1)}%',
+                  ),
+                  _MetricTile(
+                    label: 'Monthly cashflow',
+                    value: Fmt.compactMoney(a.rental!.monthlyNetCashflow),
+                    color: a.rental!.monthlyNetCashflow >= 0
+                        ? AppColors.success
+                        : AppColors.danger,
+                  ),
+                ],
+              ],
+            ),
+            if (a.projectionAssumptions.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                a.projectionAssumptions,
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textSecondary),
+              ),
+            ],
+          ],
+          if (a.maxBid != null &&
+              (a.maxBid!.maxBidForTarget != null ||
+                  a.maxBid!.breakEvenPrice != null)) ...[
+            const SizedBox(height: 14),
+            const _SectionLabel(
+                icon: Icons.gps_fixed_outlined, text: 'Bidding guide'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                if (a.maxBid!.maxBidForTarget != null)
+                  _MetricTile(
+                    label:
+                        'Max bid (${a.maxBid!.targetRoiPct.toStringAsFixed(0)}% ROI)',
+                    value: Fmt.compactMoney(a.maxBid!.maxBidForTarget!),
+                  ),
+                if (a.maxBid!.breakEvenPrice != null)
+                  _MetricTile(
+                    label: 'Break-even price',
+                    value: Fmt.compactMoney(a.maxBid!.breakEvenPrice!),
+                  ),
+                if (a.maxBid!.askingVsMaxBidPct != null)
+                  _MetricTile(
+                    label: 'Asking vs max bid',
+                    value:
+                        '${a.maxBid!.askingVsMaxBidPct! > 0 ? '+' : ''}${a.maxBid!.askingVsMaxBidPct!.toStringAsFixed(0)}%',
+                    color: a.maxBid!.askingVsMaxBidPct! <= 0
+                        ? AppColors.success
+                        : AppColors.danger,
+                  ),
+              ],
+            ),
+          ],
+          if (a.activity != null && a.activity!.staleness != 'UNKNOWN') ...[
+            const SizedBox(height: 14),
+            const _SectionLabel(
+                icon: Icons.schedule_outlined, text: 'Market activity'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                if (a.activity!.daysOnMarket != null)
+                  _MetricTile(
+                    label: 'Days on market',
+                    value:
+                        '${a.activity!.daysOnMarket} · ${a.activity!.stalenessLabel}',
+                    color: a.activity!.stalenessColor,
+                  ),
+                if (a.activity!.priceDropCount > 0)
+                  _MetricTile(
+                    label: 'Price cuts',
+                    value: '${a.activity!.priceDropCount}',
+                  ),
+                if (a.activity!.totalDropPct != null)
+                  _MetricTile(
+                    label: 'Total price cut',
+                    value: '${a.activity!.totalDropPct!.toStringAsFixed(0)}%',
+                  ),
+                if (a.activity!.dropVelocityPctPerMonth != null)
+                  _MetricTile(
+                    label: 'Cut velocity',
+                    value:
+                        '${a.activity!.dropVelocityPctPerMonth!.toStringAsFixed(1)}%/mo',
+                  ),
+              ],
+            ),
+          ],
+          if (a.auctionRisks.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const _SectionLabel(
+                icon: Icons.gpp_maybe_outlined,
+                text: 'Auction & distressed-sale risks'),
+            const SizedBox(height: 8),
+            ...a.auctionRisks.map(
+              (r) => Container(
+                margin: const EdgeInsets.symmetric(vertical: 3),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: r.color.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: r.color.withValues(alpha: 0.4)),
+                ),
+                child: RichText(
+                  text: TextSpan(
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      height: 1.4,
+                      fontSize: 13,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: '${r.label}: ',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: r.color,
+                        ),
+                      ),
+                      TextSpan(text: r.detail),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+          if (a.verdictFactors.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const _SectionLabel(
+                icon: Icons.checklist_outlined, text: 'How we scored this'),
+            const SizedBox(height: 6),
+            ...a.verdictFactors.map(
+              (f) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: RichText(
+                        text: TextSpan(
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            height: 1.4,
+                            fontSize: 13,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: f.label,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if (f.note.isNotEmpty)
+                              TextSpan(
+                                text: ' — ${f.note}',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${f.impact > 0 ? '+' : ''}${f.impact.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: f.color,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           if (a.comparables.isNotEmpty) ...[
             const SizedBox(height: 14),
             Text(
@@ -914,6 +1131,33 @@ class _MarketAnalysisBody extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: AppColors.textSecondary),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

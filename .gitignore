@@ -28,3 +28,8 @@ app.config.timestamp_*.js
 
 # Firebase Admin SDK service-account key — NEVER commit (hard secret)
 **/*-firebase-adminsdk-*.json
+
+# Log / server output files may contain request bodies, tokens, credentials
+*.log
+*.out.log
+*.err.log

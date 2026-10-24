@@ -7,10 +7,19 @@ import { publicProcedure } from "../main";
 import { sendEmail } from "~/server/utils/email";
 import { emailTemplates } from "~/server/utils/email-templates";
 import { userPasswordSchema } from "~/server/utils/validation-schemas";
+import { checkRateLimit, RATE_LIMITS } from "~/server/utils/rate-limiter";
 
 export const requestPasswordReset = publicProcedure
   .input(z.object({ email: z.string().email() }))
   .mutation(async ({ input }) => {
+    const rl = checkRateLimit(`password-reset:${input.email.toLowerCase()}`, RATE_LIMITS.PASSWORD_RESET);
+    if (!rl.allowed) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: `Too many password reset requests. Try again in ${Math.ceil((rl.retryAfter || 0) / 60)} minutes.`,
+      });
+    }
+
     const user = await db.user.findUnique({
       where: { email: input.email },
     });
@@ -57,6 +66,14 @@ export const resetPassword = publicProcedure
     })
   )
   .mutation(async ({ input }) => {
+    const rl = checkRateLimit(`password-reset-confirm:${input.token.slice(0, 16)}`, RATE_LIMITS.PASSWORD_RESET);
+    if (!rl.allowed) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: `Too many attempts. Try again in ${Math.ceil((rl.retryAfter || 0) / 60)} minutes.`,
+      });
+    }
+
     const resetToken = await db.passwordResetToken.findUnique({
       where: { token: input.token },
       include: { user: true },
@@ -84,7 +101,7 @@ export const resetPassword = publicProcedure
     }
 
     // Hash new password
-    const hashedPassword = await bcryptjs.hash(input.newPassword, 10);
+    const hashedPassword = await bcryptjs.hash(input.newPassword, 12);
 
     // Update password and mark token as used, revoke all refresh tokens
     await db.$transaction([

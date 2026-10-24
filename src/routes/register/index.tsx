@@ -31,9 +31,16 @@ function RegisterPage() {
       return
     }
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
-      toast.error('Password must be at least 8 characters.')
+    if (
+      password.length < 8 ||
+      !/[A-Z]/.test(password) ||
+      !/[a-z]/.test(password) ||
+      !/[0-9]/.test(password) ||
+      !/[^A-Za-z0-9]/.test(password)
+    ) {
+      const msg = 'Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number and a special character.'
+      setError(msg)
+      toast.error(msg)
       return
     }
 

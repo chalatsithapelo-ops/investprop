@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import DOMPurify from "dompurify";
 import { Mail, Sparkles, Loader2, Send, Save, Clock, CheckCircle2 } from "lucide-react";
 import { useTRPC } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
@@ -136,7 +137,7 @@ export function AIInvestorUpdateEditor({ propertyId }: Props) {
             <label className="mb-1 block text-xs text-gray-500">Preview</label>
             <div
               className="max-h-72 overflow-y-auto rounded-lg border border-navy-700 bg-white p-4 text-sm text-slate-800"
-              dangerouslySetInnerHTML={{ __html: bodyHtml }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(bodyHtml) }}
             />
           </div>
           <details className="rounded-lg bg-navy-800/30 px-3 py-2">

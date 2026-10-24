@@ -7,6 +7,7 @@ import { createNotification } from "~/server/trpc/procedures/notifications";
 import { createAuditLog } from "~/server/trpc/procedures/audit-log";
 import { sendBatchEmails, type BatchEmailItem } from "~/server/utils/email";
 import { userHasFeature } from "~/server/subscriptions/subscription-service";
+import { computeDistressedMarketAnalysis } from "~/server/distressed/market-analysis";
 import { env } from "~/server/env";
 
 // ═══════════════════════════════════════════════════════════════
@@ -130,6 +131,8 @@ function buildAlertEmail(
     aiGrade: string | null;
     priceDropPct?: number | null;
     previousPrice?: number | null;
+    verdictLabel?: string | null;
+    verdictScore?: number | null;
   }[],
 ): { subject: string; htmlContent: string; textContent: string } {
   const count = listings.length;
@@ -144,13 +147,17 @@ function buildAlertEmail(
     .map((l) => {
       const disc = l.discount != null ? `${Math.round(l.discount)}% below market` : "";
       const grade = l.aiGrade ? ` · Grade ${l.aiGrade}` : "";
+      const verdict =
+        l.verdictLabel != null
+          ? ` · <span style="font-weight:600;color:#0d9488;">${l.verdictLabel}${l.verdictScore != null ? ` ${l.verdictScore}/100` : ""}</span>`
+          : "";
       const drop =
         l.priceDropPct != null
           ? `<br/><span style="color:#dc2626;font-weight:600;">↓ Price dropped ${Math.round(l.priceDropPct)}%${l.previousPrice != null ? ` from R${Math.round(l.previousPrice).toLocaleString()}` : ""}</span>`
           : "";
       return `<tr><td style="padding:10px 0;border-bottom:1px solid #eee;">
         <strong>${l.title}</strong><br/>
-        <span style="color:#555;">${l.city}, ${l.province} · R${Math.round(l.askingPrice).toLocaleString()} ${disc}${grade}</span>${drop}
+        <span style="color:#555;">${l.city}, ${l.province} · R${Math.round(l.askingPrice).toLocaleString()} ${disc}${grade}${verdict}</span>${drop}
       </td></tr>`;
     })
     .join("");
@@ -170,6 +177,7 @@ function buildAlertEmail(
         (l) =>
           `- ${l.title} — ${l.city}, ${l.province} — R${Math.round(l.askingPrice).toLocaleString()}` +
           (l.discount != null ? ` (${Math.round(l.discount)}% below market)` : "") +
+          (l.verdictLabel != null ? ` [${l.verdictLabel}${l.verdictScore != null ? ` ${l.verdictScore}/100` : ""}]` : "") +
           (l.priceDropPct != null ? ` [↓ dropped ${Math.round(l.priceDropPct)}%]` : ""),
       )
       .join("\n") +
@@ -191,6 +199,21 @@ export async function runSubscriberAlertsCore(opts: { dryRun?: boolean }) {
     let matchedSubscribers = 0;
     let totalMatches = 0;
     let totalPriceDrops = 0;
+
+    // Cache verdicts per listing within this run (listings overlap across subscribers).
+    const verdictCache = new Map<number, { label: string; score: number } | null>();
+    const getVerdict = async (id: number): Promise<{ label: string; score: number } | null> => {
+      if (verdictCache.has(id)) return verdictCache.get(id) ?? null;
+      let v: { label: string; score: number } | null = null;
+      try {
+        const a = await computeDistressedMarketAnalysis(id);
+        if (a && !a.insufficientData) v = { label: a.verdict.label, score: a.verdict.score };
+      } catch {
+        v = null;
+      }
+      verdictCache.set(id, v);
+      return v;
+    };
 
     for (const sub of subs) {
       // Only entitled subscribers receive alerts.
@@ -223,6 +246,8 @@ export async function runSubscriberAlertsCore(opts: { dryRun?: boolean }) {
         aiGrade: string | null;
         priceDropPct?: number | null;
         previousPrice?: number | null;
+        verdictLabel?: string | null;
+        verdictScore?: number | null;
       };
 
       const newMatches: MatchItem[] = candidates
@@ -284,6 +309,15 @@ export async function runSubscriberAlertsCore(opts: { dryRun?: boolean }) {
       totalPriceDrops += dropMatches.length;
 
       if (dryRun) continue;
+
+      // Enrich with the Finder market verdict (cached per listing).
+      for (const m of matches) {
+        const v = await getVerdict(m.id);
+        if (v) {
+          m.verdictLabel = v.label;
+          m.verdictScore = v.score;
+        }
+      }
 
       if (sub.channelPush) {
         const dropN = dropMatches.length;

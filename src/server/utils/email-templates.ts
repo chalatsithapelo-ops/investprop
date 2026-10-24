@@ -1,3 +1,13 @@
+/** Escape user-controlled values before interpolating into email HTML. */
+function esc(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export const emailTemplates = {
   emailVerification: (verificationUrl: string, userName: string) => ({
     subject: "Verify Your Email - Investprop",
@@ -21,7 +31,7 @@ export const emailTemplates = {
               <h1>Welcome to Investprop</h1>
             </div>
             <div class="content">
-              <h2>Hello ${userName}!</h2>
+              <h2>Hello ${esc(userName)}!</h2>
               <p>Thank you for registering with us. Please verify your email address to activate your account.</p>
               <p>Click the button below to verify your email:</p>
               <a href="${verificationUrl}" class="button">Verify Email</a>
@@ -75,7 +85,7 @@ export const emailTemplates = {
               <h1>Password Reset Request</h1>
             </div>
             <div class="content">
-              <h2>Hello ${userName}!</h2>
+              <h2>Hello ${esc(userName)}!</h2>
               <p>We received a request to reset your password. Click the button below to create a new password:</p>
               <a href="${resetUrl}" class="button">Reset Password</a>
               <p>Or copy and paste this link into your browser:</p>
@@ -129,9 +139,9 @@ export const emailTemplates = {
             </div>
             <div class="content">
               <h2>You have a new investment proposal!</h2>
-              <p><strong>${investorName}</strong> has submitted an investment proposal for:</p>
+              <p><strong>${esc(investorName)}</strong> has submitted an investment proposal for:</p>
               <ul>
-                <li><strong>Property:</strong> ${propertyTitle}</li>
+                <li><strong>Property:</strong> ${esc(propertyTitle)}</li>
                 <li><strong>Amount:</strong> R${amount.toLocaleString()}</li>
               </ul>
               <p>Please review and respond to this proposal in your dashboard.</p>
@@ -180,8 +190,8 @@ export const emailTemplates = {
               <h1>Proposal ${status}</h1>
             </div>
             <div class="content">
-              <h2>Hello ${investorName}!</h2>
-              <p>Your investment proposal for <strong>${propertyTitle}</strong> has been <strong>${status.toLowerCase()}</strong>.</p>
+              <h2>Hello ${esc(investorName)}!</h2>
+              <p>Your investment proposal for <strong>${esc(propertyTitle)}</strong> has been <strong>${status.toLowerCase()}</strong>.</p>
               ${status === 'APPROVED' ? '<p>Congratulations! You can now proceed with your investment.</p>' : '<p>We appreciate your interest. Please feel free to explore other investment opportunities.</p>'}
               <a href="${process.env.BASE_URL || 'http://localhost:3000'}/investments/my-contributions" class="button">View Details</a>
             </div>
@@ -214,8 +224,8 @@ export const emailTemplates = {
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: #059669; color: white; padding: 20px; text-align: center;"><h1>Payment Confirmed</h1></div>
           <div style="background: #f9fafb; padding: 30px;">
-            <h2>Hello ${userName},</h2>
-            <p>We have confirmed receipt of your payment of <strong>R${amount.toLocaleString()}</strong> for <strong>${propertyTitle}</strong>.</p>
+            <h2>Hello ${esc(userName)},</h2>
+            <p>We have confirmed receipt of your payment of <strong>R${amount.toLocaleString()}</strong> for <strong>${esc(propertyTitle)}</strong>.</p>
             <p>Your investment is now active. A share certificate will be issued shortly once all post-payment checks are complete.</p>
             <a href="${process.env.BASE_URL || 'http://localhost:3000'}/investments/my-contributions" style="display:inline-block;padding:12px 24px;background:#059669;color:white;text-decoration:none;border-radius:5px;margin:20px 0;">View My Investments</a>
             <p style="font-size:12px;color:#666;">A 5-business-day cooling-off period now applies. You may cancel this investment at no charge during this window.</p>
@@ -235,10 +245,10 @@ export const emailTemplates = {
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: #d97706; color: white; padding: 20px; text-align: center;"><h1>Share Certificate Issued</h1></div>
           <div style="background: #f9fafb; padding: 30px;">
-            <h2>Hello ${userName},</h2>
-            <p>Your share certificate for <strong>${propertyTitle}</strong> has been issued.</p>
+            <h2>Hello ${esc(userName)},</h2>
+            <p>Your share certificate for <strong>${esc(propertyTitle)}</strong> has been issued.</p>
             <ul>
-              <li>Certificate number: <strong>${certificateNumber}</strong></li>
+              <li>Certificate number: <strong>${esc(certificateNumber)}</strong></li>
               <li>Shares held: <strong>${shareCount.toLocaleString()}</strong></li>
             </ul>
             <a href="${process.env.BASE_URL || 'http://localhost:3000'}/investments/certificates" style="display:inline-block;padding:12px 24px;background:#d97706;color:white;text-decoration:none;border-radius:5px;margin:20px 0;">Download Certificate</a>
@@ -259,12 +269,12 @@ export const emailTemplates = {
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: #059669; color: white; padding: 20px; text-align: center;"><h1>Distribution Paid</h1></div>
           <div style="background: #f9fafb; padding: 30px;">
-            <h2>Hello ${userName},</h2>
-            <p>A distribution has been paid to you for <strong>${propertyTitle}</strong>.</p>
+            <h2>Hello ${esc(userName)},</h2>
+            <p>A distribution has been paid to you for <strong>${esc(propertyTitle)}</strong>.</p>
             <ul>
-              <li>Type: <strong>${distributionType}</strong></li>
+              <li>Type: <strong>${esc(distributionType)}</strong></li>
               <li>Amount: <strong>R${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></li>
-              ${period ? `<li>Period: <strong>${period}</strong></li>` : ""}
+              ${period ? `<li>Period: <strong>${esc(period)}</strong></li>` : ""}
             </ul>
             <p>Funds will reflect in your nominated bank account within 1–3 business days.</p>
             <a href="${process.env.BASE_URL || 'http://localhost:3000'}/distributions" style="display:inline-block;padding:12px 24px;background:#059669;color:white;text-decoration:none;border-radius:5px;margin:20px 0;">View Distribution History</a>
@@ -285,8 +295,8 @@ export const emailTemplates = {
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: #d97706; color: white; padding: 20px; text-align: center;"><h1>Cooling-off Period Ending Soon</h1></div>
           <div style="background: #f9fafb; padding: 30px;">
-            <h2>Hello ${userName},</h2>
-            <p>Your statutory 5-business-day cooling-off period for your investment in <strong>${propertyTitle}</strong> ends in approximately <strong>${hoursRemaining} hours</strong>.</p>
+            <h2>Hello ${esc(userName)},</h2>
+            <p>Your statutory 5-business-day cooling-off period for your investment in <strong>${esc(propertyTitle)}</strong> ends in approximately <strong>${hoursRemaining} hours</strong>.</p>
             <p>After this period, the investment becomes irrevocable and standard refund procedures will apply.</p>
             <p>If you wish to cancel and receive a full refund at no charge, please act now.</p>
             <a href="${process.env.BASE_URL || 'http://localhost:3000'}/investments/my-contributions" style="display:inline-block;padding:12px 24px;background:#d97706;color:white;text-decoration:none;border-radius:5px;margin:20px 0;">Review Investment</a>

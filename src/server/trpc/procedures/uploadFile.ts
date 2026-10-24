@@ -5,6 +5,7 @@ import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { checkRateLimit, RATE_LIMITS } from "~/server/utils/rate-limiter";
 import { env } from "~/server/env";
+import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -90,9 +91,11 @@ export const uploadFile = baseProcedure
       });
     }
 
-    // Build a unique object name
+    // Build a unique object name. Use a cryptographically strong random
+    // component so objects (incl. KYC/legal docs in the public bucket)
+    // cannot be guessed or enumerated.
     const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 15);
+    const randomString = crypto.randomBytes(16).toString("hex");
     const rawExt = input.fileName.includes(".")
       ? input.fileName.split(".").pop()!.toLowerCase().replace(/[^a-z0-9]/g, "")
       : "";

@@ -17,6 +17,14 @@ import {
   Scale,
   Gauge,
   Minus,
+  Hammer,
+  Home,
+  Target,
+  Clock,
+  ShieldAlert,
+  AlertTriangle,
+  Info,
+  ListChecks,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
@@ -545,6 +553,19 @@ const SIGNAL_STYLES: Record<string, { dot: string; text: string }> = {
   CAUTION: { dot: "bg-red-500", text: "text-red-700" },
 };
 
+const RISK_STYLES: Record<string, { wrap: string; badge: string; Icon: typeof Info }> = {
+  INFO: { wrap: "border-sky-200 bg-sky-50", badge: "text-sky-700", Icon: Info },
+  ATTENTION: { wrap: "border-amber-200 bg-amber-50", badge: "text-amber-700", Icon: AlertTriangle },
+  WARNING: { wrap: "border-red-200 bg-red-50", badge: "text-red-700", Icon: ShieldAlert },
+};
+
+const STALENESS_LABEL: Record<string, { text: string; cls: string }> = {
+  FRESH: { text: "Fresh", cls: "text-emerald-600" },
+  NORMAL: { text: "On market", cls: "text-gray-700" },
+  STALE: { text: "Stale", cls: "text-red-600" },
+  UNKNOWN: { text: "—", cls: "text-gray-400" },
+};
+
 function MarketAnalysisPanel({ data, isLoading }: { data: any; isLoading: boolean }) {
   if (isLoading) {
     return (
@@ -624,6 +645,149 @@ function MarketAnalysisPanel({ data, isLoading }: { data: any; isLoading: boolea
               </div>
             );
           })}
+        </div>
+      )}
+
+      {(a.projections?.flip || a.projections?.rental) && (
+        <div className="mt-4 rounded-lg border border-indigo-100 bg-white p-3">
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-500">
+            <Hammer size={12} /> Projected returns
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {a.projections.flip && (
+              <>
+                <Stat label="Flip net ROI" value={`${a.projections.flip.roiPct.toFixed(0)}%`} />
+                <Stat label="Flip net profit" value={ZAR(a.projections.flip.netProfit)} />
+                <Stat label="Annualised" value={`${a.projections.flip.annualisedPct.toFixed(0)}%`} />
+                <Stat label="Benchmark ARV" value={ZAR(a.projections.flip.arv)} />
+              </>
+            )}
+          </div>
+          {a.projections.rental && (
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Stat label="Est. monthly rent" value={ZAR(a.projections.rental.estimatedMonthlyRent)} />
+              <Stat label="Gross yield" value={`${a.projections.rental.grossYieldPct.toFixed(1)}%`} />
+              <Stat label="Net yield" value={`${a.projections.rental.netYieldPct.toFixed(1)}%`} />
+              <Stat
+                label="Monthly cashflow"
+                value={ZAR(a.projections.rental.monthlyNetCashflow)}
+              />
+            </div>
+          )}
+          {a.projections.assumptions && (
+            <p className="mt-2 flex items-start gap-1 text-[11px] leading-snug text-gray-400">
+              <Home size={11} className="mt-0.5 shrink-0" /> {a.projections.assumptions}
+            </p>
+          )}
+        </div>
+      )}
+
+      {a.maxBid && (a.maxBid.maxBidForTarget != null || a.maxBid.breakEvenPrice != null) && (
+        <div className="mt-4 rounded-lg border border-indigo-100 bg-white p-3">
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-500">
+            <Target size={12} /> Bidding guide
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {a.maxBid.maxBidForTarget != null && (
+              <Stat
+                label={`Max bid (${a.maxBid.targetRoiPct.toFixed(0)}% ROI)`}
+                value={ZAR(a.maxBid.maxBidForTarget)}
+              />
+            )}
+            {a.maxBid.breakEvenPrice != null && (
+              <Stat label="Break-even price" value={ZAR(a.maxBid.breakEvenPrice)} />
+            )}
+            {a.maxBid.askingVsMaxBidPct != null && (
+              <div className="rounded-lg border border-gray-200 bg-white p-2.5">
+                <div className="text-xs text-gray-500">Asking vs max bid</div>
+                <div
+                  className={`font-semibold ${a.maxBid.askingVsMaxBidPct <= 0 ? "text-emerald-600" : "text-red-600"}`}
+                >
+                  {a.maxBid.askingVsMaxBidPct > 0 ? "+" : ""}
+                  {a.maxBid.askingVsMaxBidPct.toFixed(0)}%
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {a.activity && a.activity.staleness !== "UNKNOWN" && (
+        <div className="mt-4 rounded-lg border border-indigo-100 bg-white p-3">
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-500">
+            <Clock size={12} /> Market activity
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {a.activity.daysOnMarket != null && (
+              <div className="rounded-lg border border-gray-200 bg-white p-2.5">
+                <div className="text-xs text-gray-500">Days on market</div>
+                <div className="font-semibold text-gray-900">
+                  {a.activity.daysOnMarket}{" "}
+                  <span className={`text-xs font-medium ${STALENESS_LABEL[a.activity.staleness]?.cls}`}>
+                    · {STALENESS_LABEL[a.activity.staleness]?.text}
+                  </span>
+                </div>
+              </div>
+            )}
+            {a.activity.priceDropCount > 0 && (
+              <Stat label="Price cuts" value={`${a.activity.priceDropCount}`} />
+            )}
+            {a.activity.totalDropPct != null && (
+              <Stat label="Total price cut" value={`${a.activity.totalDropPct.toFixed(0)}%`} />
+            )}
+            {a.activity.dropVelocityPctPerMonth != null && (
+              <Stat
+                label="Cut velocity"
+                value={`${a.activity.dropVelocityPctPerMonth.toFixed(1)}%/mo`}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {Array.isArray(a.auctionRisk) && a.auctionRisk.length > 0 && (
+        <div className="mt-4">
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-500">
+            <ShieldAlert size={12} /> Auction & distressed-sale risks
+          </div>
+          <div className="mt-2 space-y-2">
+            {a.auctionRisk.map((r: any, i: number) => {
+              const st = RISK_STYLES[r.severity] ?? RISK_STYLES.INFO;
+              const Icon = st.Icon;
+              return (
+                <div key={i} className={`flex items-start gap-2 rounded-lg border p-2.5 text-sm ${st.wrap}`}>
+                  <Icon size={14} className={`mt-0.5 shrink-0 ${st.badge}`} />
+                  <span className="text-gray-700">
+                    <span className={`font-semibold ${st.badge}`}>{r.label}:</span> {r.detail}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {Array.isArray(v?.factors) && v.factors.length > 0 && (
+        <div className="mt-4">
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-500">
+            <ListChecks size={12} /> How we scored this
+          </div>
+          <div className="mt-2 space-y-1">
+            {v.factors.map((f: any, i: number) => (
+              <div key={i} className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-gray-700">
+                  <span className="font-medium text-gray-900">{f.label}</span>
+                  {f.note ? <span className="text-gray-500"> — {f.note}</span> : null}
+                </span>
+                <span
+                  className={`shrink-0 font-semibold tabular-nums ${f.impact > 0 ? "text-emerald-600" : f.impact < 0 ? "text-red-600" : "text-gray-400"}`}
+                >
+                  {f.impact > 0 ? "+" : ""}
+                  {f.impact.toFixed(0)}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

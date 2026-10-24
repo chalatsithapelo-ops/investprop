@@ -242,7 +242,7 @@ export const resetUserPassword = adminProcedure
       });
     }
 
-    const hashedPassword = await bcryptjs.hash(input.newPassword, 10);
+    const hashedPassword = await bcryptjs.hash(input.newPassword, 12);
 
     await db.$transaction([
       db.user.update({
@@ -288,7 +288,7 @@ export const createUser = adminProcedure
     if (existing) {
       throw new TRPCError({ code: "CONFLICT", message: "User with this email already exists" });
     }
-    const hashed = await bcryptjs.hash(input.password, 10);
+    const hashed = await bcryptjs.hash(input.password, 12);
     const user = await db.user.create({
       data: {
         email: input.email,

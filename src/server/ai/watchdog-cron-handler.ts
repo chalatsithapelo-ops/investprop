@@ -7,6 +7,7 @@
 
 import { defineEventHandler, toWebRequest } from "@tanstack/react-start/server";
 import { env } from "~/server/env";
+import { timingSafeEqualStr } from "~/server/utils/secret-compare";
 import { runPortfolioWatchdogCore } from "~/server/ai/portfolio-watchdog";
 
 function json(body: unknown, status: number): Response {
@@ -28,7 +29,7 @@ export default defineEventHandler(async (event) => {
   const bearer = header.replace(/^Bearer\s+/i, "").trim();
   const url = new URL(request.url);
   const key = url.searchParams.get("key")?.trim();
-  if (bearer !== secret && key !== secret) {
+  if (!timingSafeEqualStr(bearer, secret) && !timingSafeEqualStr(key, secret)) {
     return json({ ok: false, reason: "unauthorized" }, 401);
   }
 

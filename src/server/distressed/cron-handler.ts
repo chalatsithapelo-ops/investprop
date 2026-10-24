@@ -8,6 +8,7 @@
 
 import { defineEventHandler, toWebRequest } from "@tanstack/react-start/server";
 import { env } from "~/server/env";
+import { timingSafeEqualStr } from "~/server/utils/secret-compare";
 import { runDistressedPipeline } from "~/server/distressed/pipeline";
 
 function json(body: unknown, status: number): Response {
@@ -28,7 +29,7 @@ export default defineEventHandler(async (event) => {
   const header = request.headers.get("authorization") ?? "";
   const bearer = header.replace(/^Bearer\s+/i, "").trim();
   const key = new URL(request.url).searchParams.get("key")?.trim();
-  if (bearer !== secret && key !== secret) {
+  if (!timingSafeEqualStr(bearer, secret) && !timingSafeEqualStr(key, secret)) {
     return json({ ok: false, reason: "unauthorized" }, 401);
   }
 

@@ -110,7 +110,48 @@ const GAUTENG_CITIES = [
 
 // ──── Fetch helpers ─────────────────────────────────────────────
 
+/**
+ * SSRF guard: only allow http(s) requests to public hosts. Blocks
+ * localhost, link-local, private ranges and cloud metadata endpoints so a
+ * poisoned source URL can never be used to reach internal services.
+ */
+function isSafeFetchTarget(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+  const host = parsed.hostname.toLowerCase();
+  if (
+    host === "localhost" ||
+    host === "0.0.0.0" ||
+    host === "::1" ||
+    host === "metadata.google.internal" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".internal") ||
+    host.endsWith(".local")
+  ) {
+    return false;
+  }
+  // IPv4 private / loopback / link-local / metadata ranges
+  if (
+    /^127\./.test(host) ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^169\.254\./.test(host) ||
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host)
+  ) {
+    return false;
+  }
+  return true;
+}
+
 async function safeFetch(url: string, options?: { cookies?: string }): Promise<{ html: string | null; status: number }> {
+  if (!isSafeFetchTarget(url)) {
+    return { html: null, status: 0 };
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
   try {

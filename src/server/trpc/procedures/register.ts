@@ -6,6 +6,7 @@ import { db } from "~/server/db";
 import { publicProcedure } from "~/server/trpc/main";
 import { generateAccessToken, generateRefreshToken } from "~/server/utils/tokens";
 import { checkRateLimit, RATE_LIMITS } from "~/server/utils/rate-limiter";
+import { userPasswordSchema } from "~/server/utils/validation-schemas";
 import { createAuditLog } from "./audit-log";
 import { sendEmail } from "~/server/utils/email";
 import { emailTemplates } from "~/server/utils/email-templates";
@@ -14,11 +15,7 @@ export const register = publicProcedure
   .input(
     z.object({
       email: z.string().email(),
-      password: z
-        .string()
-        .min(8, "Password must be at least 8 characters")
-        .regex(/[A-Za-z]/, "Password must contain at least one letter")
-        .regex(/[0-9]/, "Password must contain at least one digit"),
+      password: userPasswordSchema,
       name: z.string().min(1),
       role: z.enum(["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "CONTRACTOR"]),
       phone: z.string().optional(),
@@ -49,7 +46,7 @@ export const register = publicProcedure
     }
 
     // Hash password
-    const hashedPassword = await bcryptjs.hash(input.password, 10);
+    const hashedPassword = await bcryptjs.hash(input.password, 12);
 
     // Staff roles require admin approval before they can log in.
     // INVESTOR and PROPERTY_OWNER are customer-facing self-service.

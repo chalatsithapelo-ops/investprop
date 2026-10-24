@@ -5,7 +5,7 @@ const envSchema = z.object({
   BASE_URL: z.string().optional(),
   BASE_URL_OTHER_PORT: z.string().optional(),
   DATABASE_URL: z.string().url("Invalid DATABASE_URL"),
-  ADMIN_PASSWORD: z.string().min(1, "ADMIN_PASSWORD is required").default("admin"),
+  ADMIN_PASSWORD: z.string().min(8, "ADMIN_PASSWORD must be at least 8 characters"),
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters for security"),
   JWT_REFRESH_SECRET: z.string().min(32, "JWT_REFRESH_SECRET must be at least 32 characters for security"),
   MINIO_ENDPOINT: z.string().default("localhost"),

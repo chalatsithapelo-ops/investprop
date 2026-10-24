@@ -1,14 +1,17 @@
 import { z } from "zod";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
-import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
+
+const COMPLIANCE_ROLES = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"] as const;
 
 // ─── Get Compliance Dashboard Data ─────────────────────────────
 
 export const getComplianceDashboard = baseProcedure
   .input(z.object({ authToken: z.string() }))
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...COMPLIANCE_ROLES], "Only compliance staff can view the compliance dashboard");
 
     // KYC stats
     const kycTotal = await db.kYCDocument.count();
@@ -104,6 +107,7 @@ export const logAuditEvent = baseProcedure
   )
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...COMPLIANCE_ROLES], "Only compliance staff can write audit events");
     return db.auditLog.create({
       data: {
         userId: user.id,
@@ -120,7 +124,8 @@ export const logAuditEvent = baseProcedure
 export const getFICAStatus = baseProcedure
   .input(z.object({ authToken: z.string() }))
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...COMPLIANCE_ROLES], "Only compliance staff can view FICA status");
 
     const investors = await db.user.findMany({
       where: { role: "INVESTOR" },

@@ -1,5 +1,15 @@
 import { env } from "~/server/env";
 
+/** Escape user-controlled values before interpolating into email HTML. */
+function esc(value: string): string {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 interface EmailRecipient {
   email: string;
   name: string;
@@ -219,12 +229,12 @@ Investprop
       <h1>🎉 Milestone Achieved!</h1>
     </div>
     <div class="content">
-      <p>Hello ${recipient.name},</p>
-      <p>Great news! Your investment in <strong>"${data.propertyTitle}"</strong> has reached an important milestone.</p>
+      <p>Hello ${esc(recipient.name)},</p>
+      <p>Great news! Your investment in <strong>"${esc(data.propertyTitle)}"</strong> has reached an important milestone.</p>
 
       <div class="milestone">
-        <h3>${data.milestone}</h3>
-        <p><strong>Budget Entry:</strong> R${data.amount.toLocaleString()} - ${data.category}</p>
+        <h3>${esc(data.milestone)}</h3>
+        <p><strong>Budget Entry:</strong> R${data.amount.toLocaleString()} - ${esc(data.category)}</p>
       </div>
 
       <p>This milestone represents significant progress in your investment. You can view more details about this property in your dashboard.</p>
@@ -291,8 +301,8 @@ Investprop
       <h1>💰 Returns Distributed!</h1>
     </div>
     <div class="content">
-      <p>Hello ${recipient.name},</p>
-      <p>Excellent news! Returns have been distributed for your investment in <strong>"${data.propertyTitle}"</strong>.</p>
+      <p>Hello ${esc(recipient.name)},</p>
+      <p>Excellent news! Returns have been distributed for your investment in <strong>"${esc(data.propertyTitle)}"</strong>.</p>
 
       <div class="returns-box">
         <h3>Your Return</h3>
@@ -371,17 +381,17 @@ Investprop
       <h1>🏠 New Investment Opportunity!</h1>
     </div>
     <div class="content">
-      <p>Hello ${recipient.name},</p>
+      <p>Hello ${esc(recipient.name)},</p>
       <p>A new investment opportunity matching your interests is now available!</p>
 
       <div class="property-card">
-        <h2>${data.propertyTitle}</h2>
+        <h2>${esc(data.propertyTitle)}</h2>
         <div class="price">R${data.price.toLocaleString()}</div>
 
-        <p><strong>📍 Location:</strong> ${data.address}, ${data.city}, ${data.state}</p>
+        <p><strong>📍 Location:</strong> ${esc(data.address)}, ${esc(data.city)}, ${esc(data.state)}</p>
 
         <div>
-          <span class="badge">${data.propertyType}</span>
+          <span class="badge">${esc(data.propertyType)}</span>
           <span class="badge">${data.investmentStatus.replace("_", " ")}</span>
         </div>
       </div>
@@ -461,17 +471,17 @@ Investprop
       <h1>📸 New Progress Update</h1>
     </div>
     <div class="content">
-      <p>Hello ${recipient.name},</p>
-      <p>A new progress update has been submitted for your investment in <strong>"${data.propertyTitle}"</strong>.</p>
+      <p>Hello ${esc(recipient.name)},</p>
+      <p>A new progress update has been submitted for your investment in <strong>"${esc(data.propertyTitle)}"</strong>.</p>
 
       <div class="update-card">
-        <div class="milestone-name">${data.milestoneName}</div>
+        <div class="milestone-name">${esc(data.milestoneName)}</div>
         <div class="info-row">
-          <span class="label">Submitted by:</span> ${data.submitterName}
+          <span class="label">Submitted by:</span> ${esc(data.submitterName)}
         </div>
       </div>
 
-      <p>${data.submitterName} has submitted photos and details documenting the progress on this milestone. You can review the submission and see the progress photos in your investment dashboard.</p>
+      <p>${esc(data.submitterName)} has submitted photos and details documenting the progress on this milestone. You can review the submission and see the progress photos in your investment dashboard.</p>
 
       <p>Thank you for your investment.</p>
 
@@ -498,7 +508,7 @@ export function buildAnnouncementEmail(
   // Preserve author line breaks in the plain-text and HTML versions.
   const messageHtml = data.message
     .split("\n")
-    .map((line) => (line.trim() === "" ? "<br>" : `<p>${line}</p>`))
+    .map((line) => (line.trim() === "" ? "<br>" : `<p>${esc(line)}</p>`))
     .join("");
 
   const textContent = `
@@ -527,16 +537,16 @@ Investprop
 <body>
   <div class="container">
     <div class="header">
-      <h1>📢 ${data.title}</h1>
+      <h1>📢 ${esc(data.title)}</h1>
     </div>
     <div class="content">
-      <p>Hello ${recipient.name},</p>
+      <p>Hello ${esc(recipient.name)},</p>
 
       <div class="announcement-card">
         ${messageHtml}
       </div>
 
-      <p class="sender">— ${data.senderName}<br>Investprop</p>
+      <p class="sender">— ${esc(data.senderName)}<br>Investprop</p>
     </div>
   </div>
 </body>

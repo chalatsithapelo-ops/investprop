@@ -14,10 +14,18 @@
  */
 
 import { db } from "~/server/db";
+import {
+  calculateTransferDuty,
+  estimateFlipIncomeTax,
+  calculateAnnualisedReturn,
+  calculateRentalMetrics,
+  type RentalPropertyInput,
+} from "~/financial-calculations";
 
 export type TrendDirection = "RISING" | "FALLING" | "FLAT" | "UNKNOWN";
 export type SignalStatus = "POSITIVE" | "NEUTRAL" | "CAUTION";
 export type AreaLevel = "suburb" | "city" | "province";
+export type RiskSeverity = "INFO" | "ATTENTION" | "WARNING";
 
 export interface MarketComparable {
   id: number;
@@ -38,6 +46,71 @@ export interface MarketSignal {
   label: string;
   status: SignalStatus;
   detail: string;
+}
+
+/** Listing recency + price-cut velocity (motivated-seller / staleness signal). */
+export interface MarketActivity {
+  daysOnMarket: number | null;
+  firstSeenPrice: number | null;
+  latestPrice: number;
+  priceDropCount: number;
+  totalDropPct: number | null;
+  dropVelocityPctPerMonth: number | null;
+  staleness: "FRESH" | "NORMAL" | "STALE" | "UNKNOWN";
+}
+
+export interface FlipProjection {
+  arv: number;
+  purchasePrice: number;
+  transferDuty: number;
+  renovationAllowance: number;
+  holdingCosts: number;
+  sellingCosts: number;
+  totalInvested: number;
+  grossProfit: number;
+  taxEstimate: number;
+  netProfit: number;
+  roiPct: number;
+  annualisedPct: number;
+}
+
+export interface RentalProjection {
+  estimatedMonthlyRent: number;
+  grossYieldPct: number;
+  netYieldPct: number;
+  capRatePct: number;
+  monthlyNetCashflow: number;
+}
+
+export interface MarketProjections {
+  /** After-repair / benchmark value the projections are built on. */
+  arv: number | null;
+  assumptions: string;
+  flip: FlipProjection | null;
+  rental: RentalProjection | null;
+}
+
+export interface MaxBidAnalysis {
+  targetRoiPct: number;
+  /** Price at which a flip nets zero after all costs & tax. */
+  breakEvenPrice: number | null;
+  /** Highest price you can pay and still hit the target ROI. */
+  maxBidForTarget: number | null;
+  /** Asking price vs the max bid, % (negative = asking is below your ceiling = good). */
+  askingVsMaxBidPct: number | null;
+}
+
+export interface AuctionRiskItem {
+  label: string;
+  severity: RiskSeverity;
+  detail: string;
+}
+
+export interface VerdictFactor {
+  label: string;
+  /** Signed points this factor contributed to the 0–100 score. */
+  impact: number;
+  note: string;
 }
 
 export interface DistressedMarketAnalysis {
@@ -86,12 +159,22 @@ export interface DistressedMarketAnalysis {
     subjectPriceDrops: Array<{ from: number; to: number; pct: number; at: string }>;
   };
   comparables: MarketComparable[];
+  /** Listing recency + price-cut velocity. */
+  activity: MarketActivity;
+  /** Deterministic flip & buy-to-let return projections off the benchmark ARV. */
+  projections: MarketProjections;
+  /** Max price to still hit a target return, plus the break-even price. */
+  maxBid: MaxBidAnalysis | null;
+  /** Educational auction / distressed-sale risk checklist from listing metadata. */
+  auctionRisk: AuctionRiskItem[];
   signals: MarketSignal[];
   verdict: {
     /** 0–100 attractiveness; higher = stronger buy case. */
     score: number;
     label: "Strong" | "Solid" | "Fair" | "Weak" | "Avoid";
     rationale: string;
+    /** Per-factor breakdown of how the score was reached. */
+    factors: VerdictFactor[];
   };
 }
 
@@ -112,6 +195,210 @@ function pricePerSqm(price: number | null, floor: number | null, erf: number | n
 function pctDelta(value: number, base: number): number | null {
   if (!base || base <= 0) return null;
   return ((value - base) / base) * 100;
+}
+
+// ─── projection / max-bid assumptions (illustrative, surfaced in UI) ──
+const RENO_ALLOWANCE_PCT = 0.08; // distressed stock typically needs ~8% refurb
+const FLIP_HOLDING_MONTHS = 6;
+const FLIP_HOLDING_COST_PCT_PA = 0.1; // rates, interest, insurance while held
+const FLIP_SELLING_COST_PCT = 0.06; // agent + conveyancing on resale
+const FLIP_TARGET_ROI = 0.2; // target net ROI used for the max-bid ceiling
+const ASSUMED_GROSS_YIELD = 0.09; // buy-to-let gross yield assumption
+const PROJECTION_ASSUMPTIONS =
+  "Benchmark ARV = area median R/m² × size. Flip assumes ~8% refurb, 6-month hold, ~10%/yr holding cost, 6% selling cost and 27% income tax on profit. Rental assumes a ~9% gross yield with standard operating costs, unleveraged. Illustrative only — not a formal valuation or guaranteed return.";
+
+/** Flip economics for a given purchase price against a benchmark resale value (ARV). */
+function computeFlip(purchase: number, arv: number): FlipProjection {
+  const transferDuty = calculateTransferDuty(purchase);
+  const renovationAllowance = purchase * RENO_ALLOWANCE_PCT;
+  const holdingCosts = purchase * FLIP_HOLDING_COST_PCT_PA * (FLIP_HOLDING_MONTHS / 12);
+  const sellingCosts = arv * FLIP_SELLING_COST_PCT;
+  const totalInvested = purchase + transferDuty + renovationAllowance + holdingCosts + sellingCosts;
+  const grossProfit = arv - totalInvested;
+  const taxEstimate = estimateFlipIncomeTax(grossProfit);
+  const netProfit = grossProfit - taxEstimate;
+  const roiPct = totalInvested > 0 ? (netProfit / totalInvested) * 100 : 0;
+  const annualisedPct = calculateAnnualisedReturn(netProfit, totalInvested, FLIP_HOLDING_MONTHS);
+  return {
+    arv,
+    purchasePrice: purchase,
+    transferDuty,
+    renovationAllowance,
+    holdingCosts,
+    sellingCosts,
+    totalInvested,
+    grossProfit,
+    taxEstimate,
+    netProfit,
+    roiPct,
+    annualisedPct,
+  };
+}
+
+/** Binary-search the purchase price at which a flip hits a target net ROI (ROI falls as price rises). */
+function solvePurchaseForRoi(arv: number, targetRoi: number): number | null {
+  if (!arv || arv <= 0) return null;
+  let lo = arv * 0.05;
+  let hi = arv * 1.2;
+  const f = (p: number) => computeFlip(p, arv).roiPct / 100 - targetRoi;
+  if (f(lo) < 0) return null; // even the cheapest buy can't reach the target
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (f(mid) >= 0) lo = mid;
+    else hi = mid;
+  }
+  return lo;
+}
+
+function computeMaxBid(arv: number, asking: number): MaxBidAnalysis | null {
+  if (!arv || arv <= 0) return null;
+  const maxBidForTarget = solvePurchaseForRoi(arv, FLIP_TARGET_ROI);
+  const askingVsMaxBidPct =
+    maxBidForTarget && maxBidForTarget > 0 ? ((asking - maxBidForTarget) / maxBidForTarget) * 100 : null;
+  return {
+    targetRoiPct: FLIP_TARGET_ROI * 100,
+    breakEvenPrice: solvePurchaseForRoi(arv, 0),
+    maxBidForTarget,
+    askingVsMaxBidPct,
+  };
+}
+
+/** Buy-to-let projection via the shared financial engine, using standard SA operating assumptions. */
+function computeRental(asking: number, closingCosts: number): RentalProjection {
+  const monthlyRent = (asking * ASSUMED_GROSS_YIELD) / 12;
+  const input: RentalPropertyInput = {
+    purchasePrice: asking,
+    monthlyRent,
+    annualPropertyTax: asking * 0.007,
+    annualInsurance: asking * 0.004,
+    monthlyHOAFees: 0,
+    monthlyMaintenanceReserve: monthlyRent * 0.08,
+    monthlyUtilities: 0,
+    monthlyManagementFee: monthlyRent * 0.08,
+    vacancyRate: 6,
+    appreciationRate: 5,
+    capRate: 0,
+    cashOnCashReturn: 0,
+    grossRentMultiplier: 0,
+    debtServiceCoverageRatio: 0,
+    grossYield: 0,
+    netYield: 0,
+    downPaymentAmount: 0,
+    loanAmount: 0,
+    interestRate: 0,
+    loanTermYears: 0,
+    monthlyDebtService: 0,
+    totalInvestmentBudget: 0,
+    spentInvestmentBudget: 0,
+    closingCosts,
+  };
+  const m = calculateRentalMetrics(input);
+  return {
+    estimatedMonthlyRent: monthlyRent,
+    grossYieldPct: m.grossYield,
+    netYieldPct: m.netYield,
+    capRatePct: m.displayCapRate,
+    monthlyNetCashflow: m.monthlyCashFlow,
+  };
+}
+
+/** Days-on-market + price-drop velocity from the listing's recorded history. */
+function computeActivity(subject: {
+  createdAt: Date;
+  askingPrice: number;
+  priceHistory: { askingPrice: number; recordedAt: Date }[];
+}): MarketActivity {
+  const hist = subject.priceHistory ?? [];
+  const daysOnMarket = subject.createdAt
+    ? Math.max(0, Math.round((Date.now() - subject.createdAt.getTime()) / 86_400_000))
+    : null;
+  const firstSeenPrice = hist.length ? hist[0].askingPrice : null;
+  const latestPrice = hist.length ? hist[hist.length - 1].askingPrice : subject.askingPrice;
+  let priceDropCount = 0;
+  for (let i = 1; i < hist.length; i++) if (hist[i].askingPrice < hist[i - 1].askingPrice) priceDropCount++;
+  const totalDropPct =
+    firstSeenPrice && firstSeenPrice > 0
+      ? latestPrice < firstSeenPrice
+        ? ((firstSeenPrice - latestPrice) / firstSeenPrice) * 100
+        : 0
+      : null;
+  const monthsOnMarket = daysOnMarket != null ? daysOnMarket / 30.44 : null;
+  const dropVelocityPctPerMonth =
+    totalDropPct != null && monthsOnMarket && monthsOnMarket > 0.5 ? totalDropPct / monthsOnMarket : null;
+  const staleness: MarketActivity["staleness"] =
+    daysOnMarket == null ? "UNKNOWN" : daysOnMarket <= 21 ? "FRESH" : daysOnMarket <= 90 ? "NORMAL" : "STALE";
+  return { daysOnMarket, firstSeenPrice, latestPrice, priceDropCount, totalDropPct, dropVelocityPctPerMonth, staleness };
+}
+
+/** Educational auction / distressed-sale risk checklist inferred from listing metadata. */
+function buildAuctionRisk(subject: {
+  source: string;
+  auctionType: string | null;
+  auctionDate: Date | null;
+  noReserve: boolean;
+  caseNumber: string | null;
+}): AuctionRiskItem[] {
+  const items: AuctionRiskItem[] = [];
+  const type = (subject.auctionType ?? "").toUpperCase();
+  const src = (subject.source ?? "").toLowerCase();
+  const isSheriff = type.includes("SHERIFF") || src.includes("sheriff") || !!subject.caseNumber;
+  const isAuction = isSheriff || type.length > 0 || !!subject.auctionDate || /auction|bidx|repo/.test(src);
+
+  if (isSheriff) {
+    items.push({
+      label: "Occupancy / eviction",
+      severity: "WARNING",
+      detail:
+        "Sheriff/court sales are often still occupied. Budget time and legal cost for a lawful eviction (PIE Act) — you cannot simply remove occupants.",
+    });
+    items.push({
+      label: "Municipal & levy arrears",
+      severity: "WARNING",
+      detail:
+        "Confirm outstanding rates, taxes and body-corporate levies. Historical arrears can become the buyer's liability on transfer.",
+    });
+  }
+  if (isAuction) {
+    items.push({
+      label: "Voetstoots (as-is)",
+      severity: "ATTENTION",
+      detail:
+        "Auction sales are voetstoots — no warranties on condition or defects. Inspect thoroughly and price in repairs before bidding.",
+    });
+    items.push({
+      label: "Deposit & commission",
+      severity: "ATTENTION",
+      detail:
+        "Budget for an immediate deposit (often ~10%) plus the auctioneer's/sheriff's commission and VAT, payable on the fall of the hammer.",
+    });
+    items.push({
+      label: "FICA to bid",
+      severity: "INFO",
+      detail: "Register and complete FICA (ID + proof of address) before the auction to be allowed to bid.",
+    });
+  }
+  if (subject.noReserve) {
+    items.push({
+      label: "No reserve",
+      severity: "INFO",
+      detail: "No reserve price — the property sells to the highest bidder. Set and stick to a firm maximum bid.",
+    });
+  } else if (isAuction) {
+    items.push({
+      label: "Reserve price",
+      severity: "INFO",
+      detail: "A reserve price may apply — the seller can reject bids below an undisclosed threshold.",
+    });
+  }
+  if (subject.auctionDate) {
+    items.push({
+      label: "Payment timing",
+      severity: "ATTENTION",
+      detail:
+        "Auctions require the balance shortly after the sale — arrange bridging or bond approval in advance; a failed payment can forfeit your deposit.",
+    });
+  }
+  return items;
 }
 
 interface PeerRow {
@@ -231,11 +518,21 @@ export async function computeDistressedMarketAnalysis(
       bedrooms: true,
       status: true,
       createdAt: true,
+      source: true,
+      auctionDate: true,
+      auctionType: true,
+      noReserve: true,
+      caseNumber: true,
       priceHistory: { orderBy: { recordedAt: "asc" }, select: { askingPrice: true, recordedAt: true } },
     },
   })) as (PeerRow & {
     marketValue: number | null;
     discount: number | null;
+    source: string;
+    auctionDate: Date | null;
+    auctionType: string | null;
+    noReserve: boolean;
+    caseNumber: string | null;
     priceHistory: { askingPrice: number; recordedAt: Date }[];
   }) | null;
 
@@ -287,8 +584,12 @@ export async function computeDistressedMarketAnalysis(
     },
     trend: { direction: "UNKNOWN", areaPriceChangePct: null, subjectPriceDrops },
     comparables: [],
+    activity: computeActivity(subject),
+    projections: { arv: null, assumptions: PROJECTION_ASSUMPTIONS, flip: null, rental: null },
+    maxBid: null,
+    auctionRisk: buildAuctionRisk(subject),
     signals: [],
-    verdict: { score: 0, label: "Fair", rationale: "" },
+    verdict: { score: 0, label: "Fair", rationale: "", factors: [] },
   };
 
   if (!peers.length) {
@@ -331,6 +632,13 @@ export async function computeDistressedMarketAnalysis(
     baseAnalysis.valuation.impliedMarginPct = pctDelta(est, subject.askingPrice) == null
       ? null
       : ((est - subject.askingPrice) / est) * 100;
+
+    // Projected returns + max-bid, built off the benchmark ARV.
+    baseAnalysis.projections.arv = est;
+    const closingCosts = calculateTransferDuty(subject.askingPrice);
+    baseAnalysis.projections.flip = computeFlip(subject.askingPrice, est);
+    baseAnalysis.projections.rental = computeRental(subject.askingPrice, closingCosts);
+    baseAnalysis.maxBid = computeMaxBid(est, subject.askingPrice);
   }
 
   // Trend
@@ -441,16 +749,52 @@ function buildSignals(a: DistressedMarketAnalysis): MarketSignal[] {
 function buildVerdict(a: DistressedMarketAnalysis): DistressedMarketAnalysis["verdict"] {
   // Start neutral; move on real evidence only.
   let score = 50;
+  const factors: VerdictFactor[] = [];
+  const add = (label: string, impact: number, note: string) => {
+    if (!impact) return;
+    score += impact;
+    factors.push({ label, impact: Math.round(impact), note });
+  };
 
-  if (a.subject.discount != null) score += Math.max(-10, Math.min(20, (a.subject.discount - 10) * 0.8));
-  if (a.valuation.impliedMarginPct != null)
-    score += Math.max(-15, Math.min(25, a.valuation.impliedMarginPct * 0.8));
-  if (a.positioning.vsAreaPricePerSqmPct != null)
-    score += Math.max(-12, Math.min(12, -a.positioning.vsAreaPricePerSqmPct * 0.4));
-  if (a.trend.direction === "RISING") score += 6;
-  else if (a.trend.direction === "FALLING") score -= 6;
-  if (a.trend.subjectPriceDrops.length) score += 4;
-  if (a.area.sampleSize < 4) score -= 8;
+  if (a.subject.discount != null) {
+    add(
+      "Discount to market value",
+      Math.max(-10, Math.min(20, (a.subject.discount - 10) * 0.8)),
+      `${a.subject.discount.toFixed(0)}% below stated market value.`,
+    );
+  }
+  if (a.valuation.impliedMarginPct != null) {
+    add(
+      "Margin vs area benchmark",
+      Math.max(-15, Math.min(25, a.valuation.impliedMarginPct * 0.8)),
+      a.valuation.impliedMarginPct >= 0
+        ? `~${a.valuation.impliedMarginPct.toFixed(0)}% under the area benchmark value.`
+        : `~${Math.abs(a.valuation.impliedMarginPct).toFixed(0)}% over the area benchmark value.`,
+    );
+  }
+  if (a.positioning.vsAreaPricePerSqmPct != null) {
+    const v = a.positioning.vsAreaPricePerSqmPct;
+    add(
+      "Price per m² vs area",
+      Math.max(-12, Math.min(12, -v * 0.4)),
+      v <= 0 ? `${Math.abs(v).toFixed(0)}% cheaper per m² than peers.` : `${v.toFixed(0)}% dearer per m² than peers.`,
+    );
+  }
+  if (a.trend.direction === "RISING") add("Area price trend", 6, "Area asking prices are rising.");
+  else if (a.trend.direction === "FALLING") add("Area price trend", -6, "Area asking prices are softening.");
+  if (a.trend.subjectPriceDrops.length)
+    add("Seller motivation", 4, `Asking price cut ${a.trend.subjectPriceDrops.length} time(s).`);
+  if (a.area.sampleSize < 4) add("Thin comparable data", -8, `Only ${a.area.sampleSize} comparable listing(s).`);
+  if (a.projections.flip) {
+    const roi = a.projections.flip.roiPct;
+    add(
+      "Projected flip return",
+      Math.max(-10, Math.min(12, (roi - 12) * 0.4)),
+      `~${roi.toFixed(0)}% net flip ROI on benchmark assumptions.`,
+    );
+  }
+  if (a.activity.staleness === "STALE")
+    add("Time on market", -4, `Listed ~${a.activity.daysOnMarket ?? "?"} days — may signal title or condition issues.`);
 
   score = Math.max(0, Math.min(100, Math.round(score)));
 
@@ -476,7 +820,7 @@ function buildVerdict(a: DistressedMarketAnalysis): DistressedMarketAnalysis["ve
     ? `${label} buy case — ${bits.join(", ")}.`
     : `${label} buy case on the available data.`;
 
-  return { score, label, rationale };
+  return { score, label, rationale, factors: factors.sort((x, y) => Math.abs(y.impact) - Math.abs(x.impact)) };
 }
 
 /**
@@ -500,5 +844,15 @@ export async function buildMarketContextLines(listingId: number): Promise<string
     lines.push(`  Implied margin of safety: ${a.valuation.impliedMarginPct.toFixed(0)}%`);
   if (a.trend.direction !== "UNKNOWN")
     lines.push(`  Area price trend: ${a.trend.direction}${a.trend.areaPriceChangePct != null ? ` (${a.trend.areaPriceChangePct.toFixed(0)}%)` : ""}`);
+  if (a.projections.flip && a.projections.arv)
+    lines.push(`  Projected flip: ~${a.projections.flip.roiPct.toFixed(0)}% net ROI (ARV R${Math.round(a.projections.arv).toLocaleString()})`);
+  if (a.projections.rental)
+    lines.push(`  Projected rental: ~${a.projections.rental.grossYieldPct.toFixed(1)}% gross / ${a.projections.rental.netYieldPct.toFixed(1)}% net yield`);
+  if (a.maxBid?.maxBidForTarget)
+    lines.push(`  Max bid for ${a.maxBid.targetRoiPct.toFixed(0)}% ROI: R${Math.round(a.maxBid.maxBidForTarget).toLocaleString()}`);
+  if (a.activity.daysOnMarket != null)
+    lines.push(`  Days on market: ${a.activity.daysOnMarket}${a.activity.staleness !== "UNKNOWN" ? ` (${a.activity.staleness})` : ""}`);
+  if (a.auctionRisk.length) lines.push(`  Auction/distressed risks flagged: ${a.auctionRisk.length}`);
+  lines.push(`  Finder verdict: ${a.verdict.label} (${a.verdict.score}/100)`);
   return lines.join("\n");
 }

@@ -348,6 +348,198 @@ class DistressedComparable {
   }
 }
 
+/// Listing recency + price-cut velocity (motivated-seller / staleness signal).
+class DistressedMarketActivity {
+  DistressedMarketActivity({
+    required this.daysOnMarket,
+    required this.priceDropCount,
+    required this.totalDropPct,
+    required this.dropVelocityPctPerMonth,
+    required this.staleness,
+  });
+
+  final int? daysOnMarket;
+  final int priceDropCount;
+  final double? totalDropPct;
+  final double? dropVelocityPctPerMonth;
+  final String staleness; // FRESH | NORMAL | STALE | UNKNOWN
+
+  String get stalenessLabel {
+    switch (staleness) {
+      case 'FRESH':
+        return 'Fresh';
+      case 'NORMAL':
+        return 'On market';
+      case 'STALE':
+        return 'Stale';
+      default:
+        return '—';
+    }
+  }
+
+  Color get stalenessColor {
+    switch (staleness) {
+      case 'FRESH':
+        return AppColors.success;
+      case 'STALE':
+        return AppColors.danger;
+      default:
+        return AppColors.textSecondary;
+    }
+  }
+
+  factory DistressedMarketActivity.fromJson(Map<String, dynamic> json) {
+    return DistressedMarketActivity(
+      daysOnMarket:
+          json['daysOnMarket'] == null ? null : asInt(json['daysOnMarket']),
+      priceDropCount: asInt(json['priceDropCount']),
+      totalDropPct:
+          json['totalDropPct'] == null ? null : asDouble(json['totalDropPct']),
+      dropVelocityPctPerMonth: json['dropVelocityPctPerMonth'] == null
+          ? null
+          : asDouble(json['dropVelocityPctPerMonth']),
+      staleness: asString(json['staleness'], 'UNKNOWN'),
+    );
+  }
+}
+
+/// Deterministic flip (buy-renovate-sell) return projection.
+class DistressedFlipProjection {
+  DistressedFlipProjection({
+    required this.arv,
+    required this.netProfit,
+    required this.roiPct,
+    required this.annualisedPct,
+  });
+
+  final double arv;
+  final double netProfit;
+  final double roiPct;
+  final double annualisedPct;
+
+  factory DistressedFlipProjection.fromJson(Map<String, dynamic> json) {
+    return DistressedFlipProjection(
+      arv: asDouble(json['arv']),
+      netProfit: asDouble(json['netProfit']),
+      roiPct: asDouble(json['roiPct']),
+      annualisedPct: asDouble(json['annualisedPct']),
+    );
+  }
+}
+
+/// Deterministic buy-to-let rental return projection.
+class DistressedRentalProjection {
+  DistressedRentalProjection({
+    required this.estimatedMonthlyRent,
+    required this.grossYieldPct,
+    required this.netYieldPct,
+    required this.monthlyNetCashflow,
+  });
+
+  final double estimatedMonthlyRent;
+  final double grossYieldPct;
+  final double netYieldPct;
+  final double monthlyNetCashflow;
+
+  factory DistressedRentalProjection.fromJson(Map<String, dynamic> json) {
+    return DistressedRentalProjection(
+      estimatedMonthlyRent: asDouble(json['estimatedMonthlyRent']),
+      grossYieldPct: asDouble(json['grossYieldPct']),
+      netYieldPct: asDouble(json['netYieldPct']),
+      monthlyNetCashflow: asDouble(json['monthlyNetCashflow']),
+    );
+  }
+}
+
+/// Max-bid / break-even guidance for a target return.
+class DistressedMaxBid {
+  DistressedMaxBid({
+    required this.targetRoiPct,
+    required this.breakEvenPrice,
+    required this.maxBidForTarget,
+    required this.askingVsMaxBidPct,
+  });
+
+  final double targetRoiPct;
+  final double? breakEvenPrice;
+  final double? maxBidForTarget;
+  final double? askingVsMaxBidPct;
+
+  factory DistressedMaxBid.fromJson(Map<String, dynamic> json) {
+    return DistressedMaxBid(
+      targetRoiPct: asDouble(json['targetRoiPct']),
+      breakEvenPrice: json['breakEvenPrice'] == null
+          ? null
+          : asDouble(json['breakEvenPrice']),
+      maxBidForTarget: json['maxBidForTarget'] == null
+          ? null
+          : asDouble(json['maxBidForTarget']),
+      askingVsMaxBidPct: json['askingVsMaxBidPct'] == null
+          ? null
+          : asDouble(json['askingVsMaxBidPct']),
+    );
+  }
+}
+
+/// A single auction / distressed-sale risk checklist item.
+class DistressedAuctionRisk {
+  DistressedAuctionRisk({
+    required this.label,
+    required this.severity,
+    required this.detail,
+  });
+
+  final String label;
+  final String severity; // INFO | ATTENTION | WARNING
+  final String detail;
+
+  Color get color {
+    switch (severity) {
+      case 'WARNING':
+        return AppColors.danger;
+      case 'ATTENTION':
+        return AppColors.warning;
+      default:
+        return AppColors.navy;
+    }
+  }
+
+  factory DistressedAuctionRisk.fromJson(Map<String, dynamic> json) {
+    return DistressedAuctionRisk(
+      label: asString(json['label'], ''),
+      severity: asString(json['severity'], 'INFO'),
+      detail: asString(json['detail'], ''),
+    );
+  }
+}
+
+/// A single factor contributing to the verdict score.
+class DistressedVerdictFactor {
+  DistressedVerdictFactor({
+    required this.label,
+    required this.impact,
+    required this.note,
+  });
+
+  final String label;
+  final double impact;
+  final String note;
+
+  Color get color {
+    if (impact > 0) return AppColors.success;
+    if (impact < 0) return AppColors.danger;
+    return AppColors.textSecondary;
+  }
+
+  factory DistressedVerdictFactor.fromJson(Map<String, dynamic> json) {
+    return DistressedVerdictFactor(
+      label: asString(json['label'], ''),
+      impact: asDouble(json['impact']),
+      note: asString(json['note'], ''),
+    );
+  }
+}
+
 /// Deterministic comparable-sales / area-benchmark analysis for a listing.
 class DistressedMarketAnalysis {
   DistressedMarketAnalysis({
@@ -370,6 +562,13 @@ class DistressedMarketAnalysis {
     required this.verdictRationale,
     required this.signals,
     required this.comparables,
+    required this.activity,
+    required this.flip,
+    required this.rental,
+    required this.projectionAssumptions,
+    required this.maxBid,
+    required this.auctionRisks,
+    required this.verdictFactors,
   });
 
   final bool insufficientData;
@@ -391,6 +590,13 @@ class DistressedMarketAnalysis {
   final String verdictRationale;
   final List<DistressedMarketSignal> signals;
   final List<DistressedComparable> comparables;
+  final DistressedMarketActivity? activity;
+  final DistressedFlipProjection? flip;
+  final DistressedRentalProjection? rental;
+  final String projectionAssumptions;
+  final DistressedMaxBid? maxBid;
+  final List<DistressedAuctionRisk> auctionRisks;
+  final List<DistressedVerdictFactor> verdictFactors;
 
   bool get hasComparables => sampleSize > 0;
 
@@ -451,6 +657,32 @@ class DistressedMarketAnalysis {
             .toList()
         : <DistressedComparable>[];
 
+    final projections = json['projections'] is Map
+        ? Map<String, dynamic>.from(json['projections'] as Map)
+        : <String, dynamic>{};
+    final flipRaw = projections['flip'];
+    final rentalRaw = projections['rental'];
+    final maxBidRaw = json['maxBid'];
+    final activityRaw = json['activity'];
+
+    final risksRaw = json['auctionRisk'];
+    final risks = risksRaw is List
+        ? risksRaw
+            .whereType<Map>()
+            .map((e) =>
+                DistressedAuctionRisk.fromJson(Map<String, dynamic>.from(e)))
+            .toList()
+        : <DistressedAuctionRisk>[];
+
+    final factorsRaw = verdict['factors'];
+    final factors = factorsRaw is List
+        ? factorsRaw
+            .whereType<Map>()
+            .map((e) =>
+                DistressedVerdictFactor.fromJson(Map<String, dynamic>.from(e)))
+            .toList()
+        : <DistressedVerdictFactor>[];
+
     return DistressedMarketAnalysis(
       insufficientData: json['insufficientData'] == true,
       areaLevel: asString(area['level'], 'area'),
@@ -473,6 +705,23 @@ class DistressedMarketAnalysis {
       verdictRationale: asString(verdict['rationale'], ''),
       signals: signals,
       comparables: comps,
+      activity: activityRaw is Map
+          ? DistressedMarketActivity.fromJson(
+              Map<String, dynamic>.from(activityRaw))
+          : null,
+      flip: flipRaw is Map
+          ? DistressedFlipProjection.fromJson(Map<String, dynamic>.from(flipRaw))
+          : null,
+      rental: rentalRaw is Map
+          ? DistressedRentalProjection.fromJson(
+              Map<String, dynamic>.from(rentalRaw))
+          : null,
+      projectionAssumptions: asString(projections['assumptions'], ''),
+      maxBid: maxBidRaw is Map
+          ? DistressedMaxBid.fromJson(Map<String, dynamic>.from(maxBidRaw))
+          : null,
+      auctionRisks: risks,
+      verdictFactors: factors,
     );
   }
 }
