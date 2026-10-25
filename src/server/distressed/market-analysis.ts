@@ -444,7 +444,7 @@ async function selectComparables(subject: PeerRow): Promise<{ level: AreaLevel; 
     id: { not: subject.id },
     propertyType: subject.propertyType,
     askingPrice: { gt: priceFloor, lt: priceCeil },
-    status: { in: ["ACTIVE", "WATCHED", "CONVERTED"] },
+    status: { in: ["ACTIVE", "WATCHED", "SOLD"] },
   };
 
   const levels: Array<{ level: AreaLevel; name: string; where: Record<string, unknown> }> = [];
