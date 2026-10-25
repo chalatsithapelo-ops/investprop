@@ -235,6 +235,7 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
     final monthlyDebtService =
         calculateMonthlyDebtService(loanAmount, annualInterestRate, loanTermYears);
     final annualDebtService = monthlyDebtService * 12;
+    final totalRepayment = monthlyDebtService * loanTermYears * 12;
 
     final annualGrossRent = monthlyRent * 12;
     final annualOperatingExpenses = _v('annualPropertyTax') +
@@ -315,8 +316,10 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
       downPayment: downPayment,
       acquisitionCosts: acquisitionCosts,
       cashInvested: cashInvested,
-      noi: noi,
+      monthlyDebtService: monthlyDebtService,
       annualDebtService: annualDebtService,
+      totalRepayment: totalRepayment,
+      noi: noi,
       monthlyCashFlow: monthlyCashFlow,
       dscr: dscr,
       debtYield: debtYield,
@@ -395,6 +398,8 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
             _resultRow('Down payment', Fmt.money(r.downPayment)),
             _resultRow('Acquisition costs', Fmt.money(r.acquisitionCosts)),
             _resultRow('Cash invested', Fmt.money(r.cashInvested), emphasize: true),
+            _resultRow('Monthly loan payment', Fmt.money(r.monthlyDebtService)),
+            _resultRow('Total repayment', Fmt.money(r.totalRepayment)),
           ]),
           _resultCard('Income & coverage', [
             _resultRow('NOI (annual)', Fmt.money(r.noi)),
@@ -610,8 +615,10 @@ class _CalcResult {
     required this.downPayment,
     required this.acquisitionCosts,
     required this.cashInvested,
-    required this.noi,
+    required this.monthlyDebtService,
     required this.annualDebtService,
+    required this.totalRepayment,
+    required this.noi,
     required this.monthlyCashFlow,
     required this.dscr,
     required this.debtYield,
@@ -631,8 +638,10 @@ class _CalcResult {
   final double downPayment;
   final double acquisitionCosts;
   final double cashInvested;
-  final double noi;
+  final double monthlyDebtService;
   final double annualDebtService;
+  final double totalRepayment;
+  final double noi;
   final double monthlyCashFlow;
   final double dscr;
   final double debtYield;

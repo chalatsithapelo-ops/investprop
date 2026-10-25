@@ -143,6 +143,19 @@ function SaleProposalsPage() {
     onError: (err: any) => toast.error(err.message ?? "Could not book fee"),
   });
 
+  const promoteMutation = useMutation({
+    mutationFn: (params: { proposalId: number }) =>
+      (trpcClient as any).promoteSaleProposalToProperty.mutate({
+        authToken: authToken ?? "",
+        ...params,
+      }),
+    onSuccess: (res: any) => {
+      toast.success(`Promoted to pipeline as property #${res?.propertyId}`);
+      queryClient.invalidateQueries({ queryKey: trpc.getSaleProposals.queryKey() });
+    },
+    onError: (err: any) => toast.error(err.message ?? "Could not promote proposal"),
+  });
+
   const downloadLOI = async (proposalId: number) => {
     try {
       const loi = await (trpcClient as any).generateLetterOfIntent.query({
@@ -596,6 +609,29 @@ function SaleProposalsPage() {
                                 >
                                   Re-download LOI
                                 </button>
+                              </div>
+                              {/* Acquisition-pipeline bridge */}
+                              <div className="mt-2">
+                                {proposal.convertedToPropertyId ? (
+                                  <button
+                                    onClick={() =>
+                                      navigate({ to: `/properties/${proposal.convertedToPropertyId}` as any })
+                                    }
+                                    className="w-full rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                                  >
+                                    <Building2 size={12} className="mr-1 inline" />
+                                    View pipeline property #{proposal.convertedToPropertyId}
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => promoteMutation.mutate({ proposalId: proposal.id })}
+                                    disabled={promoteMutation.isPending}
+                                    className="w-full rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                                  >
+                                    <Building2 size={12} className="mr-1 inline" />
+                                    Promote to investment pipeline
+                                  </button>
+                                )}
                               </div>
                             </div>
                           )}

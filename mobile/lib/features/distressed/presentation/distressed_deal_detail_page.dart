@@ -679,7 +679,32 @@ class _MarketAnalysisCard extends ConsumerWidget {
           ),
         ),
       ),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, __) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.insights_outlined,
+                size: 18, color: AppColors.textSecondary),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Market analysis is unavailable for this listing right now.',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+            TextButton(
+              onPressed: () =>
+                  ref.invalidate(distressedMarketAnalysisProvider(listingId)),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
       data: (a) => _MarketAnalysisBody(analysis: a),
     );
   }

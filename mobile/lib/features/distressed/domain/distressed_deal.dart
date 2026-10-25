@@ -730,33 +730,62 @@ class DistressedMarketAnalysis {
 class DistressedFilter {
   const DistressedFilter({
     this.province,
+    this.city,
     this.propertyType,
     this.minAIGrade,
+    this.maxPrice,
+    this.minDiscountPct,
     this.onlyGraded = false,
     this.sortBy = 'newest',
   });
 
   final String? province;
+  final String? city;
   final String? propertyType;
   final String? minAIGrade;
+  final double? maxPrice;
+  final double? minDiscountPct;
   final bool onlyGraded;
   final String sortBy; // newest | discount | price_asc | ai_grade
+
+  /// Number of active (non-sort) filters, for the "Filters (n)" chip badge.
+  int get activeCount {
+    var n = 0;
+    if ((province ?? '').isNotEmpty && province != 'all') n++;
+    if ((city ?? '').isNotEmpty && city != 'all') n++;
+    if ((propertyType ?? '').isNotEmpty && propertyType != 'all') n++;
+    if (minAIGrade != null) n++;
+    if ((maxPrice ?? 0) > 0) n++;
+    if ((minDiscountPct ?? 0) > 0) n++;
+    if (onlyGraded) n++;
+    return n;
+  }
 
   DistressedFilter copyWith({
     String? province,
     bool clearProvince = false,
+    String? city,
+    bool clearCity = false,
     String? propertyType,
     bool clearPropertyType = false,
     String? minAIGrade,
     bool clearMinAIGrade = false,
+    double? maxPrice,
+    bool clearMaxPrice = false,
+    double? minDiscountPct,
+    bool clearMinDiscountPct = false,
     bool? onlyGraded,
     String? sortBy,
   }) {
     return DistressedFilter(
       province: clearProvince ? null : (province ?? this.province),
+      city: clearCity ? null : (city ?? this.city),
       propertyType:
           clearPropertyType ? null : (propertyType ?? this.propertyType),
       minAIGrade: clearMinAIGrade ? null : (minAIGrade ?? this.minAIGrade),
+      maxPrice: clearMaxPrice ? null : (maxPrice ?? this.maxPrice),
+      minDiscountPct:
+          clearMinDiscountPct ? null : (minDiscountPct ?? this.minDiscountPct),
       onlyGraded: onlyGraded ?? this.onlyGraded,
       sortBy: sortBy ?? this.sortBy,
     );
@@ -765,9 +794,12 @@ class DistressedFilter {
   Map<String, dynamic> toInput({required int page, int limit = 24}) {
     return {
       if (province != null && province != 'all') 'province': province,
+      if (city != null && city != 'all') 'city': city,
       if (propertyType != null && propertyType != 'all')
         'propertyType': propertyType,
       if (minAIGrade != null) 'minAIGrade': minAIGrade,
+      if ((maxPrice ?? 0) > 0) 'maxPrice': maxPrice,
+      if ((minDiscountPct ?? 0) > 0) 'minDiscountPct': minDiscountPct,
       if (onlyGraded) 'onlyGraded': true,
       'sortBy': sortBy,
       'limit': limit,

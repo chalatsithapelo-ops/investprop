@@ -747,3 +747,103 @@ export const bookOwnerRecurringFee = baseProcedure
 
     return { success: true, feeType: input.feeType, feeAmount: booked, period };
   });
+
+// ─── Promote an accepted proposal into the investable pipeline ──────
+// Bridges the gap between an agreed owner sale and an investor-facing
+// opportunity: creates a DRAFT Property (unpublished, PLANNING) pre-filled
+// from the proposal so a manager can structure the SPV, funding goal and
+// share class before publishing it to investors. Idempotent: a proposal can
+// only be promoted once.
+export const promoteSaleProposalToProperty = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      proposalId: z.number(),
+      fundingGoal: z.number().positive().optional(),
+    })
+  )
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(
+      user,
+      ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
+      "Only managers can promote proposals into the pipeline"
+    );
+
+    const proposal = await db.ownerSaleProposal.findUnique({
+      where: { id: input.proposalId },
+    });
+    if (!proposal) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Proposal not found" });
+    }
+    if (proposal.status !== "ACCEPTED") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Only an accepted proposal can be promoted into the pipeline",
+      });
+    }
+    if (proposal.convertedToPropertyId) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: `Already promoted as property #${proposal.convertedToPropertyId}`,
+      });
+    }
+
+    // Agreed price = accepted counter-offer, else asking price. Seed the
+    // funding goal from the agreed price unless the manager overrides it.
+    const agreedPrice = proposal.counterOfferAmount ?? proposal.askingPrice;
+    const seedFunding = input.fundingGoal ?? agreedPrice;
+    const images = Array.isArray(proposal.imageUrls)
+      ? (proposal.imageUrls as string[])
+      : [];
+
+    const property = await db.property.create({
+      data: {
+        title: proposal.title,
+        description: proposal.description,
+        address: proposal.address,
+        city: proposal.city,
+        state: proposal.province,
+        zipCode: "",
+        price: agreedPrice,
+        imageUrl: images[0] ?? "",
+        imageUrls: images,
+        status: "AVAILABLE",
+        investmentStatus: "PLANNING",
+        fundingGoal: seedFunding,
+        fundingRaised: 0,
+        isPublished: false,
+        minimumInvestment: 10000,
+        expectedReturns: 0,
+        bedrooms: proposal.bedrooms ?? undefined,
+        bathrooms: proposal.bathrooms ?? undefined,
+        squareMeters: proposal.squareMeters ?? undefined,
+        userId: user.id,
+      },
+    });
+
+    await db.ownerSaleProposal.update({
+      where: { id: proposal.id },
+      data: { convertedToPropertyId: property.id, convertedAt: new Date() },
+    });
+
+    await createAuditLog(
+      user.id,
+      "PROMOTE_PROPOSAL_TO_PROPERTY",
+      "OwnerSaleProposal",
+      proposal.id,
+      { propertyId: property.id, agreedPrice, fundingGoal: seedFunding }
+    );
+
+    // Tell the owner their deal has entered the acquisition pipeline.
+    await createNotification(
+      proposal.ownerId,
+      "Your property has entered our acquisition pipeline",
+      `"${proposal.title}" has been moved into structuring. Our team will finalise the acquisition and keep you updated on next steps.`,
+      "SUCCESS",
+      "PROPERTY",
+      proposal.id
+    );
+
+    return { success: true, propertyId: property.id, title: property.title };
+  });

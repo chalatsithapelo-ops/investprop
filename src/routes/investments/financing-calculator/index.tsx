@@ -504,6 +504,8 @@ function FinancingCalculatorPage() {
               <MetricRow label="Down Payment" value={R(base.downPayment)} />
               <MetricRow label="Acquisition Costs" value={R(base.acquisitionCosts)} />
               <MetricRow label="Cash Invested" value={R(base.cashInvested)} emphasize />
+              <MetricRow label="Monthly Loan Payment" value={R(base.monthlyDebtService)} />
+              <MetricRow label="Total Repayment" value={R(base.monthlyDebtService * input.loanTermYears * 12)} />
             </MetricCard>
 
             <MetricCard title="Income and Coverage" icon={Activity}>
