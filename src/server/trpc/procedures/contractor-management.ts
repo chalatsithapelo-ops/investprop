@@ -94,7 +94,7 @@ export const createRFQ = baseProcedure
   .mutation(async ({ input }) => {
     const user = await requireAuthenticatedUser(input.authToken, ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"]);
     const { authToken, deadline, ...rest } = input;
-    return db.rFQ.create({
+    const rfq = await db.rFQ.create({
       data: {
         ...rest,
         deadline: new Date(deadline),
@@ -103,6 +103,24 @@ export const createRFQ = baseProcedure
         attachmentUrls: rest.attachmentUrls ?? [],
       },
     });
+
+    // Notify approved contractors that a new RFQ is open for quotation.
+    const approvedContractors = await db.contractorProfile.findMany({
+      where: { profileStatus: "APPROVED" },
+      select: { userId: true },
+    });
+    for (const c of approvedContractors) {
+      createNotification(
+        c.userId,
+        "New Tender Available",
+        `A new request for quotation "${rfq.title}" is open. Submit your quotation before ${new Date(deadline).toLocaleDateString("en-ZA")}.`,
+        "INFO",
+        "PROPERTY",
+        rfq.propertyId,
+      );
+    }
+
+    return rfq;
   });
 
 export const getRFQs = baseProcedure
@@ -198,16 +216,48 @@ export const reviewQuotation = baseProcedure
     const response = await db.rFQResponse.update({
       where: { id: input.responseId },
       data: { status: input.status, reviewNotes: input.reviewNotes, reviewedById: user.id, reviewedAt: new Date() },
+      include: {
+        contractorProfile: { select: { userId: true } },
+        rfq: { select: { title: true, propertyId: true } },
+      },
     });
 
     // If accepting, award the RFQ
     if (input.status === "ACCEPTED") {
       await db.rFQ.update({ where: { id: response.rfqId }, data: { status: "AWARDED" } });
-      // Reject other responses
+      // Find other responses so their contractors can be notified they were not selected
+      const others = await db.rFQResponse.findMany({
+        where: { rfqId: response.rfqId, id: { not: input.responseId } },
+        include: { contractorProfile: { select: { userId: true } } },
+      });
       await db.rFQResponse.updateMany({
         where: { rfqId: response.rfqId, id: { not: input.responseId } },
         data: { status: "REJECTED" },
       });
+      for (const other of others) {
+        createNotification(
+          other.contractorProfile.userId,
+          "Quotation Not Selected",
+          `Your quotation for "${response.rfq.title}" was not selected. Thank you for participating.`,
+          "INFO",
+          "PROPERTY",
+          response.rfq.propertyId,
+        );
+      }
+    }
+
+    // Notify the reviewed contractor of the outcome
+    if (input.status === "ACCEPTED" || input.status === "REJECTED") {
+      createNotification(
+        response.contractorProfile.userId,
+        input.status === "ACCEPTED" ? "Quotation Accepted" : "Quotation Rejected",
+        input.status === "ACCEPTED"
+          ? `Your quotation for "${response.rfq.title}" has been accepted. A work order will follow shortly.`
+          : `Your quotation for "${response.rfq.title}" was not accepted.${input.reviewNotes ? ` Note: ${input.reviewNotes}` : ""}`,
+        input.status === "ACCEPTED" ? "SUCCESS" : "INFO",
+        "PROPERTY",
+        response.rfq.propertyId,
+      );
     }
     return response;
   });
@@ -230,7 +280,7 @@ export const createWorkOrder = baseProcedure
   .mutation(async ({ input }) => {
     const user = await requireAuthenticatedUser(input.authToken, ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"]);
     const { authToken, startDate, expectedEndDate, ...rest } = input;
-    return db.workOrder.create({
+    const workOrder = await db.workOrder.create({
       data: {
         ...rest,
         startDate: new Date(startDate),
@@ -238,6 +288,28 @@ export const createWorkOrder = baseProcedure
         issuedById: user.id,
       },
     });
+
+    // Notify the contractor that a work order has been issued to them.
+    const contractorProfile = await db.contractorProfile.findUnique({
+      where: { id: input.contractorProfileId },
+      select: { userId: true },
+    });
+    const woProperty = await db.property.findUnique({
+      where: { id: input.propertyId },
+      select: { title: true },
+    });
+    if (contractorProfile) {
+      createNotification(
+        contractorProfile.userId,
+        "New Work Order Issued",
+        `You have been issued work order "${workOrder.title}" for ${woProperty?.title ?? "a property"} (R${workOrder.agreedAmount.toLocaleString("en-ZA")}). Review and accept it to begin.`,
+        "INFO",
+        "PROPERTY",
+        input.propertyId,
+      );
+    }
+
+    return workOrder;
   });
 
 export const getWorkOrders = baseProcedure
@@ -297,10 +369,17 @@ export const updateWorkOrderStatus = baseProcedure
     const wo = await db.workOrder.findUnique({ where: { id: input.workOrderId }, include: { contractorProfile: { include: { user: true } }, property: true } });
     if (!wo) throw new TRPCError({ code: "NOT_FOUND", message: "Work order not found" });
 
-    // Contractors can accept, start, or complete their own work orders
+    // Contractors can start or complete their own work orders; accepting
+    // requires signing via acceptWorkOrder (captures signature + retention).
     if (user.role === "CONTRACTOR") {
       if (wo.contractorProfile.userId !== user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Not your work order" });
-      if (!["ACCEPTED", "IN_PROGRESS", "COMPLETED"].includes(input.status)) throw new TRPCError({ code: "FORBIDDEN", message: "Contractors can only accept, start, or complete work orders" });
+      if (input.status === "ACCEPTED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "To accept a work order you must sign it. Please use the Accept & Sign action, which records your signature and retention terms.",
+        });
+      }
+      if (!["IN_PROGRESS", "COMPLETED"].includes(input.status)) throw new TRPCError({ code: "FORBIDDEN", message: "Contractors can only start or complete work orders" });
     }
 
     const updated = await db.workOrder.update({
@@ -401,7 +480,7 @@ export const reviewContractorInvoice = baseProcedure
   }))
   .mutation(async ({ input }) => {
     const user = await requireAuthenticatedUser(input.authToken, ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"]);
-    return db.contractorInvoice.update({
+    const invoice = await db.contractorInvoice.update({
       where: { id: input.invoiceId },
       data: {
         status: input.status,
@@ -410,7 +489,32 @@ export const reviewContractorInvoice = baseProcedure
         reviewedAt: new Date(),
         ...(input.status === "PAID" ? { paidAt: new Date(), paymentReference: input.paymentReference } : {}),
       },
+      include: {
+        contractorProfile: { select: { userId: true } },
+        workOrder: { select: { propertyId: true } },
+      },
     });
+
+    // Notify the contractor of the invoice outcome
+    const invoiceStatusCopy: Record<string, { title: string; message: string; type: "INFO" | "SUCCESS" | "WARNING" | "ERROR" }> = {
+      UNDER_REVIEW: { title: "Invoice Under Review", message: `Invoice ${invoice.invoiceNumber} is now under review.`, type: "INFO" },
+      APPROVED: { title: "Invoice Approved", message: `Invoice ${invoice.invoiceNumber} (R${invoice.totalAmount.toLocaleString("en-ZA")}) has been approved for payment.`, type: "SUCCESS" },
+      REJECTED: { title: "Invoice Rejected", message: `Invoice ${invoice.invoiceNumber} was rejected.${input.reviewNotes ? ` Note: ${input.reviewNotes}` : ""}`, type: "WARNING" },
+      PAID: { title: "Invoice Paid", message: `Invoice ${invoice.invoiceNumber} (R${invoice.totalAmount.toLocaleString("en-ZA")}) has been paid.${input.paymentReference ? ` Ref: ${input.paymentReference}` : ""}`, type: "SUCCESS" },
+    };
+    const copy = invoiceStatusCopy[input.status];
+    if (copy) {
+      createNotification(
+        invoice.contractorProfile.userId,
+        copy.title,
+        copy.message,
+        copy.type,
+        "PROPERTY",
+        invoice.workOrder.propertyId,
+      );
+    }
+
+    return invoice;
   });
 
 // ─── Contractor's Own Profile ───────────────────────────────────

@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
-import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 import { TRPCError } from "@trpc/server";
+
+const SPV_MANAGER_ROLES = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"] as const;
 
 // ─── List SPVs ─────────────────────────────────────────────────
 
@@ -64,6 +66,7 @@ export const createSPV = baseProcedure
   )
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...SPV_MANAGER_ROLES], "Only managers can create SPVs");
     return db.sPV.create({
       data: {
         name: input.name,
@@ -97,7 +100,8 @@ export const updateSPV = baseProcedure
     })
   )
   .mutation(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...SPV_MANAGER_ROLES], "Only managers can update SPVs");
     const { authToken, spvId, registeredDate, ...data } = input;
     return db.sPV.update({
       where: { id: spvId },
@@ -119,7 +123,8 @@ export const assignPropertyToSPV = baseProcedure
     })
   )
   .mutation(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...SPV_MANAGER_ROLES], "Only managers can assign properties to SPVs");
 
     // Verify SPV exists
     const spv = await db.sPV.findUnique({ where: { id: input.spvId } });
@@ -155,7 +160,8 @@ export const removePropertyFromSPV = baseProcedure
     })
   )
   .mutation(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...SPV_MANAGER_ROLES], "Only managers can remove properties from SPVs");
 
     const property = await db.property.findUnique({ where: { id: input.propertyId } });
     if (!property) throw new TRPCError({ code: "NOT_FOUND", message: "Property not found" });

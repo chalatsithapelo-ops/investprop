@@ -56,9 +56,8 @@ function FundingCampaignsPage() {
   const [publishForm, setPublishForm] = useState({
     propertyId: 0,
     fundingGoal: 0,
-    minimumInvestment: 0,
-    maximumInvestors: 0,
-    expectedReturnRate: 0,
+    fundingClosingDate: "",
+    fundingBreakdown: [{ category: "", amount: 0, description: "" }],
   });
 
   useEffect(() => {
@@ -102,14 +101,39 @@ function FundingCampaignsPage() {
   const proposalsArr = Array.isArray(proposals) ? proposals : [];
 
   const handlePublish = async () => {
+    if (!publishForm.propertyId) {
+      toast.error("Select a property to publish");
+      return;
+    }
+    if (!publishForm.fundingGoal || publishForm.fundingGoal <= 0) {
+      toast.error("Enter a funding goal");
+      return;
+    }
+    if (!publishForm.fundingClosingDate) {
+      toast.error("Select a funding closing date");
+      return;
+    }
+    const breakdown = publishForm.fundingBreakdown.filter(
+      (b) => b.category.trim() && b.description.trim() && b.amount > 0,
+    );
+    if (breakdown.length === 0) {
+      toast.error("Add at least one funding breakdown item");
+      return;
+    }
+    const breakdownTotal = breakdown.reduce((s, b) => s + b.amount, 0);
+    if (Math.abs(breakdownTotal - publishForm.fundingGoal) > 0.01) {
+      toast.error(
+        `Breakdown total (R${breakdownTotal.toLocaleString()}) must equal the funding goal (R${publishForm.fundingGoal.toLocaleString()})`,
+      );
+      return;
+    }
     try {
       await (trpcClient as any).publishPropertyForFunding.mutate({
         authToken: authToken ?? "",
         propertyId: publishForm.propertyId,
         fundingGoal: publishForm.fundingGoal,
-        minimumInvestment: publishForm.minimumInvestment,
-        maximumInvestors: publishForm.maximumInvestors,
-        expectedReturnRate: publishForm.expectedReturnRate,
+        fundingClosingDate: publishForm.fundingClosingDate,
+        fundingBreakdown: breakdown,
       });
       toast.success("Property published for funding");
       queryClient.invalidateQueries({
@@ -119,9 +143,8 @@ function FundingCampaignsPage() {
       setPublishForm({
         propertyId: 0,
         fundingGoal: 0,
-        minimumInvestment: 0,
-        maximumInvestors: 0,
-        expectedReturnRate: 0,
+        fundingClosingDate: "",
+        fundingBreakdown: [{ category: "", amount: 0, description: "" }],
       });
     } catch (e: any) {
       toast.error(e.message ?? "Failed to publish");
@@ -264,56 +287,103 @@ function FundingCampaignsPage() {
               </div>
               <div>
                 <label className="mb-1 block text-sm text-gray-500">
-                  Min Investment (R)
+                  Funding Closing Date
                 </label>
                 <input
-                  type="number"
-                  value={publishForm.minimumInvestment || ""}
+                  type="date"
+                  value={publishForm.fundingClosingDate}
                   onChange={(e) =>
                     setPublishForm({
                       ...publishForm,
-                      minimumInvestment: Number(e.target.value),
+                      fundingClosingDate: e.target.value,
                     })
                   }
                   className="w-full rounded-lg border border-navy-700 bg-navy-800 px-4 py-2 text-gray-900 focus:border-gold-500 focus:outline-none"
-                  placeholder="e.g. 10000"
                 />
               </div>
-              <div>
-                <label className="mb-1 block text-sm text-gray-500">
-                  Max Investors
+            </div>
+
+            {/* Funding breakdown — amounts must sum to the funding goal */}
+            <div className="mt-6">
+              <div className="mb-2 flex items-center justify-between">
+                <label className="block text-sm font-medium text-gray-500">
+                  Funding Breakdown (must total the funding goal)
                 </label>
-                <input
-                  type="number"
-                  value={publishForm.maximumInvestors || ""}
-                  onChange={(e) =>
+                <button
+                  type="button"
+                  onClick={() =>
                     setPublishForm({
                       ...publishForm,
-                      maximumInvestors: Number(e.target.value),
+                      fundingBreakdown: [
+                        ...publishForm.fundingBreakdown,
+                        { category: "", amount: 0, description: "" },
+                      ],
                     })
                   }
-                  className="w-full rounded-lg border border-navy-700 bg-navy-800 px-4 py-2 text-gray-900 focus:border-gold-500 focus:outline-none"
-                  placeholder="e.g. 50"
-                />
+                  className="rounded-lg border border-navy-700 px-3 py-1 text-xs font-medium text-gold-400 hover:text-gold-300 transition"
+                >
+                  + Add item
+                </button>
               </div>
-              <div>
-                <label className="mb-1 block text-sm text-gray-500">
-                  Expected Return (%)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={publishForm.expectedReturnRate || ""}
-                  onChange={(e) =>
-                    setPublishForm({
-                      ...publishForm,
-                      expectedReturnRate: Number(e.target.value),
-                    })
-                  }
-                  className="w-full rounded-lg border border-navy-700 bg-navy-800 px-4 py-2 text-gray-900 focus:border-gold-500 focus:outline-none"
-                  placeholder="e.g. 12.5"
-                />
+              <div className="space-y-2">
+                {publishForm.fundingBreakdown.map((item, idx) => (
+                  <div key={idx} className="grid grid-cols-1 gap-2 md:grid-cols-12">
+                    <input
+                      type="text"
+                      value={item.category}
+                      onChange={(e) => {
+                        const next = [...publishForm.fundingBreakdown];
+                        next[idx] = { ...next[idx]!, category: e.target.value };
+                        setPublishForm({ ...publishForm, fundingBreakdown: next });
+                      }}
+                      placeholder="Category (e.g. Purchase)"
+                      className="rounded-lg border border-navy-700 bg-navy-800 px-3 py-2 text-sm text-gray-900 focus:border-gold-500 focus:outline-none md:col-span-3"
+                    />
+                    <input
+                      type="text"
+                      value={item.description}
+                      onChange={(e) => {
+                        const next = [...publishForm.fundingBreakdown];
+                        next[idx] = { ...next[idx]!, description: e.target.value };
+                        setPublishForm({ ...publishForm, fundingBreakdown: next });
+                      }}
+                      placeholder="Description"
+                      className="rounded-lg border border-navy-700 bg-navy-800 px-3 py-2 text-sm text-gray-900 focus:border-gold-500 focus:outline-none md:col-span-6"
+                    />
+                    <input
+                      type="number"
+                      value={item.amount || ""}
+                      onChange={(e) => {
+                        const next = [...publishForm.fundingBreakdown];
+                        next[idx] = { ...next[idx]!, amount: Number(e.target.value) };
+                        setPublishForm({ ...publishForm, fundingBreakdown: next });
+                      }}
+                      placeholder="Amount (R)"
+                      className="rounded-lg border border-navy-700 bg-navy-800 px-3 py-2 text-sm text-gray-900 focus:border-gold-500 focus:outline-none md:col-span-2"
+                    />
+                    <button
+                      type="button"
+                      disabled={publishForm.fundingBreakdown.length <= 1}
+                      onClick={() =>
+                        setPublishForm({
+                          ...publishForm,
+                          fundingBreakdown: publishForm.fundingBreakdown.filter((_, i) => i !== idx),
+                        })
+                      }
+                      className="rounded-lg border border-navy-700 px-2 py-2 text-xs text-gray-500 hover:text-red-400 disabled:opacity-30 md:col-span-1"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
               </div>
+              <p className="mt-2 text-xs text-gray-500">
+                Breakdown total: R
+                {publishForm.fundingBreakdown
+                  .reduce((s, b) => s + (b.amount || 0), 0)
+                  .toLocaleString()}{" "}
+                / Goal: R{publishForm.fundingGoal.toLocaleString()}
+              </p>
             </div>
             <div className="mt-4 flex justify-end gap-3">
               <button

@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
-import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 import { TRPCError } from "@trpc/server";
 import { createNotification } from "./notifications";
 import { getFeeConfig, recordPlatformFee, computeFeeFromBps } from "~/server/fees/platform-fees";
+
+const ACQUISITION_MANAGER_ROLES = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"] as const;
 
 // ─── Create Acquisition ───────────────────────────────────────
 
@@ -29,7 +31,8 @@ export const createAcquisition = baseProcedure
     })
   )
   .mutation(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...ACQUISITION_MANAGER_ROLES], "Only managers can create acquisitions");
 
     // If acquired by SPV, verify the SPV exists
     if (input.acquiredByType === "SPV" && input.spvId) {
@@ -124,7 +127,8 @@ export const updateAcquisitionStatus = baseProcedure
     })
   )
   .mutation(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...ACQUISITION_MANAGER_ROLES], "Only managers can update acquisitions");
 
     const acquisition = await db.acquisition.findUnique({
       where: { id: input.acquisitionId },
