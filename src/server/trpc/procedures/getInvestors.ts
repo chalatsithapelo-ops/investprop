@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
-import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 
 export const getInvestors = baseProcedure
   .input(
@@ -10,8 +10,13 @@ export const getInvestors = baseProcedure
     })
   )
   .query(async ({ input }) => {
-    // Verify authentication
-    await getAuthenticatedUser(input.authToken);
+    // Verify authentication — investor directory (PII) is manager/admin-only.
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(
+      user,
+      ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
+      "Only managers can view the investor directory"
+    );
 
     // Fetch all users with INVESTOR role
     const investors = await db.user.findMany({

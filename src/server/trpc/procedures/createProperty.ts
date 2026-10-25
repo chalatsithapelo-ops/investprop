@@ -12,7 +12,7 @@ import {
   type PropertyDevelopmentInput,
 } from "~/financial-calculations";
 import { notifyMatchingInvestors } from "~/server/utils/investor-notifications";
-import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 
 export const createProperty = baseProcedure
   .input(
@@ -125,6 +125,11 @@ export const createProperty = baseProcedure
   .mutation(async ({ input }) => {
     // Verify authentication
     const user = await getAuthenticatedUser(input.authToken);
+    requireRole(
+      user,
+      ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
+      "Only managers can create properties"
+    );
 
     const coverImageUrl =
       input.imageUrl ??

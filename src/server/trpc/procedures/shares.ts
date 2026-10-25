@@ -140,7 +140,7 @@ export const purchaseShares = baseProcedure
     }
 
     // Use transaction for atomicity
-    return db.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       // Upsert holding
       const existingHolding = await tx.shareHolding.findUnique({
         where: {
@@ -221,7 +221,7 @@ export const purchaseShares = baseProcedure
     createNotification(
       user.id,
       "Shares Purchased",
-      `You purchased ${input.shares} shares in "${property?.title ?? "Property"}" for R${totalAmount.toLocaleString("en-ZA")}`,
+      `You purchased ${input.shares} shares in "${property?.title ?? "Property"}" for R${result.totalAmount.toLocaleString("en-ZA")}`,
       "SUCCESS",
       "INVESTMENT",
       scPropertyId
@@ -236,12 +236,14 @@ export const purchaseShares = baseProcedure
       createNotification(
         mgr.id,
         "New Share Purchase",
-        `${user.name} purchased ${input.shares} shares in "${property?.title ?? "Property"}" for R${totalAmount.toLocaleString("en-ZA")}`,
+        `${user.name} purchased ${input.shares} shares in "${property?.title ?? "Property"}" for R${result.totalAmount.toLocaleString("en-ZA")}`,
         "INFO",
         "INVESTMENT",
         scPropertyId
       );
     }
+
+    return result;
   });
 
 // ─── Transfer Shares ───────────────────────────────────────────
@@ -283,7 +285,7 @@ export const transferShares = baseProcedure
     const transferPropertyId = shareClass.propertyId;
     const totalAmount = input.shares * input.pricePerShare;
 
-    return db.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       // Deduct from sender
       const fromNewBalance = fromHolding.sharesOwned - input.shares;
       if (fromNewBalance === 0) {
@@ -402,6 +404,8 @@ export const transferShares = baseProcedure
         transferPropertyId
       );
     }
+
+    return result;
   });
 
 // ─── Get Share Ledger History ──────────────────────────────────

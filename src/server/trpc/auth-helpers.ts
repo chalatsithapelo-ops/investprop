@@ -55,6 +55,15 @@ export async function getAuthenticatedUser(authToken: string) {
     });
   }
 
+  // Enforce suspension in real time — a short-lived access token issued before
+  // suspension must stop working immediately, not linger until it expires.
+  if (user.status === "SUSPENDED") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Your account has been suspended. Please contact support@investprop.io.",
+    });
+  }
+
   return user;
 }
 

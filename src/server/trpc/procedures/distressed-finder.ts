@@ -1,8 +1,12 @@
 import { z } from "zod";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
-import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 import { runFullScrape, getSourceInfo } from "~/server/scrapers/distressed-property-scraper";
+
+// The Distressed Property Finder is an internal sourcing tool restricted to
+// managers and admins (the UI route enforces the same set — keep these in sync).
+const DISTRESSED_STAFF_ROLES = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"] as const;
 
 // ─── Get Distressed Listings ──────────────────────────────────────
 
@@ -28,7 +32,8 @@ export const getDistressedListings = baseProcedure
     })
   )
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...DISTRESSED_STAFF_ROLES], "Only managers can access the distressed finder");
 
     const isStudentFilter = input.propertyType === "STUDENT";
 
@@ -250,7 +255,8 @@ export const getDistressedListings = baseProcedure
 export const triggerDistressedScrape = baseProcedure
   .input(z.object({ authToken: z.string() }))
   .mutation(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...DISTRESSED_STAFF_ROLES], "Only managers can trigger a scrape");
     const result = await runFullScrape();
     return result;
   });
@@ -260,7 +266,8 @@ export const triggerDistressedScrape = baseProcedure
 export const getDistressedDashboardSummary = baseProcedure
   .input(z.object({ authToken: z.string() }))
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...DISTRESSED_STAFF_ROLES], "Only managers can access the distressed finder");
     const now = new Date();
     const weekAhead = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
@@ -298,7 +305,8 @@ export const getDistressedDashboardSummary = baseProcedure
 export const getScrapeLogs = baseProcedure
   .input(z.object({ authToken: z.string(), limit: z.number().optional().default(20) }))
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...DISTRESSED_STAFF_ROLES], "Only managers can access the distressed finder");
     return db.distressedScrapeLog.findMany({
       orderBy: { scrapedAt: "desc" },
       take: input.limit,
@@ -310,7 +318,8 @@ export const getScrapeLogs = baseProcedure
 export const getDistressedSources = baseProcedure
   .input(z.object({ authToken: z.string() }))
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...DISTRESSED_STAFF_ROLES], "Only managers can access the distressed finder");
 
     const sources = getSourceInfo();
 
@@ -339,7 +348,8 @@ export const getDistressedSources = baseProcedure
 export const toggleDistressedFavourite = baseProcedure
   .input(z.object({ authToken: z.string(), listingId: z.number() }))
   .mutation(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...DISTRESSED_STAFF_ROLES], "Only managers can manage distressed listings");
     const listing = await db.distressedListing.findUniqueOrThrow({ where: { id: input.listingId } });
     return db.distressedListing.update({
       where: { id: input.listingId },
@@ -376,6 +386,7 @@ export const addDistressedListing = baseProcedure
   )
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...DISTRESSED_STAFF_ROLES], "Only managers can add distressed listings");
     const discount = input.marketValue && input.marketValue > 0
       ? ((input.marketValue - input.askingPrice) / input.marketValue) * 100
       : undefined;
@@ -421,7 +432,8 @@ export const updateDistressedStatus = baseProcedure
     })
   )
   .mutation(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...DISTRESSED_STAFF_ROLES], "Only managers can update distressed listings");
     return db.distressedListing.update({
       where: { id: input.listingId },
       data: {
@@ -436,6 +448,7 @@ export const updateDistressedStatus = baseProcedure
 export const deleteDistressedListing = baseProcedure
   .input(z.object({ authToken: z.string(), listingId: z.number() }))
   .mutation(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...DISTRESSED_STAFF_ROLES], "Only managers can delete distressed listings");
     return db.distressedListing.delete({ where: { id: input.listingId } });
   });

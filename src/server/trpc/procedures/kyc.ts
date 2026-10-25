@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
-import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 import { TRPCError } from "@trpc/server";
 import { createNotification } from "./notifications";
 
@@ -223,6 +223,16 @@ export const reviewKYCDocument = baseProcedure
   )
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
+    requireRole(
+      user,
+      ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
+      "Only compliance staff can review KYC documents"
+    );
+
+    const existing = await db.kYCDocument.findUnique({ where: { id: input.documentId } });
+    if (!existing) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "KYC document not found" });
+    }
 
     const doc = await db.kYCDocument.update({
       where: { id: input.documentId },

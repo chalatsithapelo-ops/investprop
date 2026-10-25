@@ -25,6 +25,7 @@ export const cancelContributionDuringCoolingOff = baseProcedure
         id: true,
         investorId: true,
         status: true,
+        paymentStatus: true,
         coolingOffExpiresAt: true,
         cancelledAt: true,
         deletedAt: true,
@@ -40,6 +41,17 @@ export const cancelContributionDuringCoolingOff = baseProcedure
     }
     if (c.cancelledAt || c.status === "CANCELLED" || c.status === "REJECTED") {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Contribution is already cancelled" });
+    }
+    // A confirmed (PAID) contribution has already issued a share certificate and
+    // materialised a ShareHolding; cancelling the contribution record alone would
+    // strand funding/certificate/holding. Paid investors must use the holdings-based
+    // cooling-off withdrawal (requestCoolingOffWithdrawal) or the refund flow instead.
+    if (c.paymentStatus === "PAID") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "This investment is already paid. Use the cooling-off withdrawal on your shareholding (or request a refund) so your funds and share certificate are reversed correctly.",
+      });
     }
     if (c.status === "APPROVED" || c.status === "PAID") {
       // Already processed past cooling-off

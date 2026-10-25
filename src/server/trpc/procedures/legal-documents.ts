@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
-import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
+
+// Generating/altering official legal documents is a manager-only action
+// (the UI route restricts it to the same roles).
+const LEGAL_STAFF_ROLES = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"] as const;
 
 // ─── Generate Legal Document ───────────────────────────────────
 
@@ -27,6 +31,7 @@ export const generateLegalDocument = baseProcedure
   )
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...LEGAL_STAFF_ROLES], "Only managers can generate legal documents");
 
     const property = await db.property.findUnique({
       where: { id: input.propertyId },
@@ -171,7 +176,8 @@ export const updateDocumentStatus = baseProcedure
     })
   )
   .mutation(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...LEGAL_STAFF_ROLES], "Only managers can update document status");
     return db.legalDocument.update({
       where: { id: input.documentId },
       data: {

@@ -344,8 +344,9 @@ export const popiaSubjectAccessExport = baseProcedure
     ]);
     await createAuditLog(requestor.id, "POPIA_SAR_EXPORT", "User", targetId);
     if (!user) throw new TRPCError({ code: "NOT_FOUND" });
-    // strip secrets
-    const { passwordHash, ...safeUser } = user as any;
+    // strip secrets (the User password column is `password`, not `passwordHash`)
+    const { password, ...safeUser } = user as any;
+    void password;
     return {
       generatedAt: new Date(),
       requestedBy: { id: requestor.id, email: requestor.email },

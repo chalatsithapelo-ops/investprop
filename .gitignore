@@ -33,3 +33,5 @@ app.config.timestamp_*.js
 *.log
 *.out.log
 *.err.log
+
+scripts/.audit-tokens.json

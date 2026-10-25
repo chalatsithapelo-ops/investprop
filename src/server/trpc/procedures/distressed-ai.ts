@@ -234,7 +234,8 @@ export const screenDistressedBatch = baseProcedure
 export const getDistressedPriceHistory = baseProcedure
   .input(z.object({ authToken: z.string(), listingId: z.number() }))
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "ADMIN"], "Manager-only");
     const history = await db.distressedListingPriceHistory.findMany({
       where: { listingId: input.listingId },
       orderBy: { recordedAt: "asc" },

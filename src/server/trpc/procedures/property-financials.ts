@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
-import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
+
+// Property financial bookkeeping (P&L) is a manager-only tool — the UI route
+// restricts it to the same roles; keep these in sync.
+const FINANCIALS_STAFF_ROLES = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"] as const;
 
 // ─── Record Financial Entry ────────────────────────────────────
 
@@ -26,6 +30,7 @@ export const createFinancialEntry = baseProcedure
   )
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...FINANCIALS_STAFF_ROLES], "Only managers can record financial entries");
     return db.propertyFinancialEntry.create({
       data: {
         propertyId: input.propertyId,
@@ -55,7 +60,8 @@ export const getFinancialEntries = baseProcedure
     })
   )
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...FINANCIALS_STAFF_ROLES], "Only managers can view property financials");
     const where: any = { propertyId: input.propertyId };
     if (input.type) where.type = input.type;
     if (input.fromDate || input.toDate) {
@@ -86,7 +92,8 @@ export const getFinancialSummary = baseProcedure
     })
   )
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...FINANCIALS_STAFF_ROLES], "Only managers can view property financials");
     const where: any = { propertyId: input.propertyId };
     if (input.fromDate || input.toDate) {
       where.date = {};
@@ -144,7 +151,8 @@ export const getMonthlyCashFlow = baseProcedure
     })
   )
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...FINANCIALS_STAFF_ROLES], "Only managers can view property financials");
 
     const fromDate = new Date();
     fromDate.setMonth(fromDate.getMonth() - input.months);
@@ -165,7 +173,8 @@ export const getMonthlyCashFlow = baseProcedure
 export const deleteFinancialEntry = baseProcedure
   .input(z.object({ authToken: z.string(), entryId: z.number() }))
   .mutation(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...FINANCIALS_STAFF_ROLES], "Only managers can delete financial entries");
     return db.propertyFinancialEntry.delete({ where: { id: input.entryId } });
   });
 

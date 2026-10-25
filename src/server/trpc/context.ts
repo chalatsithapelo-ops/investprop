@@ -39,6 +39,11 @@ export async function createContext(opts: FetchCreateContextFnOptions): Promise<
       user = await db.user.findUnique({
         where: { id: payload.userId },
       });
+
+      // Enforce suspension in real time for protected/admin procedures too.
+      if (user && user.status === "SUSPENDED") {
+        user = null;
+      }
     } catch (error) {
       // Token invalid or expired - user remains null
       // Procedures can check if authentication is required

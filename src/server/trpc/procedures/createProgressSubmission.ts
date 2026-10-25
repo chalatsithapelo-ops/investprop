@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
-import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 import { sendProgressSubmissionNotification } from "~/server/utils/investor-notifications";
 import { createNotification } from "./notifications";
 
@@ -18,6 +18,11 @@ export const createProgressSubmission = baseProcedure
   .mutation(async ({ input }) => {
     // Verify authentication token
     const user = await getAuthenticatedUser(input.authToken);
+    requireRole(
+      user,
+      ["CONTRACTOR", "PROJECT_MANAGER", "DEVELOPMENT_MANAGER"],
+      "Only contractors and managers can submit progress updates"
+    );
 
     // Verify milestone exists and get property info
     const milestone = await db.milestone.findUnique({
