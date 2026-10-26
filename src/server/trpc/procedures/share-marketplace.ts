@@ -1,11 +1,36 @@
 import { z } from "zod";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
-import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 import { TRPCError } from "@trpc/server";
 import { createNotification } from "./notifications";
+import { createAuditLog } from "./audit-log";
 import { getFeeConfig, recordPlatformFee } from "~/server/fees/platform-fees";
-import { planFills } from "~/share-trading";
+import {
+  planFills,
+  computeStt,
+  exceedsConcentration,
+  priceWithinCollar,
+} from "~/share-trading";
+
+/** Roles allowed to review/settle secondary trades and operate trading controls. */
+const MARKET_ADMIN_ROLES = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"] as const;
+
+/** Share-class price anchor for the price collar: NAV if set, else last trade, else base price. */
+async function priceAnchor(shareClass: {
+  id: number;
+  pricePerShare: number;
+  navPerShare?: number | null;
+}): Promise<number> {
+  if (shareClass.navPerShare && shareClass.navPerShare > 0) return shareClass.navPerShare;
+  const lastTrade = await db.shareTrade.findFirst({
+    where: { shareClassId: shareClass.id },
+    orderBy: { executedAt: "desc" },
+    select: { pricePerShare: true },
+  });
+  return lastTrade?.pricePerShare ?? shareClass.pricePerShare;
+}
+
 // ─── Place Order (Buy or Sell) ─────────────────────────────────
 
 export const placeShareOrder = baseProcedure
@@ -39,6 +64,25 @@ export const placeShareOrder = baseProcedure
     });
     if (!shareClass) throw new TRPCError({ code: "NOT_FOUND", message: "Share class not found" });
 
+    // Trading controls: admin kill-switch.
+    if ((shareClass as any).tradingHalted) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Trading in this share class is currently halted.${(shareClass as any).tradingHaltReason ? " Reason: " + (shareClass as any).tradingHaltReason : ""}`,
+      });
+    }
+
+    // Price collar: reject orders whose price deviates too far from the anchor
+    // (NAV, else last trade, else base price), curbing fat-finger and tape painting.
+    const anchor = await priceAnchor(shareClass as any);
+    const collarPct = (shareClass as any).priceCollarPct ?? 20;
+    if (!priceWithinCollar(input.pricePerShare, anchor, collarPct)) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Price R${input.pricePerShare.toFixed(2)} is outside the allowed ±${collarPct}% band around the reference price R${anchor.toFixed(2)} (R${(anchor * (1 - collarPct / 100)).toFixed(2)}–R${(anchor * (1 + collarPct / 100)).toFixed(2)}).`,
+      });
+    }
+
     // If selling, check that user has enough shares
     if (input.side === "SELL") {
       const holding = await db.shareHolding.findUnique({
@@ -49,7 +93,8 @@ export const placeShareOrder = baseProcedure
           },
         },
       });
-      // Also check open sell orders
+      // Shares committed to open sell orders AND to unsettled trade settlements
+      // are reserved and may not be re-offered.
       const openSellOrders = await db.shareOrder.findMany({
         where: {
           shareClassId: input.shareClassId,
@@ -58,15 +103,22 @@ export const placeShareOrder = baseProcedure
           status: { in: ["OPEN", "PARTIALLY_FILLED"] },
         },
       });
-      const committedShares = openSellOrders.reduce(
-        (s, o) => s + (o.quantity - o.filledQuantity),
-        0
-      );
+      const openSettlements = await db.shareTradeSettlement.findMany({
+        where: {
+          shareClassId: input.shareClassId,
+          sellerId: user.id,
+          status: { in: ["PENDING_PAYMENT", "POP_SUBMITTED"] },
+        },
+        select: { quantity: true },
+      });
+      const committedShares =
+        openSellOrders.reduce((s, o) => s + (o.quantity - o.filledQuantity), 0) +
+        openSettlements.reduce((s, st) => s + st.quantity, 0);
       const available = (holding?.sharesOwned ?? 0) - committedShares;
       if (input.quantity > available) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: `Insufficient shares. Available: ${available} (${holding?.sharesOwned ?? 0} held, ${committedShares} committed to sell orders)`,
+          message: `Insufficient shares. Available: ${available} (${holding?.sharesOwned ?? 0} held, ${committedShares} committed to sell orders / pending settlements)`,
         });
       }
     }
@@ -108,10 +160,23 @@ export const placeShareOrder = baseProcedure
       }
     }
 
-    // Try to match immediately
-    const trades = await matchOrders(order.id);
+    // Try to match immediately — matches create pending settlements, not instant transfers.
+    const settlements = await matchOrders(order.id);
 
-    return { order, tradesExecuted: trades.length };
+    return {
+      order,
+      settlementsCreated: settlements.length,
+      settlements: settlements.map((s) => ({
+        id: s.id,
+        quantity: s.quantity,
+        pricePerShare: s.pricePerShare,
+        totalAmount: s.totalAmount,
+        status: s.status,
+        expiresAt: s.expiresAt,
+      })),
+      // Back-compat: the UI previously read tradesExecuted.
+      tradesExecuted: settlements.length,
+    };
   });
 
 // ─── Get Order Book ────────────────────────────────────────────
@@ -327,12 +392,25 @@ export const getMarketplaceOverview = baseProcedure
   });
 
 // ═══════════════════════════════════════════════════════════════
-//  Order Matching Engine
+//  Order Matching Engine (Delivery-versus-Payment)
+//
+//  Matching no longer moves ownership. A crossing match creates a
+//  ShareTradeSettlement (escrow) that RESERVES the seller's shares and
+//  records the cash the buyer owes. Ownership and money settle together only
+//  once a manager confirms the buyer's proof of payment (settleTradeSettlement).
 // ═══════════════════════════════════════════════════════════════
+
+/** Days a buyer has to pay before an unsettled match auto-expires. */
+export const SETTLEMENT_WINDOW_DAYS = 5;
 
 async function matchOrders(newOrderId: number): Promise<any[]> {
   const newOrder = await db.shareOrder.findUnique({ where: { id: newOrderId } });
   if (!newOrder || !["OPEN", "PARTIALLY_FILLED"].includes(newOrder.status)) return [];
+
+  const shareClass = await db.shareClass.findUnique({ where: { id: newOrder.shareClassId } });
+  if (!shareClass) return [];
+  // Admin kill-switch: a halted class accepts/holds orders but never matches.
+  if ((shareClass as any).tradingHalted) return [];
 
   const oppositeSide = newOrder.side === "BUY" ? "SELL" : "BUY";
   const priceCondition =
@@ -356,10 +434,9 @@ async function matchOrders(newOrderId: number): Promise<any[]> {
   });
 
   // ── Seller deliverable guard ──────────────────────────────────
-  // A SELL order may only ever settle shares the seller actually still holds.
-  // Snapshot the relevant live balances up-front and plan fills with those caps
-  // so the engine can never mint shares — e.g. if a seller transferred away or
-  // withdrew (cooling-off) their holding after resting a sell order.
+  // A SELL order may only ever reserve shares the seller actually still holds
+  // AND has not already committed to another unsettled trade. Deliverable =
+  // live balance − shares locked in open (pending/POP) settlements.
   const sellerIds =
     newOrder.side === "SELL"
       ? [newOrder.investorId]
@@ -369,8 +446,24 @@ async function matchOrders(newOrderId: number): Promise<any[]> {
     where: { shareClassId: newOrder.shareClassId, investorId: { in: sellerIds } },
     select: { investorId: true, sharesOwned: true },
   });
+  const openSettlements = await db.shareTradeSettlement.findMany({
+    where: {
+      shareClassId: newOrder.shareClassId,
+      status: { in: ["PENDING_PAYMENT", "POP_SUBMITTED"] },
+    },
+    select: { buyerId: true, sellerId: true, quantity: true },
+  });
+  const reservedBySeller = new Map<number, number>();
+  const incomingByBuyer = new Map<number, number>();
+  for (const s of openSettlements) {
+    reservedBySeller.set(s.sellerId, (reservedBySeller.get(s.sellerId) ?? 0) + s.quantity);
+    incomingByBuyer.set(s.buyerId, (incomingByBuyer.get(s.buyerId) ?? 0) + s.quantity);
+  }
+
   const deliverable = new Map<number, number>();
-  for (const h of sellerHoldings) deliverable.set(h.investorId, h.sharesOwned);
+  for (const h of sellerHoldings) {
+    deliverable.set(h.investorId, Math.max(0, h.sharesOwned - (reservedBySeller.get(h.investorId) ?? 0)));
+  }
 
   const plan = planFills({
     takerSide: newOrder.side as "BUY" | "SELL",
@@ -387,8 +480,18 @@ async function matchOrders(newOrderId: number): Promise<any[]> {
     })),
   });
 
+  // Current buyer holdings for the concentration soft-check.
+  const buyerShares = new Map<number, number>();
+  const allHoldings = await db.shareHolding.findMany({
+    where: { shareClassId: newOrder.shareClassId },
+    select: { investorId: true, sharesOwned: true },
+  });
+  for (const h of allHoldings) buyerShares.set(h.investorId, h.sharesOwned);
+
   const ordersById = new Map(matchingOrders.map((o) => [o.id, o]));
-  const trades: any[] = [];
+  const settlements: any[] = [];
+  const feeConfig = await getFeeConfig();
+  const batchBuyerAdds = new Map<number, number>();
 
   for (const fill of plan) {
     const counterOrder = ordersById.get(fill.makerOrderId);
@@ -397,57 +500,36 @@ async function matchOrders(newOrderId: number): Promise<any[]> {
 
     const fillQty = fill.quantity;
     const tradePrice = fill.price; // taker transacts at the maker's resting price
-    const totalAmount = fillQty * tradePrice;
+    const totalAmount = Math.round(fillQty * tradePrice * 100) / 100;
 
     const buyerId = newOrder.side === "BUY" ? newOrder.investorId : counterOrder.investorId;
     const sellerId = newOrder.side === "SELL" ? newOrder.investorId : counterOrder.investorId;
     const buyOrderId = newOrder.side === "BUY" ? newOrder.id : counterOrder.id;
     const sellOrderId = newOrder.side === "SELL" ? newOrder.id : counterOrder.id;
 
-    await db.$transaction(async (tx) => {
-      // Settlement-time re-check: the seller must STILL hold the shares right
-      // now. Guards against concurrent transfers/withdrawals between planning
-      // and settlement. Never settle more than the seller can actually deliver.
-      const sellerHolding = await tx.shareHolding.findUnique({
-        where: {
-          shareClassId_investorId: {
-            shareClassId: newOrder.shareClassId,
-            investorId: sellerId,
-          },
-        },
-      });
-      if (!sellerHolding || sellerHolding.sharesOwned < fillQty) {
-        // Seller can no longer deliver — skip this fill. If the shortfall is on a
-        // resting maker sell order, cancel it so it stops advertising phantom
-        // liquidity in the order book.
-        if (
-          newOrder.side === "BUY" &&
-          (!sellerHolding || sellerHolding.sharesOwned <= 0)
-        ) {
-          await tx.shareOrder.update({
-            where: { id: counterOrder.id },
-            data: { status: "CANCELLED" },
-          });
-        }
-        return;
-      }
+    // Concentration soft-check: don't create a settlement that could never
+    // clear because it would breach the buyer's ownership cap. The authoritative
+    // re-check runs again at settlement time.
+    const projectedBuyer =
+      (buyerShares.get(buyerId) ?? 0) +
+      (incomingByBuyer.get(buyerId) ?? 0) +
+      (batchBuyerAdds.get(buyerId) ?? 0);
+    if (
+      exceedsConcentration(projectedBuyer, fillQty, shareClass.totalShares, (shareClass as any).maxOwnershipPct)
+    ) {
+      continue;
+    }
 
-      // Record trade
-      const trade = await tx.shareTrade.create({
-        data: {
-          shareClassId: newOrder.shareClassId,
-          buyOrderId,
-          sellOrderId,
-          buyerId,
-          sellerId,
-          quantity: fillQty,
-          pricePerShare: tradePrice,
-          totalAmount,
-        },
-      });
-      trades.push(trade);
+    const platformFee = feeConfig.enabled
+      ? Math.round(totalAmount * (feeConfig.secondaryTradeFeeBps / 10_000) * 100) / 100
+      : 0;
+    const stt = computeStt(totalAmount);
+    const expiresAt = new Date(Date.now() + SETTLEMENT_WINDOW_DAYS * 86400000);
 
-      // Update order fills
+    const settlement = await db.$transaction(async (tx) => {
+      // Reserve the matched quantity by advancing both orders' filledQuantity.
+      // The shares are not moved; the reservation is released (filledQuantity
+      // rolled back) if the settlement is later rejected or expires.
       const newFilled = newOrder.filledQuantity + fillQty;
       const counterFilled = counterOrder.filledQuantity + fillQty;
 
@@ -469,117 +551,46 @@ async function matchOrders(newOrderId: number): Promise<any[]> {
       });
       counterOrder.filledQuantity = counterFilled;
 
-      // Transfer shares: deduct from the seller's holding (guaranteed present and
-      // sufficient by the settlement re-check above), add to the buyer's holding.
-      const sellerNewBalance = sellerHolding.sharesOwned - fillQty;
-      if (sellerNewBalance <= 0) {
-        await tx.shareHolding.delete({ where: { id: sellerHolding.id } });
-      } else {
-        await tx.shareHolding.update({
-          where: { id: sellerHolding.id },
-          data: { sharesOwned: sellerNewBalance },
-        });
-      }
-
-      // Ledger entry for seller
-      await tx.shareLedgerEntry.create({
+      return tx.shareTradeSettlement.create({
         data: {
-          propertyId: (await tx.shareClass.findUnique({ where: { id: newOrder.shareClassId } }))!.propertyId,
           shareClassId: newOrder.shareClassId,
-          investorId: sellerId,
-          transactionType: "SALE",
-          shares: -fillQty,
+          buyOrderId,
+          sellOrderId,
+          buyerId,
+          sellerId,
+          quantity: fillQty,
           pricePerShare: tradePrice,
           totalAmount,
-          reference: `Market sale — Order #${sellOrderId}`,
-          balanceAfter: Math.max(0, sellerNewBalance),
+          platformFee,
+          securitiesTransferTax: stt,
+          expiresAt,
         },
       });
-
-      // Add to buyer
-      const buyerHolding = await tx.shareHolding.findUnique({
-        where: {
-          shareClassId_investorId: {
-            shareClassId: newOrder.shareClassId,
-            investorId: buyerId,
-          },
-        },
-      });
-
-      const buyerNewBalance = (buyerHolding?.sharesOwned ?? 0) + fillQty;
-      const buyerAvgCost = buyerHolding
-        ? ((buyerHolding.averageCostPerShare * buyerHolding.sharesOwned) + totalAmount) / buyerNewBalance
-        : tradePrice;
-
-      const sc = await tx.shareClass.findUnique({ where: { id: newOrder.shareClassId } });
-
-      await tx.shareHolding.upsert({
-        where: {
-          shareClassId_investorId: {
-            shareClassId: newOrder.shareClassId,
-            investorId: buyerId,
-          },
-        },
-        create: {
-          propertyId: sc!.propertyId,
-          shareClassId: newOrder.shareClassId,
-          investorId: buyerId,
-          sharesOwned: fillQty,
-          averageCostPerShare: tradePrice,
-        },
-        update: {
-          sharesOwned: buyerNewBalance,
-          averageCostPerShare: buyerAvgCost,
-        },
-      });
-
-      // Ledger entry for buyer
-      await tx.shareLedgerEntry.create({
-        data: {
-          propertyId: sc!.propertyId,
-          shareClassId: newOrder.shareClassId,
-          investorId: buyerId,
-          transactionType: "PURCHASE",
-          shares: fillQty,
-          pricePerShare: tradePrice,
-          totalAmount,
-          reference: `Market purchase — Order #${buyOrderId}`,
-          balanceAfter: buyerNewBalance,
-        },
-      });
-
-      // Record price history
-      await tx.sharePriceHistory.create({
-        data: {
-          shareClassId: newOrder.shareClassId,
-          price: tradePrice,
-          volume: fillQty,
-        },
-      });
-
-      // ── Platform monetization: capture the secondary-trade fee ──
-      // Booked once per executed trade (idempotent) within this transaction.
-      try {
-        const feeConfig = await getFeeConfig(tx);
-        if (feeConfig.enabled) {
-          await recordPlatformFee({
-            tx,
-            feeType: "SECONDARY_TRADE",
-            sourceType: "ShareTrade",
-            sourceId: trade.id,
-            propertyId: sc!.propertyId,
-            baseAmount: totalAmount,
-            feeBps: feeConfig.secondaryTradeFeeBps,
-            description: `Secondary share trade fee (${fillQty} shares)`,
-          });
-        }
-      } catch (err) {
-        console.error("[platform-fees] secondary-trade fee capture failed:", err);
-      }
     });
+
+    settlements.push(settlement);
+    batchBuyerAdds.set(buyerId, (batchBuyerAdds.get(buyerId) ?? 0) + fillQty);
+
+    // Notify both parties of the obligation to settle.
+    await createNotification(
+      buyerId,
+      "Trade matched — payment required",
+      `Your order matched for ${fillQty} shares at R${tradePrice.toFixed(2)} (total R${totalAmount.toFixed(2)}). Pay the seller by EFT and upload proof of payment within ${SETTLEMENT_WINDOW_DAYS} days to complete settlement. Settlement #${settlement.id}.`,
+      "WARNING",
+      "INVESTMENT",
+      shareClass.propertyId
+    );
+    await createNotification(
+      sellerId,
+      "Shares reserved — awaiting buyer payment",
+      `${fillQty} of your shares are reserved against a matched trade at R${tradePrice.toFixed(2)} (total R${totalAmount.toFixed(2)}). They will transfer once the buyer's payment is confirmed. Settlement #${settlement.id}.`,
+      "INFO",
+      "INVESTMENT",
+      shareClass.propertyId
+    );
   }
 
-  return trades;
+  return settlements;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -611,3 +622,567 @@ function aggregateOrderLevels(orders: any[]) {
   }
   return Object.values(levels);
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  Settlement (Delivery-versus-Payment)
+// ═══════════════════════════════════════════════════════════════
+
+type TxClient = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+
+/**
+ * Roll back the share reservation a settlement held on its two orders. Only
+ * reopens orders that are still FILLED/PARTIALLY_FILLED (a user-cancelled order
+ * stays cancelled). Used when a settlement is rejected, cancelled or expires.
+ */
+async function releaseReservation(tx: TxClient, settlement: {
+  buyOrderId: number;
+  sellOrderId: number;
+  quantity: number;
+}): Promise<void> {
+  for (const orderId of [settlement.buyOrderId, settlement.sellOrderId]) {
+    const order = await tx.shareOrder.findUnique({ where: { id: orderId } });
+    if (!order) continue;
+    const newFilled = Math.max(0, order.filledQuantity - settlement.quantity);
+    const data: any = { filledQuantity: newFilled };
+    if (order.status === "FILLED" || order.status === "PARTIALLY_FILLED") {
+      data.status = newFilled <= 0 ? "OPEN" : "PARTIALLY_FILLED";
+    }
+    await tx.shareOrder.update({ where: { id: orderId }, data });
+  }
+}
+
+/**
+ * Authoritative Delivery-versus-Payment settlement: moves shares seller→buyer,
+ * writes both ledger legs, price history and the platform fee, and records the
+ * ShareTrade. Re-checks deliverability and the buyer's ownership cap at the
+ * moment of settlement. Returns the created ShareTrade.
+ */
+async function settleTradeDvP(tx: TxClient, settlement: any, shareClass: any): Promise<any> {
+  const { buyerId, sellerId, quantity, pricePerShare, totalAmount } = settlement;
+
+  // Seller must still hold enough (the reservation should guarantee this).
+  const sellerHolding = await tx.shareHolding.findUnique({
+    where: { shareClassId_investorId: { shareClassId: shareClass.id, investorId: sellerId } },
+  });
+  if (!sellerHolding || sellerHolding.sharesOwned < quantity) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Seller can no longer deliver ${quantity} shares (holds ${sellerHolding?.sharesOwned ?? 0}). Reject this settlement.`,
+    });
+  }
+
+  // Concentration cap re-check.
+  const buyerHolding = await tx.shareHolding.findUnique({
+    where: { shareClassId_investorId: { shareClassId: shareClass.id, investorId: buyerId } },
+  });
+  if (
+    exceedsConcentration(
+      buyerHolding?.sharesOwned ?? 0,
+      quantity,
+      shareClass.totalShares,
+      shareClass.maxOwnershipPct
+    )
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Settling would push the buyer above the ${shareClass.maxOwnershipPct}% ownership cap for this share class.`,
+    });
+  }
+
+  // Max-investors cap re-check (only when the buyer is a brand-new holder).
+  if (shareClass.maxInvestors && !buyerHolding) {
+    const holderCount = await tx.shareHolding.count({
+      where: { shareClassId: shareClass.id, sharesOwned: { gt: 0 } },
+    });
+    if (holderCount >= shareClass.maxInvestors) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `This share class has reached its maximum of ${shareClass.maxInvestors} investors.`,
+      });
+    }
+  }
+
+  // ── Securities leg: move shares seller → buyer ──
+  const sellerNewBalance = sellerHolding.sharesOwned - quantity;
+  // Keep the holding row at 0 rather than deleting it, preserving cost-basis history.
+  await tx.shareHolding.update({
+    where: { id: sellerHolding.id },
+    data: { sharesOwned: sellerNewBalance },
+  });
+
+  await tx.shareLedgerEntry.create({
+    data: {
+      propertyId: shareClass.propertyId,
+      shareClassId: shareClass.id,
+      investorId: sellerId,
+      transactionType: "SALE",
+      shares: -quantity,
+      pricePerShare,
+      totalAmount,
+      reference: `Market sale settled — Settlement #${settlement.id} (STT R${settlement.securitiesTransferTax.toFixed(2)})`,
+      balanceAfter: Math.max(0, sellerNewBalance),
+    },
+  });
+
+  const buyerNewBalance = (buyerHolding?.sharesOwned ?? 0) + quantity;
+  const buyerAvgCost = buyerHolding
+    ? (buyerHolding.averageCostPerShare * buyerHolding.sharesOwned + totalAmount) / buyerNewBalance
+    : pricePerShare;
+
+  await tx.shareHolding.upsert({
+    where: { shareClassId_investorId: { shareClassId: shareClass.id, investorId: buyerId } },
+    create: {
+      propertyId: shareClass.propertyId,
+      shareClassId: shareClass.id,
+      investorId: buyerId,
+      sharesOwned: quantity,
+      averageCostPerShare: pricePerShare,
+    },
+    update: { sharesOwned: buyerNewBalance, averageCostPerShare: buyerAvgCost },
+  });
+
+  await tx.shareLedgerEntry.create({
+    data: {
+      propertyId: shareClass.propertyId,
+      shareClassId: shareClass.id,
+      investorId: buyerId,
+      transactionType: "PURCHASE",
+      shares: quantity,
+      pricePerShare,
+      totalAmount,
+      reference: `Market purchase settled — Settlement #${settlement.id}`,
+      balanceAfter: buyerNewBalance,
+    },
+  });
+
+  // ── Record the executed trade + price history ──
+  const trade = await tx.shareTrade.create({
+    data: {
+      shareClassId: shareClass.id,
+      buyOrderId: settlement.buyOrderId,
+      sellOrderId: settlement.sellOrderId,
+      buyerId,
+      sellerId,
+      quantity,
+      pricePerShare,
+      totalAmount,
+    },
+  });
+
+  await tx.sharePriceHistory.create({
+    data: { shareClassId: shareClass.id, price: pricePerShare, volume: quantity },
+  });
+
+  // ── Platform fee (booked once, on settlement) ──
+  try {
+    const feeConfig = await getFeeConfig(tx);
+    if (feeConfig.enabled) {
+      await recordPlatformFee({
+        tx,
+        feeType: "SECONDARY_TRADE",
+        sourceType: "ShareTrade",
+        sourceId: trade.id,
+        propertyId: shareClass.propertyId,
+        baseAmount: totalAmount,
+        feeBps: feeConfig.secondaryTradeFeeBps,
+        description: `Secondary share trade fee (${quantity} shares, Settlement #${settlement.id})`,
+      });
+    }
+  } catch (err) {
+    console.error("[platform-fees] secondary-trade fee capture failed:", err);
+  }
+
+  return trade;
+}
+
+// ─── Submit Proof of Payment for a matched trade (buyer) ───────
+
+export const submitTradePayment = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      settlementId: z.number(),
+      proofOfPaymentUrl: z.string().min(1),
+      paymentReference: z.string().optional(),
+    })
+  )
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    const settlement = await db.shareTradeSettlement.findUnique({ where: { id: input.settlementId } });
+    if (!settlement) throw new TRPCError({ code: "NOT_FOUND", message: "Settlement not found" });
+    if (settlement.buyerId !== user.id) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Only the buyer can submit payment for this trade" });
+    }
+    if (!["PENDING_PAYMENT", "REJECTED"].includes(settlement.status)) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: `Settlement is ${settlement.status} and cannot accept payment` });
+    }
+    if (settlement.expiresAt && settlement.expiresAt < new Date()) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "The payment window for this trade has expired" });
+    }
+
+    const updated = await db.shareTradeSettlement.update({
+      where: { id: settlement.id },
+      data: {
+        proofOfPaymentUrl: input.proofOfPaymentUrl,
+        paymentReference: input.paymentReference ?? null,
+        status: "POP_SUBMITTED",
+        paymentSubmittedAt: new Date(),
+      },
+    });
+
+    const managers = await db.user.findMany({
+      where: { role: { in: [...MARKET_ADMIN_ROLES] } },
+      select: { id: true },
+    });
+    for (const mgr of managers) {
+      await createNotification(
+        mgr.id,
+        "Trade payment submitted for review",
+        `Buyer submitted proof of payment for Settlement #${settlement.id} (${settlement.quantity} shares, R${settlement.totalAmount.toFixed(2)}). Please review and confirm delivery.`,
+        "WARNING",
+        "INVESTMENT"
+      );
+    }
+    await createAuditLog(user.id, "SUBMIT_TRADE_PAYMENT", "ShareTradeSettlement", settlement.id, {
+      proofOfPaymentUrl: input.proofOfPaymentUrl,
+      amount: settlement.totalAmount,
+    });
+    return updated;
+  });
+
+// ─── Review / settle a matched trade (manager) ─────────────────
+
+export const reviewTradeSettlement = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      settlementId: z.number(),
+      action: z.enum(["APPROVE", "REJECT"]),
+      reviewNotes: z.string().optional(),
+    })
+  )
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...MARKET_ADMIN_ROLES], "Only managers can settle trades");
+
+    const settlement = await db.shareTradeSettlement.findUnique({ where: { id: input.settlementId } });
+    if (!settlement) throw new TRPCError({ code: "NOT_FOUND", message: "Settlement not found" });
+    if (settlement.status !== "POP_SUBMITTED") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "This settlement has no payment pending review" });
+    }
+    const shareClass = await db.shareClass.findUnique({ where: { id: settlement.shareClassId } });
+    if (!shareClass) throw new TRPCError({ code: "NOT_FOUND", message: "Share class not found" });
+
+    if (input.action === "APPROVE") {
+      const trade = await db.$transaction(async (tx) => {
+        const t = await settleTradeDvP(tx, settlement, shareClass);
+        await tx.shareTradeSettlement.update({
+          where: { id: settlement.id },
+          data: {
+            status: "SETTLED",
+            reviewedById: user.id,
+            reviewedAt: new Date(),
+            reviewNotes: input.reviewNotes ?? null,
+            settledTradeId: t.id,
+          },
+        });
+        return t;
+      });
+      await createNotification(
+        settlement.buyerId,
+        "Trade settled — shares delivered",
+        `Settlement #${settlement.id} is complete. ${settlement.quantity} shares are now in your portfolio.`,
+        "SUCCESS",
+        "INVESTMENT",
+        shareClass.propertyId
+      );
+      await createNotification(
+        settlement.sellerId,
+        "Trade settled — payment confirmed",
+        `Settlement #${settlement.id} is complete. ${settlement.quantity} shares were delivered for R${settlement.totalAmount.toFixed(2)}.`,
+        "SUCCESS",
+        "INVESTMENT",
+        shareClass.propertyId
+      );
+      await createAuditLog(user.id, "SETTLE_TRADE", "ShareTradeSettlement", settlement.id, {
+        tradeId: trade.id,
+        quantity: settlement.quantity,
+        totalAmount: settlement.totalAmount,
+      });
+      return { success: true, action: "APPROVE", tradeId: trade.id };
+    }
+
+    // REJECT — release the reservation and let the buyer re-submit or the seller re-list.
+    await db.$transaction(async (tx) => {
+      await releaseReservation(tx, settlement);
+      await tx.shareTradeSettlement.update({
+        where: { id: settlement.id },
+        data: {
+          status: "REJECTED",
+          reviewedById: user.id,
+          reviewedAt: new Date(),
+          reviewNotes: input.reviewNotes ?? null,
+        },
+      });
+    });
+    await createNotification(
+      settlement.buyerId,
+      "Trade payment rejected",
+      `Payment for Settlement #${settlement.id} was rejected.${input.reviewNotes ? " Reason: " + input.reviewNotes : ""}`,
+      "ERROR",
+      "INVESTMENT",
+      shareClass.propertyId
+    );
+    await createAuditLog(user.id, "REJECT_TRADE_PAYMENT", "ShareTradeSettlement", settlement.id, {
+      reviewNotes: input.reviewNotes,
+    });
+    return { success: true, action: "REJECT" };
+  });
+
+// ─── Cancel a pending settlement (buyer or manager) ────────────
+
+export const cancelTradeSettlement = baseProcedure
+  .input(z.object({ authToken: z.string(), settlementId: z.number() }))
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    const settlement = await db.shareTradeSettlement.findUnique({ where: { id: input.settlementId } });
+    if (!settlement) throw new TRPCError({ code: "NOT_FOUND", message: "Settlement not found" });
+
+    const isAdmin = (MARKET_ADMIN_ROLES as readonly string[]).includes(user.role);
+    const isParty = settlement.buyerId === user.id || settlement.sellerId === user.id;
+    if (!isAdmin && !isParty) throw new TRPCError({ code: "FORBIDDEN" });
+    if (!["PENDING_PAYMENT", "POP_SUBMITTED"].includes(settlement.status)) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Only unsettled trades can be cancelled" });
+    }
+
+    await db.$transaction(async (tx) => {
+      await releaseReservation(tx, settlement);
+      await tx.shareTradeSettlement.update({
+        where: { id: settlement.id },
+        data: { status: "CANCELLED" },
+      });
+    });
+    await createAuditLog(user.id, "CANCEL_TRADE_SETTLEMENT", "ShareTradeSettlement", settlement.id, {});
+    return { success: true };
+  });
+
+// ─── My settlements (investor) ─────────────────────────────────
+
+export const getMyTradeSettlements = baseProcedure
+  .input(z.object({ authToken: z.string() }))
+  .query(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    const settlements = await db.shareTradeSettlement.findMany({
+      where: { OR: [{ buyerId: user.id }, { sellerId: user.id }] },
+      orderBy: { createdAt: "desc" },
+      include: {
+        shareClass: { select: { id: true, name: true, property: { select: { id: true, title: true } } } },
+      },
+    });
+    return settlements.map((s) => ({
+      ...s,
+      role: s.buyerId === user.id ? "BUYER" : "SELLER",
+    }));
+  });
+
+// ─── Settlement review queue (manager) ─────────────────────────
+
+export const getPendingTradeSettlements = baseProcedure
+  .input(z.object({ authToken: z.string() }))
+  .query(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...MARKET_ADMIN_ROLES], "Only managers can view the settlement queue");
+    return db.shareTradeSettlement.findMany({
+      where: { status: { in: ["PENDING_PAYMENT", "POP_SUBMITTED"] } },
+      orderBy: [{ status: "asc" }, { createdAt: "asc" }],
+      include: {
+        shareClass: { select: { id: true, name: true, property: { select: { id: true, title: true } } } },
+        buyer: { select: { id: true, name: true, investorCode: true } },
+        seller: { select: { id: true, name: true, investorCode: true } },
+      },
+    });
+  });
+
+// ─── Expire stale unpaid settlements (system / manager sweep) ───
+
+export const expireStaleSettlements = baseProcedure
+  .input(z.object({ authToken: z.string() }))
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...MARKET_ADMIN_ROLES], "Only managers can run the expiry sweep");
+
+    const stale = await db.shareTradeSettlement.findMany({
+      where: { status: "PENDING_PAYMENT", expiresAt: { lt: new Date() } },
+    });
+    let expired = 0;
+    for (const s of stale) {
+      await db.$transaction(async (tx) => {
+        await releaseReservation(tx, s);
+        await tx.shareTradeSettlement.update({ where: { id: s.id }, data: { status: "EXPIRED" } });
+      });
+      await createNotification(
+        s.buyerId,
+        "Trade settlement expired",
+        `Settlement #${s.id} expired because payment was not completed in time. The shares have been released back to the market.`,
+        "WARNING",
+        "INVESTMENT"
+      );
+      expired += 1;
+    }
+    return { expired };
+  });
+
+// ─── Admin: halt / resume trading for a share class ────────────
+
+export const setShareClassTradingHalted = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      shareClassId: z.number(),
+      halted: z.boolean(),
+      reason: z.string().optional(),
+    })
+  )
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...MARKET_ADMIN_ROLES], "Only managers can halt or resume trading");
+    const sc = await db.shareClass.update({
+      where: { id: input.shareClassId },
+      data: { tradingHalted: input.halted, tradingHaltReason: input.halted ? input.reason ?? null : null },
+    });
+    await createAuditLog(user.id, input.halted ? "HALT_TRADING" : "RESUME_TRADING", "ShareClass", input.shareClassId, {
+      reason: input.reason,
+    });
+    return { id: sc.id, tradingHalted: sc.tradingHalted, tradingHaltReason: sc.tradingHaltReason };
+  });
+
+// ─── Admin: update market risk parameters for a share class ────
+
+export const updateShareClassMarketParams = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      shareClassId: z.number(),
+      navPerShare: z.number().min(0).nullish(),
+      priceCollarPct: z.number().min(1).max(100).optional(),
+      maxOwnershipPct: z.number().min(1).max(100).nullish(),
+      maxInvestors: z.number().int().min(1).nullish(),
+    })
+  )
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...MARKET_ADMIN_ROLES], "Only managers can set market parameters");
+    const data: any = {};
+    if (input.navPerShare !== undefined) data.navPerShare = input.navPerShare;
+    if (input.priceCollarPct !== undefined) data.priceCollarPct = input.priceCollarPct;
+    if (input.maxOwnershipPct !== undefined) data.maxOwnershipPct = input.maxOwnershipPct;
+    if (input.maxInvestors !== undefined) data.maxInvestors = input.maxInvestors;
+    const sc = await db.shareClass.update({ where: { id: input.shareClassId }, data });
+    await createAuditLog(user.id, "UPDATE_MARKET_PARAMS", "ShareClass", input.shareClassId, data);
+    return sc;
+  });
+
+// ─── Admin: reverse a settled trade (error / fraud correction) ─
+
+export const reverseShareTrade = baseProcedure
+  .input(z.object({ authToken: z.string(), settlementId: z.number(), reason: z.string().min(3) }))
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(user, [...MARKET_ADMIN_ROLES], "Only managers can reverse trades");
+
+    const settlement = await db.shareTradeSettlement.findUnique({ where: { id: input.settlementId } });
+    if (!settlement) throw new TRPCError({ code: "NOT_FOUND", message: "Settlement not found" });
+    if (settlement.status !== "SETTLED") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Only settled trades can be reversed" });
+    }
+    if (settlement.reversedAt) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "This trade has already been reversed" });
+    }
+    const shareClass = await db.shareClass.findUnique({ where: { id: settlement.shareClassId } });
+    if (!shareClass) throw new TRPCError({ code: "NOT_FOUND" });
+
+    await db.$transaction(async (tx) => {
+      const buyerHolding = await tx.shareHolding.findUnique({
+        where: { shareClassId_investorId: { shareClassId: shareClass.id, investorId: settlement.buyerId } },
+      });
+      if (!buyerHolding || buyerHolding.sharesOwned < settlement.quantity) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot reverse: buyer no longer holds ${settlement.quantity} shares (holds ${buyerHolding?.sharesOwned ?? 0}).`,
+        });
+      }
+      // Move shares back buyer → seller.
+      await tx.shareHolding.update({
+        where: { id: buyerHolding.id },
+        data: { sharesOwned: buyerHolding.sharesOwned - settlement.quantity },
+      });
+      const sellerHolding = await tx.shareHolding.findUnique({
+        where: { shareClassId_investorId: { shareClassId: shareClass.id, investorId: settlement.sellerId } },
+      });
+      await tx.shareHolding.upsert({
+        where: { shareClassId_investorId: { shareClassId: shareClass.id, investorId: settlement.sellerId } },
+        create: {
+          propertyId: shareClass.propertyId,
+          shareClassId: shareClass.id,
+          investorId: settlement.sellerId,
+          sharesOwned: settlement.quantity,
+          averageCostPerShare: settlement.pricePerShare,
+        },
+        update: { sharesOwned: (sellerHolding?.sharesOwned ?? 0) + settlement.quantity },
+      });
+      // Reversing ledger legs.
+      await tx.shareLedgerEntry.createMany({
+        data: [
+          {
+            propertyId: shareClass.propertyId,
+            shareClassId: shareClass.id,
+            investorId: settlement.buyerId,
+            transactionType: "TRANSFER_OUT",
+            shares: -settlement.quantity,
+            pricePerShare: settlement.pricePerShare,
+            totalAmount: settlement.totalAmount,
+            reference: `Trade reversal — Settlement #${settlement.id}: ${input.reason}`,
+            balanceAfter: buyerHolding.sharesOwned - settlement.quantity,
+          },
+          {
+            propertyId: shareClass.propertyId,
+            shareClassId: shareClass.id,
+            investorId: settlement.sellerId,
+            transactionType: "TRANSFER_IN",
+            shares: settlement.quantity,
+            pricePerShare: settlement.pricePerShare,
+            totalAmount: settlement.totalAmount,
+            reference: `Trade reversal — Settlement #${settlement.id}: ${input.reason}`,
+            balanceAfter: (sellerHolding?.sharesOwned ?? 0) + settlement.quantity,
+          },
+        ],
+      });
+      await tx.shareTradeSettlement.update({
+        where: { id: settlement.id },
+        data: { reversedAt: new Date(), reversedById: user.id, reversedReason: input.reason },
+      });
+    });
+
+    await createAuditLog(user.id, "REVERSE_TRADE", "ShareTradeSettlement", settlement.id, {
+      reason: input.reason,
+      quantity: settlement.quantity,
+    });
+    await createNotification(
+      settlement.buyerId,
+      "Trade reversed",
+      `Settlement #${settlement.id} was reversed by an administrator. ${settlement.quantity} shares were returned to the seller. Reason: ${input.reason}`,
+      "WARNING",
+      "INVESTMENT",
+      shareClass.propertyId
+    );
+    await createNotification(
+      settlement.sellerId,
+      "Trade reversed — shares returned",
+      `Settlement #${settlement.id} was reversed by an administrator. ${settlement.quantity} shares were returned to you. Reason: ${input.reason}`,
+      "WARNING",
+      "INVESTMENT",
+      shareClass.propertyId
+    );
+    return { success: true };
+  });
+

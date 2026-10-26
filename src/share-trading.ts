@@ -137,3 +137,71 @@ export function weightedAverageCost(
   if (heldQty <= 0) return addPrice;
   return (heldAvg * heldQty + addQty * addPrice) / newQty;
 }
+
+// ── Cash-settlement (DvP) helpers ──────────────────────────────
+
+/** Default Securities Transfer Tax rate in basis points (SA STT = 0.25%). */
+export const STT_BPS = 25;
+
+/**
+ * Securities Transfer Tax on a transfer value, in Rands (cents-rounded).
+ * 100 bps = 1%. Returns 0 for non-positive inputs.
+ */
+export function computeStt(transferValue: number, bps: number = STT_BPS): number {
+  if (!Number.isFinite(transferValue) || !Number.isFinite(bps)) return 0;
+  if (transferValue <= 0 || bps <= 0) return 0;
+  return Math.round(transferValue * (bps / 10_000) * 100) / 100;
+}
+
+/**
+ * Shares a seller has reserved against delivery and therefore may NOT move,
+ * transfer or re-sell: the still-open quantity on their resting SELL orders
+ * plus everything locked in not-yet-settled trade settlements.
+ */
+export function reservedShares(
+  openSellOrders: { quantity: number; filledQuantity: number }[],
+  pendingSettlements: { quantity: number }[]
+): number {
+  const fromOrders = openSellOrders.reduce(
+    (s, o) => s + Math.max(0, o.quantity - o.filledQuantity),
+    0
+  );
+  const fromSettlements = pendingSettlements.reduce(
+    (s, st) => s + Math.max(0, st.quantity),
+    0
+  );
+  return fromOrders + fromSettlements;
+}
+
+/**
+ * Whether an order price is within the allowed collar around an anchor price.
+ * A non-positive or missing anchor disables the check (returns true). The collar
+ * is symmetric: price must lie in [anchor*(1-pct/100), anchor*(1+pct/100)].
+ */
+export function priceWithinCollar(
+  orderPrice: number,
+  anchor: number | null | undefined,
+  collarPct: number
+): boolean {
+  if (anchor == null || !Number.isFinite(anchor) || anchor <= 0) return true;
+  if (!Number.isFinite(collarPct) || collarPct <= 0) return true;
+  const band = anchor * (collarPct / 100);
+  return orderPrice >= anchor - band && orderPrice <= anchor + band;
+}
+
+/**
+ * Whether acquiring `addShares` would push an investor's position above the
+ * per-investor concentration cap. A missing/non-positive cap disables the check.
+ */
+export function exceedsConcentration(
+  currentShares: number,
+  addShares: number,
+  totalShares: number,
+  maxOwnershipPct: number | null | undefined
+): boolean {
+  if (maxOwnershipPct == null || maxOwnershipPct <= 0) return false;
+  if (totalShares <= 0) return false;
+  const resultingPct = ((currentShares + addShares) / totalShares) * 100;
+  // Tolerate floating error so an exactly-at-cap position is allowed.
+  return resultingPct > maxOwnershipPct + 1e-9;
+}

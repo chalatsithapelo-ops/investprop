@@ -83,7 +83,7 @@ import { createFinancialEntry, getFinancialEntries, getFinancialSummary, getMont
 // Phase 6: Compliance & Audit
 import { getComplianceDashboard, logAuditEvent, getFICAStatus, getRegulatoryChecklist, getFSCAReadiness } from "~/server/trpc/procedures/compliance";
 // Phase 7: Share Marketplace
-import { placeShareOrder, getOrderBook, getMyOrders, cancelShareOrder, getTradeHistory, getSharePriceHistory, getMarketplaceOverview } from "~/server/trpc/procedures/share-marketplace";
+import { placeShareOrder, getOrderBook, getMyOrders, cancelShareOrder, getTradeHistory, getSharePriceHistory, getMarketplaceOverview, submitTradePayment, reviewTradeSettlement, cancelTradeSettlement, getMyTradeSettlements, getPendingTradeSettlements, expireStaleSettlements, setShareClassTradingHalted, updateShareClassMarketParams, reverseShareTrade } from "~/server/trpc/procedures/share-marketplace";
 // Phase 8: Payment Gateway (Paystack)
 import { initiateDistributionPayout, verifyPaystackTransfer, initializePayment, verifyPayment, getPaystackBalance, getPaymentGatewayStatus } from "~/server/trpc/procedures/payments";
 // Phase 9: Distressed Property Finder
@@ -391,6 +391,16 @@ export const appRouter = createTRPCRouter({
   getTradeHistory,
   getSharePriceHistory,
   getMarketplaceOverview,
+  // Phase 7b: DvP cash-settlement + market admin controls
+  submitTradePayment,
+  reviewTradeSettlement,
+  cancelTradeSettlement,
+  getMyTradeSettlements,
+  getPendingTradeSettlements,
+  expireStaleSettlements,
+  setShareClassTradingHalted,
+  updateShareClassMarketParams,
+  reverseShareTrade,
   // Phase 8: Payment Gateway
   initiateDistributionPayout,
   verifyPaystackTransfer,

@@ -700,6 +700,8 @@ model User {
   spvDirectorships           SPV[]                    @relation("SPVDirector")
   financialEntries           PropertyFinancialEntry[]
   shareOrders                ShareOrder[]
+  settlementsAsBuyer         ShareTradeSettlement[]   @relation("SettlementBuyer")
+  settlementsAsSeller        ShareTradeSettlement[]   @relation("SettlementSeller")
   distributionPayouts        DistributionPayout[]
   distressedListings         DistressedListing[]
   ownerSaleProposals         OwnerSaleProposal[]      @relation("OwnerSaleProposals")
@@ -794,6 +796,12 @@ model ShareClass {
   minimumShares           Int                 @default(1) // Minimum shares per purchase
   minimumInvestmentAmount Float               @default(0) // Minimum investment in Rands (0 = no min)
   maxInvestors            Int? // Maximum number of investors allowed (null = unlimited)
+  // ── Secondary-market controls ──
+  tradingHalted           Boolean             @default(false) // Admin kill-switch for this class
+  tradingHaltReason       String?
+  navPerShare             Float? // Latest valuation anchor for the price collar (null = use last trade / base)
+  priceCollarPct          Float               @default(20) // Max % an order price may deviate from the anchor
+  maxOwnershipPct         Float? // Per-investor concentration cap (% of totalShares); null = uncapped
   createdAt               DateTime            @default(now())
   property                Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   holdings                ShareHolding[]
@@ -801,6 +809,7 @@ model ShareClass {
   orders                  ShareOrder[]
   trades                  ShareTrade[]
   priceHistory            SharePriceHistory[]
+  settlements             ShareTradeSettlement[]
 
   @@unique([propertyId, name])
   @@index([propertyId])
@@ -1120,6 +1129,16 @@ enum ShareOrderStatus {
   EXPIRED
 }
 
+// Lifecycle of a matched secondary trade awaiting Delivery-versus-Payment.
+enum TradeSettlementStatus {
+  PENDING_PAYMENT // matched; seller shares reserved; awaiting buyer EFT
+  POP_SUBMITTED   // buyer uploaded proof of payment; awaiting manager review
+  SETTLED         // shares delivered + cash confirmed
+  REJECTED        // manager rejected the proof of payment
+  EXPIRED         // payment window elapsed before settlement
+  CANCELLED       // cancelled by admin/system
+}
+
 // ─── Phase 2: Legal Documents Model ─────────────────────────────
 
 model LegalDocument {
@@ -1227,6 +1246,44 @@ model SharePriceHistory {
   shareClass   ShareClass @relation(fields: [shareClassId], references: [id])
 
   @@index([shareClassId, recordedAt])
+}
+
+// Escrow record for a matched secondary trade settling under Delivery-versus-Payment.
+// Seller shares are reserved on creation; ownership moves only on manager confirmation.
+model ShareTradeSettlement {
+  id                    Int                   @id @default(autoincrement())
+  shareClassId          Int
+  buyOrderId            Int
+  sellOrderId           Int
+  buyerId               Int
+  sellerId              Int
+  quantity              Int
+  pricePerShare         Float
+  totalAmount           Float // cash the buyer owes the seller (quantity * pricePerShare)
+  platformFee           Float                 @default(0) // SECONDARY_TRADE fee booked on settlement
+  securitiesTransferTax Float                 @default(0) // STT (~0.25%) on the transfer value
+  status                TradeSettlementStatus @default(PENDING_PAYMENT)
+  proofOfPaymentUrl     String?
+  paymentReference      String?
+  paymentSubmittedAt    DateTime?
+  reviewedById          Int?
+  reviewedAt            DateTime?
+  reviewNotes           String?
+  expiresAt             DateTime? // payment window; auto-expires the reservation if unpaid
+  settledTradeId        Int? // links to the ShareTrade once settled
+  reversedAt            DateTime?
+  reversedById          Int?
+  reversedReason        String?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @default(now()) @updatedAt
+  shareClass            ShareClass            @relation(fields: [shareClassId], references: [id])
+  buyer                 User                  @relation("SettlementBuyer", fields: [buyerId], references: [id])
+  seller                User                  @relation("SettlementSeller", fields: [sellerId], references: [id])
+
+  @@index([shareClassId])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
 }
 
 // ─── Contractor Management ──────────────────────────────────────

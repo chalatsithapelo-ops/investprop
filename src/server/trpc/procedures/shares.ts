@@ -290,15 +290,31 @@ export const transferShares = baseProcedure
       },
       select: { quantity: true, filledQuantity: true },
     });
-    const committed = openSellOrders.reduce(
+    // Shares already escrowed in in-flight DvP settlements (seller leg) are
+    // likewise reserved — they are promised to a buyer pending payment and must
+    // not be transferable until the settlement settles, rejects, or expires.
+    const pendingSellSettlements = await db.shareTradeSettlement.findMany({
+      where: {
+        shareClassId: input.shareClassId,
+        sellerId: user.id,
+        status: { in: ["PENDING_PAYMENT", "POP_SUBMITTED"] },
+      },
+      select: { quantity: true },
+    });
+    const committedOrders = openSellOrders.reduce(
       (sum, o) => sum + (o.quantity - o.filledQuantity),
       0
     );
+    const committedSettlements = pendingSellSettlements.reduce(
+      (sum, s) => sum + s.quantity,
+      0
+    );
+    const committed = committedOrders + committedSettlements;
     const available = fromHolding.sharesOwned - committed;
     if (available < input.shares) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: `Insufficient available shares. You own ${fromHolding.sharesOwned}, but ${committed} are committed to open sell orders (${available} available). Cancel those orders first.`,
+        message: `Insufficient available shares. You own ${fromHolding.sharesOwned}, but ${committed} are committed (${committedOrders} to open sell orders, ${committedSettlements} escrowed in pending settlements) — ${available} available. Cancel those orders/settlements first.`,
       });
     }
 
@@ -306,6 +322,68 @@ export const transferShares = baseProcedure
       where: { id: input.shareClassId },
     });
     if (!shareClass) throw new TRPCError({ code: "NOT_FOUND", message: "Share class not found" });
+
+    // A share transfer puts shares into the recipient's hands exactly like a
+    // trade would, so the recipient must clear the same gates a buyer does:
+    // KYC approval, the investor-count cap, and the per-holder concentration cap.
+    const recipientKycDocs = await db.kYCDocument.findMany({ where: { investorId: input.toInvestorId } });
+    const recipientApprovedTypes = recipientKycDocs
+      .filter((d) => d.status === "APPROVED")
+      .map((d) => d.documentType);
+    const requiredRecipientKYC = ["ID_DOCUMENT", "PROOF_OF_ADDRESS", "BANK_STATEMENT"];
+    const recipientMissingKYC = requiredRecipientKYC.filter(
+      (t) => !recipientApprovedTypes.includes(t as any)
+    );
+    if (recipientMissingKYC.length > 0) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Recipient is not KYC-verified and cannot receive shares. Missing: ${recipientMissingKYC.join(", ")}.`,
+      });
+    }
+
+    const recipientExistingHolding = await db.shareHolding.findUnique({
+      where: {
+        shareClassId_investorId: {
+          shareClassId: input.shareClassId,
+          investorId: input.toInvestorId,
+        },
+      },
+      select: { sharesOwned: true },
+    });
+
+    // Investor-count cap: only matters when the recipient would become a NEW holder.
+    if (
+      shareClass.maxInvestors != null &&
+      shareClass.maxInvestors > 0 &&
+      (recipientExistingHolding?.sharesOwned ?? 0) <= 0
+    ) {
+      const currentHolders = await db.shareHolding.count({
+        where: { shareClassId: input.shareClassId, sharesOwned: { gt: 0 } },
+      });
+      if (currentHolders >= shareClass.maxInvestors) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Transfer would exceed the maximum of ${shareClass.maxInvestors} investors for this share class.`,
+        });
+      }
+    }
+
+    // Per-holder concentration cap on the recipient's resulting position.
+    const recipientMaxOwnershipPct = (shareClass as any).maxOwnershipPct as number | null | undefined;
+    if (
+      recipientMaxOwnershipPct != null &&
+      recipientMaxOwnershipPct > 0 &&
+      shareClass.totalShares > 0
+    ) {
+      const projectedShares = (recipientExistingHolding?.sharesOwned ?? 0) + input.shares;
+      const projectedPct = (projectedShares / shareClass.totalShares) * 100;
+      if (projectedPct > recipientMaxOwnershipPct + 1e-9) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Transfer would give the recipient ${projectedPct.toFixed(2)}% ownership, exceeding the ${recipientMaxOwnershipPct}% concentration cap for this share class.`,
+        });
+      }
+    }
 
     const transferPropertyId = shareClass.propertyId;
     const totalAmount = input.shares * input.pricePerShare;
@@ -789,6 +867,27 @@ export const requestCoolingOffWithdrawal = baseProcedure
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: `The ${COOLING_OFF_DAYS}-day cooling-off period expired on ${coolingOffDeadline.toLocaleDateString("en-ZA")}. You can sell your shares on the Share Marketplace instead.`,
+      });
+    }
+
+    // Cooling-off withdraws the ENTIRE holding. If any of those shares are
+    // escrowed in an in-flight DvP settlement (promised to a buyer pending
+    // payment), we cannot hand the full holding back — that would leave the
+    // matching engine unable to deliver. Require the settlement to resolve
+    // (settle/reject/expire) or be cancelled first.
+    const pendingSellSettlements = await db.shareTradeSettlement.findMany({
+      where: {
+        shareClassId: holding.shareClassId,
+        sellerId: user.id,
+        status: { in: ["PENDING_PAYMENT", "POP_SUBMITTED"] },
+      },
+      select: { quantity: true },
+    });
+    const escrowedShares = pendingSellSettlements.reduce((sum, s) => sum + s.quantity, 0);
+    if (escrowedShares > 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `${escrowedShares} of your shares are escrowed in pending marketplace settlements and cannot be withdrawn. Cancel those settlements first, or wait for them to complete.`,
       });
     }
 

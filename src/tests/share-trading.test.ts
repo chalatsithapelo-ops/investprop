@@ -3,6 +3,11 @@ import {
   planFills,
   aggregateOrderLevels,
   weightedAverageCost,
+  computeStt,
+  reservedShares,
+  priceWithinCollar,
+  exceedsConcentration,
+  STT_BPS,
 } from "~/share-trading";
 
 describe("planFills — price crossing", () => {
@@ -169,5 +174,73 @@ describe("weightedAverageCost", () => {
 
   it("returns 0 when the resulting position is empty", () => {
     expect(weightedAverageCost(0, 0, 0, 10)).toBe(0);
+  });
+});
+
+describe("computeStt", () => {
+  it("applies the default 0.25% STT rate (cents-rounded)", () => {
+    // 1000 shares @ R10 = R10,000 -> 0.25% = R25.00
+    expect(computeStt(10_000)).toBe(25);
+    expect(STT_BPS).toBe(25);
+  });
+
+  it("returns 0 for non-positive values", () => {
+    expect(computeStt(0)).toBe(0);
+    expect(computeStt(-100)).toBe(0);
+  });
+
+  it("rounds to two decimals", () => {
+    expect(computeStt(333.33, 25)).toBeCloseTo(0.83, 2);
+  });
+});
+
+describe("reservedShares", () => {
+  it("sums remaining open sell-order quantity and pending settlement quantity", () => {
+    const reserved = reservedShares(
+      [
+        { quantity: 100, filledQuantity: 40 }, // 60 remaining
+        { quantity: 50, filledQuantity: 0 }, // 50 remaining
+      ],
+      [{ quantity: 30 }, { quantity: 20 }] // 50 locked in settlements
+    );
+    expect(reserved).toBe(160);
+  });
+
+  it("is 0 with nothing reserved", () => {
+    expect(reservedShares([], [])).toBe(0);
+  });
+});
+
+describe("priceWithinCollar", () => {
+  it("accepts prices within the symmetric band", () => {
+    expect(priceWithinCollar(110, 100, 20)).toBe(true); // +10%
+    expect(priceWithinCollar(85, 100, 20)).toBe(true); // -15%
+  });
+
+  it("rejects prices outside the band", () => {
+    expect(priceWithinCollar(130, 100, 20)).toBe(false); // +30%
+    expect(priceWithinCollar(70, 100, 20)).toBe(false); // -30%
+  });
+
+  it("disables the check when the anchor is missing or non-positive", () => {
+    expect(priceWithinCollar(9999, null, 20)).toBe(true);
+    expect(priceWithinCollar(9999, 0, 20)).toBe(true);
+    expect(priceWithinCollar(9999, 100, 0)).toBe(true);
+  });
+});
+
+describe("exceedsConcentration", () => {
+  it("flags positions that would breach the cap", () => {
+    // 4000 held + 1000 add = 5000 of 10000 = 50% > 40% cap
+    expect(exceedsConcentration(4000, 1000, 10_000, 40)).toBe(true);
+  });
+
+  it("allows a position exactly at the cap", () => {
+    expect(exceedsConcentration(3000, 1000, 10_000, 40)).toBe(false); // 40%
+  });
+
+  it("disables the check when no cap is set", () => {
+    expect(exceedsConcentration(9000, 1000, 10_000, null)).toBe(false);
+    expect(exceedsConcentration(9000, 1000, 10_000, 0)).toBe(false);
   });
 });

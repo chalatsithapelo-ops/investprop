@@ -6,6 +6,7 @@ import { TrendingUp, ArrowUpDown, BarChart3, XCircle, Activity, ShoppingCart, Al
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import { useBlockPropertyOwner } from "~/utils/use-require-role";
 import toast from "react-hot-toast";
 
 export const Route = createFileRoute("/share-marketplace/")({
@@ -20,6 +21,9 @@ function ShareMarketplacePage() {
   const authToken = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
+  const isManager = user?.role === "DEVELOPMENT_MANAGER" || user?.role === "PROJECT_MANAGER";
+
+  useBlockPropertyOwner();
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -48,12 +52,53 @@ function ShareMarketplacePage() {
     onError: (e: any) => toast.error(e.message),
   }));
 
+  // ── DvP cash-settlement: investor's own settlements + manager review queue ──
+  const mySettlementsQuery = useQuery({ ...trpc.getMyTradeSettlements.queryOptions({ authToken: authToken ?? "" }), enabled: !!authToken });
+  const pendingSettlementsQuery = useQuery({ ...trpc.getPendingTradeSettlements.queryOptions({ authToken: authToken ?? "" }), enabled: !!authToken && isManager });
+
+  const invalidateSettlements = () => {
+    qc.invalidateQueries({ queryKey: trpc.getMyTradeSettlements.queryKey() });
+    qc.invalidateQueries({ queryKey: trpc.getPendingTradeSettlements.queryKey() });
+    qc.invalidateQueries({ queryKey: trpc.getOrderBook.queryKey() });
+    qc.invalidateQueries({ queryKey: trpc.getMyOrders.queryKey() });
+  };
+  const submitPaymentMutation = useMutation(trpc.submitTradePayment.mutationOptions({
+    onSuccess: () => { toast.success("Proof of payment submitted for review"); invalidateSettlements(); },
+    onError: (e: any) => toast.error(e.message),
+  }));
+  const cancelSettlementMutation = useMutation(trpc.cancelTradeSettlement.mutationOptions({
+    onSuccess: () => { toast.success("Settlement cancelled — reserved shares released"); invalidateSettlements(); },
+    onError: (e: any) => toast.error(e.message),
+  }));
+  const reviewSettlementMutation = useMutation(trpc.reviewTradeSettlement.mutationOptions({
+    onSuccess: () => { toast.success("Settlement updated"); invalidateSettlements(); },
+    onError: (e: any) => toast.error(e.message),
+  }));
+
+  const handleSubmitPop = (settlementId: number) => {
+    const url = window.prompt("Paste the proof-of-payment URL (bank receipt / confirmation link):");
+    if (!url) return;
+    const ref = window.prompt("Payment reference (optional):") ?? undefined;
+    (submitPaymentMutation.mutate as any)({ authToken: authToken ?? "", settlementId, proofOfPaymentUrl: url, paymentReference: ref || undefined });
+  };
+  const handleReview = (settlementId: number, action: "APPROVE" | "REJECT") => {
+    const reviewNotes = action === "REJECT"
+      ? (window.prompt("Reason for rejection (shared with the buyer):") ?? undefined)
+      : undefined;
+    if (action === "REJECT" && !reviewNotes) return;
+    (reviewSettlementMutation.mutate as any)({ authToken: authToken ?? "", settlementId, action, reviewNotes });
+  };
+
   const overview = (overviewQuery.data ?? []) as any[];
   const orderBook = orderBookQuery.data as any;
   const myOrders = (myOrdersQuery.data ?? []) as any[];
   const trades = (tradesQuery.data ?? []) as any[];
   const priceHistory = priceHistoryQuery.data as any;
-
+  const mySettlements = (mySettlementsQuery.data ?? []) as any[];
+  const pendingSettlements = (pendingSettlementsQuery.data ?? []) as any[];
+  const actionableSettlements = mySettlements.filter(
+    (s: any) => s.role === "BUYER" && ["PENDING_PAYMENT", "REJECTED"].includes(s.status)
+  );
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navbar />
@@ -108,6 +153,95 @@ function ShareMarketplacePage() {
           )}
         </div>
 
+        {/* ── DvP cash-settlement: investor settlements + manager review queue ── */}
+        {(mySettlements.length > 0 || (isManager && pendingSettlements.length > 0)) && (
+          <div className="mb-6 space-y-6">
+            {mySettlements.length > 0 && (
+              <div className="rounded-lg border bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+                <div className="mb-3 flex items-center gap-2">
+                  <Loader2 size={18} className="text-blue-600" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">My Trade Settlements</h3>
+                </div>
+                <p className="mb-4 text-xs text-gray-500 dark:text-gray-400">
+                  A matched trade is not final until it settles. As a buyer you must pay for reserved shares within the settlement window; a manager confirms payment before shares are delivered (delivery-versus-payment).
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="border-b text-left text-gray-500 dark:border-gray-700"><tr><th className="px-3 py-2">#</th><th className="px-3 py-2">Role</th><th className="px-3 py-2">Share Class</th><th className="px-3 py-2">Qty</th><th className="px-3 py-2">Price</th><th className="px-3 py-2">Total</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Expires</th><th className="px-3 py-2"></th></tr></thead>
+                    <tbody className="divide-y dark:divide-gray-700">
+                      {mySettlements.map((s: any) => (
+                        <tr key={s.id}>
+                          <td className="px-3 py-2 text-gray-500">{s.id}</td>
+                          <td className="px-3 py-2"><span className={`rounded px-2 py-0.5 text-xs font-medium ${s.role === "BUYER" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{s.role}</span></td>
+                          <td className="px-3 py-2">{s.shareClass?.name}<span className="block text-xs text-gray-400">{s.shareClass?.property?.title}</span></td>
+                          <td className="px-3 py-2">{s.quantity}</td>
+                          <td className="px-3 py-2">R{Number(s.pricePerShare).toFixed(2)}</td>
+                          <td className="px-3 py-2">R{Number(s.totalAmount).toFixed(2)}</td>
+                          <td className="px-3 py-2"><SettlementStatusBadge status={s.status} /></td>
+                          <td className="px-3 py-2 text-xs text-gray-500">{s.expiresAt ? new Date(s.expiresAt).toLocaleDateString() : "—"}</td>
+                          <td className="px-3 py-2">
+                            <div className="flex gap-2">
+                              {s.role === "BUYER" && ["PENDING_PAYMENT", "REJECTED"].includes(s.status) && (
+                                <button onClick={() => handleSubmitPop(s.id)} disabled={submitPaymentMutation.isPending} className="rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50">Submit payment</button>
+                              )}
+                              {["PENDING_PAYMENT", "POP_SUBMITTED"].includes(s.status) && (
+                                <button onClick={() => (cancelSettlementMutation.mutate as any)({ authToken: authToken ?? "", settlementId: s.id })} disabled={cancelSettlementMutation.isPending} className="rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Cancel</button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {actionableSettlements.length > 0 && (
+                  <p className="mt-3 text-xs font-medium text-amber-700 dark:text-amber-300">
+                    <AlertTriangle size={12} className="mr-1 inline" />
+                    You have {actionableSettlements.length} purchase{actionableSettlements.length > 1 ? "s" : ""} awaiting payment. Unpaid settlements expire and release the shares back to the seller.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {isManager && pendingSettlements.length > 0 && (
+              <div className="rounded-lg border border-purple-200 bg-white p-5 dark:border-purple-800 dark:bg-gray-800">
+                <div className="mb-3 flex items-center gap-2">
+                  <UserCheck size={18} className="text-purple-600" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Settlement Review Queue</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="border-b text-left text-gray-500 dark:border-gray-700"><tr><th className="px-3 py-2">#</th><th className="px-3 py-2">Buyer</th><th className="px-3 py-2">Seller</th><th className="px-3 py-2">Share Class</th><th className="px-3 py-2">Qty</th><th className="px-3 py-2">Total</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">POP</th><th className="px-3 py-2"></th></tr></thead>
+                    <tbody className="divide-y dark:divide-gray-700">
+                      {pendingSettlements.map((s: any) => (
+                        <tr key={s.id}>
+                          <td className="px-3 py-2 text-gray-500">{s.id}</td>
+                          <td className="px-3 py-2">{s.buyer?.name}<span className="block text-xs text-gray-400">{s.buyer?.investorCode}</span></td>
+                          <td className="px-3 py-2">{s.seller?.name}<span className="block text-xs text-gray-400">{s.seller?.investorCode}</span></td>
+                          <td className="px-3 py-2">{s.shareClass?.name}</td>
+                          <td className="px-3 py-2">{s.quantity}</td>
+                          <td className="px-3 py-2">R{Number(s.totalAmount).toFixed(2)}</td>
+                          <td className="px-3 py-2"><SettlementStatusBadge status={s.status} /></td>
+                          <td className="px-3 py-2">{s.proofOfPaymentUrl ? <a href={s.proofOfPaymentUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">View</a> : <span className="text-xs text-gray-400">—</span>}</td>
+                          <td className="px-3 py-2">
+                            {s.status === "POP_SUBMITTED" && (
+                              <div className="flex gap-2">
+                                <button onClick={() => handleReview(s.id, "APPROVE")} disabled={reviewSettlementMutation.isPending} className="rounded bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50">Confirm &amp; settle</button>
+                                <button onClick={() => handleReview(s.id, "REJECT")} disabled={reviewSettlementMutation.isPending} className="rounded bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50">Reject</button>
+                              </div>
+                            )}
+                            {s.status === "PENDING_PAYMENT" && <span className="text-xs text-gray-400">Awaiting buyer payment</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {selectedShareClass && (
           <>
             <div className="mb-4 flex gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
@@ -143,14 +277,14 @@ function ShareMarketplacePage() {
                           <div>
                             <div className="border-b bg-green-50 px-4 py-2 dark:border-gray-700 dark:bg-green-900/20"><span className="text-sm font-medium text-green-800 dark:text-green-300">Bids (Buy)</span></div>
                             <div className="divide-y dark:divide-gray-700">
-                              {orderBook.buyLevels?.map((b: any, i: number) => (<div key={i} className="grid grid-cols-3 px-4 py-2 text-sm"><span className="font-medium text-green-600">R{Number(b.pricePerShare).toFixed(2)}</span><span className="text-center">{b._sum?.quantity ?? b._count}</span><span className="text-right text-gray-500">{b._count}</span></div>))}
+                              {orderBook.buyLevels?.map((b: any, i: number) => (<div key={i} className="grid grid-cols-3 px-4 py-2 text-sm"><span className="font-medium text-green-600">R{Number(b.price).toFixed(2)}</span><span className="text-center">{b.quantity}</span><span className="text-right text-gray-500">{b.orders}</span></div>))}
                               {!orderBook.buyLevels?.length && <p className="px-4 py-6 text-center text-xs text-gray-400">No bids</p>}
                             </div>
                           </div>
                           <div>
                             <div className="border-b bg-red-50 px-4 py-2 dark:border-gray-700 dark:bg-red-900/20"><span className="text-sm font-medium text-red-800 dark:text-red-300">Asks (Sell)</span></div>
                             <div className="divide-y dark:divide-gray-700">
-                              {orderBook.sellLevels?.map((a: any, i: number) => (<div key={i} className="grid grid-cols-3 px-4 py-2 text-sm"><span className="font-medium text-red-600">R{Number(a.pricePerShare).toFixed(2)}</span><span className="text-center">{a._sum?.quantity ?? a._count}</span><span className="text-right text-gray-500">{a._count}</span></div>))}
+                              {orderBook.sellLevels?.map((a: any, i: number) => (<div key={i} className="grid grid-cols-3 px-4 py-2 text-sm"><span className="font-medium text-red-600">R{Number(a.price).toFixed(2)}</span><span className="text-center">{a.quantity}</span><span className="text-right text-gray-500">{a.orders}</span></div>))}
                               {!orderBook.sellLevels?.length && <p className="px-4 py-6 text-center text-xs text-gray-400">No asks</p>}
                             </div>
                           </div>
@@ -160,7 +294,7 @@ function ShareMarketplacePage() {
                           const buyCount = orderBook.buyLevels?.length ?? 0;
                           const sellCount = orderBook.sellLevels?.length ?? 0;
                           const thin = buyCount < 2 || sellCount < 2;
-                          const refPrice = Number(orderBook.buyLevels?.[0]?.pricePerShare ?? orderBook.sellLevels?.[0]?.pricePerShare ?? 0);
+                          const refPrice = Number(orderBook.buyLevels?.[0]?.price ?? orderBook.sellLevels?.[0]?.price ?? 0);
                           const wideSpread = orderBook.spread != null && refPrice > 0 && Number(orderBook.spread) / refPrice > 0.05;
                           if (!thin && !wideSpread) return null;
                           return (
@@ -412,4 +546,24 @@ function TransferSharesModal({
       </div>
     </div>
   );
+}
+
+function SettlementStatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    PENDING_PAYMENT: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+    POP_SUBMITTED: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+    SETTLED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+    REJECTED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+    EXPIRED: "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
+    CANCELLED: "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
+  };
+  const label: Record<string, string> = {
+    PENDING_PAYMENT: "Awaiting payment",
+    POP_SUBMITTED: "Payment under review",
+    SETTLED: "Settled",
+    REJECTED: "Rejected",
+    EXPIRED: "Expired",
+    CANCELLED: "Cancelled",
+  };
+  return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${map[status] ?? "bg-gray-100 text-gray-700"}`}>{label[status] ?? status}</span>;
 }
