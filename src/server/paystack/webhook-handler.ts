@@ -6,6 +6,7 @@ import { getPrice } from "~/server/subscriptions/plans";
 import { activatePaidSubscription } from "~/server/subscriptions/activate";
 import { createAuditLog } from "~/server/trpc/procedures/audit-log";
 import { createNotification } from "~/server/trpc/procedures/notifications";
+import { confirmWalletDeposit } from "~/server/wallet/deposits";
 
 // ═══════════════════════════════════════════════════════════════
 //  Paystack webhook — the reliable, server-to-server source of truth
@@ -81,6 +82,18 @@ async function handleChargeSuccess(data: Record<string, any>): Promise<string> {
       );
       return `renewal booked (${sub.tier})`;
     }
+  }
+
+  // 2.5 Wallet deposit — credit the user's in-app wallet and auto-settle any of
+  //     their pending trade obligations the new balance can cover.
+  if (metaType === "WALLET_DEPOSIT" && reference) {
+    const userId = Number(data.metadata?.userId) || undefined;
+    const outcome = await confirmWalletDeposit({
+      reference,
+      amountCents: Math.round(data.amount ?? 0),
+      userId,
+    });
+    return `wallet deposit ${outcome.alreadyProcessed ? "already processed" : "credited"} (auto-settled ${outcome.settledCount} trade(s))`;
   }
 
   // 3. Some other charge (e.g. investment payment) — not ours to handle here.

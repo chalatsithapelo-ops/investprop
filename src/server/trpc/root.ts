@@ -84,6 +84,9 @@ import { createFinancialEntry, getFinancialEntries, getFinancialSummary, getMont
 import { getComplianceDashboard, logAuditEvent, getFICAStatus, getRegulatoryChecklist, getFSCAReadiness } from "~/server/trpc/procedures/compliance";
 // Phase 7: Share Marketplace
 import { placeShareOrder, getOrderBook, getMyOrders, cancelShareOrder, getTradeHistory, getSharePriceHistory, getMarketplaceOverview, submitTradePayment, reviewTradeSettlement, cancelTradeSettlement, getMyTradeSettlements, getPendingTradeSettlements, expireStaleSettlements, setShareClassTradingHalted, updateShareClassMarketParams, reverseShareTrade } from "~/server/trpc/procedures/share-marketplace";
+// Phase 7c: In-app Wallet + share integrity
+import { getMyWallet, getWalletTransactions, initiateWalletDeposit, verifyWalletDeposit, requestWithdrawal, getMyWithdrawals, getPendingWithdrawals, reviewWithdrawal } from "~/server/trpc/procedures/wallet";
+import { auditShareConservation, getShareProvenance } from "~/server/trpc/procedures/share-audit";
 // Phase 8: Payment Gateway (Paystack)
 import { initiateDistributionPayout, verifyPaystackTransfer, initializePayment, verifyPayment, getPaystackBalance, getPaymentGatewayStatus } from "~/server/trpc/procedures/payments";
 // Phase 9: Distressed Property Finder
@@ -401,6 +404,17 @@ export const appRouter = createTRPCRouter({
   setShareClassTradingHalted,
   updateShareClassMarketParams,
   reverseShareTrade,
+  // Phase 7c: In-app Wallet + share integrity
+  getMyWallet,
+  getWalletTransactions,
+  initiateWalletDeposit,
+  verifyWalletDeposit,
+  requestWithdrawal,
+  getMyWithdrawals,
+  getPendingWithdrawals,
+  reviewWithdrawal,
+  auditShareConservation,
+  getShareProvenance,
   // Phase 8: Payment Gateway
   initiateDistributionPayout,
   verifyPaystackTransfer,

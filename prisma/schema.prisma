@@ -722,6 +722,8 @@ model User {
   referralLeads              ReferralLead[]
   prequalifications          Prequalification[]
   homeLoanApplications       HomeLoanApplication[]
+  wallet                     Wallet?
+  walletWithdrawals          WalletWithdrawal[]
 }
 
 enum DevelopmentType {
@@ -1284,6 +1286,93 @@ model ShareTradeSettlement {
   @@index([buyerId])
   @@index([sellerId])
   @@index([status])
+}
+
+// ─── Wallet (in-app cash balance for instant DvP settlement) ────
+// Balances and transaction amounts are stored in integer CENTS (ZAR) to avoid
+// floating-point drift. A wallet's balance equals the running balanceAfter of
+// its most recent COMPLETED transaction — the transaction ledger is the source
+// of truth and the balance column is a cached projection kept in lock-step.
+model Wallet {
+  id           Int                 @id @default(autoincrement())
+  userId       Int                 @unique
+  balanceCents Int                 @default(0) // authoritative cash balance in cents (ZAR)
+  currency     String              @default("ZAR")
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @default(now()) @updatedAt
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
+
+  @@index([userId])
+}
+
+model WalletTransaction {
+  id           Int                 @id @default(autoincrement())
+  walletId     Int
+  type         WalletTxnType
+  amountCents  Int // signed: positive = credit, negative = debit
+  balanceAfter Int // running wallet balance (cents) after this transaction
+  status       WalletTxnStatus     @default(COMPLETED)
+  reference    String?             @unique // Paystack ref / internal idempotency key
+  description  String?
+  settlementId Int? // ShareTradeSettlement this txn relates to (trade legs)
+  withdrawalId Int? // WalletWithdrawal this txn relates to
+  createdAt    DateTime            @default(now())
+  wallet       Wallet              @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([settlementId])
+  @@index([withdrawalId])
+  @@index([status])
+}
+
+model WalletWithdrawal {
+  id                   Int               @id @default(autoincrement())
+  userId               Int
+  amountCents          Int // cents requested
+  status               WithdrawalStatus  @default(REQUESTED)
+  bankName             String?
+  accountNumber        String?
+  accountName          String?
+  branchCode           String?
+  reference            String?           @unique
+  paystackTransferCode String?
+  reviewedById         Int?
+  reviewedAt           DateTime?
+  reviewNotes          String?
+  processedAt          DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @default(now()) @updatedAt
+  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum WalletTxnType {
+  DEPOSIT // funded via Paystack (EFT/card)
+  WITHDRAWAL // payout to bank
+  TRADE_DEBIT // buyer paying for shares at settlement
+  TRADE_CREDIT // seller receiving proceeds at settlement
+  FEE // platform fee / STT collected
+  REFUND // settlement cancel/expiry/reversal or withdrawal rejection
+  ADJUSTMENT // manual admin correction
+}
+
+enum WalletTxnStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+enum WithdrawalStatus {
+  REQUESTED
+  APPROVED
+  PROCESSING
+  PAID
+  REJECTED
+  FAILED
 }
 
 // ─── Contractor Management ──────────────────────────────────────

@@ -384,6 +384,20 @@ export const mainNavigationLinks: NavigationLink[] = [
     description: "Buy and sell fractional property shares",
   },
   {
+    label: "My Wallet",
+    to: "/wallet",
+    icon: Wallet,
+    roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "INVESTOR"],
+    description: "Fund your wallet, settle trades instantly and withdraw proceeds",
+  },
+  {
+    label: "Share Integrity",
+    to: "/share-integrity",
+    icon: ShieldCheck,
+    roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "INVESTOR"],
+    description: "Trace shares to their property/SPV, see valuations, and audit share conservation",
+  },
+  {
     label: "Share Ledger",
     to: "/share-ledger",
     icon: BookOpen,

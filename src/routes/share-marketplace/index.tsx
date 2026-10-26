@@ -1,8 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 // Secondary market: order book + direct peer-to-peer transfer
-import { TrendingUp, ArrowUpDown, BarChart3, XCircle, Activity, ShoppingCart, AlertTriangle, Send, Loader2, UserCheck } from "lucide-react";
+import { TrendingUp, ArrowUpDown, BarChart3, XCircle, Activity, ShoppingCart, AlertTriangle, Send, Loader2, UserCheck, Wallet } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
@@ -165,6 +165,12 @@ function ShareMarketplacePage() {
                 <p className="mb-4 text-xs text-gray-500 dark:text-gray-400">
                   A matched trade is not final until it settles. As a buyer you must pay for reserved shares within the settlement window; a manager confirms payment before shares are delivered (delivery-versus-payment).
                 </p>
+                <div className="mb-4 flex items-start gap-2 rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-800 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300">
+                  <Wallet size={14} className="mt-0.5 flex-shrink-0" />
+                  <span>
+                    Fastest way to settle: fund your <Link to="/wallet" className="font-semibold underline">wallet</Link> and matched purchases settle instantly from your balance — no proof-of-payment review needed. The buttons below are the manual EFT fallback.
+                  </span>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="border-b text-left text-gray-500 dark:border-gray-700"><tr><th className="px-3 py-2">#</th><th className="px-3 py-2">Role</th><th className="px-3 py-2">Share Class</th><th className="px-3 py-2">Qty</th><th className="px-3 py-2">Price</th><th className="px-3 py-2">Total</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Expires</th><th className="px-3 py-2"></th></tr></thead>
@@ -182,7 +188,10 @@ function ShareMarketplacePage() {
                           <td className="px-3 py-2">
                             <div className="flex gap-2">
                               {s.role === "BUYER" && ["PENDING_PAYMENT", "REJECTED"].includes(s.status) && (
-                                <button onClick={() => handleSubmitPop(s.id)} disabled={submitPaymentMutation.isPending} className="rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50">Submit payment</button>
+                                <>
+                                  <Link to="/wallet" className="rounded bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-700">Pay from wallet</Link>
+                                  <button onClick={() => handleSubmitPop(s.id)} disabled={submitPaymentMutation.isPending} className="rounded border border-blue-600 px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-50 dark:hover:bg-blue-900/20">EFT proof</button>
+                                </>
                               )}
                               {["PENDING_PAYMENT", "POP_SUBMITTED"].includes(s.status) && (
                                 <button onClick={() => (cancelSettlementMutation.mutate as any)({ authToken: authToken ?? "", settlementId: s.id })} disabled={cancelSettlementMutation.isPending} className="rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Cancel</button>
@@ -197,7 +206,7 @@ function ShareMarketplacePage() {
                 {actionableSettlements.length > 0 && (
                   <p className="mt-3 text-xs font-medium text-amber-700 dark:text-amber-300">
                     <AlertTriangle size={12} className="mr-1 inline" />
-                    You have {actionableSettlements.length} purchase{actionableSettlements.length > 1 ? "s" : ""} awaiting payment. Unpaid settlements expire and release the shares back to the seller.
+                    You have {actionableSettlements.length} purchase{actionableSettlements.length > 1 ? "s" : ""} awaiting payment. Unpaid settlements expire and release the shares back to the seller. <Link to="/wallet" className="font-semibold underline">Fund your wallet</Link> to settle instantly.
                   </p>
                 )}
               </div>

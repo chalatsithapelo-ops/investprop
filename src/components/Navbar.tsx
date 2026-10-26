@@ -61,6 +61,8 @@ const navGroups: NavGroup[] = [
       "Property Financials",
       "Distributions & Voting",
       "Share Marketplace",
+      "My Wallet",
+      "Share Integrity",
       "Share Ledger",
     ],
   },
