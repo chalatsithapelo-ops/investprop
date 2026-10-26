@@ -9,6 +9,7 @@ import {
   calculateDevelopmentMetrics,
   calculateMonthlyDebtService,
   calculateDebtServiceCoverageRatio,
+  buildDevelopmentCashflow,
   type PropertyFlipInput,
   type RentalPropertyInput,
   type PropertyDevelopmentInput,
@@ -131,6 +132,12 @@ export const updateProperty = baseProcedure
       preSaleUnits: z.number().optional(),
       costPerSquareMeter: z.number().optional(),
       totalSquareMeters: z.number().optional(),
+      // Capital stack, VAT & governance
+      equityAmount: z.number().optional(),
+      seniorDebtAmount: z.number().optional(),
+      seniorDebtRate: z.number().optional(),
+      preSaleThresholdPercent: z.number().optional(),
+      vatApplicable: z.boolean().optional(),
       // Funding settings
       minimumInvestment: z.number().optional(),
       maximumInvestors: z.number().optional(),
@@ -392,6 +399,11 @@ export const updateProperty = baseProcedure
         if (input.expectedIRR !== undefined) devUpdateData.expectedIRR = input.expectedIRR;
         if (input.developmentTimelineMonths !== undefined) devUpdateData.developmentTimelineMonths = input.developmentTimelineMonths;
         if (input.totalSquareMeters !== undefined) devUpdateData.totalSquareMeters = input.totalSquareMeters;
+        if (input.equityAmount !== undefined) devUpdateData.equityAmount = input.equityAmount;
+        if (input.seniorDebtAmount !== undefined) devUpdateData.seniorDebtAmount = input.seniorDebtAmount;
+        if (input.seniorDebtRate !== undefined) devUpdateData.seniorDebtRate = input.seniorDebtRate;
+        if (input.preSaleThresholdPercent !== undefined) devUpdateData.preSaleThresholdPercent = input.preSaleThresholdPercent;
+        if (input.vatApplicable !== undefined) devUpdateData.vatApplicable = input.vatApplicable;
         if (input.developmentFundingGoal !== undefined) {
           devUpdateData.fundingGoal = input.developmentFundingGoal;
           // Sync sub-type funding goal to main Property table
@@ -447,6 +459,37 @@ export const updateProperty = baseProcedure
         devUpdateData.contingencyAmount = contingencyAmount;
         devUpdateData.totalBudget = calculations.totalCosts;
         devUpdateData.costPerSquareMeter = costPerSquareMeter;
+
+        // Recompute the time-phased feasibility so computed IRR / profit / peak
+        // funding stay the single source of truth after any cost or price edit.
+        const gdvForCashflow =
+          developmentType === "AFFORDABLE_RESALE"
+            ? (devInput.totalExpectedRevenue > 0
+                ? devInput.totalExpectedRevenue
+                : devInput.expectedSalePricePerUnit * devInput.numberOfUnits)
+            : (calculations.calculatedCapRate && calculations.calculatedCapRate > 0
+                ? (calculations.noi || 0) / (calculations.calculatedCapRate / 100)
+                : 0);
+        const cashflow = buildDevelopmentCashflow({
+          landCost: devInput.landAcquisitionCost,
+          hardCosts: devInput.hardCosts,
+          softCosts: devInput.softCosts,
+          contingencyAmount: calculations.contingencyAmount,
+          grossDevelopmentValue: gdvForCashflow,
+          timelineMonths: devInput.developmentTimelineMonths || 12,
+          equityAmount: input.equityAmount !== undefined ? input.equityAmount : property.propertyDevelopment.equityAmount,
+          seniorDebtAmount: input.seniorDebtAmount !== undefined ? input.seniorDebtAmount : property.propertyDevelopment.seniorDebtAmount,
+          debtAnnualRate: input.seniorDebtRate !== undefined ? input.seniorDebtRate : property.propertyDevelopment.seniorDebtRate,
+          vatApplicable: input.vatApplicable !== undefined ? input.vatApplicable : property.propertyDevelopment.vatApplicable,
+        });
+        devUpdateData.computedProfit = cashflow.profit;
+        devUpdateData.computedProfitOnCost = cashflow.profitOnCost;
+        devUpdateData.computedIRR = Number.isFinite(cashflow.projectIRR) ? cashflow.projectIRR : 0;
+        devUpdateData.equityIRR = Number.isFinite(cashflow.equityIRR) ? cashflow.equityIRR : 0;
+        devUpdateData.equityMultiple = cashflow.equityMultiple;
+        devUpdateData.peakFunding = cashflow.peakFunding;
+        devUpdateData.rolledUpInterest = cashflow.totalInterest;
+        devUpdateData.netVatPayable = cashflow.netVatPayable;
 
         // Branch based on development type
         if (developmentType === "AFFORDABLE_RESALE") {

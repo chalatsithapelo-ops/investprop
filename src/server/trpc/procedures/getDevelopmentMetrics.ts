@@ -28,6 +28,9 @@ export const getDevelopmentMetrics = baseProcedure
       },
       include: {
         propertyDevelopment: true,
+        milestones: {
+          select: { percentComplete: true, budgetAllocated: true, status: true },
+        },
         budgetEntries: {
           orderBy: { dateRecorded: "desc" },
           take: 1, // Just get the most recent for last update info
@@ -77,27 +80,47 @@ export const getDevelopmentMetrics = baseProcedure
 
         const totalDuration = estimatedEndDate.getTime() - startDate.getTime();
         const elapsed = now.getTime() - startDate.getTime();
-        const percentComplete = Math.min(
+        const timeElapsedPercent = Math.min(
           100,
           Math.max(0, (elapsed / totalDuration) * 100)
         );
 
+        // Physical progress = VERIFIED milestone % complete (budget-weighted),
+        // NOT money spent. Falls back to a simple average, then to 0.
+        const milestones = p.milestones ?? [];
+        const weightTotal = milestones.reduce(
+          (s, m) => s + (m.budgetAllocated || 0),
+          0
+        );
+        const physicalProgress =
+          weightTotal > 0
+            ? milestones.reduce(
+                (s, m) => s + m.percentComplete * (m.budgetAllocated || 0),
+                0
+              ) / weightTotal
+            : milestones.length > 0
+              ? milestones.reduce((s, m) => s + m.percentComplete, 0) /
+                milestones.length
+              : 0;
+
         const budgetProgress =
           dev.totalBudget > 0 ? (dev.spentBudget / dev.totalBudget) * 100 : 0;
 
-        // Timeline adherence: comparing budget progress to time progress
-        const isOnTrack = Math.abs(budgetProgress - percentComplete) < 15; // Within 15%
-        const isBehindSchedule = budgetProgress < percentComplete - 15;
-        const isAheadOfSchedule = budgetProgress > percentComplete + 15;
+        // Schedule health compares VERIFIED physical progress to elapsed time.
+        const isOnTrack = Math.abs(physicalProgress - timeElapsedPercent) < 15;
+        const isBehindSchedule = physicalProgress < timeElapsedPercent - 15;
+        const isAheadOfSchedule = physicalProgress > timeElapsedPercent + 15;
 
         return {
           propertyId: p.id,
           projectName: dev.projectName,
-          percentComplete,
+          percentComplete: physicalProgress,
+          timeElapsedPercent,
           budgetProgress,
           isOnTrack,
           isBehindSchedule,
           isAheadOfSchedule,
+          developmentStage: dev.developmentStage,
           status: p.status,
         };
       });

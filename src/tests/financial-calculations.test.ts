@@ -19,6 +19,13 @@ import {
   calculateMonthlyCashFlow,
   calculatePrequalification,
   bondAmountFromInstalment,
+  buildDevelopmentCashflow,
+  calculateResidualLandValue,
+  runDevelopmentSensitivity,
+  buildAffordableHousingModel,
+  buildCommercialInvestmentModel,
+  buildAffordableRentalModel,
+  assessGreenfieldFeasibility,
   calculateMonthlyDebtService as _mds,
 } from '../financial-calculations';
 
@@ -315,6 +322,269 @@ describe('Financial Calculations', () => {
         depositAmount: 100_000,
       });
       expect(r.loanToValue).toBeCloseTo(90, 5);
+    });
+  });
+});
+
+describe('Development Feasibility Engine', () => {
+  describe('buildDevelopmentCashflow', () => {
+    it('derives profit and profit-on-cost from an all-equity scheme (no debt, no VAT)', () => {
+      const r = buildDevelopmentCashflow({
+        landCost: 1_000_000,
+        hardCosts: 2_000_000,
+        softCosts: 0,
+        contingencyAmount: 0,
+        grossDevelopmentValue: 4_000_000,
+        timelineMonths: 12,
+        equityAmount: 5_000_000,
+        seniorDebtAmount: 0,
+        debtAnnualRate: 0,
+      });
+      expect(r.totalInterest).toBe(0);
+      expect(r.outputVat).toBe(0);
+      expect(r.profit).toBeCloseTo(1_000_000, 0);
+      expect(r.profitOnCost).toBeCloseTo(33.33, 1);
+      expect(r.profitOnGdv).toBeCloseTo(25, 1);
+      expect(r.peakFunding).toBeGreaterThan(0);
+      expect(r.projectIRR).toBeGreaterThan(0);
+    });
+
+    it('accrues rolled-up interest when the scheme is debt-funded', () => {
+      const r = buildDevelopmentCashflow({
+        landCost: 1_000_000,
+        hardCosts: 2_000_000,
+        softCosts: 0,
+        contingencyAmount: 0,
+        grossDevelopmentValue: 4_000_000,
+        timelineMonths: 12,
+        equityAmount: 0,
+        seniorDebtAmount: 5_000_000,
+        debtAnnualRate: 12,
+      });
+      expect(r.totalInterest).toBeGreaterThan(0);
+      expect(r.profit).toBeLessThan(1_000_000); // interest erodes profit
+    });
+
+    it('handles a VAT-vendor sale (output VAT on GDV, input VAT on build cost)', () => {
+      const r = buildDevelopmentCashflow({
+        landCost: 1_000_000,
+        hardCosts: 2_000_000,
+        softCosts: 0,
+        contingencyAmount: 0,
+        grossDevelopmentValue: 4_600_000,
+        timelineMonths: 12,
+        equityAmount: 6_000_000,
+        seniorDebtAmount: 0,
+        debtAnnualRate: 0,
+        vatApplicable: true,
+      });
+      expect(r.outputVat).toBeCloseTo(600_000, 0);
+      expect(r.inputVat).toBeCloseTo(300_000, 0);
+      expect(r.netVatPayable).toBeCloseTo(300_000, 0);
+      expect(r.profit).toBeCloseTo(700_000, 0);
+    });
+  });
+
+  describe('calculateResidualLandValue', () => {
+    it('back-solves the max land price for a 20% profit-on-cost target', () => {
+      const land = calculateResidualLandValue({
+        grossDevelopmentValue: 4_000_000,
+        hardCosts: 2_000_000,
+        softCosts: 0,
+        financingCosts: 0,
+        contingencyPercent: 10,
+        targetProfitOnCostPercent: 20,
+      });
+      expect(land).toBeCloseTo(1_030_303, 0);
+    });
+
+    it('returns 0 when the GDV cannot support any land cost', () => {
+      const land = calculateResidualLandValue({
+        grossDevelopmentValue: 1_000_000,
+        hardCosts: 2_000_000,
+        softCosts: 0,
+        financingCosts: 0,
+        contingencyPercent: 10,
+        targetProfitOnCostPercent: 20,
+      });
+      expect(land).toBe(0);
+    });
+  });
+
+  describe('runDevelopmentSensitivity', () => {
+    it('returns a grid where higher cost / lower price reduces profit-on-cost', () => {
+      const grid = runDevelopmentSensitivity({
+        landCost: 1_000_000,
+        buildCost: 2_000_000,
+        contingencyPercent: 10,
+        grossDevelopmentValue: 4_000_000,
+        costDeltas: [0, 0.1],
+        priceDeltas: [0, -0.1],
+      });
+      const base = grid.find((g) => g.costDelta === 0 && g.priceDelta === 0)!;
+      const stressed = grid.find((g) => g.costDelta === 0.1 && g.priceDelta === -0.1)!;
+      expect(base.profitOnCost).toBeCloseTo(21.21, 1);
+      expect(stressed.profitOnCost).toBeLessThan(base.profitOnCost);
+    });
+  });
+
+  describe('Greenfield models — affordable housing (build & sell)', () => {
+    it('derives profit = GDV − full cost stack', () => {
+      const r = buildAffordableHousingModel({
+        numberOfUnits: 100,
+        sellingPricePerUnit: 600_000,
+        landCost: 5_000_000,
+        bulkServicesCost: 3_000_000,
+        internalServicesCost: 2_000_000,
+        constructionCostPerUnit: 400_000,
+        professionalFeesCost: 2_000_000,
+        statutoryCost: 1_000_000,
+        financeCost: 1_000_000,
+        marketingCost: 1_000_000,
+        contingencyPercent: 0,
+      });
+      // GDV = 100 * 600k = 60M; cost = 5+3+2+40+2+1+1+1 = 55M; profit = 5M.
+      expect(r.grossDevelopmentValue).toBe(60_000_000);
+      expect(r.totalDevelopmentCost).toBe(55_000_000);
+      expect(r.profit).toBe(5_000_000);
+      expect(r.profitOnCost).toBeCloseTo(9.09, 1);
+    });
+
+    it('flags unit pricing above the affordable ceiling', () => {
+      const r = buildAffordableHousingModel({
+        numberOfUnits: 10,
+        sellingPricePerUnit: 900_000,
+        landCost: 1_000_000,
+        constructionCostPerUnit: 500_000,
+        contingencyPercent: 0,
+        affordablePriceCeiling: 700_000,
+      });
+      expect(r.rentWithinBand).toBe(false);
+      expect(r.notes.join(' ')).toMatch(/affordable ceiling/i);
+    });
+  });
+
+  describe('Greenfield models — commercial / shopping centre (income)', () => {
+    it('capitalises NOI and reports the yield spread', () => {
+      const r = buildCommercialInvestmentModel({
+        grossLettableAreaSqm: 10_000,
+        rentPerSqmPerMonth: 150,
+        vacancyRate: 0.1,
+        operatingExpenseRatio: 0.3,
+        exitCapRate: 9,
+        landCost: 20_000_000,
+        constructionCost: 90_000_000,
+        contingencyPercent: 0,
+        professionalFeesCost: 0,
+      });
+      // Gross rent = 10k*150*12 = 18M; EGI = 16.2M; opex = 4.86M; NOI = 11.34M.
+      expect(r.stabilisedNOI).toBeCloseTo(11_340_000, 0);
+      // Value = NOI / 9% = 126M; cost = 110M; profit = 16M.
+      expect(r.grossDevelopmentValue).toBeCloseTo(126_000_000, 0);
+      expect(r.totalDevelopmentCost).toBe(110_000_000);
+      expect(r.profit).toBeCloseTo(16_000_000, 0);
+      // Dev yield = 11.34M/110M = 10.31%; spread over 9% is positive.
+      expect(r.developmentYield).toBeCloseTo(10.31, 1);
+      expect(r.yieldSpread!).toBeGreaterThan(0);
+    });
+
+    it('warns when development yield does not beat the cap rate', () => {
+      const r = buildCommercialInvestmentModel({
+        grossLettableAreaSqm: 5_000,
+        rentPerSqmPerMonth: 100,
+        vacancyRate: 0.1,
+        operatingExpenseRatio: 0.35,
+        exitCapRate: 9,
+        landCost: 30_000_000,
+        constructionCost: 60_000_000,
+        contingencyPercent: 0,
+      });
+      expect(r.yieldSpread!).toBeLessThanOrEqual(0);
+      expect(r.notes.join(' ')).toMatch(/does not exceed/i);
+    });
+  });
+
+  describe('Greenfield models — affordable rental incl. SHRA', () => {
+    it('reports returns net of the SHRA capital grant', () => {
+      const r = buildAffordableRentalModel({
+        numberOfUnits: 200,
+        rentPerUnitPerMonth: 3_500,
+        vacancyRate: 0.05,
+        operatingCostPerUnitPerMonth: 1_400,
+        exitCapRate: 10,
+        landCost: 10_000_000,
+        constructionCost: 140_000_000,
+        contingencyPercent: 0,
+        capitalGrantPerUnit: 150_000,
+      });
+      // Gross = 200*3500*12 = 8.4M; EGI = 7.98M; opex = 200*1400*12 = 3.36M; NOI = 4.62M.
+      expect(r.stabilisedNOI).toBeCloseTo(4_620_000, 0);
+      // Value = 4.62M / 10% = 46.2M.
+      expect(r.grossDevelopmentValue).toBeCloseTo(46_200_000, 0);
+      // Grant = 200*150k = 30M; cost = 150M; net cost = 120M.
+      expect(r.capitalGrant).toBe(30_000_000);
+      expect(r.netCostAfterGrant).toBe(120_000_000);
+      // Dev yield on net cost = 4.62M/120M = 3.85%.
+      expect(r.developmentYield).toBeCloseTo(3.85, 1);
+    });
+
+    it('flags rentals above the SHRA primary-market ceiling', () => {
+      const r = buildAffordableRentalModel({
+        numberOfUnits: 50,
+        rentPerUnitPerMonth: 5_000,
+        vacancyRate: 0.05,
+        operatingCostPerUnitPerMonth: 1_500,
+        exitCapRate: 10,
+        landCost: 5_000_000,
+        constructionCost: 40_000_000,
+        contingencyPercent: 0,
+        rentalBandCeiling: 4_500,
+      });
+      expect(r.rentWithinBand).toBe(false);
+      expect(r.notes.join(' ')).toMatch(/ceiling/i);
+    });
+  });
+
+  describe('assessGreenfieldFeasibility — unified go/no-go gate', () => {
+    const model = buildAffordableHousingModel({
+      numberOfUnits: 100,
+      sellingPricePerUnit: 600_000,
+      landCost: 5_000_000,
+      constructionCostPerUnit: 350_000,
+      contingencyPercent: 0,
+    });
+
+    it('clears construction only when every gate passes', () => {
+      const r = assessGreenfieldFeasibility({
+        model,
+        minProfitOnCost: 15,
+        requiredProfessionals: ['TOWN_PLANNER', 'QUANTITY_SURVEYOR'],
+        appointedProfessionals: ['TOWN_PLANNER', 'QUANTITY_SURVEYOR'],
+        requiredApprovals: ['REZONING', 'BUILDING_PLANS'],
+        approvedApprovals: ['REZONING', 'BUILDING_PLANS'],
+        committedFunding: 50_000_000,
+        peakFunding: 40_000_000,
+      });
+      expect(r.constructionReady).toBe(true);
+      expect(r.readinessScore).toBe(100);
+    });
+
+    it('blocks and reports every missing precondition', () => {
+      const r = assessGreenfieldFeasibility({
+        model,
+        minProfitOnCost: 15,
+        requiredProfessionals: ['TOWN_PLANNER', 'QUANTITY_SURVEYOR', 'CIVIL_ENGINEER'],
+        appointedProfessionals: ['TOWN_PLANNER'],
+        requiredApprovals: ['REZONING', 'BUILDING_PLANS'],
+        approvedApprovals: ['REZONING'],
+        committedFunding: 30_000_000,
+        peakFunding: 40_000_000,
+      });
+      expect(r.constructionReady).toBe(false);
+      expect(r.missingProfessionals).toContain('CIVIL_ENGINEER');
+      expect(r.outstandingApprovals).toContain('BUILDING_PLANS');
+      expect(r.fundingShortfall).toBe(10_000_000);
+      expect(r.readinessScore).toBeLessThan(100);
     });
   });
 });

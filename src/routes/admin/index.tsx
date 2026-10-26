@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   Shield, Users, Building, Activity, Settings, X, AlertTriangle, Pencil, KeyRound, Trash2,
   CreditCard, DollarSign, BadgeDollarSign, Scale, Receipt, Inbox, GitBranch, Award,
-  ShieldCheck, Send, Server, Database, ChevronRight, BellRing,
+  ShieldCheck, Send, Server, Database, ChevronRight, BellRing, BookOpen, HardHat,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
@@ -57,6 +57,8 @@ function AdminPage() {
     { label: "Platform Revenue", to: "/admin/revenue", icon: DollarSign, desc: "Every platform fee earned & fee-rate tuning", adminOnly: false },
     { label: "Referral Partners", to: "/admin/referrals", icon: BadgeDollarSign, desc: "Partners & commission ledger", adminOnly: false },
     { label: "Reconciliation", to: "/admin/reconciliation", icon: Scale, desc: "Match payments against ledger entries", adminOnly: false },
+    { label: "General Ledger", to: "/admin/ledger", icon: BookOpen, desc: "Double-entry GL, trial balance & capital accounts", adminOnly: false },
+    { label: "Project Readiness", to: "/admin/development-readiness", icon: HardHat, desc: "Feasibility gates, professional team & approvals", adminOnly: false },
     { label: "Payment Review", to: "/admin/payment-review", icon: Receipt, desc: "Approve investor proof-of-payment", adminOnly: false },
     { label: "Action Required", to: "/admin/action-required", icon: Inbox, desc: "Everything needing attention in one inbox", adminOnly: false },
     { label: "Distress Watchlist", to: "/admin/ai-distress", icon: Activity, desc: "AI early-warning deal scores", adminOnly: false },

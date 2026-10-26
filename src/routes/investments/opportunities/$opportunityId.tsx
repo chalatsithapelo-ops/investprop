@@ -1922,7 +1922,12 @@ function InvestorFinancialDetails({ property, preferredReturn }: { property: any
             {isResale && calc.annualisedROI != null && input.developmentTimelineMonths > 0 && <InvMetric label="Annualised Return" value={pct(calc.annualisedROI)} color="text-gold-600" sub="Comparable yearly rate (IRR-equivalent)" infoTerm="annualisedReturn" />}
             {input.numberOfUnits > 0 && <InvMetric label="Cost per Unit" value={R(calc.costPerUnit)} />}
             {input.expectedROI > 0 && <InvMetric label="Manager's Target ROI" value={pct(input.expectedROI)} color="text-gray-500" sub="Sponsor estimate" />}
-            {input.expectedIRR > 0 && <InvMetric label="Manager's Target IRR" value={pct(input.expectedIRR)} color="text-gray-500" sub="Sponsor estimate, not a guarantee" infoTerm="irr" />}
+            {Number(dev.computedIRR ?? 0) > 0 ? (
+              <InvMetric label="Project IRR" value={pct(Number(dev.computedIRR))} color="text-emerald-600" sub="Computed from cash-flow" infoTerm="irr" />
+            ) : input.expectedIRR > 0 ? (
+              <InvMetric label="Manager's Target IRR" value={pct(input.expectedIRR)} color="text-gray-500" sub="Sponsor estimate, not a guarantee" infoTerm="irr" />
+            ) : null}
+            {Number(dev.equityIRR ?? 0) > 0 && <InvMetric label="Equity IRR" value={pct(Number(dev.equityIRR))} color="text-emerald-600" sub="Levered, after debt" infoTerm="irr" />}
             {preferredReturn > 0 && <InvMetric label="Preferred Return" value={pct(preferredReturn)} color="text-gold-600" sub="Per property" />}
           </div>
         </div>

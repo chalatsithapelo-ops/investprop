@@ -1050,6 +1050,699 @@ export function calculateCostPerSquareMeter(
 }
 
 // ============================================================================
+// Development Cash-Flow / Feasibility Engine
+// ============================================================================
+
+/**
+ * Inputs for a time-phased development cash-flow model. All amounts in ZAR.
+ * Costs are treated as cash outflows spread across the programme; the Gross
+ * Development Value (GDV) is received over a sales/settlement window.
+ */
+export type DevelopmentCashflowInput = {
+  landCost: number;
+  hardCosts: number;
+  softCosts: number;
+  contingencyAmount: number;
+  /** Total sales revenue (VAT-inclusive when vatApplicable). */
+  grossDevelopmentValue: number;
+  timelineMonths: number;
+  /** Investor/sponsor equity available (funds the first calls before debt). */
+  equityAmount: number;
+  /** Senior debt facility available after equity is drawn. */
+  seniorDebtAmount: number;
+  /** Annual interest rate on drawn debt, as a percentage (e.g. 12 = 12%). */
+  debtAnnualRate: number;
+  /** When sales receipts begin (month index). Defaults to ~60% of programme. */
+  salesStartMonth?: number;
+  /** VAT-vendor sale — output VAT on GDV, input VAT recoverable on build cost. */
+  vatApplicable?: boolean;
+};
+
+export type DevelopmentCashflowResult = {
+  months: number;
+  /** Net project cash flow per month (receipts − spend), index 0 = start. */
+  netCashflow: number[];
+  cumulativeCashflow: number[];
+  /** Largest cumulative funding requirement over the programme (positive ZAR). */
+  peakFunding: number;
+  /** Interest rolled up on the drawn senior-debt balance. */
+  totalInterest: number;
+  outputVat: number;
+  inputVat: number;
+  netVatPayable: number;
+  totalCost: number;
+  profit: number;
+  /** Profit ÷ total cost, as a percentage (the developer/lender hurdle metric). */
+  profitOnCost: number;
+  /** Profit ÷ GDV, as a percentage. */
+  profitOnGdv: number;
+  /** Unlevered project IRR (annual %), solved from the monthly net cash flow. */
+  projectIRR: number;
+  /** Levered equity IRR (annual %). NaN when there is no equity or no solution. */
+  equityIRR: number;
+  /** Total equity returned ÷ total equity invested. */
+  equityMultiple: number;
+};
+
+/**
+ * Standard-normal CDF approximation (Abramowitz & Stegun 7.1.26) used to shape
+ * construction spend as an S-curve (slow start, fast middle, slow finish).
+ */
+function standardNormalCdf(x: number): number {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const d = 0.3989423 * Math.exp((-x * x) / 2);
+  let p =
+    d *
+    t *
+    (0.3193815 +
+      t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  if (x > 0) p = 1 - p;
+  return 1 - p;
+}
+
+/** Monthly S-curve weights (sum to 1) spreading a cost over `months` periods. */
+function sCurveWeights(months: number): number[] {
+  if (months <= 1) return [1];
+  const raw: number[] = [];
+  for (let m = 1; m <= months; m++) {
+    // Map the month to a z-score in roughly [-2.5, 2.5].
+    const z = ((m - 0.5) / months) * 5 - 2.5;
+    raw.push(standardNormalCdf(z));
+  }
+  // Convert the cumulative curve into per-period increments.
+  const increments: number[] = [];
+  let prev = 0;
+  for (const c of raw) {
+    increments.push(c - prev);
+    prev = c;
+  }
+  const total = increments.reduce((a, b) => a + b, 0) || 1;
+  return increments.map((i) => i / total);
+}
+
+/**
+ * Build an indicative monthly development cash flow and derive the headline
+ * feasibility metrics: peak funding, rolled-up interest, VAT, profit-on-cost,
+ * project IRR and levered equity IRR/multiple.
+ *
+ * This is a planning model (not a drawdown ledger): land settles at month 0,
+ * soft costs spread evenly, hard costs + contingency follow an S-curve, and the
+ * GDV is received evenly across the sales window. Debt funds the gap once equity
+ * is exhausted, with interest rolled up on the outstanding balance.
+ */
+export function buildDevelopmentCashflow(
+  input: DevelopmentCashflowInput
+): DevelopmentCashflowResult {
+  const months = Math.max(1, Math.round(input.timelineMonths) || 1);
+  const vatApplicable = input.vatApplicable ?? false;
+
+  // VAT: output VAT embedded in a VAT-inclusive GDV; input VAT recoverable on
+  // the building cost (land is typically not a VAT input for the developer).
+  const outputVat = vatApplicable ? extractVat(input.grossDevelopmentValue) : 0;
+  const inputVat = vatApplicable
+    ? (input.hardCosts + input.softCosts) * VAT_RATE
+    : 0;
+  const netVatPayable = outputVat - inputVat;
+  const netGdv = input.grossDevelopmentValue - outputVat;
+
+  const salesStart = Math.min(
+    months,
+    Math.max(0, input.salesStartMonth ?? Math.round(months * 0.6))
+  );
+  const salesMonths = Math.max(1, months - salesStart + 1);
+
+  // Build the per-month spend profile (index 0 = start … index `months`).
+  const hardWeights = sCurveWeights(months);
+  const spend: number[] = new Array(months + 1).fill(0);
+  const receipts: number[] = new Array(months + 1).fill(0);
+
+  spend[0] = (spend[0] ?? 0) + input.landCost; // land settles up front
+  for (let m = 1; m <= months; m++) {
+    const w = hardWeights[m - 1] ?? 0;
+    spend[m] = (spend[m] ?? 0) + input.softCosts / months + (input.hardCosts + input.contingencyAmount) * w;
+  }
+  // Net VAT is settled on completion (simplification).
+  spend[months] = (spend[months] ?? 0) + Math.max(0, netVatPayable);
+
+  // Receipts: net-of-output-VAT proceeds spread across the sales window.
+  for (let m = salesStart; m <= months; m++) {
+    receipts[m] = (receipts[m] ?? 0) + netGdv / salesMonths;
+  }
+
+  // Debt/equity waterfall with interest roll-up on the drawn debt balance.
+  let equityRemaining = input.equityAmount;
+  let debtBalance = 0;
+  let totalInterest = 0;
+  const monthlyRate = input.debtAnnualRate / 100 / 12;
+
+  const netCashflow: number[] = new Array(months + 1).fill(0);
+  const cumulativeCashflow: number[] = new Array(months + 1).fill(0);
+  const equityCashflow: number[] = new Array(months + 1).fill(0);
+  let equityInvested = 0;
+  let equityReturned = 0;
+
+  let cumulative = 0;
+  for (let m = 0; m <= months; m++) {
+    // Interest accrues on last month's outstanding debt and rolls up.
+    if (debtBalance > 0 && monthlyRate > 0) {
+      const interest = debtBalance * monthlyRate;
+      debtBalance += interest;
+      totalInterest += interest;
+    }
+
+    const net = (receipts[m] ?? 0) - (spend[m] ?? 0);
+    netCashflow[m] = net;
+    cumulative += net;
+    cumulativeCashflow[m] = cumulative;
+
+    if (net < 0) {
+      // Funding need: draw equity first, then debt.
+      let need = -net;
+      const fromEquity = Math.min(equityRemaining, need);
+      equityRemaining -= fromEquity;
+      equityInvested += fromEquity;
+      equityCashflow[m] = (equityCashflow[m] ?? 0) - fromEquity;
+      need -= fromEquity;
+      if (need > 0) debtBalance += need; // balance of the call drawn on debt
+    } else if (net > 0) {
+      // Surplus repays debt (incl. rolled-up interest) first, then returns equity.
+      let surplus = net;
+      const repay = Math.min(debtBalance, surplus);
+      debtBalance -= repay;
+      surplus -= repay;
+      if (surplus > 0) {
+        equityReturned += surplus;
+        equityCashflow[m] = (equityCashflow[m] ?? 0) + surplus;
+      }
+    }
+  }
+
+  const totalSpend = spend.reduce((a, b) => a + b, 0);
+  const totalCost = totalSpend + totalInterest;
+  const profit = netGdv - totalCost;
+  const profitOnCost = totalCost > 0 ? (profit / totalCost) * 100 : 0;
+  const profitOnGdv = netGdv > 0 ? (profit / netGdv) * 100 : 0;
+  const peakFunding = Math.max(0, -Math.min(0, ...cumulativeCashflow));
+
+  const projectIRR = calculateAnnualIRRFromMonthly(netCashflow);
+  const equityIRR = calculateAnnualIRRFromMonthly(equityCashflow);
+  const equityMultiple =
+    equityInvested > 0 ? equityReturned / equityInvested : 0;
+
+  return {
+    months,
+    netCashflow,
+    cumulativeCashflow,
+    peakFunding,
+    totalInterest,
+    outputVat,
+    inputVat,
+    netVatPayable,
+    totalCost,
+    profit,
+    profitOnCost,
+    profitOnGdv,
+    projectIRR,
+    equityIRR,
+    equityMultiple,
+  };
+}
+
+/**
+ * Residual land value: the maximum a developer can pay for land and still hit a
+ * target profit-on-cost, given the GDV and all non-land costs.
+ *
+ * cost = GDV / (1 + target); land = cost / (1 + contingency%) − nonLandBase.
+ *
+ * @returns The maximum supportable land price (never negative).
+ */
+export function calculateResidualLandValue(input: {
+  grossDevelopmentValue: number;
+  hardCosts: number;
+  softCosts: number;
+  financingCosts: number;
+  contingencyPercent: number;
+  targetProfitOnCostPercent: number;
+}): number {
+  const nonLandBase =
+    input.hardCosts + input.softCosts + input.financingCosts;
+  const target = input.targetProfitOnCostPercent / 100;
+  const cPct = input.contingencyPercent / 100;
+  if (input.grossDevelopmentValue <= 0) return 0;
+  const supportableCost = input.grossDevelopmentValue / (1 + target);
+  const land = supportableCost / (1 + cPct) - nonLandBase;
+  return Math.max(0, land);
+}
+
+/**
+ * Two-way sensitivity grid of profit-on-cost (%). Rows flex build cost, columns
+ * flex sales price, each by the supplied deltas (e.g. [-0.1, 0, 0.1]).
+ */
+export function runDevelopmentSensitivity(input: {
+  landCost: number;
+  buildCost: number; // hard + soft + financing (pre-contingency)
+  contingencyPercent: number;
+  grossDevelopmentValue: number;
+  costDeltas: number[];
+  priceDeltas: number[];
+}): { costDelta: number; priceDelta: number; profitOnCost: number }[] {
+  const grid: { costDelta: number; priceDelta: number; profitOnCost: number }[] =
+    [];
+  for (const cd of input.costDeltas) {
+    for (const pd of input.priceDeltas) {
+      const build = input.buildCost * (1 + cd);
+      const base = input.landCost + build;
+      const contingency = base * (input.contingencyPercent / 100);
+      const cost = base + contingency;
+      const gdv = input.grossDevelopmentValue * (1 + pd);
+      const profit = gdv - cost;
+      grid.push({
+        costDelta: cd,
+        priceDelta: pd,
+        profitOnCost: cost > 0 ? (profit / cost) * 100 : 0,
+      });
+    }
+  }
+  return grid;
+}
+
+// ============================================================================
+// Greenfield Development Feasibility Models (by development type)
+//
+// Three distinct economic engines, each normalised to a common result so the
+// UI and the readiness gate treat every development type uniformly:
+//   • Affordable housing (build & sell)  → trading margin on sale GDV
+//   • Retail / shopping centre (income)  → capitalised NOI vs development cost
+//   • Affordable rental incl. SHRA       → capitalised NOI net of capital grant
+// ============================================================================
+
+export type GreenfieldDevelopmentType =
+  | "AFFORDABLE_RESALE"
+  | "COMMERCIAL_RENTAL"
+  | "AFFORDABLE_RENTAL";
+
+/** Normalised output shared by every greenfield model. */
+export type GreenfieldModelResult = {
+  developmentType: GreenfieldDevelopmentType;
+  totalDevelopmentCost: number;
+  /** Realisable value created: sale GDV, or capitalised investment value. */
+  grossDevelopmentValue: number;
+  profit: number;
+  profitOnCost: number; // %
+  profitOnGdv: number; // %
+  /** Income models only. */
+  stabilisedNOI?: number;
+  developmentYield?: number; // NOI ÷ cost, %
+  exitCapRate?: number; // %
+  yieldSpread?: number; // developmentYield − exitCapRate, % points
+  /** Capital grant applied (SHRA / institutional subsidy), if any. */
+  capitalGrant?: number;
+  netCostAfterGrant?: number;
+  /** Per-unit affordability flag for restricted-rental / subsidised stock. */
+  rentWithinBand?: boolean;
+  notes: string[];
+};
+
+/** Sum the standard greenfield cost stack into a single development cost. */
+function greenfieldTotalCost(input: {
+  landCost: number;
+  bulkServicesCost?: number;
+  internalServicesCost?: number;
+  constructionCost: number;
+  professionalFeesCost?: number;
+  statutoryCost?: number;
+  financeCost?: number;
+  marketingCost?: number;
+  contingencyPercent: number;
+}): { base: number; contingency: number; total: number } {
+  const base =
+    input.landCost +
+    (input.bulkServicesCost ?? 0) +
+    (input.internalServicesCost ?? 0) +
+    input.constructionCost +
+    (input.professionalFeesCost ?? 0) +
+    (input.statutoryCost ?? 0) +
+    (input.financeCost ?? 0) +
+    (input.marketingCost ?? 0);
+  const contingency = base * (Math.max(0, input.contingencyPercent) / 100);
+  return { base, contingency, total: base + contingency };
+}
+
+export type AffordableHousingModelInput = {
+  numberOfUnits: number;
+  sellingPricePerUnit: number;
+  landCost: number;
+  bulkServicesCost?: number;
+  internalServicesCost?: number;
+  constructionCostPerUnit: number;
+  professionalFeesCost?: number;
+  statutoryCost?: number;
+  financeCost?: number;
+  marketingCost?: number;
+  contingencyPercent: number;
+  /** FLISP / affordable band ceiling (ZAR). Flags over-ceiling pricing. */
+  affordablePriceCeiling?: number;
+};
+
+/**
+ * Affordable housing (build & sell) — merchant-developer trading model.
+ * GDV is the sell-out; profit is GDV less the full cost stack. Flags unit
+ * pricing that breaches the affordable/FLISP ceiling (which would exclude the
+ * target market and the subsidy).
+ */
+export function buildAffordableHousingModel(
+  input: AffordableHousingModelInput
+): GreenfieldModelResult {
+  const gdv = input.numberOfUnits * input.sellingPricePerUnit;
+  const { total } = greenfieldTotalCost({
+    landCost: input.landCost,
+    bulkServicesCost: input.bulkServicesCost,
+    internalServicesCost: input.internalServicesCost,
+    constructionCost: input.constructionCostPerUnit * input.numberOfUnits,
+    professionalFeesCost: input.professionalFeesCost,
+    statutoryCost: input.statutoryCost,
+    financeCost: input.financeCost,
+    marketingCost: input.marketingCost,
+    contingencyPercent: input.contingencyPercent,
+  });
+  const profit = gdv - total;
+  const notes: string[] = [];
+  let rentWithinBand: boolean | undefined;
+  if (input.affordablePriceCeiling && input.affordablePriceCeiling > 0) {
+    rentWithinBand = input.sellingPricePerUnit <= input.affordablePriceCeiling;
+    if (!rentWithinBand) {
+      notes.push(
+        `Unit price R${Math.round(input.sellingPricePerUnit).toLocaleString()} exceeds the affordable ceiling R${Math.round(input.affordablePriceCeiling).toLocaleString()} — target buyers may not qualify for FLISP/subsidy.`
+      );
+    }
+  }
+  return {
+    developmentType: "AFFORDABLE_RESALE",
+    totalDevelopmentCost: total,
+    grossDevelopmentValue: gdv,
+    profit,
+    profitOnCost: total > 0 ? (profit / total) * 100 : 0,
+    profitOnGdv: gdv > 0 ? (profit / gdv) * 100 : 0,
+    rentWithinBand,
+    notes,
+  };
+}
+
+export type CommercialInvestmentModelInput = {
+  grossLettableAreaSqm: number;
+  /** Weighted average gross rental, ZAR per m² per month. */
+  rentPerSqmPerMonth: number;
+  /** Structural + frictional vacancy, as a fraction (0.08 = 8%). */
+  vacancyRate: number;
+  /** Operating cost as a fraction of effective gross income (0.0–1.0). */
+  operatingExpenseRatio: number;
+  /** Capitalisation rate used to value stabilised NOI, as a % (8.5 = 8.5%). */
+  exitCapRate: number;
+  landCost: number;
+  bulkServicesCost?: number;
+  internalServicesCost?: number;
+  constructionCost: number;
+  professionalFeesCost?: number;
+  statutoryCost?: number;
+  financeCost?: number;
+  marketingCost?: number;
+  contingencyPercent: number;
+};
+
+/**
+ * Retail / shopping-centre income model. Value is the capitalised stabilised
+ * NOI; development profit is that value less the full development cost. The
+ * development yield vs the exit cap rate (the "yield spread") is the core
+ * value-creation signal for an income development.
+ */
+export function buildCommercialInvestmentModel(
+  input: CommercialInvestmentModelInput
+): GreenfieldModelResult {
+  const grossAnnualRent =
+    input.grossLettableAreaSqm * input.rentPerSqmPerMonth * 12;
+  const effectiveGrossIncome =
+    grossAnnualRent * (1 - Math.min(1, Math.max(0, input.vacancyRate)));
+  const operatingCost =
+    effectiveGrossIncome * Math.min(1, Math.max(0, input.operatingExpenseRatio));
+  const noi = effectiveGrossIncome - operatingCost;
+  const capRate = input.exitCapRate / 100;
+  const capitalValue = capRate > 0 ? noi / capRate : 0;
+
+  const { total } = greenfieldTotalCost({
+    landCost: input.landCost,
+    bulkServicesCost: input.bulkServicesCost,
+    internalServicesCost: input.internalServicesCost,
+    constructionCost: input.constructionCost,
+    professionalFeesCost: input.professionalFeesCost,
+    statutoryCost: input.statutoryCost,
+    financeCost: input.financeCost,
+    marketingCost: input.marketingCost,
+    contingencyPercent: input.contingencyPercent,
+  });
+
+  const profit = capitalValue - total;
+  const developmentYield = total > 0 ? (noi / total) * 100 : 0;
+  const yieldSpread = developmentYield - input.exitCapRate;
+  const notes: string[] = [];
+  if (yieldSpread <= 0) {
+    notes.push(
+      "Development yield does not exceed the exit cap rate — no value is created over simply buying a comparable standing asset."
+    );
+  }
+  return {
+    developmentType: "COMMERCIAL_RENTAL",
+    totalDevelopmentCost: total,
+    grossDevelopmentValue: capitalValue,
+    profit,
+    profitOnCost: total > 0 ? (profit / total) * 100 : 0,
+    profitOnGdv: capitalValue > 0 ? (profit / capitalValue) * 100 : 0,
+    stabilisedNOI: noi,
+    developmentYield,
+    exitCapRate: input.exitCapRate,
+    yieldSpread,
+    notes,
+  };
+}
+
+export type AffordableRentalModelInput = {
+  numberOfUnits: number;
+  /** Average gross rental, ZAR per unit per month. */
+  rentPerUnitPerMonth: number;
+  vacancyRate: number;
+  /** Operating cost, ZAR per unit per month (rates, services, management, R&M). */
+  operatingCostPerUnitPerMonth: number;
+  exitCapRate: number;
+  landCost: number;
+  bulkServicesCost?: number;
+  internalServicesCost?: number;
+  constructionCost: number;
+  professionalFeesCost?: number;
+  statutoryCost?: number;
+  financeCost?: number;
+  marketingCost?: number;
+  contingencyPercent: number;
+  /** SHRA / institutional capital grant per unit (0 for pure private rental). */
+  capitalGrantPerUnit?: number;
+  /** SHRA primary-market rental ceiling (ZAR/unit/month) for compliance flag. */
+  rentalBandCeiling?: number;
+};
+
+/**
+ * Affordable rental model (private rental and SHRA social housing). Value is
+ * the capitalised stabilised NOI. For SHRA/institutional schemes a capital
+ * grant per unit reduces the equity actually at risk, so profit and yield are
+ * reported against the net-of-grant cost. Rental is checked against the SHRA
+ * primary-market band where a ceiling is supplied.
+ */
+export function buildAffordableRentalModel(
+  input: AffordableRentalModelInput
+): GreenfieldModelResult {
+  const grossAnnualRent =
+    input.numberOfUnits * input.rentPerUnitPerMonth * 12;
+  const effectiveGrossIncome =
+    grossAnnualRent * (1 - Math.min(1, Math.max(0, input.vacancyRate)));
+  const annualOperatingCost =
+    input.numberOfUnits * input.operatingCostPerUnitPerMonth * 12;
+  const noi = effectiveGrossIncome - annualOperatingCost;
+  const capRate = input.exitCapRate / 100;
+  const capitalValue = capRate > 0 ? noi / capRate : 0;
+
+  const { total } = greenfieldTotalCost({
+    landCost: input.landCost,
+    bulkServicesCost: input.bulkServicesCost,
+    internalServicesCost: input.internalServicesCost,
+    constructionCost: input.constructionCost,
+    professionalFeesCost: input.professionalFeesCost,
+    statutoryCost: input.statutoryCost,
+    financeCost: input.financeCost,
+    marketingCost: input.marketingCost,
+    contingencyPercent: input.contingencyPercent,
+  });
+
+  const capitalGrant =
+    (input.capitalGrantPerUnit ?? 0) * input.numberOfUnits;
+  const netCostAfterGrant = Math.max(0, total - capitalGrant);
+  const profit = capitalValue - netCostAfterGrant;
+  const developmentYield =
+    netCostAfterGrant > 0 ? (noi / netCostAfterGrant) * 100 : 0;
+  const yieldSpread = developmentYield - input.exitCapRate;
+
+  const notes: string[] = [];
+  let rentWithinBand: boolean | undefined;
+  if (input.rentalBandCeiling && input.rentalBandCeiling > 0) {
+    rentWithinBand = input.rentPerUnitPerMonth <= input.rentalBandCeiling;
+    if (!rentWithinBand) {
+      notes.push(
+        `Rental R${Math.round(input.rentPerUnitPerMonth).toLocaleString()}/unit exceeds the SHRA primary-market ceiling R${Math.round(input.rentalBandCeiling).toLocaleString()} — grant eligibility at risk.`
+      );
+    }
+  }
+  if (capitalGrant > 0) {
+    notes.push(
+      `Capital grant of R${Math.round(capitalGrant).toLocaleString()} applied; returns reported on the net-of-grant cost of R${Math.round(netCostAfterGrant).toLocaleString()}.`
+    );
+  }
+  return {
+    developmentType: "AFFORDABLE_RENTAL",
+    totalDevelopmentCost: total,
+    grossDevelopmentValue: capitalValue,
+    profit,
+    profitOnCost: netCostAfterGrant > 0 ? (profit / netCostAfterGrant) * 100 : 0,
+    profitOnGdv: capitalValue > 0 ? (profit / capitalValue) * 100 : 0,
+    stabilisedNOI: noi,
+    developmentYield,
+    exitCapRate: input.exitCapRate,
+    yieldSpread,
+    capitalGrant,
+    netCostAfterGrant,
+    rentWithinBand,
+    notes,
+  };
+}
+
+// ============================================================================
+// Unified greenfield feasibility gate
+//
+// Brings the economics together with the pre-construction preconditions the
+// business actually requires: the professional team appointed, statutory
+// approvals obtained, and the capital stack large enough to fund peak funding.
+// A project is CONSTRUCTION-ready only when every gate passes.
+// ============================================================================
+
+export type FeasibilityGateInput = {
+  model: GreenfieldModelResult;
+  /** Minimum profit-on-cost required to proceed (%). */
+  minProfitOnCost: number;
+  /** For income models: minimum yield spread required (% points). */
+  minYieldSpread?: number;
+  /** Required professional roles vs those actually appointed. */
+  requiredProfessionals: string[];
+  appointedProfessionals: string[];
+  /** Required statutory approvals vs those APPROVED. */
+  requiredApprovals: string[];
+  approvedApprovals: string[];
+  /** Capital committed (equity + debt facility) and the modelled peak funding. */
+  committedFunding: number;
+  peakFunding: number;
+};
+
+export type FeasibilityGateResult = {
+  economicsPass: boolean;
+  professionalsPass: boolean;
+  approvalsPass: boolean;
+  fundingPass: boolean;
+  /** True only when every gate passes — safe to start construction. */
+  constructionReady: boolean;
+  missingProfessionals: string[];
+  outstandingApprovals: string[];
+  fundingShortfall: number;
+  /** 0–100 readiness score (economics 25, team 25, approvals 25, funding 25). */
+  readinessScore: number;
+  reasons: string[];
+};
+
+/**
+ * Assess whether a greenfield development may proceed to construction. All four
+ * gates — economic hurdle, professional team, statutory approvals and funding
+ * adequacy — must pass. Returns a readiness score and the specific blockers.
+ */
+export function assessGreenfieldFeasibility(
+  input: FeasibilityGateInput
+): FeasibilityGateResult {
+  const reasons: string[] = [];
+
+  // 1. Economics.
+  let economicsPass = input.model.profitOnCost >= input.minProfitOnCost;
+  if (!economicsPass) {
+    reasons.push(
+      `Profit on cost ${input.model.profitOnCost.toFixed(1)}% is below the ${input.minProfitOnCost}% hurdle.`
+    );
+  }
+  if (input.minYieldSpread != null && input.model.yieldSpread != null) {
+    const spreadOk = input.model.yieldSpread >= input.minYieldSpread;
+    if (!spreadOk) {
+      reasons.push(
+        `Yield spread ${input.model.yieldSpread.toFixed(2)}% is below the required ${input.minYieldSpread}%.`
+      );
+    }
+    economicsPass = economicsPass && spreadOk;
+  }
+
+  // 2. Professional team.
+  const appointedSet = new Set(input.appointedProfessionals);
+  const missingProfessionals = input.requiredProfessionals.filter(
+    (r) => !appointedSet.has(r)
+  );
+  const professionalsPass = missingProfessionals.length === 0;
+  if (!professionalsPass) {
+    reasons.push(
+      `Professional team incomplete — not appointed: ${missingProfessionals.join(", ")}.`
+    );
+  }
+
+  // 3. Statutory approvals.
+  const approvedSet = new Set(input.approvedApprovals);
+  const outstandingApprovals = input.requiredApprovals.filter(
+    (a) => !approvedSet.has(a)
+  );
+  const approvalsPass = outstandingApprovals.length === 0;
+  if (!approvalsPass) {
+    reasons.push(
+      `Statutory approvals outstanding: ${outstandingApprovals.join(", ")}.`
+    );
+  }
+
+  // 4. Funding adequacy against modelled peak funding.
+  const fundingShortfall = Math.max(0, input.peakFunding - input.committedFunding);
+  const fundingPass = fundingShortfall <= 0;
+  if (!fundingPass) {
+    reasons.push(
+      `Committed funding R${Math.round(input.committedFunding).toLocaleString()} is below peak funding R${Math.round(input.peakFunding).toLocaleString()} (shortfall R${Math.round(fundingShortfall).toLocaleString()}).`
+    );
+  }
+
+  const readinessScore =
+    (economicsPass ? 25 : 0) +
+    (professionalsPass ? 25 : 0) +
+    (approvalsPass ? 25 : 0) +
+    (fundingPass ? 25 : 0);
+
+  return {
+    economicsPass,
+    professionalsPass,
+    approvalsPass,
+    fundingPass,
+    constructionReady:
+      economicsPass && professionalsPass && approvalsPass && fundingPass,
+    missingProfessionals,
+    outstandingApprovals,
+    fundingShortfall,
+    readinessScore,
+    reasons,
+  };
+}
+
+// ============================================================================
 // Home-Loan Prequalification (South Africa)
 // ============================================================================
 

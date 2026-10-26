@@ -1027,6 +1027,11 @@ function FinancialsTab({ property }: { property: any }) {
     };
 
     const calc = calculateDevelopmentMetrics(input);
+    // Single source of truth: profit is DERIVED from the cost/revenue model, not
+    // a stored figure that could drift. Computed IRR comes from the cash-flow engine.
+    const derivedProfit = calc.derivedProfit ?? Number(dev.computedProfit ?? input.expectedProfit);
+    const computedIRR = Number(dev.computedIRR ?? 0);
+    const equityIRR = Number(dev.equityIRR ?? 0);
     const isResale = devType === "AFFORDABLE_RESALE";
     const devLabel = isResale ? "Affordable Resale" : devType === "AFFORDABLE_RENTAL" ? "Affordable Rental" : "Commercial Rental";
 
@@ -1054,10 +1059,15 @@ function FinancialsTab({ property }: { property: any }) {
             <MetricCard label="Total Development Cost" value={R(calc.totalCosts)} color="text-gray-900" />
             <MetricCard label="Total Budget" value={R(input.totalBudget)} />
             {isResale && <MetricCard label="Total Expected Revenue" value={R(input.totalExpectedRevenue)} color="text-emerald-600" />}
-            {isResale && <MetricCard label="Expected Profit" value={R(input.expectedProfit)} color={input.expectedProfit >= 0 ? "text-emerald-600" : "text-red-500"} />}
+            {isResale && <MetricCard label="Expected Profit" value={R(derivedProfit)} color={derivedProfit >= 0 ? "text-emerald-600" : "text-red-500"} sub="Revenue − total cost" />}
             <MetricCard label="Profit Margin" value={pct(calc.profitMargin)} color="text-gold-600" />
             {input.expectedROI > 0 && <MetricCard label="Expected ROI" value={pct(input.expectedROI)} color="text-emerald-600" />}
-            {input.expectedIRR > 0 && <MetricCard label="Expected IRR" value={pct(input.expectedIRR)} color="text-emerald-600" sub="Internal Rate of Return" />}
+            {computedIRR > 0 ? (
+              <MetricCard label="Project IRR" value={pct(computedIRR)} color="text-emerald-600" sub="Computed from cash-flow" />
+            ) : input.expectedIRR > 0 ? (
+              <MetricCard label="Target IRR" value={pct(input.expectedIRR)} color="text-gray-700" sub="Sponsor estimate" />
+            ) : null}
+            {equityIRR > 0 && <MetricCard label="Equity IRR" value={pct(equityIRR)} color="text-emerald-600" sub="Levered, after debt" />}
             {input.numberOfUnits > 0 && <MetricCard label="Cost per Unit" value={R(calc.costPerUnit)} />}
             {input.costPerSquareMeter > 0 && <MetricCard label="Cost per m²" value={R(input.costPerSquareMeter)} />}
             {input.developmentTimelineMonths > 0 && <MetricCard label="Timeline" value={`${input.developmentTimelineMonths} months`} color="text-blue-600" />}
@@ -1107,7 +1117,7 @@ function FinancialsTab({ property }: { property: any }) {
             <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
               <MetricCard label="Sale Price per Unit" value={R(input.expectedSalePricePerUnit)} />
               <MetricCard label="Total Expected Revenue" value={R(input.totalExpectedRevenue)} color="text-emerald-600" />
-              <MetricCard label="Expected Profit" value={R(input.expectedProfit)} color="text-emerald-600" />
+              <MetricCard label="Expected Profit" value={R(derivedProfit)} color="text-emerald-600" sub="Revenue − total cost" />
               {input.preSaleUnits > 0 && <MetricCard label="Pre-Sale Units" value={`${input.preSaleUnits} of ${input.numberOfUnits}`} sub={`${calc.preSalePercentage.toFixed(0)}% pre-sold`} />}
             </div>
           </div>

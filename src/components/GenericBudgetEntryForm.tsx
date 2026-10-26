@@ -54,7 +54,7 @@ export function GenericBudgetEntryForm({
         amount: Number(estimatedAmount),
       }),
     onSuccess: () => {
-      toast.success("Budget entry created");
+      toast.success("Budget entry logged — awaiting approval by a second manager");
       queryClient.invalidateQueries({ queryKey: ["getBudgetEntries"] });
       queryClient.invalidateQueries({ queryKey: ["getPropertyById"] });
       queryClient.invalidateQueries({ queryKey: ["getBudgetHistory"] });

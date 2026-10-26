@@ -18,7 +18,7 @@ import { generatePropertyImage } from "~/server/trpc/procedures/generateProperty
 import { getDevelopmentMetrics } from "~/server/trpc/procedures/getDevelopmentMetrics";
 import { getInvestmentPackages } from "~/server/trpc/procedures/getInvestmentPackages";
 import { updateInvestmentStatus } from "~/server/trpc/procedures/updateInvestmentStatus";
-import { createBudgetEntry } from "~/server/trpc/procedures/createBudgetEntry";
+import { createBudgetEntry, approveBudgetEntry, rejectBudgetEntry } from "~/server/trpc/procedures/createBudgetEntry";
 import { getBudgetEntries } from "~/server/trpc/procedures/getBudgetEntries";
 import { getBudgetHistory } from "~/server/trpc/procedures/getBudgetHistory";
 import { getInvestors } from "~/server/trpc/procedures/getInvestors";
@@ -163,6 +163,40 @@ import { previewPrequalification, submitPrequalification, getMyPrequalifications
 import { submitHomeLoanApplication, getMyHomeLoanApplications, withdrawHomeLoanApplication, acceptHomeLoanOffer, getHomeLoanApplicationsAdmin, updateHomeLoanApplicationAdmin } from "~/server/trpc/procedures/home-loan-application";
 import { getSubscriberDistressedDeals, getSubscriberDistressedDetail, screenSubscriberDistressedDeal, getSubscriberDistressedMarketAnalysis } from "~/server/trpc/procedures/distressed-subscriber";
 import { getAnonymisedMarketData } from "~/server/trpc/procedures/market-data";
+// Development management — progress, cost report, approvals, units, lifecycle, appraisal
+import {
+  updateMilestoneProgress,
+  getDevelopmentCostReport,
+  drawContingency,
+  createDevelopmentApproval,
+  getDevelopmentApprovals,
+  updateDevelopmentApproval,
+  createDevelopmentUnit,
+  updateDevelopmentUnit,
+  getDevelopmentUnits,
+  updateDevelopmentStage,
+  getDevelopmentAppraisal,
+  createDevelopmentProfessional,
+  updateDevelopmentProfessional,
+  getDevelopmentProfessionals,
+  getProjectReadiness,
+} from "~/server/trpc/procedures/development-management";
+import {
+  getChartOfAccounts,
+  getTrialBalance,
+  getCapitalAccounts,
+  getLedgerEntries,
+  reverseJournalEntry,
+  recordDeposit,
+  recognizeRevenue,
+  recordCapitalContribution,
+  recordDistribution,
+  recordNrvImpairment,
+  recordRetention,
+  recordDefectsProvision,
+  recordInterest,
+  recordDeferredTax,
+} from "~/server/trpc/procedures/ledger";
 export const appRouter = createTRPCRouter({
   register,
   login,
@@ -181,6 +215,8 @@ export const appRouter = createTRPCRouter({
   getInvestmentPackages,
   updateInvestmentStatus,
   createBudgetEntry,
+  approveBudgetEntry,
+  rejectBudgetEntry,
   getBudgetEntries,
   getBudgetHistory,
   getInvestors,
@@ -198,6 +234,35 @@ export const appRouter = createTRPCRouter({
   createMilestone,
   getMilestones,
   updateMilestone,
+  updateMilestoneProgress,
+  getDevelopmentCostReport,
+  drawContingency,
+  createDevelopmentApproval,
+  getDevelopmentApprovals,
+  updateDevelopmentApproval,
+  createDevelopmentUnit,
+  updateDevelopmentUnit,
+  getDevelopmentUnits,
+  updateDevelopmentStage,
+  getDevelopmentAppraisal,
+  createDevelopmentProfessional,
+  updateDevelopmentProfessional,
+  getDevelopmentProfessionals,
+  getProjectReadiness,
+  getChartOfAccounts,
+  getTrialBalance,
+  getCapitalAccounts,
+  getLedgerEntries,
+  reverseJournalEntry,
+  recordDeposit,
+  recognizeRevenue,
+  recordCapitalContribution,
+  recordDistribution,
+  recordNrvImpairment,
+  recordRetention,
+  recordDefectsProvision,
+  recordInterest,
+  recordDeferredTax,
   createProgressSubmission,
   getProgressSubmissions,
   reviewProgressSubmission,

@@ -7,6 +7,7 @@ import {
   calculateDevelopmentMetrics,
   calculateMonthlyDebtService,
   calculateDebtServiceCoverageRatio,
+  buildDevelopmentCashflow,
   type PropertyFlipInput,
   type RentalPropertyInput,
   type PropertyDevelopmentInput,
@@ -114,6 +115,12 @@ export const createProperty = baseProcedure
       preSaleUnits: z.number().optional(),
       costPerSquareMeter: z.number().optional(),
       totalSquareMeters: z.number().optional(),
+      // Capital stack, VAT & governance
+      equityAmount: z.number().optional(),
+      seniorDebtAmount: z.number().optional(),
+      seniorDebtRate: z.number().optional(),
+      preSaleThresholdPercent: z.number().optional(),
+      vatApplicable: z.boolean().optional(),
       // Investment package budget fields
       flipTotalInvestmentBudget: z.number().optional(),
       rentalTotalInvestmentBudget: z.number().optional(),
@@ -347,6 +354,30 @@ export const createProperty = baseProcedure
         ? calculations.totalCosts / devInput.totalSquareMeters
         : 0;
 
+      // Time-phased feasibility: compute GDV then run the monthly cash-flow engine
+      // so IRR, peak funding, rolled-up interest and VAT are DERIVED, not typed.
+      const gdvForCashflow =
+        developmentType === "AFFORDABLE_RESALE"
+          ? (devInput.totalExpectedRevenue > 0
+              ? devInput.totalExpectedRevenue
+              : devInput.expectedSalePricePerUnit * devInput.numberOfUnits)
+          : (calculations.calculatedCapRate && calculations.calculatedCapRate > 0
+              ? (calculations.noi || 0) / (calculations.calculatedCapRate / 100)
+              : 0);
+
+      const cashflow = buildDevelopmentCashflow({
+        landCost: devInput.landAcquisitionCost,
+        hardCosts: devInput.hardCosts,
+        softCosts: devInput.softCosts,
+        contingencyAmount: calculations.contingencyAmount,
+        grossDevelopmentValue: gdvForCashflow,
+        timelineMonths: devInput.developmentTimelineMonths || 12,
+        equityAmount: input.equityAmount || 0,
+        seniorDebtAmount: input.seniorDebtAmount || 0,
+        debtAnnualRate: input.seniorDebtRate || 0,
+        vatApplicable: input.vatApplicable || false,
+      });
+
       // Prepare data object with common fields
       const developmentData: any = {
         propertyId: property.id,
@@ -367,6 +398,20 @@ export const createProperty = baseProcedure
         preSaleUnits: devInput.preSaleUnits,
         costPerSquareMeter: costPerSquareMeter,
         totalSquareMeters: devInput.totalSquareMeters,
+        // Capital stack, VAT & computed engine outputs (single source of truth)
+        equityAmount: input.equityAmount || 0,
+        seniorDebtAmount: input.seniorDebtAmount || 0,
+        seniorDebtRate: input.seniorDebtRate || 0,
+        preSaleThresholdPercent: input.preSaleThresholdPercent || 0,
+        vatApplicable: input.vatApplicable || false,
+        computedProfit: cashflow.profit,
+        computedProfitOnCost: cashflow.profitOnCost,
+        computedIRR: Number.isFinite(cashflow.projectIRR) ? cashflow.projectIRR : 0,
+        equityIRR: Number.isFinite(cashflow.equityIRR) ? cashflow.equityIRR : 0,
+        equityMultiple: cashflow.equityMultiple,
+        peakFunding: cashflow.peakFunding,
+        rolledUpInterest: cashflow.totalInterest,
+        netVatPayable: cashflow.netVatPayable,
         userId: user.id,
       };
 

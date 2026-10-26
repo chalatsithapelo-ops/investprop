@@ -43,19 +43,93 @@ model AuditLog {
 }
 
 model BudgetEntry {
-  id           Int        @id @default(autoincrement())
+  id           Int           @id @default(autoincrement())
   propertyId   Int
   milestoneId  Int?
   amount       Float
   category     String
+  costCode     CostCategory? // Standardised cost-plan bucket for reliable reporting
+  entryType    BudgetEntryType @default(ACTUAL) // COMMITMENT (PO/order placed) vs ACTUAL (certified/paid)
+  // ── Maker-checker: a posting only hits spend once a second person approves ──
+  approvalStatus BudgetApprovalStatus @default(PENDING)
+  approvedById   Int?
+  approvedAt     DateTime?
+  rejectionReason String?
   description  String
   quotationUrl String?
-  dateRecorded DateTime   @default(now())
+  dateRecorded DateTime      @default(now())
   recordedById Int
-  createdAt    DateTime   @default(now())
-  milestone    Milestone? @relation(fields: [milestoneId], references: [id])
-  property     Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  recordedBy   User       @relation(fields: [recordedById], references: [id])
+  createdAt    DateTime      @default(now())
+  milestone    Milestone?    @relation(fields: [milestoneId], references: [id])
+  property     Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  recordedBy   User          @relation(fields: [recordedById], references: [id])
+}
+
+/// Professional team appointment register (the consultants a SA development
+/// legally and practically requires before and during construction).
+model DevelopmentProfessional {
+  id              Int                @id @default(autoincrement())
+  propertyId      Int
+  role            ProfessionalRole
+  isRequired      Boolean            @default(true)
+  status          AppointmentStatus  @default(NOT_APPOINTED)
+  firmName        String?
+  contactName     String?
+  contactEmail    String?
+  contactPhone    String?
+  registrationBody String?           // SACPLAN / ECSA / SACAP / SACPVP / SACQSP / SACPCMP
+  registrationNo  String?
+  feeAmount       Float              @default(0)
+  appointedAt     DateTime?
+  notes           String?
+  createdById     Int
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @default(now()) @updatedAt
+  property        Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+}
+
+/// Immutable double-entry journal header. A posted entry is NEVER edited — a
+/// correction is a new REVERSAL entry (reversesEntryId) that contra-posts it.
+model JournalEntry {
+  id                Int                @id @default(autoincrement())
+  propertyId        Int
+  kind              String             // DEPOSIT_RECEIVED | REVENUE_RECOGNITION | CAPITAL_CONTRIBUTION | DISTRIBUTION | NRV_IMPAIRMENT | RETENTION_PROVISION | DEFECTS_PROVISION | INTEREST_CAPITALISED | FINANCE_COST | DEFERRED_TAX | REVERSAL | MANUAL
+  entryDate         DateTime
+  description       String
+  reference         String?
+  status            JournalEntryStatus @default(POSTED)
+  reversesEntryId   Int?               // when this is a REVERSAL, the original it reverses
+  reversedByEntryId Int?               // when this has been reversed, the reversal entry
+  postedById        Int
+  createdAt         DateTime           @default(now())
+  property          Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  postedBy          User               @relation(fields: [postedById], references: [id])
+  lines             JournalLine[]
+
+  @@index([propertyId])
+  @@index([kind])
+}
+
+/// A single debit or credit line (denormalised account from the code-defined
+/// chart of accounts so no per-property account seeding is required).
+model JournalLine {
+  id             Int          @id @default(autoincrement())
+  journalEntryId Int
+  accountCode    String
+  accountName    String
+  accountType    String       // ASSET | LIABILITY | EQUITY | INCOME | EXPENSE
+  debit          Float        @default(0)
+  credit         Float        @default(0)
+  memo           String?
+  investorId     Int?         // sub-ledger key for investor capital-account lines
+  createdAt      DateTime     @default(now())
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+
+  @@index([journalEntryId])
+  @@index([accountCode])
+  @@index([investorId])
 }
 
 model EmailVerification {
@@ -173,6 +247,10 @@ model Milestone {
   actualCompletionDate    DateTime?
   budgetAllocated         Float                @default(0)
   budgetSpent             Float                @default(0)
+  budgetCommitted         Float                @default(0) // Value of placed orders not yet paid
+  percentComplete         Float                @default(0) // Verified physical progress (0-100), NOT spend
+  verifiedById            Int? // Manager/QS who last verified physical progress
+  verifiedAt              DateTime?
   order                   Int                  @default(0)
   createdAt               DateTime             @default(now())
   updatedAt               DateTime             @default(now()) @updatedAt
@@ -300,6 +378,9 @@ model Property {
   budgetEntries             BudgetEntry[]
   investorContributions     InvestorContribution[]
   milestones                Milestone[]
+  developmentApprovals      DevelopmentApproval[]
+  developmentUnits          DevelopmentUnit[]
+  developmentProfessionals  DevelopmentProfessional[]
   user                      User                     @relation(fields: [userId], references: [id])
   propertyDevelopment       PropertyDevelopment?
   propertyFlip              PropertyFlip?
@@ -325,6 +406,7 @@ model Property {
   distressPredictions       DistressPrediction[]
   distressedSource          DistressedListing?       @relation("PropertyFromDistressed")
   platformRevenues          PlatformRevenue[]
+  journalEntries            JournalEntry[]
 
   @@index([createdAt])
   @@index([investmentStatus])
@@ -365,11 +447,75 @@ model PropertyDevelopment {
   stabilizedCapRate          Float           @default(0)
   expectedGrossYield         Float           @default(0)
   expectedNetYield           Float           @default(0)
+  // ── Capital stack (equity + senior debt) ──────────────────────
+  equityAmount               Float           @default(0)
+  seniorDebtAmount           Float           @default(0)
+  seniorDebtRate             Float           @default(0) // annual % on drawn debt
+  preSaleThresholdPercent    Float           @default(0) // % pre-sales required before construction draw
+  // ── VAT ───────────────────────────────────────────────────────
+  vatApplicable              Boolean         @default(false) // true = VAT-vendor sale (no transfer duty)
+  // ── Engine outputs (single source of truth, recomputed on save) ─
+  computedProfit             Float           @default(0)
+  computedProfitOnCost       Float           @default(0) // profit ÷ total cost %
+  computedIRR                Float           @default(0) // unlevered project IRR % from monthly cashflow
+  equityIRR                  Float           @default(0) // levered equity IRR %
+  equityMultiple             Float           @default(0)
+  peakFunding                Float           @default(0)
+  rolledUpInterest           Float           @default(0)
+  netVatPayable              Float           @default(0)
+  // ── Governance ────────────────────────────────────────────────
+  contingencyDrawn           Float           @default(0) // contingency consumed as risks crystallise
+  developmentStage           DevelopmentStage @default(APPRAISAL)
   userId                     Int
   fundingGoal                Float           @default(0)
   createdAt                  DateTime        @default(now())
   property                   Property        @relation(fields: [propertyId], references: [id])
   user                       User            @relation(fields: [userId], references: [id])
+}
+
+/// Statutory approvals / consents tracker (SA entitlements pipeline).
+model DevelopmentApproval {
+  id          Int            @id @default(autoincrement())
+  propertyId  Int
+  type        ApprovalType
+  status      ApprovalStatus @default(NOT_STARTED)
+  isRequired  Boolean        @default(true)
+  authority   String? // Municipality / NHBRC / competent authority
+  reference   String? // Application / case reference number
+  submittedAt DateTime?
+  decisionAt  DateTime?
+  targetDate  DateTime?
+  documentUrl String?
+  notes       String?
+  createdById Int
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @default(now()) @updatedAt
+  property    Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+}
+
+/// Per-unit sales inventory for resale developments (absorption tracking).
+model DevelopmentUnit {
+  id            Int        @id @default(autoincrement())
+  propertyId    Int
+  unitNumber    String
+  status        UnitStatus @default(AVAILABLE)
+  sizeSqm       Float      @default(0)
+  listPrice     Float      @default(0)
+  soldPrice     Float?
+  buyerName     String?
+  depositPaid   Float      @default(0)
+  bondApproved  Boolean    @default(false)
+  reservedAt    DateTime?
+  soldAt        DateTime?
+  transferredAt DateTime?
+  createdById   Int
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @default(now()) @updatedAt
+  property      Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
 }
 
 model PropertyFlip {
@@ -535,6 +681,7 @@ model User {
   budgetEntries              BudgetEntry[]
   emailVerifications         EmailVerification[]
   investorContributions      InvestorContribution[]
+  journalEntries             JournalEntry[]
   notifications              Notification[]
   passwordResetTokens        PasswordResetToken[]
   reviewedSubmissions        ProgressSubmission[]     @relation("ProgressSubmission_reviewedByIdToUser")
@@ -1448,6 +1595,112 @@ enum MilestoneStatus {
   COMPLETED
   DELAYED
   CANCELLED
+}
+
+enum BudgetEntryType {
+  COMMITMENT
+  ACTUAL
+}
+
+enum CostCategory {
+  LAND
+  PROFESSIONAL_FEES
+  STATUTORY_APPROVALS
+  BULK_SERVICES
+  CONSTRUCTION
+  FINANCE
+  MARKETING_SALES
+  CONTINGENCY
+  OTHER
+}
+
+enum DevelopmentStage {
+  APPRAISAL
+  LAND_SECURED
+  PLANNING_APPROVALS
+  FUNDING
+  CONSTRUCTION
+  PRACTICAL_COMPLETION
+  DEFECTS_LIABILITY
+  SALES_LETTING
+  EXITED
+}
+
+enum ApprovalType {
+  REZONING
+  TOWNSHIP_ESTABLISHMENT
+  SUBDIVISION_CONSOLIDATION
+  SITE_DEVELOPMENT_PLAN
+  BUILDING_PLANS
+  ENVIRONMENTAL_AUTHORISATION
+  WATER_USE_LICENCE
+  WATER_LICENCE
+  GEOTECHNICAL_CLEARANCE
+  TRAFFIC_IMPACT_APPROVAL
+  HERITAGE_AUTHORISATION
+  NHBRC_ENROLMENT
+  BULK_SERVICES_AGREEMENT
+  ELECTRICAL_SUPPLY_AGREEMENT
+  FIRE_APPROVAL
+  HEALTH_APPROVAL
+  SG_DIAGRAM_APPROVAL
+  OCCUPANCY_CERTIFICATE
+  OTHER
+}
+
+enum ApprovalStatus {
+  NOT_STARTED
+  SUBMITTED
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  CONDITIONAL
+}
+
+enum UnitStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+  TRANSFERRED
+}
+
+enum BudgetApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum JournalEntryStatus {
+  POSTED
+  REVERSED
+}
+
+enum ProfessionalRole {
+  TOWN_PLANNER
+  ARCHITECT
+  QUANTITY_SURVEYOR
+  CIVIL_ENGINEER
+  STRUCTURAL_ENGINEER
+  ELECTRICAL_ENGINEER
+  MECHANICAL_ENGINEER
+  WET_SERVICES_ENGINEER
+  ENVIRONMENTAL_SPECIALIST
+  LAND_SURVEYOR
+  GEOTECHNICAL_ENGINEER
+  TRAFFIC_ENGINEER
+  FIRE_CONSULTANT
+  HEALTH_SAFETY_AGENT
+  PROJECT_MANAGER
+  CONVEYANCER
+  VALUER
+  OTHER
+}
+
+enum AppointmentStatus {
+  NOT_APPOINTED
+  SHORTLISTED
+  APPOINTED
+  TERMINATED
 }
 
 enum PropertyStatus {
