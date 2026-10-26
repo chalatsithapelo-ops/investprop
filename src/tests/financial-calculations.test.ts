@@ -349,6 +349,32 @@ describe('Development Feasibility Engine', () => {
       expect(r.projectIRR).toBeGreaterThan(0);
     });
 
+    it('keeps peak funding and rolled-up interest bounded by total cost (S-curve sanity)', () => {
+      // Regression: an inverted standard-normal CDF once made the S-curve dump
+      // the whole build spend into month 1, exploding peak funding into the
+      // billions and interest to many× the loan. Peak funding is a cumulative
+      // outflow and can never exceed total project cost.
+      const r = buildDevelopmentCashflow({
+        landCost: 3_000_000,
+        hardCosts: 12_000_000,
+        softCosts: 1_800_000,
+        contingencyAmount: 1_740_000,
+        grossDevelopmentValue: 24_000_000,
+        timelineMonths: 18,
+        equityAmount: 8_000_000,
+        seniorDebtAmount: 10_000_000,
+        debtAnnualRate: 11.5,
+        vatApplicable: true,
+      });
+      expect(r.peakFunding).toBeGreaterThan(0);
+      expect(r.peakFunding).toBeLessThanOrEqual(r.totalCost);
+      // Interest on a scheme that draws ~R4m of a R10m facility for ~1 year is
+      // small relative to the loan, never a multiple of it.
+      expect(r.totalInterest).toBeLessThan(10_000_000);
+      expect(r.totalCost).toBeLessThan(25_000_000);
+      expect(Number.isFinite(r.projectIRR)).toBe(true);
+    });
+
     it('accrues rolled-up interest when the scheme is debt-funded', () => {
       const r = buildDevelopmentCashflow({
         landCost: 1_000_000,
