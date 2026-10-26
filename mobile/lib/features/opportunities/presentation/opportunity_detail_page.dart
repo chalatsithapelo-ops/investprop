@@ -9,6 +9,7 @@ import '../../../widgets/async_value_widget.dart';
 import '../../ai/presentation/match_score_card.dart';
 import '../data/opportunities_repository.dart';
 import '../domain/opportunity.dart';
+import 'development_due_diligence_panel.dart';
 import 'investment_analysis_panel.dart';
 import 'opportunity_card.dart';
 
@@ -45,13 +46,16 @@ class OpportunityDetailPage extends ConsumerWidget {
   }
 }
 
-class _Detail extends StatelessWidget {
+class _Detail extends ConsumerWidget {
   const _Detail({required this.opportunity});
 
   final Opportunity opportunity;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dueDiligence = opportunity.strategy == DealStrategy.development
+        ? ref.watch(developmentDueDiligenceProvider(opportunity.id)).valueOrNull
+        : null;
     return CustomScrollView(
       slivers: [
         SliverAppBar(
@@ -128,6 +132,10 @@ class _Detail extends StatelessWidget {
                 const SizedBox(height: 20),
                 if (opportunity.hasAnalysis) ...[
                   InvestmentAnalysisPanel(opportunity: opportunity),
+                  const SizedBox(height: 16),
+                ],
+                if (dueDiligence != null) ...[
+                  DevelopmentDueDiligencePanel(dd: dueDiligence),
                   const SizedBox(height: 16),
                 ],
                 OutlinedButton.icon(

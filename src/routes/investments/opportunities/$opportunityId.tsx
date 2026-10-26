@@ -131,6 +131,17 @@ function OpportunityDetailPage() {
   });
   const docsPack: any[] = (docsPackQuery.data as any[]) ?? [];
 
+  // Development due-diligence pack — feasibility, capital stack, returns, team,
+  // approvals. Null when the opportunity is not a greenfield development.
+  const ddQuery = useQuery({
+    ...trpc.getDevelopmentDueDiligence.queryOptions({
+      authToken: authToken ?? "",
+      propertyId: Number(opportunityId),
+    }),
+    enabled: !!authToken && !!opportunityId,
+  });
+  const dd: any = ddQuery.data ?? null;
+
   // Whether FICA is required for the current investment amount
   const FICA_THRESHOLD = 20_000;
   const currentAmount = Number(investmentAmount) || 0;
@@ -650,6 +661,9 @@ function OpportunityDetailPage() {
 
             {/* In-Depth Financial Analysis */}
             <InvestorFinancialDetails property={property} preferredReturn={expectedReturns} />
+
+            {/* Development Due-Diligence Pack */}
+            {dd && <DevelopmentDueDiligence dd={dd} />}
 
             {/* Share Info */}
             {aggregatedShareInfo && (
@@ -1466,6 +1480,218 @@ function SensitivityTable({ title, rows, asPercent = false }: { title: string; r
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Development Due-Diligence Pack — read-only investor view of feasibility,
+// capital stack, returns, professional team and statutory approvals.
+// ============================================================================
+
+const titleCase = (s: string) =>
+  s.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+
+const DD_APPROVAL_BADGE: Record<string, string> = {
+  APPROVED: "bg-emerald-500/15 text-emerald-600",
+  CONDITIONAL: "bg-amber-500/15 text-amber-600",
+  IN_REVIEW: "bg-sky-500/15 text-sky-600",
+  SUBMITTED: "bg-sky-500/15 text-sky-600",
+  REJECTED: "bg-red-500/15 text-red-500",
+  NOT_STARTED: "bg-navy-700/40 text-gray-400",
+};
+
+const DD_APPOINTMENT_BADGE: Record<string, string> = {
+  APPOINTED: "bg-emerald-500/15 text-emerald-600",
+  SHORTLISTED: "bg-amber-500/15 text-amber-600",
+  NOT_APPOINTED: "bg-navy-700/40 text-gray-400",
+  TERMINATED: "bg-red-500/15 text-red-500",
+};
+
+function DdGate({ label, pass }: { label: string; pass: boolean }) {
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium ${
+        pass
+          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+          : "border-amber-500/30 bg-amber-500/10 text-amber-600"
+      }`}
+    >
+      {pass ? <CheckCircle size={14} /> : <AlertTriangle size={14} />}
+      {label}
+    </div>
+  );
+}
+
+function DevelopmentDueDiligence({ dd }: { dd: any }) {
+  const e = dd.economics;
+  const c = dd.capital;
+  const r = dd.readiness;
+  const scoreColor =
+    r.readinessScore >= 75
+      ? "text-emerald-600"
+      : r.readinessScore >= 50
+        ? "text-amber-600"
+        : "text-red-500";
+
+  return (
+    <div className="rounded-xl border border-navy-800/50 bg-navy-900/50 p-6">
+      <div className="mb-1 flex items-center gap-2">
+        <Landmark className="h-5 w-5 text-gold-500" />
+        <h2 className="text-lg font-semibold text-gray-900">Due Diligence Pack</h2>
+      </div>
+      <p className="mb-5 text-sm text-gray-500">
+        Independent feasibility, use of capital and project returns, plus the
+        professional team and statutory approvals underpinning this development.
+      </p>
+
+      {/* Readiness score + gates */}
+      <div className="mb-6 rounded-lg border border-navy-800/50 bg-navy-800/20 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+            <Shield size={15} className="text-gold-500" /> Construction Readiness
+          </h3>
+          <div className="text-right">
+            <span className={`text-2xl font-bold ${scoreColor}`}>{r.readinessScore}</span>
+            <span className="text-sm text-gray-500">/100</span>
+          </div>
+        </div>
+        <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-navy-800">
+          <div
+            className={`h-full rounded-full ${r.readinessScore >= 75 ? "bg-emerald-500" : r.readinessScore >= 50 ? "bg-amber-500" : "bg-red-500"}`}
+            style={{ width: `${r.readinessScore}%` }}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <DdGate label="Economics" pass={r.economicsPass} />
+          <DdGate label="Team" pass={r.professionalsPass} />
+          <DdGate label="Approvals" pass={r.approvalsPass} />
+          <DdGate label="Funding" pass={r.fundingPass} />
+        </div>
+        {r.constructionReady ? (
+          <p className="mt-3 flex items-center gap-2 text-xs font-medium text-emerald-600">
+            <CheckCircle size={14} /> All pre-construction gates satisfied.
+          </p>
+        ) : (
+          r.reasons?.length > 0 && (
+            <ul className="mt-3 space-y-1">
+              {r.reasons.map((reason: string, i: number) => (
+                <li key={i} className="flex items-start gap-2 text-xs text-amber-600">
+                  <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                  {reason}
+                </li>
+              ))}
+            </ul>
+          )
+        )}
+      </div>
+
+      {/* Financial feasibility */}
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
+        <BarChart3 size={15} className="text-gold-500" /> Financial Feasibility
+      </h3>
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <InvMetric label="Gross Development Value" value={R(e.grossDevelopmentValue)} color="text-gray-900" />
+        <InvMetric label="Total Development Cost" value={R(e.totalCost)} color="text-gray-900" />
+        <InvMetric label="Projected Profit" value={R(e.profit)} color={e.profit >= 0 ? "text-emerald-600" : "text-red-500"} />
+        <InvMetric label="Profit on Cost" value={pct(e.profitOnCost)} color={e.profitOnCost >= 15 ? "text-emerald-600" : "text-amber-600"} />
+        <InvMetric label="Profit on GDV" value={pct(e.profitOnGdv)} color="text-gray-900" />
+        <InvMetric label="Programme" value={`${e.timelineMonths} mo`} color="text-gray-900" />
+      </div>
+
+      {/* Use of capital */}
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
+        <Wallet size={15} className="text-gold-500" /> Use of Capital & Returns
+      </h3>
+      <div className="mb-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <InvMetric label="Investor Equity" value={R(c.equityAmount)} color="text-gold-600" />
+        <InvMetric label="Senior Debt" value={R(c.seniorDebtAmount)} sub={c.seniorDebtRate ? `${c.seniorDebtRate.toFixed(2)}% p.a.` : undefined} color="text-gray-900" />
+        <InvMetric label="Peak Funding" value={R(c.peakFunding)} color="text-gray-900" />
+        <InvMetric label="Committed Funding" value={R(c.committedFunding)} color={c.fundingShortfall > 0 ? "text-amber-600" : "text-emerald-600"} sub={c.fundingShortfall > 0 ? `Shortfall ${R(c.fundingShortfall)}` : "Fully funded"} />
+        <InvMetric label="Loan to Cost" value={pct(c.loanToCost)} color="text-gray-900" />
+        <InvMetric label="Rolled-up Interest" value={R(c.totalInterest)} color="text-gray-900" />
+      </div>
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <InvMetric label="Project IRR" value={Number.isFinite(e.projectIRR) ? pct(e.projectIRR) : "—"} color="text-emerald-600" />
+        <InvMetric label="Equity IRR" value={Number.isFinite(e.equityIRR) ? pct(e.equityIRR) : "—"} color="text-emerald-600" />
+        <InvMetric label="Equity Multiple" value={e.equityMultiple > 0 ? `${e.equityMultiple.toFixed(2)}x` : "—"} color="text-gold-600" />
+        <InvMetric label="Residual Land Value" value={R(e.residualLandValue)} color="text-gray-900" />
+        <InvMetric label="Land Acquisition" value={R(e.landAcquisitionCost)} color="text-gray-900" />
+        <InvMetric label="Land Headroom" value={R(e.landHeadroom)} color={e.landHeadroom >= 0 ? "text-emerald-600" : "text-red-500"} />
+      </div>
+
+      {/* Professional team */}
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
+        <Building2 size={15} className="text-gold-500" /> Professional Team
+        <span className="ml-1 rounded-full bg-navy-800/40 px-2 py-0.5 text-[11px] font-medium text-gray-400">
+          {dd.professionalsSummary.appointed}/{dd.professionalsSummary.required} appointed
+        </span>
+      </h3>
+      {dd.professionals.length === 0 ? (
+        <p className="mb-6 rounded-lg border border-dashed border-navy-700 bg-navy-800/20 p-3 text-xs text-gray-400">
+          No professional appointments recorded yet.
+        </p>
+      ) : (
+        <ul className="mb-6 divide-y divide-navy-800/50 rounded-lg border border-navy-800/50 bg-navy-900/30">
+          {dd.professionals.map((p: any, i: number) => (
+            <li key={i} className="flex items-center justify-between gap-3 p-3 text-sm">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-gray-900">
+                  {titleCase(p.role)}
+                  {p.isRequired && <span className="ml-1 text-[10px] text-gold-600">• required</span>}
+                </p>
+                <p className="truncate text-xs text-gray-500">
+                  {p.firmName || "To be appointed"}
+                  {p.registrationBody ? ` · ${p.registrationBody}` : ""}
+                </p>
+              </div>
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${DD_APPOINTMENT_BADGE[p.status] ?? "bg-navy-700/40 text-gray-400"}`}>
+                {titleCase(p.status)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Statutory approvals */}
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
+        <FileText size={15} className="text-gold-500" /> Statutory Approvals & Consents
+        <span className="ml-1 rounded-full bg-navy-800/40 px-2 py-0.5 text-[11px] font-medium text-gray-400">
+          {dd.approvalsSummary.approved}/{dd.approvalsSummary.required} approved
+        </span>
+      </h3>
+      {dd.approvals.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-navy-700 bg-navy-800/20 p-3 text-xs text-gray-400">
+          No statutory approvals recorded yet.
+        </p>
+      ) : (
+        <ul className="divide-y divide-navy-800/50 rounded-lg border border-navy-800/50 bg-navy-900/30">
+          {dd.approvals.map((a: any, i: number) => (
+            <li key={i} className="flex items-center justify-between gap-3 p-3 text-sm">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-gray-900">
+                  {titleCase(a.type)}
+                  {a.isRequired && <span className="ml-1 text-[10px] text-gold-600">• required</span>}
+                </p>
+                <p className="truncate text-xs text-gray-500">
+                  {a.authority || "Authority t.b.c."}
+                  {a.targetDate ? ` · target ${new Date(a.targetDate).toLocaleDateString("en-ZA")}` : ""}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {a.documentUrl && (
+                  <a href={a.documentUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-gold-500 px-2 py-1 text-[11px] font-medium text-gold-600 hover:bg-gold-50">
+                    View
+                  </a>
+                )}
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${DD_APPROVAL_BADGE[a.status] ?? "bg-navy-700/40 text-gray-400"}`}>
+                  {titleCase(a.status)}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

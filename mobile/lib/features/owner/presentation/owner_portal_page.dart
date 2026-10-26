@@ -468,6 +468,15 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
                 'Attach title deed, ID, rates account, bond statement or lease.',
                 style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
+              if (OwnerOptions.isDevelopmentEngagement(_engagement))
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Joint ventures and development partnerships: you can also attach '
+                    'zoning, survey, building plans, environmental, geotech and services documents.',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ),
               const SizedBox(height: 8),
               for (var i = 0; i < _documents.length; i++)
                 Padding(
@@ -482,12 +491,20 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
                             isDense: true,
                             border: OutlineInputBorder(),
                           ),
-                          items: OwnerOptions.documentKinds
-                              .map((k) => DropdownMenuItem(
-                                    value: k,
-                                    child: Text(OwnerOptions.label(k)),
-                                  ))
-                              .toList(),
+                          items: (() {
+                            final kinds = OwnerOptions.documentKindsFor(_engagement);
+                            // Keep a previously-chosen kind selectable even if the
+                            // engagement later changes away from a development type.
+                            final items = kinds.contains(_documents[i].kind)
+                                ? kinds
+                                : [...kinds, _documents[i].kind];
+                            return items
+                                .map((k) => DropdownMenuItem(
+                                      value: k,
+                                      child: Text(OwnerOptions.label(k)),
+                                    ))
+                                .toList();
+                          })(),
                           onChanged: (v) => setState(
                               () => _documents[i].kind = v ?? _documents[i].kind),
                         ),

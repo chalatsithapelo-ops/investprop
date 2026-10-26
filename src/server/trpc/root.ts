@@ -180,6 +180,7 @@ import {
   updateDevelopmentProfessional,
   getDevelopmentProfessionals,
   getProjectReadiness,
+  getDevelopmentDueDiligence,
 } from "~/server/trpc/procedures/development-management";
 import {
   getChartOfAccounts,
@@ -249,6 +250,7 @@ export const appRouter = createTRPCRouter({
   updateDevelopmentProfessional,
   getDevelopmentProfessionals,
   getProjectReadiness,
+  getDevelopmentDueDiligence,
   getChartOfAccounts,
   getTrialBalance,
   getCapitalAccounts,

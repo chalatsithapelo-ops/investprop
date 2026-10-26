@@ -944,3 +944,228 @@ export const getProjectReadiness = baseProcedure
       readiness: gate,
     };
   });
+
+// ============================================================================
+// Investor due-diligence pack — read-only, sanitised view of the development
+// feasibility, capital stack, returns, professional team and statutory
+// approvals. Any authenticated user may read it for a PUBLISHED development;
+// contact details and professional fees are deliberately withheld.
+// ============================================================================
+
+export const getDevelopmentDueDiligence = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      propertyId: z.number(),
+      minProfitOnCost: z.number().default(15),
+      targetProfitOnCostPercent: z.number().default(20),
+    })
+  )
+  .query(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+
+    const property = await db.property.findUnique({
+      where: { id: input.propertyId },
+      select: { id: true, isPublished: true, propertyDevelopment: true },
+    });
+    if (!property) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Property not found" });
+    }
+
+    // Only published developments are visible to investors; managers may preview.
+    const isManager = (MANAGER_ROLES as readonly string[]).includes(user.role);
+    if (!property.isPublished && !isManager) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "This development is not yet published",
+      });
+    }
+
+    const dev = property.propertyDevelopment;
+    // Not a greenfield development — the UI hides the pack when this is null.
+    if (!dev) return null;
+
+    const [approvals, professionals] = await Promise.all([
+      db.developmentApproval.findMany({
+        where: { propertyId: input.propertyId },
+        orderBy: { createdAt: "asc" },
+      }),
+      db.developmentProfessional.findMany({
+        where: { propertyId: input.propertyId },
+        orderBy: { role: "asc" },
+      }),
+    ]);
+
+    const devInput: PropertyDevelopmentInput = {
+      developmentType: dev.developmentType as PropertyDevelopmentInput["developmentType"],
+      landAcquisitionCost: dev.landAcquisitionCost,
+      hardCosts: dev.hardCosts,
+      softCosts: dev.softCosts,
+      financingCosts: dev.financingCosts,
+      contingencyPercent: dev.contingencyPercent,
+      contingencyAmount: dev.contingencyAmount,
+      expectedSalePricePerUnit: dev.expectedSalePricePerUnit,
+      totalExpectedRevenue: dev.totalExpectedRevenue,
+      expectedProfit: dev.expectedProfit,
+      expectedMonthlyRentPerUnit: dev.expectedMonthlyRentPerUnit,
+      annualOperatingExpenses: dev.annualOperatingExpenses,
+      stabilizedCapRate: dev.stabilizedCapRate,
+      expectedGrossYield: dev.expectedGrossYield,
+      expectedNetYield: dev.expectedNetYield,
+      expectedROI: dev.expectedROI,
+      expectedIRR: dev.expectedIRR,
+      developmentTimelineMonths: dev.developmentTimelineMonths,
+      preSaleUnits: dev.preSaleUnits,
+      costPerSquareMeter: dev.costPerSquareMeter,
+      totalSquareMeters: dev.totalSquareMeters,
+      numberOfUnits: dev.numberOfUnits,
+      totalBudget: dev.totalBudget,
+    };
+    const metrics = calculateDevelopmentMetrics(devInput);
+    const gdv =
+      metrics.grossDevelopmentValue ??
+      (metrics.calculatedCapRate && metrics.calculatedCapRate > 0
+        ? (metrics.noi || 0) / (metrics.calculatedCapRate / 100)
+        : 0);
+
+    const cashflow = buildDevelopmentCashflow({
+      landCost: dev.landAcquisitionCost,
+      hardCosts: dev.hardCosts,
+      softCosts: dev.softCosts,
+      contingencyAmount: metrics.contingencyAmount,
+      grossDevelopmentValue: gdv,
+      timelineMonths: dev.developmentTimelineMonths || 12,
+      equityAmount: dev.equityAmount,
+      seniorDebtAmount: dev.seniorDebtAmount,
+      debtAnnualRate: dev.seniorDebtRate,
+      vatApplicable: dev.vatApplicable,
+    });
+
+    const residualLandValue = calculateResidualLandValue({
+      grossDevelopmentValue: gdv,
+      hardCosts: dev.hardCosts,
+      softCosts: dev.softCosts,
+      financingCosts: dev.financingCosts,
+      contingencyPercent: dev.contingencyPercent,
+      targetProfitOnCostPercent: input.targetProfitOnCostPercent,
+    });
+
+    const sensitivity = runDevelopmentSensitivity({
+      landCost: dev.landAcquisitionCost,
+      buildCost: dev.hardCosts + dev.softCosts + dev.financingCosts,
+      contingencyPercent: dev.contingencyPercent,
+      grossDevelopmentValue: gdv,
+      costDeltas: [-0.1, 0, 0.1],
+      priceDeltas: [-0.1, 0, 0.1],
+    });
+
+    const requiredApprovals = approvals.filter((a) => a.isRequired);
+    const requiredProfessionals = professionals.filter((p) => p.isRequired);
+
+    const gate = assessGreenfieldFeasibility({
+      model: {
+        developmentType: dev.developmentType as
+          | "AFFORDABLE_RESALE"
+          | "COMMERCIAL_RENTAL"
+          | "AFFORDABLE_RENTAL",
+        totalDevelopmentCost: cashflow.totalCost,
+        grossDevelopmentValue: gdv,
+        profit: cashflow.profit,
+        profitOnCost: cashflow.profitOnCost,
+        profitOnGdv: cashflow.profitOnGdv,
+        developmentYield:
+          dev.developmentType === "AFFORDABLE_RESALE"
+            ? undefined
+            : metrics.calculatedCapRate,
+        yieldSpread:
+          dev.developmentType === "AFFORDABLE_RESALE" || metrics.calculatedCapRate == null
+            ? undefined
+            : metrics.calculatedCapRate - dev.stabilizedCapRate,
+        notes: [],
+      },
+      minProfitOnCost: input.minProfitOnCost,
+      requiredProfessionals: requiredProfessionals.map((p) => p.role),
+      appointedProfessionals: requiredProfessionals
+        .filter((p) => p.status === "APPOINTED")
+        .map((p) => p.role),
+      requiredApprovals: requiredApprovals.map((a) => a.type),
+      approvedApprovals: requiredApprovals
+        .filter((a) => a.status === "APPROVED")
+        .map((a) => a.type),
+      committedFunding: dev.equityAmount + dev.seniorDebtAmount,
+      peakFunding: cashflow.peakFunding,
+    });
+
+    const committedFunding = dev.equityAmount + dev.seniorDebtAmount;
+
+    return {
+      projectName: dev.projectName,
+      developmentType: dev.developmentType,
+      developmentStage: dev.developmentStage,
+      economics: {
+        grossDevelopmentValue: gdv,
+        totalCost: cashflow.totalCost,
+        profit: cashflow.profit,
+        profitOnCost: cashflow.profitOnCost,
+        profitOnGdv: cashflow.profitOnGdv,
+        projectIRR: cashflow.projectIRR,
+        equityIRR: cashflow.equityIRR,
+        equityMultiple: cashflow.equityMultiple,
+        timelineMonths: cashflow.months,
+        residualLandValue,
+        landAcquisitionCost: dev.landAcquisitionCost,
+        landHeadroom: residualLandValue - dev.landAcquisitionCost,
+      },
+      capital: {
+        equityAmount: dev.equityAmount,
+        seniorDebtAmount: dev.seniorDebtAmount,
+        seniorDebtRate: dev.seniorDebtRate,
+        committedFunding,
+        peakFunding: cashflow.peakFunding,
+        fundingShortfall: gate.fundingShortfall,
+        loanToCost:
+          cashflow.totalCost > 0
+            ? (dev.seniorDebtAmount / cashflow.totalCost) * 100
+            : 0,
+        totalInterest: cashflow.totalInterest,
+      },
+      sensitivity,
+      readiness: {
+        readinessScore: gate.readinessScore,
+        economicsPass: gate.economicsPass,
+        professionalsPass: gate.professionalsPass,
+        approvalsPass: gate.approvalsPass,
+        fundingPass: gate.fundingPass,
+        constructionReady: gate.constructionReady,
+        reasons: gate.reasons,
+      },
+      professionals: professionals.map((p) => ({
+        role: p.role,
+        firmName: p.firmName,
+        status: p.status,
+        isRequired: p.isRequired,
+        registrationBody: p.registrationBody,
+      })),
+      professionalsSummary: {
+        total: professionals.length,
+        required: requiredProfessionals.length,
+        appointed: requiredProfessionals.filter((p) => p.status === "APPOINTED").length,
+        outstanding: requiredProfessionals.filter((p) => p.status !== "APPOINTED").length,
+      },
+      approvals: approvals.map((a) => ({
+        type: a.type,
+        status: a.status,
+        authority: a.authority,
+        reference: a.reference,
+        isRequired: a.isRequired,
+        targetDate: a.targetDate,
+        documentUrl: a.documentUrl,
+      })),
+      approvalsSummary: {
+        total: approvals.length,
+        required: requiredApprovals.length,
+        approved: requiredApprovals.filter((a) => a.status === "APPROVED").length,
+        outstanding: requiredApprovals.filter((a) => a.status !== "APPROVED").length,
+      },
+    };
+  });

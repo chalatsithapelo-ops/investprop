@@ -247,6 +247,28 @@ class OwnerOptions {
     'OTHER',
   ];
 
+  /// Extra development-readiness documents, offered only for joint-venture or
+  /// development-partnership engagements.
+  static const developmentDocumentKinds = [
+    'ZONING_CERTIFICATE',
+    'SURVEY_DIAGRAM',
+    'BUILDING_PLANS',
+    'ENVIRONMENTAL_APPROVAL',
+    'GEOTECH',
+    'SERVICES_CONFIRMATION',
+  ];
+
+  static bool isDevelopmentEngagement(String engagement) =>
+      engagement == 'JOINT_VENTURE' ||
+      engagement == 'DEVELOPMENT_PARTNERSHIP';
+
+  /// Document kinds available for the given engagement — development docs are
+  /// appended for JV / development-partnership proposals.
+  static List<String> documentKindsFor(String engagement) =>
+      isDevelopmentEngagement(engagement)
+          ? [...documentKinds, ...developmentDocumentKinds]
+          : [...documentKinds];
+
   static String label(String raw) => raw
       .split('_')
       .map((w) => w.isEmpty ? w : w[0] + w.substring(1).toLowerCase())

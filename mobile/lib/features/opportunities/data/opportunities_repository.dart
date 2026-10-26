@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/trpc_client.dart';
 import '../../../core/providers.dart';
+import '../domain/development_due_diligence.dart';
 import '../domain/opportunity.dart';
 
 class OpportunitiesRepository {
@@ -28,6 +29,19 @@ class OpportunitiesRepository {
     }
     throw StateError('Opportunity $id not found');
   }
+
+  /// Investor due-diligence pack for a greenfield development. Returns null when
+  /// the opportunity is not a development (the server returns null).
+  Future<DevelopmentDueDiligence?> fetchDueDiligence(int propertyId) async {
+    final data = await _client.query(
+      'getDevelopmentDueDiligence',
+      input: {'propertyId': propertyId},
+    );
+    if (data is Map) {
+      return DevelopmentDueDiligence.fromJson(Map<String, dynamic>.from(data));
+    }
+    return null;
+  }
 }
 
 final opportunitiesRepositoryProvider = Provider<OpportunitiesRepository>((ref) {
@@ -52,4 +66,9 @@ final opportunityByIdProvider = FutureProvider.autoDispose
         }
       }
       return ref.watch(opportunitiesRepositoryProvider).fetchById(id);
+    });
+
+final developmentDueDiligenceProvider = FutureProvider.autoDispose
+    .family<DevelopmentDueDiligence?, int>((ref, id) async {
+      return ref.watch(opportunitiesRepositoryProvider).fetchDueDiligence(id);
     });

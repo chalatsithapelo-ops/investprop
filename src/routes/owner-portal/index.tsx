@@ -1200,6 +1200,37 @@ function SaleProposalForm({
               </div>
             ))}
           </div>
+
+          {/* Development-ready documentation — only for JV / development partnerships */}
+          {(form.engagementType === "JOINT_VENTURE" || form.engagementType === "DEVELOPMENT_PARTNERSHIP") && (
+            <div className="mt-4 border-t border-gray-200 pt-4">
+              <h4 className="mb-1 text-sm font-semibold text-gray-700">Development-Ready Documentation</h4>
+              <p className="mb-3 text-xs text-gray-500">
+                For a joint venture or development partnership, these planning and technical documents let us assess development feasibility faster. Upload whatever you already have — none are mandatory to submit.
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {[
+                  { kind: "ZONING_CERTIFICATE", label: "Zoning Certificate / Rights" },
+                  { kind: "SURVEY_DIAGRAM", label: "SG / Survey Diagram" },
+                  { kind: "BUILDING_PLANS", label: "Approved Building Plans" },
+                  { kind: "ENVIRONMENTAL_APPROVAL", label: "Environmental Authorisation" },
+                  { kind: "GEOTECH", label: "Geotechnical Report" },
+                  { kind: "SERVICES_CONFIRMATION", label: "Bulk Services Confirmation" },
+                ].map((d) => (
+                  <div key={d.kind} className="rounded-md border border-dashed border-gray-300 bg-white p-3">
+                    <label className="text-xs font-medium text-gray-700">{d.label}</label>
+                    <input type="file" accept="application/pdf,image/*" onChange={(e) => handleDocUpload(d.kind, e)} disabled={uploading} className="mt-1 block w-full text-xs" />
+                    {docs.filter((x) => x.kind === d.kind).map((x, i) => (
+                      <div key={i} className="mt-2 flex items-center justify-between rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-700">
+                        <span className="truncate">✓ {x.name}</span>
+                        <button type="button" onClick={() => setDocs((p) => p.filter((y) => y !== x))} className="ml-2 text-red-500">×</button>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* POPIA Consent */}

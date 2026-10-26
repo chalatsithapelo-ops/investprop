@@ -135,7 +135,11 @@ export const submitSaleProposal = baseProcedure
       erfSize: z.number().min(0).optional(),
       imageUrls: z.array(z.string()).optional(),
       documentUrls: z.array(z.object({
-        kind: z.enum(["TITLE_DEED", "ID", "RATES_ACCOUNT", "BOND_STATEMENT", "LEASE", "OTHER"]),
+        kind: z.enum([
+          "TITLE_DEED", "ID", "RATES_ACCOUNT", "BOND_STATEMENT", "LEASE", "OTHER",
+          "ZONING_CERTIFICATE", "SURVEY_DIAGRAM", "BUILDING_PLANS",
+          "ENVIRONMENTAL_APPROVAL", "GEOTECH", "SERVICES_CONFIRMATION",
+        ]),
         url: z.string(),
         name: z.string(),
       })).optional(),
