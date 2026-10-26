@@ -5,6 +5,7 @@ import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { TRPCError } from "@trpc/server";
 import { createNotification } from "./notifications";
 import { getFeeConfig, recordPlatformFee } from "~/server/fees/platform-fees";
+import { planFills } from "~/share-trading";
 // ─── Place Order (Buy or Sell) ─────────────────────────────────
 
 export const placeShareOrder = baseProcedure
@@ -354,15 +355,48 @@ async function matchOrders(newOrderId: number): Promise<any[]> {
     ],
   });
 
+  // ── Seller deliverable guard ──────────────────────────────────
+  // A SELL order may only ever settle shares the seller actually still holds.
+  // Snapshot the relevant live balances up-front and plan fills with those caps
+  // so the engine can never mint shares — e.g. if a seller transferred away or
+  // withdrew (cooling-off) their holding after resting a sell order.
+  const sellerIds =
+    newOrder.side === "SELL"
+      ? [newOrder.investorId]
+      : [...new Set(matchingOrders.map((o) => o.investorId))];
+
+  const sellerHoldings = await db.shareHolding.findMany({
+    where: { shareClassId: newOrder.shareClassId, investorId: { in: sellerIds } },
+    select: { investorId: true, sharesOwned: true },
+  });
+  const deliverable = new Map<number, number>();
+  for (const h of sellerHoldings) deliverable.set(h.investorId, h.sharesOwned);
+
+  const plan = planFills({
+    takerSide: newOrder.side as "BUY" | "SELL",
+    takerPrice: newOrder.pricePerShare,
+    takerRemaining: newOrder.quantity - newOrder.filledQuantity,
+    takerDeliverable:
+      newOrder.side === "SELL" ? (deliverable.get(newOrder.investorId) ?? 0) : undefined,
+    makers: matchingOrders.map((o) => ({
+      id: o.id,
+      price: o.pricePerShare,
+      remaining: o.quantity - o.filledQuantity,
+      makerDeliverable:
+        newOrder.side === "BUY" ? (deliverable.get(o.investorId) ?? 0) : undefined,
+    })),
+  });
+
+  const ordersById = new Map(matchingOrders.map((o) => [o.id, o]));
   const trades: any[] = [];
 
-  for (const counterOrder of matchingOrders) {
-    const remainingNew = newOrder.quantity - newOrder.filledQuantity;
-    const remainingCounter = counterOrder.quantity - counterOrder.filledQuantity;
-    if (remainingNew <= 0) break;
+  for (const fill of plan) {
+    const counterOrder = ordersById.get(fill.makerOrderId);
+    if (!counterOrder) continue;
+    if (newOrder.quantity - newOrder.filledQuantity <= 0) break;
 
-    const fillQty = Math.min(remainingNew, remainingCounter);
-    const tradePrice = counterOrder.pricePerShare; // Price taker gets maker's price
+    const fillQty = fill.quantity;
+    const tradePrice = fill.price; // taker transacts at the maker's resting price
     const totalAmount = fillQty * tradePrice;
 
     const buyerId = newOrder.side === "BUY" ? newOrder.investorId : counterOrder.investorId;
@@ -371,6 +405,33 @@ async function matchOrders(newOrderId: number): Promise<any[]> {
     const sellOrderId = newOrder.side === "SELL" ? newOrder.id : counterOrder.id;
 
     await db.$transaction(async (tx) => {
+      // Settlement-time re-check: the seller must STILL hold the shares right
+      // now. Guards against concurrent transfers/withdrawals between planning
+      // and settlement. Never settle more than the seller can actually deliver.
+      const sellerHolding = await tx.shareHolding.findUnique({
+        where: {
+          shareClassId_investorId: {
+            shareClassId: newOrder.shareClassId,
+            investorId: sellerId,
+          },
+        },
+      });
+      if (!sellerHolding || sellerHolding.sharesOwned < fillQty) {
+        // Seller can no longer deliver — skip this fill. If the shortfall is on a
+        // resting maker sell order, cancel it so it stops advertising phantom
+        // liquidity in the order book.
+        if (
+          newOrder.side === "BUY" &&
+          (!sellerHolding || sellerHolding.sharesOwned <= 0)
+        ) {
+          await tx.shareOrder.update({
+            where: { id: counterOrder.id },
+            data: { status: "CANCELLED" },
+          });
+        }
+        return;
+      }
+
       // Record trade
       const trade = await tx.shareTrade.create({
         data: {
@@ -406,43 +467,34 @@ async function matchOrders(newOrderId: number): Promise<any[]> {
           status: counterFilled >= counterOrder.quantity ? "FILLED" : "PARTIALLY_FILLED",
         },
       });
+      counterOrder.filledQuantity = counterFilled;
 
-      // Transfer shares: deduct from seller's holding, add to buyer's holding
-      const sellerHolding = await tx.shareHolding.findUnique({
-        where: {
-          shareClassId_investorId: {
-            shareClassId: newOrder.shareClassId,
-            investorId: sellerId,
-          },
-        },
-      });
-
-      if (sellerHolding) {
-        const sellerNewBalance = sellerHolding.sharesOwned - fillQty;
-        if (sellerNewBalance <= 0) {
-          await tx.shareHolding.delete({ where: { id: sellerHolding.id } });
-        } else {
-          await tx.shareHolding.update({
-            where: { id: sellerHolding.id },
-            data: { sharesOwned: sellerNewBalance },
-          });
-        }
-
-        // Ledger entry for seller
-        await tx.shareLedgerEntry.create({
-          data: {
-            propertyId: (await tx.shareClass.findUnique({ where: { id: newOrder.shareClassId } }))!.propertyId,
-            shareClassId: newOrder.shareClassId,
-            investorId: sellerId,
-            transactionType: "SALE",
-            shares: -fillQty,
-            pricePerShare: tradePrice,
-            totalAmount,
-            reference: `Market sale — Order #${sellOrderId}`,
-            balanceAfter: Math.max(0, sellerNewBalance),
-          },
+      // Transfer shares: deduct from the seller's holding (guaranteed present and
+      // sufficient by the settlement re-check above), add to the buyer's holding.
+      const sellerNewBalance = sellerHolding.sharesOwned - fillQty;
+      if (sellerNewBalance <= 0) {
+        await tx.shareHolding.delete({ where: { id: sellerHolding.id } });
+      } else {
+        await tx.shareHolding.update({
+          where: { id: sellerHolding.id },
+          data: { sharesOwned: sellerNewBalance },
         });
       }
+
+      // Ledger entry for seller
+      await tx.shareLedgerEntry.create({
+        data: {
+          propertyId: (await tx.shareClass.findUnique({ where: { id: newOrder.shareClassId } }))!.propertyId,
+          shareClassId: newOrder.shareClassId,
+          investorId: sellerId,
+          transactionType: "SALE",
+          shares: -fillQty,
+          pricePerShare: tradePrice,
+          totalAmount,
+          reference: `Market sale — Order #${sellOrderId}`,
+          balanceAfter: Math.max(0, sellerNewBalance),
+        },
+      });
 
       // Add to buyer
       const buyerHolding = await tx.shareHolding.findUnique({

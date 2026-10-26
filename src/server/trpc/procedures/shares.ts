@@ -277,6 +277,31 @@ export const transferShares = baseProcedure
       });
     }
 
+    // Shares committed to open sell orders are reserved and may not be
+    // transferred away — otherwise a seller could rest a sell order and then
+    // move the shares, leaving the matching engine unable to deliver (and
+    // historically able to mint phantom shares on settlement).
+    const openSellOrders = await db.shareOrder.findMany({
+      where: {
+        shareClassId: input.shareClassId,
+        investorId: user.id,
+        side: "SELL",
+        status: { in: ["OPEN", "PARTIALLY_FILLED"] },
+      },
+      select: { quantity: true, filledQuantity: true },
+    });
+    const committed = openSellOrders.reduce(
+      (sum, o) => sum + (o.quantity - o.filledQuantity),
+      0
+    );
+    const available = fromHolding.sharesOwned - committed;
+    if (available < input.shares) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Insufficient available shares. You own ${fromHolding.sharesOwned}, but ${committed} are committed to open sell orders (${available} available). Cancel those orders first.`,
+      });
+    }
+
     const shareClass = await db.shareClass.findUnique({
       where: { id: input.shareClassId },
     });
@@ -771,6 +796,20 @@ export const requestCoolingOffWithdrawal = baseProcedure
     const refundAmount = holding.sharesOwned * holding.shareClass.pricePerShare;
 
     const result = await db.$transaction(async (tx: any) => {
+      // Auto-cancel any open sell orders the investor rested against this
+      // holding. The entire holding is being withdrawn, so those orders can no
+      // longer be delivered — leaving them OPEN would advertise phantom
+      // liquidity in the order book.
+      await tx.shareOrder.updateMany({
+        where: {
+          shareClassId: holding.shareClassId,
+          investorId: user.id,
+          side: "SELL",
+          status: { in: ["OPEN", "PARTIALLY_FILLED"] },
+        },
+        data: { status: "CANCELLED" },
+      });
+
       // Create ledger entry for the withdrawal
       await tx.shareLedgerEntry.create({
         data: {
