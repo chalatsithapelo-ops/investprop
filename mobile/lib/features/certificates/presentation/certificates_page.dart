@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 
 import '../../../config/theme.dart';
@@ -198,6 +199,20 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
                 label: Text(_busy ? 'Preparing…' : 'Download / share PDF'),
               ),
             ),
+            if (c.isValid) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    context.push('/portfolio/marketplace');
+                  },
+                  icon: const Icon(Icons.storefront_outlined),
+                  label: const Text('Sell shares on marketplace'),
+                ),
+              ),
+            ],
           ],
         ),
       ),
