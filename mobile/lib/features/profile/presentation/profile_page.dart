@@ -89,7 +89,10 @@ class ProfilePage extends ConsumerWidget {
                 _FicaTile(),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.edit_outlined, color: AppColors.navy),
+                  leading: const Icon(
+                    Icons.edit_outlined,
+                    color: AppColors.navy,
+                  ),
                   title: const Text('Edit profile'),
                   subtitle: const Text('Name and contact details'),
                   trailing: const Icon(Icons.chevron_right, size: 20),
@@ -98,8 +101,10 @@ class ProfilePage extends ConsumerWidget {
                 const Divider(height: 1),
                 if (!isOwner) ...[
                   ListTile(
-                    leading: const Icon(Icons.description_outlined,
-                        color: AppColors.navy),
+                    leading: const Icon(
+                      Icons.description_outlined,
+                      color: AppColors.navy,
+                    ),
                     title: const Text('Investor statement'),
                     subtitle: const Text('Positions, income and tax withheld'),
                     trailing: const Icon(Icons.chevron_right, size: 20),
@@ -107,31 +112,40 @@ class ProfilePage extends ConsumerWidget {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.gavel_outlined,
-                        color: AppColors.navy),
+                    leading: const Icon(
+                      Icons.gavel_outlined,
+                      color: AppColors.navy,
+                    ),
                     title: const Text('Distressed deals'),
                     subtitle: const Text(
-                        'AI-graded auction & distressed properties'),
+                      'AI-graded auction & distressed properties',
+                    ),
                     trailing: const Icon(Icons.chevron_right, size: 20),
                     onTap: () => context.push('/profile/distressed'),
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.calculate_outlined,
-                        color: AppColors.navy),
+                    leading: const Icon(
+                      Icons.calculate_outlined,
+                      color: AppColors.navy,
+                    ),
                     title: const Text('Home-loan prequalification'),
                     subtitle: const Text(
-                        'See how much you qualify for in minutes'),
+                      'See how much you qualify for in minutes',
+                    ),
                     trailing: const Icon(Icons.chevron_right, size: 20),
                     onTap: () => context.push('/profile/prequalify'),
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.account_balance_outlined,
-                        color: AppColors.navy),
+                    leading: const Icon(
+                      Icons.account_balance_outlined,
+                      color: AppColors.navy,
+                    ),
                     title: const Text('My home-loan applications'),
                     subtitle: const Text(
-                        'Apply to all major banks & compare offers'),
+                      'Apply to all major banks & compare offers',
+                    ),
                     trailing: const Icon(Icons.chevron_right, size: 20),
                     onTap: () => context.push('/profile/home-loan'),
                   ),
@@ -140,7 +154,10 @@ class ProfilePage extends ConsumerWidget {
                   const Divider(height: 1),
                 ],
                 ListTile(
-                  leading: const Icon(Icons.workspace_premium, color: AppColors.gold),
+                  leading: const Icon(
+                    Icons.workspace_premium,
+                    color: AppColors.gold,
+                  ),
                   title: const Text('My plan'),
                   subtitle: const Text('Subscription, features and billing'),
                   trailing: const Icon(Icons.chevron_right, size: 20),
@@ -180,8 +197,10 @@ class ProfilePage extends ConsumerWidget {
               children: [
                 if (!isOwner) ...[
                   ListTile(
-                    leading: const Icon(Icons.workspace_premium_outlined,
-                        color: AppColors.navy),
+                    leading: const Icon(
+                      Icons.workspace_premium_outlined,
+                      color: AppColors.navy,
+                    ),
                     title: const Text('Share certificates'),
                     subtitle: const Text('View and download your certificates'),
                     trailing: const Icon(Icons.chevron_right, size: 20),
@@ -189,8 +208,10 @@ class ProfilePage extends ConsumerWidget {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.receipt_long_outlined,
-                        color: AppColors.navy),
+                    leading: const Icon(
+                      Icons.receipt_long_outlined,
+                      color: AppColors.navy,
+                    ),
                     title: const Text('Tax certificates'),
                     subtitle: const Text('IT3 income summaries by tax year'),
                     trailing: const Icon(Icons.chevron_right, size: 20),
@@ -199,8 +220,10 @@ class ProfilePage extends ConsumerWidget {
                   const Divider(height: 1),
                 ],
                 ListTile(
-                  leading: const Icon(Icons.folder_open_outlined,
-                      color: AppColors.navy),
+                  leading: const Icon(
+                    Icons.folder_open_outlined,
+                    color: AppColors.navy,
+                  ),
                   title: const Text('My documents'),
                   subtitle: const Text('Agreements and shared files'),
                   trailing: const Icon(Icons.chevron_right, size: 20),
@@ -209,8 +232,10 @@ class ProfilePage extends ConsumerWidget {
                 if (!isOwner) ...[
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.verified_outlined,
-                        color: AppColors.navy),
+                    leading: const Icon(
+                      Icons.verified_outlined,
+                      color: AppColors.navy,
+                    ),
                     title: const Text('Platform track record'),
                     subtitle: const Text('Delivery and distribution history'),
                     trailing: const Icon(Icons.chevron_right, size: 20),
@@ -340,12 +365,15 @@ class _DigestToggleState extends ConsumerState<_DigestToggle> {
   Future<void> _set(bool enabled) async {
     setState(() => _busy = true);
     try {
-      await ref.read(profilePrefsRepositoryProvider).setAiDigestOptOut(!enabled);
+      await ref
+          .read(profilePrefsRepositoryProvider)
+          .setAiDigestOptOut(!enabled);
       ref.invalidate(aiDigestPrefsProvider);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);

@@ -131,19 +131,24 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
         _ => 'RENTAL',
       };
       _applyPresetTo(values, _strategy);
-      values['purchasePrice'] = opp.price > 0 ? opp.price : values['purchasePrice']!;
+      values['purchasePrice'] = opp.price > 0
+          ? opp.price
+          : values['purchasePrice']!;
       final r = opp.rentalInput;
       if (r != null) {
         if (r.purchasePrice > 0) values['purchasePrice'] = r.purchasePrice;
         if (r.monthlyRent > 0) values['monthlyRent'] = r.monthlyRent;
         if (r.vacancyRate > 0) values['vacancyRate'] = r.vacancyRate;
-        if (r.annualPropertyTax > 0) values['annualPropertyTax'] = r.annualPropertyTax;
-        if (r.annualInsurance > 0) values['annualInsurance'] = r.annualInsurance;
+        if (r.annualPropertyTax > 0)
+          values['annualPropertyTax'] = r.annualPropertyTax;
+        if (r.annualInsurance > 0)
+          values['annualInsurance'] = r.annualInsurance;
         if (r.monthlyHOAFees > 0) values['monthlyHOA'] = r.monthlyHOAFees;
         if (r.monthlyMaintenanceReserve > 0) {
           values['monthlyMaintenance'] = r.monthlyMaintenanceReserve;
         }
-        if (r.monthlyUtilities > 0) values['monthlyUtilities'] = r.monthlyUtilities;
+        if (r.monthlyUtilities > 0)
+          values['monthlyUtilities'] = r.monthlyUtilities;
         if (r.monthlyManagementFee > 0) {
           values['monthlyManagement'] = r.monthlyManagementFee;
         }
@@ -226,31 +231,41 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
     final stressRateIncrease = _v('stressRateIncrease');
     final stressRentDrop = _v('stressRentDrop');
 
-    final transferDuty =
-        _includeTransferDuty ? calculateTransferDuty(purchasePrice) : 0.0;
+    final transferDuty = _includeTransferDuty
+        ? calculateTransferDuty(purchasePrice)
+        : 0.0;
     final acquisitionCosts = transferDuty + closingCosts;
     final downPayment = purchasePrice * (downPaymentPercent / 100);
     final loanAmount = math.max(0.0, purchasePrice - downPayment);
 
-    final monthlyDebtService =
-        calculateMonthlyDebtService(loanAmount, annualInterestRate, loanTermYears);
+    final monthlyDebtService = calculateMonthlyDebtService(
+      loanAmount,
+      annualInterestRate,
+      loanTermYears,
+    );
     final annualDebtService = monthlyDebtService * 12;
     final totalRepayment = monthlyDebtService * loanTermYears * 12;
 
     final annualGrossRent = monthlyRent * 12;
-    final annualOperatingExpenses = _v('annualPropertyTax') +
+    final annualOperatingExpenses =
+        _v('annualPropertyTax') +
         _v('annualInsurance') +
         (_v('monthlyHOA') * 12) +
         (_v('monthlyMaintenance') * 12) +
         (_v('monthlyUtilities') * 12) +
         (_v('monthlyManagement') * 12);
-    final noi = calculateNOI(annualGrossRent, vacancyRate, annualOperatingExpenses);
+    final noi = calculateNOI(
+      annualGrossRent,
+      vacancyRate,
+      annualOperatingExpenses,
+    );
 
     final annualCashFlow = noi - annualDebtService;
     final monthlyCashFlow = annualCashFlow / 12;
     final cashInvested = downPayment + acquisitionCosts;
-    final cashOnCashReturn =
-        cashInvested > 0 ? (annualCashFlow / cashInvested) * 100 : 0.0;
+    final cashOnCashReturn = cashInvested > 0
+        ? (annualCashFlow / cashInvested) * 100
+        : 0.0;
 
     final dscr = annualDebtService > 0 ? noi / annualDebtService : 0.0;
     final debtYield = loanAmount > 0 ? (noi / loanAmount) * 100 : 0.0;
@@ -265,18 +280,20 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
     final grownEffectiveRent =
         effectiveGrossRent * math.pow(1 + rentGrowthRate / 100, holdingYears);
     final grownExpenses =
-        annualOperatingExpenses * math.pow(1 + expenseGrowthRate / 100, holdingYears);
+        annualOperatingExpenses *
+        math.pow(1 + expenseGrowthRate / 100, holdingYears);
     final stabilizedNOI = math.max(0.0, grownEffectiveRent - grownExpenses);
 
-    final incomeReversionValue =
-        exitCapRate > 0 ? stabilizedNOI / (exitCapRate / 100) : 0.0;
+    final incomeReversionValue = exitCapRate > 0
+        ? stabilizedNOI / (exitCapRate / 100)
+        : 0.0;
     final appreciationValue =
         purchasePrice * math.pow(1 + rentGrowthRate / 100, holdingYears);
     final grossExitValue = exitValueOverride > 0
         ? exitValueOverride
         : (incomeReversionValue > 0
-            ? incomeReversionValue
-            : appreciationValue.toDouble());
+              ? incomeReversionValue
+              : appreciationValue.toDouble());
 
     final sellingCosts = grossExitValue * (sellingCostPercent / 100);
 
@@ -284,14 +301,17 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
     if (loanAmount > 0 && monthlyRate > 0) {
       final growth = math.pow(1 + monthlyRate, months).toDouble();
       outstandingLoan =
-          loanAmount * growth - monthlyDebtService * ((growth - 1) / monthlyRate);
+          loanAmount * growth -
+          monthlyDebtService * ((growth - 1) / monthlyRate);
       outstandingLoan = math.max(0.0, outstandingLoan);
     } else {
       outstandingLoan = math.max(0.0, loanAmount - monthlyDebtService * months);
     }
 
-    final netSaleProceeds =
-        math.max(0.0, grossExitValue - sellingCosts - outstandingLoan);
+    final netSaleProceeds = math.max(
+      0.0,
+      grossExitValue - sellingCosts - outstandingLoan,
+    );
 
     final cashFlows = <double>[-cashInvested];
     for (var i = 0; i < months; i++) {
@@ -304,12 +324,17 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
     final stressedRent = monthlyRent * (1 - stressRentDrop / 100);
     final stressedRate = annualInterestRate + stressRateIncrease;
     final stressedDebtService =
-        calculateMonthlyDebtService(loanAmount, stressedRate, loanTermYears) * 12;
-    final stressedNOI =
-        calculateNOI(stressedRent * 12, vacancyRate, annualOperatingExpenses);
+        calculateMonthlyDebtService(loanAmount, stressedRate, loanTermYears) *
+        12;
+    final stressedNOI = calculateNOI(
+      stressedRent * 12,
+      vacancyRate,
+      annualOperatingExpenses,
+    );
     final stressedAnnualCashFlow = stressedNOI - stressedDebtService;
-    final stressedDSCR =
-        stressedDebtService > 0 ? stressedNOI / stressedDebtService : 0.0;
+    final stressedDSCR = stressedDebtService > 0
+        ? stressedNOI / stressedDebtService
+        : 0.0;
 
     return _CalcResult(
       loanAmount: loanAmount,
@@ -369,8 +394,10 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
             _field('exitCapRate', 'Exit cap rate (%)'),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Include SARS transfer duty',
-                  style: TextStyle(fontSize: 14)),
+              title: const Text(
+                'Include SARS transfer duty',
+                style: TextStyle(fontSize: 14),
+              ),
               value: _includeTransferDuty,
               onChanged: (v) => setState(() => _includeTransferDuty = v),
             ),
@@ -397,7 +424,11 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
             _resultRow('Loan amount', Fmt.money(r.loanAmount)),
             _resultRow('Down payment', Fmt.money(r.downPayment)),
             _resultRow('Acquisition costs', Fmt.money(r.acquisitionCosts)),
-            _resultRow('Cash invested', Fmt.money(r.cashInvested), emphasize: true),
+            _resultRow(
+              'Cash invested',
+              Fmt.money(r.cashInvested),
+              emphasize: true,
+            ),
             _resultRow('Monthly loan payment', Fmt.money(r.monthlyDebtService)),
             _resultRow('Total repayment', Fmt.money(r.totalRepayment)),
           ]),
@@ -407,7 +438,9 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
             _resultRow(
               'Monthly cash flow',
               Fmt.money(r.monthlyCashFlow),
-              color: r.monthlyCashFlow >= 0 ? AppColors.success : AppColors.danger,
+              color: r.monthlyCashFlow >= 0
+                  ? AppColors.success
+                  : AppColors.danger,
             ),
             _resultRow(
               'DSCR',
@@ -448,7 +481,10 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
           ]),
           _resultCard('Exit & IRR view', [
             _resultRow('Estimated exit value', Fmt.money(r.grossExitValue)),
-            _resultRow('Outstanding loan at exit', Fmt.money(r.outstandingLoan)),
+            _resultRow(
+              'Outstanding loan at exit',
+              Fmt.money(r.outstandingLoan),
+            ),
             _resultRow(
               'Net sale proceeds to equity',
               Fmt.money(r.netSaleProceeds),
@@ -500,9 +536,7 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
       child: TextField(
         controller: _c[key],
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-        ],
+        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
         decoration: InputDecoration(
           labelText: label,
           isDense: true,
@@ -567,8 +601,12 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
     );
   }
 
-  Widget _resultRow(String label, String value,
-      {Color? color, bool emphasize = false}) {
+  Widget _resultRow(
+    String label,
+    String value, {
+    Color? color,
+    bool emphasize = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(

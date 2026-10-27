@@ -17,7 +17,10 @@ class SubscriptionRepository {
   }
 
   Future<List<SubscriptionPlan>> plans() async {
-    final data = await _client.query('getSubscriptionPlans', authenticated: false);
+    final data = await _client.query(
+      'getSubscriptionPlans',
+      authenticated: false,
+    );
     if (data is! List) return const [];
     return data
         .whereType<Map>()
@@ -31,12 +34,13 @@ final subscriptionRepositoryProvider = Provider<SubscriptionRepository>((ref) {
   return SubscriptionRepository(ref.watch(trpcClientProvider));
 });
 
-final mySubscriptionProvider =
-    FutureProvider.autoDispose<MySubscription>((ref) async {
+final mySubscriptionProvider = FutureProvider.autoDispose<MySubscription>((
+  ref,
+) async {
   return ref.watch(subscriptionRepositoryProvider).mySubscription();
 });
 
 final subscriptionPlansProvider =
     FutureProvider.autoDispose<List<SubscriptionPlan>>((ref) async {
-  return ref.watch(subscriptionRepositoryProvider).plans();
-});
+      return ref.watch(subscriptionRepositoryProvider).plans();
+    });

@@ -44,22 +44,22 @@ class MySubscription {
   }
 
   factory MySubscription.fromJson(Map<String, dynamic> json) => MySubscription(
-        tier: asString(json['tier'], 'FREE'),
-        status: asString(json['status'], 'ACTIVE'),
-        active: json['active'] == true,
-        billingCycle: (json['billingCycle'] as String?)?.isNotEmpty == true
-            ? json['billingCycle'] as String
-            : null,
-        priceAmount: asDouble(json['priceAmount']),
-        planName: asString(json['planName'], 'Starter'),
-        capabilities: (json['capabilities'] as List? ?? const [])
-            .map((e) => e.toString())
-            .toList(),
-        trialEndsAt: asDate(json['trialEndsAt']),
-        currentPeriodEnd: asDate(json['currentPeriodEnd']),
-        cancelAtPeriodEnd: json['cancelAtPeriodEnd'] == true,
-        staffBypass: json['staffBypass'] == true,
-      );
+    tier: asString(json['tier'], 'FREE'),
+    status: asString(json['status'], 'ACTIVE'),
+    active: json['active'] == true,
+    billingCycle: (json['billingCycle'] as String?)?.isNotEmpty == true
+        ? json['billingCycle'] as String
+        : null,
+    priceAmount: asDouble(json['priceAmount']),
+    planName: asString(json['planName'], 'Starter'),
+    capabilities: (json['capabilities'] as List? ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+    trialEndsAt: asDate(json['trialEndsAt']),
+    currentPeriodEnd: asDate(json['currentPeriodEnd']),
+    cancelAtPeriodEnd: json['cancelAtPeriodEnd'] == true,
+    staffBypass: json['staffBypass'] == true,
+  );
 }
 
 /// A sellable plan from the catalog (`getSubscriptionPlans`).

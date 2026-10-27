@@ -34,28 +34,33 @@ class DevelopmentDueDiligence {
   factory DevelopmentDueDiligence.fromJson(Map<String, dynamic> j) {
     List<T> list<T>(dynamic raw, T Function(Map<String, dynamic>) f) =>
         raw is List
-            ? raw
-                .whereType<Map>()
-                .map((e) => f(Map<String, dynamic>.from(e)))
-                .toList()
-            : <T>[];
+        ? raw
+              .whereType<Map>()
+              .map((e) => f(Map<String, dynamic>.from(e)))
+              .toList()
+        : <T>[];
 
     return DevelopmentDueDiligence(
       projectName: asString(j['projectName'], 'Development'),
       developmentType: asString(j['developmentType']),
       developmentStage: asString(j['developmentStage']),
       economics: DdEconomics.fromJson(
-          Map<String, dynamic>.from(j['economics'] as Map? ?? {})),
+        Map<String, dynamic>.from(j['economics'] as Map? ?? {}),
+      ),
       capital: DdCapital.fromJson(
-          Map<String, dynamic>.from(j['capital'] as Map? ?? {})),
+        Map<String, dynamic>.from(j['capital'] as Map? ?? {}),
+      ),
       readiness: DdReadiness.fromJson(
-          Map<String, dynamic>.from(j['readiness'] as Map? ?? {})),
+        Map<String, dynamic>.from(j['readiness'] as Map? ?? {}),
+      ),
       professionals: list(j['professionals'], DdProfessional.fromJson),
       professionalsSummary: DdCountSummary.fromJson(
-          Map<String, dynamic>.from(j['professionalsSummary'] as Map? ?? {})),
+        Map<String, dynamic>.from(j['professionalsSummary'] as Map? ?? {}),
+      ),
       approvals: list(j['approvals'], DdApproval.fromJson),
       approvalsSummary: DdCountSummary.fromJson(
-          Map<String, dynamic>.from(j['approvalsSummary'] as Map? ?? {})),
+        Map<String, dynamic>.from(j['approvalsSummary'] as Map? ?? {}),
+      ),
     );
   }
 }
@@ -90,19 +95,19 @@ class DdEconomics {
   final double landHeadroom;
 
   factory DdEconomics.fromJson(Map<String, dynamic> j) => DdEconomics(
-        grossDevelopmentValue: asDouble(j['grossDevelopmentValue']),
-        totalCost: asDouble(j['totalCost']),
-        profit: asDouble(j['profit']),
-        profitOnCost: asDouble(j['profitOnCost']),
-        profitOnGdv: asDouble(j['profitOnGdv']),
-        projectIRR: asDouble(j['projectIRR']),
-        equityIRR: asDouble(j['equityIRR']),
-        equityMultiple: asDouble(j['equityMultiple']),
-        timelineMonths: asInt(j['timelineMonths']),
-        residualLandValue: asDouble(j['residualLandValue']),
-        landAcquisitionCost: asDouble(j['landAcquisitionCost']),
-        landHeadroom: asDouble(j['landHeadroom']),
-      );
+    grossDevelopmentValue: asDouble(j['grossDevelopmentValue']),
+    totalCost: asDouble(j['totalCost']),
+    profit: asDouble(j['profit']),
+    profitOnCost: asDouble(j['profitOnCost']),
+    profitOnGdv: asDouble(j['profitOnGdv']),
+    projectIRR: asDouble(j['projectIRR']),
+    equityIRR: asDouble(j['equityIRR']),
+    equityMultiple: asDouble(j['equityMultiple']),
+    timelineMonths: asInt(j['timelineMonths']),
+    residualLandValue: asDouble(j['residualLandValue']),
+    landAcquisitionCost: asDouble(j['landAcquisitionCost']),
+    landHeadroom: asDouble(j['landHeadroom']),
+  );
 }
 
 class DdCapital {
@@ -127,15 +132,15 @@ class DdCapital {
   final double totalInterest;
 
   factory DdCapital.fromJson(Map<String, dynamic> j) => DdCapital(
-        equityAmount: asDouble(j['equityAmount']),
-        seniorDebtAmount: asDouble(j['seniorDebtAmount']),
-        seniorDebtRate: asDouble(j['seniorDebtRate']),
-        committedFunding: asDouble(j['committedFunding']),
-        peakFunding: asDouble(j['peakFunding']),
-        fundingShortfall: asDouble(j['fundingShortfall']),
-        loanToCost: asDouble(j['loanToCost']),
-        totalInterest: asDouble(j['totalInterest']),
-      );
+    equityAmount: asDouble(j['equityAmount']),
+    seniorDebtAmount: asDouble(j['seniorDebtAmount']),
+    seniorDebtRate: asDouble(j['seniorDebtRate']),
+    committedFunding: asDouble(j['committedFunding']),
+    peakFunding: asDouble(j['peakFunding']),
+    fundingShortfall: asDouble(j['fundingShortfall']),
+    loanToCost: asDouble(j['loanToCost']),
+    totalInterest: asDouble(j['totalInterest']),
+  );
 }
 
 class DdReadiness {
@@ -158,16 +163,16 @@ class DdReadiness {
   final List<String> reasons;
 
   factory DdReadiness.fromJson(Map<String, dynamic> j) => DdReadiness(
-        readinessScore: asInt(j['readinessScore']),
-        economicsPass: _asBool(j['economicsPass']),
-        professionalsPass: _asBool(j['professionalsPass']),
-        approvalsPass: _asBool(j['approvalsPass']),
-        fundingPass: _asBool(j['fundingPass']),
-        constructionReady: _asBool(j['constructionReady']),
-        reasons: j['reasons'] is List
-            ? (j['reasons'] as List).map((e) => e.toString()).toList()
-            : <String>[],
-      );
+    readinessScore: asInt(j['readinessScore']),
+    economicsPass: _asBool(j['economicsPass']),
+    professionalsPass: _asBool(j['professionalsPass']),
+    approvalsPass: _asBool(j['approvalsPass']),
+    fundingPass: _asBool(j['fundingPass']),
+    constructionReady: _asBool(j['constructionReady']),
+    reasons: j['reasons'] is List
+        ? (j['reasons'] as List).map((e) => e.toString()).toList()
+        : <String>[],
+  );
 }
 
 class DdProfessional {
@@ -186,12 +191,12 @@ class DdProfessional {
   final String registrationBody;
 
   factory DdProfessional.fromJson(Map<String, dynamic> j) => DdProfessional(
-        role: asString(j['role']),
-        firmName: asString(j['firmName']),
-        status: asString(j['status'], 'NOT_APPOINTED'),
-        isRequired: _asBool(j['isRequired']),
-        registrationBody: asString(j['registrationBody']),
-      );
+    role: asString(j['role']),
+    firmName: asString(j['firmName']),
+    status: asString(j['status'], 'NOT_APPOINTED'),
+    isRequired: _asBool(j['isRequired']),
+    registrationBody: asString(j['registrationBody']),
+  );
 }
 
 class DdApproval {
@@ -212,13 +217,13 @@ class DdApproval {
   final String documentUrl;
 
   factory DdApproval.fromJson(Map<String, dynamic> j) => DdApproval(
-        type: asString(j['type']),
-        status: asString(j['status'], 'NOT_STARTED'),
-        authority: asString(j['authority']),
-        isRequired: _asBool(j['isRequired']),
-        targetDate: asDate(j['targetDate']),
-        documentUrl: asString(j['documentUrl']),
-      );
+    type: asString(j['type']),
+    status: asString(j['status'], 'NOT_STARTED'),
+    authority: asString(j['authority']),
+    isRequired: _asBool(j['isRequired']),
+    targetDate: asDate(j['targetDate']),
+    documentUrl: asString(j['documentUrl']),
+  );
 }
 
 class DdCountSummary {
@@ -237,12 +242,12 @@ class DdCountSummary {
   final int outstanding;
 
   factory DdCountSummary.fromJson(Map<String, dynamic> j) => DdCountSummary(
-        total: asInt(j['total']),
-        required: asInt(j['required']),
-        appointed: asInt(j['appointed']),
-        approved: asInt(j['approved']),
-        outstanding: asInt(j['outstanding']),
-      );
+    total: asInt(j['total']),
+    required: asInt(j['required']),
+    appointed: asInt(j['appointed']),
+    approved: asInt(j['approved']),
+    outstanding: asInt(j['outstanding']),
+  );
 }
 
 /// Title-case a SCREAMING_SNAKE enum value for display.

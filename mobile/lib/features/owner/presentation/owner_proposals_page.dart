@@ -21,6 +21,11 @@ class OwnerProposalsPage extends ConsumerWidget {
         title: const Text('My deals'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.landscape_outlined),
+            tooltip: 'Partner my property',
+            onPressed: () => context.go('/land-partnership'),
+          ),
+          IconButton(
             icon: const Icon(Icons.add),
             tooltip: 'Submit property',
             onPressed: () => context.go('/opportunities'),
@@ -83,7 +88,9 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
   Future<void> _respond(bool accept) async {
     setState(() => _busy = true);
     try {
-      await ref.read(ownerRepositoryProvider).respondToCounterOffer(
+      await ref
+          .read(ownerRepositoryProvider)
+          .respondToCounterOffer(
             proposalId: widget.proposal.id,
             accept: accept,
           );
@@ -91,16 +98,17 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(accept
-                ? 'Counter-offer accepted.'
-                : 'Counter-offer declined.'),
+            content: Text(
+              accept ? 'Counter-offer accepted.' : 'Counter-offer declined.',
+            ),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -118,15 +126,15 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text(force ? 'Valuation refreshed.' : 'Valuation ready.'),
+            content: Text(force ? 'Valuation refreshed.' : 'Valuation ready.'),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -161,8 +169,9 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
       ref.invalidate(myProposalsProvider);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -195,8 +204,10 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: _statusColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -215,7 +226,10 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
           const SizedBox(height: 4),
           Text(
             p.location,
-            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -231,8 +245,10 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
             const SizedBox(height: 8),
             Text(
               'Submitted ${Fmt.date(p.createdAt)}',
-              style:
-                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
           if (p.reviewNotes != null) ...[
@@ -246,7 +262,10 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
               child: Text(
                 'Reviewer note: ${p.reviewNotes}',
                 style: const TextStyle(
-                    fontSize: 12, color: AppColors.textPrimary, height: 1.4),
+                  fontSize: 12,
+                  color: AppColors.textPrimary,
+                  height: 1.4,
+                ),
               ),
             ),
           ],
@@ -301,15 +320,20 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
           ),
           Text(
             'You asked ${Fmt.money(p.askingPrice)}',
-            style:
-                const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
           ),
           if (p.counterOfferTerms != null) ...[
             const SizedBox(height: 8),
             Text(
               p.counterOfferTerms!,
               style: const TextStyle(
-                  fontSize: 12, color: AppColors.textPrimary, height: 1.4),
+                fontSize: 12,
+                color: AppColors.textPrimary,
+                height: 1.4,
+              ),
             ),
           ],
           const SizedBox(height: 12),
@@ -382,8 +406,7 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
               ),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: confColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
@@ -416,7 +439,10 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
           Text(
             v.summary,
             style: const TextStyle(
-                fontSize: 12, color: AppColors.textPrimary, height: 1.4),
+              fontSize: 12,
+              color: AppColors.textPrimary,
+              height: 1.4,
+            ),
           ),
           if (v.askingPriceAssessment.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -460,9 +486,10 @@ class _MiniStat extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style:
-                const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
         const SizedBox(height: 2),
         Text(
           value,

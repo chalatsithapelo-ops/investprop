@@ -92,10 +92,28 @@ class _PortfolioTools extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tools = <(IconData, String, String)>[
-      (Icons.payments_outlined, 'Distributions\n& Voting', '/portfolio/distributions'),
-      (Icons.receipt_long_outlined, 'My\nContributions', '/portfolio/contributions'),
+      (
+        Icons.account_balance_wallet_outlined,
+        'My\nWallet',
+        '/portfolio/wallet',
+      ),
+      (
+        Icons.payments_outlined,
+        'Distributions\n& Voting',
+        '/portfolio/distributions',
+      ),
+      (
+        Icons.receipt_long_outlined,
+        'My\nContributions',
+        '/portfolio/contributions',
+      ),
       (Icons.insights_outlined, 'Metrics', '/portfolio/metrics'),
       (Icons.storefront_outlined, 'Marketplace', '/portfolio/marketplace'),
+      (
+        Icons.verified_user_outlined,
+        'Share\nIntegrity',
+        '/portfolio/share-integrity',
+      ),
       (Icons.list_alt_outlined, 'Share\nLedger', '/portfolio/ledger'),
     ];
     return GridView.count(
@@ -126,10 +144,11 @@ class _PortfolioTools extends StatelessWidget {
                     label,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                        fontSize: 10.5,
-                        height: 1.1,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary),
+                      fontSize: 10.5,
+                      height: 1.1,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ],
               ),
@@ -237,7 +256,10 @@ class _SummaryStat extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white60, fontSize: 12),
+          ),
         ],
       ),
     );
@@ -348,8 +370,10 @@ class _HoldingCard extends StatelessWidget {
               ),
               const Padding(
                 padding: EdgeInsets.only(left: 4),
-                child: Icon(Icons.chevron_right,
-                    color: AppColors.textSecondary),
+                child: Icon(
+                  Icons.chevron_right,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -389,8 +413,10 @@ class _PaymentsDueBanner extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(Icons.account_balance_wallet_outlined,
-                    color: AppColors.goldDark),
+                const Icon(
+                  Icons.account_balance_wallet_outlined,
+                  color: AppColors.goldDark,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

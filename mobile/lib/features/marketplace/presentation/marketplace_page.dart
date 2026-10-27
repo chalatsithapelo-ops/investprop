@@ -17,7 +17,16 @@ class MarketplacePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final overview = ref.watch(marketplaceOverviewProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Share Marketplace')),
+      appBar: AppBar(
+        title: const Text('Share Marketplace'),
+        actions: [
+          IconButton(
+            tooltip: 'My wallet',
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+            onPressed: () => context.push('/portfolio/wallet'),
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(marketplaceOverviewProvider.future),
         child: AsyncValueView<List<MarketShareClass>>(
@@ -68,8 +77,10 @@ class _MarketCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 14),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push('/portfolio/marketplace/${shareClass.id}',
-            extra: shareClass),
+        onTap: () => context.push(
+          '/portfolio/marketplace/${shareClass.id}',
+          extra: shareClass,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -92,13 +103,21 @@ class _MarketCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(shareClass.propertyTitle,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 16)),
+                  Text(
+                    shareClass.propertyTitle,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text('${shareClass.name} · ${shareClass.propertyCity}',
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary)),
+                  Text(
+                    '${shareClass.name} · ${shareClass.propertyCity}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -126,16 +145,19 @@ class _MarketCard extends StatelessWidget {
                   Row(
                     children: [
                       _Tag(
-                          icon: Icons.sell_outlined,
-                          text: '${shareClass.openSellOrders} asks'),
+                        icon: Icons.sell_outlined,
+                        text: '${shareClass.openSellOrders} asks',
+                      ),
                       const SizedBox(width: 8),
                       _Tag(
-                          icon: Icons.shopping_cart_outlined,
-                          text: '${shareClass.openBuyOrders} bids'),
+                        icon: Icons.shopping_cart_outlined,
+                        text: '${shareClass.openBuyOrders} bids',
+                      ),
                       const SizedBox(width: 8),
                       _Tag(
-                          icon: Icons.people_outline,
-                          text: '${shareClass.totalInvestors} holders'),
+                        icon: Icons.people_outline,
+                        text: '${shareClass.totalInvestors} holders',
+                      ),
                     ],
                   ),
                 ],
@@ -161,15 +183,22 @@ class _Metric extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.textSecondary)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+            ),
+          ),
           const SizedBox(height: 2),
-          Text(value,
-              style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: color ?? AppColors.textPrimary)),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              color: color ?? AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
     );
@@ -195,9 +224,13 @@ class _Tag extends StatelessWidget {
         children: [
           Icon(icon, size: 13, color: AppColors.textSecondary),
           const SizedBox(width: 4),
-          Text(text,
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.textSecondary)),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );

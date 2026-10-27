@@ -36,7 +36,11 @@ String _extensionOf(String path) {
 }
 
 class _PickedImage {
-  const _PickedImage({required this.name, required this.mime, required this.base64});
+  const _PickedImage({
+    required this.name,
+    required this.mime,
+    required this.base64,
+  });
   final String name;
   final String mime;
   final String base64;
@@ -173,8 +177,11 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
     );
     if (source == null) return null;
     try {
-      final file = await ImagePicker()
-          .pickImage(source: source, maxWidth: 2400, imageQuality: 85);
+      final file = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 2400,
+        imageQuality: 85,
+      );
       if (file == null) return null;
       final bytes = await file.readAsBytes();
       if (bytes.length > _maxFileBytes) {
@@ -228,8 +235,10 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
       return;
     }
     if (_tenancy == 'TENANTED' && (_num(_monthlyRent) ?? 0) <= 0) {
-      _snack('Please provide the monthly rent for the tenanted property.',
-          error: true);
+      _snack(
+        'Please provide the monthly rent for the tenanted property.',
+        error: true,
+      );
       return;
     }
 
@@ -280,7 +289,9 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
         erfSize: _num(_erfSize),
         titleDeedNumber: _titleDeedNumber.text.trim(),
         erfNumber: _erfNumber.text.trim(),
-        bondOutstanding: _bondStatus == 'EXISTING' ? _num(_bondOutstanding) : null,
+        bondOutstanding: _bondStatus == 'EXISTING'
+            ? _num(_bondOutstanding)
+            : null,
         bondBank: _bondStatus == 'EXISTING' ? _bondBank.text.trim() : null,
         ratesArrears: _ratesStatus == 'ARREARS' ? _num(_ratesArrears) : null,
         monthlyRent: _tenancy == 'TENANTED' ? _num(_monthlyRent) : null,
@@ -343,8 +354,12 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
               _text(_description, 'Description *', minLen: 10, lines: 3),
               _text(_address, 'Street address *', minLen: 3),
               _text(_city, 'City / town *', minLen: 2),
-              _dropdown('Province', _province, OwnerOptions.provinces,
-                  (v) => setState(() => _province = v)),
+              _dropdown(
+                'Province',
+                _province,
+                OwnerOptions.provinces,
+                (v) => setState(() => _province = v),
+              ),
               _dropdown(
                 'Property type',
                 _propertyType,
@@ -378,12 +393,20 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
             _section('Pricing & terms', [
               _num1(_askingPrice, 'Asking price (R) *'),
               _num1(_marketValue, 'Estimated market value (R)'),
-              _dropdown('Sale terms', _saleType, OwnerOptions.saleTypes,
-                  (v) => setState(() => _saleType = v),
-                  labeler: OwnerOptions.label),
-              _dropdown('Urgency', _urgency, OwnerOptions.urgencyLevels,
-                  (v) => setState(() => _urgency = v),
-                  labeler: OwnerOptions.label),
+              _dropdown(
+                'Sale terms',
+                _saleType,
+                OwnerOptions.saleTypes,
+                (v) => setState(() => _saleType = v),
+                labeler: OwnerOptions.label,
+              ),
+              _dropdown(
+                'Urgency',
+                _urgency,
+                OwnerOptions.urgencyLevels,
+                (v) => setState(() => _urgency = v),
+                labeler: OwnerOptions.label,
+              ),
               _dropdown(
                 'Engagement type',
                 _engagement,
@@ -399,16 +422,24 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
               _text(_coOwners, 'Additional registered owners (optional)'),
             ]),
             _section('Bond & rates', [
-              _dropdown('Bond status', _bondStatus, OwnerOptions.bondStatuses,
-                  (v) => setState(() => _bondStatus = v),
-                  labeler: OwnerOptions.label),
+              _dropdown(
+                'Bond status',
+                _bondStatus,
+                OwnerOptions.bondStatuses,
+                (v) => setState(() => _bondStatus = v),
+                labeler: OwnerOptions.label,
+              ),
               if (_bondStatus == 'EXISTING') ...[
                 _num1(_bondOutstanding, 'Outstanding bond balance (R) *'),
                 _text(_bondBank, 'Bond bank (optional)'),
               ],
-              _dropdown('Rates status', _ratesStatus, OwnerOptions.ratesStatuses,
-                  (v) => setState(() => _ratesStatus = v),
-                  labeler: OwnerOptions.label),
+              _dropdown(
+                'Rates status',
+                _ratesStatus,
+                OwnerOptions.ratesStatuses,
+                (v) => setState(() => _ratesStatus = v),
+                labeler: OwnerOptions.label,
+              ),
               if (_ratesStatus == 'ARREARS')
                 _num1(_ratesArrears, 'Rates arrears (R) *'),
             ]),
@@ -474,7 +505,10 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
                   child: Text(
                     'Joint ventures and development partnerships: you can also attach '
                     'zoning, survey, building plans, environmental, geotech and services documents.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
               const SizedBox(height: 8),
@@ -492,21 +526,26 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
                             border: OutlineInputBorder(),
                           ),
                           items: (() {
-                            final kinds = OwnerOptions.documentKindsFor(_engagement);
+                            final kinds = OwnerOptions.documentKindsFor(
+                              _engagement,
+                            );
                             // Keep a previously-chosen kind selectable even if the
                             // engagement later changes away from a development type.
                             final items = kinds.contains(_documents[i].kind)
                                 ? kinds
                                 : [...kinds, _documents[i].kind];
                             return items
-                                .map((k) => DropdownMenuItem(
-                                      value: k,
-                                      child: Text(OwnerOptions.label(k)),
-                                    ))
+                                .map(
+                                  (k) => DropdownMenuItem(
+                                    value: k,
+                                    child: Text(OwnerOptions.label(k)),
+                                  ),
+                                )
                                 .toList();
                           })(),
                           onChanged: (v) => setState(
-                              () => _documents[i].kind = v ?? _documents[i].kind),
+                            () => _documents[i].kind = v ?? _documents[i].kind,
+                          ),
                         ),
                       ),
                       IconButton(
@@ -551,7 +590,9 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
                       height: 22,
                       width: 22,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Text('Submit property'),
             ),
@@ -570,19 +611,29 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
       data: (fee) {
         if (!fee.enabled) return const SizedBox.shrink();
         final rows = <Widget>[
-          _feeRow('Seller facilitation (on agreed price, at close)',
-              Fmt.percent(fee.sellerFacilitationPct)),
-          _feeRow('Assessment / DD pack (credited on close)',
-              Fmt.money(fee.assessmentPackFee)),
+          _feeRow(
+            'Seller facilitation (on agreed price, at close)',
+            Fmt.percent(fee.sellerFacilitationPct),
+          ),
+          _feeRow(
+            'Assessment / DD pack (credited on close)',
+            Fmt.money(fee.assessmentPackFee),
+          ),
           if (fee.jvPromotePct > 0)
-            _feeRow('JV promote (only on JV / partnership payouts)',
-                Fmt.percent(fee.jvPromotePct)),
+            _feeRow(
+              'JV promote (only on JV / partnership payouts)',
+              Fmt.percent(fee.jvPromotePct),
+            ),
           if (fee.leaseBackSetupFee > 0)
-            _feeRow('Lease-back setup (only if you lease back)',
-                Fmt.money(fee.leaseBackSetupFee)),
+            _feeRow(
+              'Lease-back setup (only if you lease back)',
+              Fmt.money(fee.leaseBackSetupFee),
+            ),
           if (fee.leaseBackMgmtPct > 0)
-            _feeRow('Lease-back rental management (on rent)',
-                Fmt.percent(fee.leaseBackMgmtPct)),
+            _feeRow(
+              'Lease-back rental management (on rent)',
+              Fmt.percent(fee.leaseBackMgmtPct),
+            ),
         ];
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
@@ -628,7 +679,9 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
             child: Text(
               label,
               style: const TextStyle(
-                  fontSize: 13, color: AppColors.textSecondary),
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -717,7 +770,8 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
         validator: (v) {
           final t = (v ?? '').trim();
           if (required && t.isEmpty) return 'Required';
-          if (t.isNotEmpty && double.tryParse(t) == null) return 'Invalid number';
+          if (t.isNotEmpty && double.tryParse(t) == null)
+            return 'Invalid number';
           return null;
         },
       ),
@@ -742,10 +796,12 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
           border: const OutlineInputBorder(),
         ),
         items: options
-            .map((o) => DropdownMenuItem(
-                  value: o,
-                  child: Text(labeler != null ? labeler(o) : o),
-                ))
+            .map(
+              (o) => DropdownMenuItem(
+                value: o,
+                child: Text(labeler != null ? labeler(o) : o),
+              ),
+            )
             .toList(),
         onChanged: (v) {
           if (v != null) onChanged(v);

@@ -43,16 +43,22 @@ class DistressedDealCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.location_on_outlined,
-                          size: 15, color: AppColors.textSecondary),
+                      const Icon(
+                        Icons.location_on_outlined,
+                        size: 15,
+                        color: AppColors.textSecondary,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          deal.location.isEmpty ? 'South Africa' : deal.location,
+                          deal.location.isEmpty
+                              ? 'South Africa'
+                              : deal.location,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                              const TextStyle(color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ],
@@ -68,8 +74,9 @@ class DistressedDealCard extends StatelessWidget {
                             const Text(
                               'Asking price',
                               style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary),
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                             const SizedBox(height: 2),
                             Text(

@@ -61,28 +61,42 @@ class DocumentsResult {
   bool get isEmpty => groups.every((g) => g.value.isEmpty);
 
   factory DocumentsResult.fromJson(Map<String, dynamic> json) {
-    List<InvestorDocument> parse(String key, String label,
-        {bool aiCapable = false}) {
+    List<InvestorDocument> parse(
+      String key,
+      String label, {
+      bool aiCapable = false,
+    }) {
       final list = json[key] as List? ?? const [];
       return list
           .whereType<Map>()
-          .map((e) => InvestorDocument.fromJson(
-                Map<String, dynamic>.from(e),
-                label,
-                supportsAiSummary: aiCapable,
-              ))
+          .map(
+            (e) => InvestorDocument.fromJson(
+              Map<String, dynamic>.from(e),
+              label,
+              supportsAiSummary: aiCapable,
+            ),
+          )
           .toList();
     }
 
     final groups = <MapEntry<String, List<InvestorDocument>>>[
-      MapEntry('Share certificates', parse('shareCertificates', 'Share certificate')),
+      MapEntry(
+        'Share certificates',
+        parse('shareCertificates', 'Share certificate'),
+      ),
       MapEntry('Tax certificates', parse('taxCertificates', 'Tax certificate')),
-      MapEntry('Distribution statements',
-          parse('distributionStatements', 'Distribution statement')),
-      MapEntry('Company documents',
-          parse('companyDocs', 'Company document', aiCapable: true)),
-      MapEntry('Compliance reports',
-          parse('complianceReports', 'Compliance report', aiCapable: true)),
+      MapEntry(
+        'Distribution statements',
+        parse('distributionStatements', 'Distribution statement'),
+      ),
+      MapEntry(
+        'Company documents',
+        parse('companyDocs', 'Company document', aiCapable: true),
+      ),
+      MapEntry(
+        'Compliance reports',
+        parse('complianceReports', 'Compliance report', aiCapable: true),
+      ),
     ]..removeWhere((g) => g.value.isEmpty);
 
     return DocumentsResult(groups: groups);
@@ -104,11 +118,11 @@ class DocumentRiskFlag {
   final String recommendation;
 
   factory DocumentRiskFlag.fromJson(Map<String, dynamic> j) => DocumentRiskFlag(
-        category: asString(j['category'], 'OTHER'),
-        severity: asString(j['severity'], 'MODERATE'),
-        detail: asString(j['detail']),
-        recommendation: asString(j['recommendation']),
-      );
+    category: asString(j['category'], 'OTHER'),
+    severity: asString(j['severity'], 'MODERATE'),
+    detail: asString(j['detail']),
+    recommendation: asString(j['recommendation']),
+  );
 }
 
 /// AI summary + risk register for a legal document (getLegalDocumentSummary).

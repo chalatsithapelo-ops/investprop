@@ -12,9 +12,9 @@ class AiDigestPrefs {
   final DateTime? lastSentAt;
 
   factory AiDigestPrefs.fromJson(Map<String, dynamic> json) => AiDigestPrefs(
-        optedOut: json['optedOut'] == true,
-        lastSentAt: asDate(json['lastSentAt']),
-      );
+    optedOut: json['optedOut'] == true,
+    lastSentAt: asDate(json['lastSentAt']),
+  );
 }
 
 class ProfilePrefsRepository {
@@ -38,7 +38,8 @@ final profilePrefsRepositoryProvider = Provider<ProfilePrefsRepository>((ref) {
   return ProfilePrefsRepository(ref.watch(trpcClientProvider));
 });
 
-final aiDigestPrefsProvider =
-    FutureProvider.autoDispose<AiDigestPrefs>((ref) async {
+final aiDigestPrefsProvider = FutureProvider.autoDispose<AiDigestPrefs>((
+  ref,
+) async {
   return ref.watch(profilePrefsRepositoryProvider).aiDigestPrefs();
 });

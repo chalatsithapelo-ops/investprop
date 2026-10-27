@@ -485,6 +485,14 @@ export const mainNavigationLinks: NavigationLink[] = [
     roles: ["PROPERTY_OWNER"],
     description: "Multi-listing, AI valuation & priority review for sellers",
   },
+  // ─── Property/Land-into-SPV Partnership (owner brings the asset, we develop) ──
+  {
+    label: "Partner My Property",
+    to: "/land-partnership",
+    icon: Landmark,
+    roles: ["PROPERTY_OWNER"],
+    description: "Contribute your property or land into a development, renovation or flip — you keep equity, we do everything",
+  },
   // ─── Dev Manager: Incoming Sale Proposals ────────────
   {
     label: "Sale Proposals",
@@ -492,6 +500,14 @@ export const mainNavigationLinks: NavigationLink[] = [
     icon: ClipboardList,
     roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
     description: "Review property sale submissions from owners",
+  },
+  // ─── Dev Manager: Property/Land partnership pipeline ──────────
+  {
+    label: "Property Partnerships",
+    to: "/land-partnerships",
+    icon: Landmark,
+    roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
+    description: "Review property/land-into-SPV development, renovation & flip partnerships",
   },
 ];
 

@@ -22,8 +22,7 @@ class PrequalificationPage extends ConsumerStatefulWidget {
       _PrequalificationPageState();
 }
 
-class _PrequalificationPageState
-    extends ConsumerState<PrequalificationPage> {
+class _PrequalificationPageState extends ConsumerState<PrequalificationPage> {
   final _income = TextEditingController();
   final _expenses = TextEditingController();
   final _debt = TextEditingController();
@@ -53,12 +52,12 @@ class _PrequalificationPageState
   double get _grossIncome => _num(_income);
 
   PrequalInput get _input => PrequalInput(
-        grossMonthlyIncome: _grossIncome,
-        monthlyExpenses: _num(_expenses),
-        existingDebtRepayments: _num(_debt),
-        depositAmount: _num(_deposit),
-        propertyPrice: _num(_propertyPrice),
-      );
+    grossMonthlyIncome: _grossIncome,
+    monthlyExpenses: _num(_expenses),
+    existingDebtRepayments: _num(_debt),
+    depositAmount: _num(_deposit),
+    propertyPrice: _num(_propertyPrice),
+  );
 
   void _onChanged() {
     _debounce?.cancel();
@@ -72,8 +71,7 @@ class _PrequalificationPageState
   Future<void> _loadPreview() async {
     setState(() => _loading = true);
     try {
-      final result =
-          await ref.read(financeRepositoryProvider).preview(_input);
+      final result = await ref.read(financeRepositoryProvider).preview(_input);
       if (!mounted) return;
       setState(() => _result = result);
     } catch (_) {
@@ -191,21 +189,26 @@ class _PrequalificationPageState
                     height: 22,
                     width: 22,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Text('Save my prequalification'),
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: () => context.push('/profile/home-loan/apply', extra: {
-              'bondAmount': result?.maxBondAmount ?? 0,
-              'propertyPrice': _num(_propertyPrice),
-              'deposit': _num(_deposit),
-              'grossIncome': _grossIncome,
-              'instalment': _num(_propertyPrice) > 0
-                  ? (result?.estimatedInstalment ?? 0)
-                  : (result?.maxInstalment ?? 0),
-            }),
+            onPressed: () => context.push(
+              '/profile/home-loan/apply',
+              extra: {
+                'bondAmount': result?.maxBondAmount ?? 0,
+                'propertyPrice': _num(_propertyPrice),
+                'deposit': _num(_deposit),
+                'grossIncome': _grossIncome,
+                'instalment': _num(_propertyPrice) > 0
+                    ? (result?.estimatedInstalment ?? 0)
+                    : (result?.maxInstalment ?? 0),
+              },
+            ),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.navy,
               side: const BorderSide(color: AppColors.navy),
@@ -253,8 +256,10 @@ class _ResultCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: band.color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
@@ -271,23 +276,31 @@ class _ResultCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            _Row(label: 'Estimated max bond', value: Fmt.money(result.maxBondAmount)),
             _Row(
-                label: 'Max property price',
-                value: Fmt.money(result.maxPropertyPrice)),
+              label: 'Estimated max bond',
+              value: Fmt.money(result.maxBondAmount),
+            ),
             _Row(
-                label: 'Monthly instalment',
-                value: '${Fmt.money(result.estimatedInstalment)} /mo'),
+              label: 'Max property price',
+              value: Fmt.money(result.maxPropertyPrice),
+            ),
             _Row(
-                label: 'Interest rate',
-                value: Fmt.percent(result.annualInterestRate, decimals: 2)),
+              label: 'Monthly instalment',
+              value: '${Fmt.money(result.estimatedInstalment)} /mo',
+            ),
+            _Row(
+              label: 'Interest rate',
+              value: Fmt.percent(result.annualInterestRate, decimals: 2),
+            ),
             _Row(label: 'Term', value: '${result.loanTermYears} years'),
             if (result.notes != null && result.notes!.isNotEmpty) ...[
               const SizedBox(height: 10),
               Text(
                 result.notes!,
                 style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary),
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ],
@@ -310,11 +323,14 @@ class _Row extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: const TextStyle(color: AppColors.textSecondary)),
-          Text(value,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
     );

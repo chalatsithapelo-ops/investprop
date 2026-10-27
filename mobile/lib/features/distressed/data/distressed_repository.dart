@@ -112,10 +112,10 @@ final distressedRepositoryProvider = Provider<DistressedRepository>((ref) {
 
 final distressedDetailProvider = FutureProvider.autoDispose
     .family<DistressedDealDetail, int>((ref, id) async {
-  return ref.watch(distressedRepositoryProvider).fetchDetail(id);
-});
+      return ref.watch(distressedRepositoryProvider).fetchDetail(id);
+    });
 
 final distressedMarketAnalysisProvider = FutureProvider.autoDispose
     .family<DistressedMarketAnalysis, int>((ref, id) async {
-  return ref.watch(distressedRepositoryProvider).fetchMarketAnalysis(id);
-});
+      return ref.watch(distressedRepositoryProvider).fetchMarketAnalysis(id);
+    });

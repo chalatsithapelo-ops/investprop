@@ -17,8 +17,7 @@ class SubscriptionPage extends ConsumerWidget {
 
   Future<void> _openWeb(BuildContext context, String path) async {
     final uri = Uri.parse('${Env.apiBaseUrl}$path');
-    final launched =
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not open the billing page.')),
@@ -59,14 +58,16 @@ class SubscriptionPage extends ConsumerWidget {
               ...plans.when(
                 data: (list) => list
                     .where((p) => !p.isFree || p.tier == current.tier)
-                    .map((p) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _PlanCard(
-                            plan: p,
-                            isCurrent: p.tier == current.tier,
-                            onSelect: () => _openWeb(context, '/pricing'),
-                          ),
-                        ))
+                    .map(
+                      (p) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _PlanCard(
+                          plan: p,
+                          isCurrent: p.tier == current.tier,
+                          onSelect: () => _openWeb(context, '/pricing'),
+                        ),
+                      ),
+                    )
                     .toList(),
                 loading: () => const [
                   Padding(
@@ -129,8 +130,10 @@ class _CurrentPlanCard extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -169,8 +172,8 @@ class _CurrentPlanCard extends StatelessWidget {
               sub.cancelAtPeriodEnd
                   ? 'Access ends ${Fmt.date(renews)}'
                   : sub.isTrialing
-                      ? 'Trial ends ${Fmt.date(renews)}'
-                      : 'Renews ${Fmt.date(renews)}',
+                  ? 'Trial ends ${Fmt.date(renews)}'
+                  : 'Renews ${Fmt.date(renews)}',
               style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
           ],
@@ -202,8 +205,8 @@ class _PlanCard extends StatelessWidget {
           color: isCurrent
               ? AppColors.gold
               : plan.highlighted
-                  ? AppColors.navy
-                  : AppColors.border,
+              ? AppColors.navy
+              : AppColors.border,
           width: isCurrent || plan.highlighted ? 1.5 : 1,
         ),
       ),
@@ -231,14 +234,14 @@ class _PlanCard extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             plan.tagline,
-            style:
-                const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: 10),
           Text(
-            plan.isFree
-                ? 'Free'
-                : '${Fmt.money(plan.monthlyPrice)} / month',
+            plan.isFree ? 'Free' : '${Fmt.money(plan.monthlyPrice)} / month',
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
@@ -249,25 +252,33 @@ class _PlanCard extends StatelessWidget {
             Text(
               'or ${Fmt.money(plan.annualPrice)} / year',
               style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary),
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
             ),
           const SizedBox(height: 12),
-          ...plan.features.take(6).map(
+          ...plan.features
+              .take(6)
+              .map(
                 (f) => Padding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.check_circle,
-                          size: 16, color: AppColors.success),
+                      const Icon(
+                        Icons.check_circle,
+                        size: 16,
+                        color: AppColors.success,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           f,
                           style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textPrimary,
-                              height: 1.35),
+                            fontSize: 13,
+                            color: AppColors.textPrimary,
+                            height: 1.35,
+                          ),
                         ),
                       ),
                     ],
@@ -284,7 +295,9 @@ class _PlanCard extends StatelessWidget {
                   )
                 : FilledButton(
                     onPressed: onSelect,
-                    child: Text(plan.isFree ? 'Switch to free' : 'Choose ${plan.name}'),
+                    child: Text(
+                      plan.isFree ? 'Switch to free' : 'Choose ${plan.name}',
+                    ),
                   ),
           ),
         ],
@@ -310,7 +323,10 @@ class _Pill extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-            fontSize: 11, fontWeight: FontWeight.w700, color: color),
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
       ),
     );
   }

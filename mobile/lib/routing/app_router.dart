@@ -20,6 +20,7 @@ import '../features/finance/presentation/home_loan_apply_page.dart';
 import '../features/finance/presentation/prequalification_page.dart';
 import '../features/governance/presentation/distributions_voting_page.dart';
 import '../features/investment/presentation/invest_page.dart';
+import '../features/land_partnership/presentation/land_partnership_page.dart';
 import '../features/ledger/presentation/share_ledger_page.dart';
 import '../features/marketplace/domain/marketplace_models.dart';
 import '../features/marketplace/presentation/market_detail_page.dart';
@@ -42,7 +43,11 @@ import '../features/subscription/presentation/subscription_page.dart';
 import '../features/shell/home_shell.dart';
 import '../features/shell/splash_page.dart';
 import '../features/statement/presentation/statement_page.dart';
+import '../features/share_integrity/presentation/share_integrity_page.dart';
 import '../features/tax/presentation/tax_certificates_page.dart';
+import '../features/wallet/presentation/wallet_page.dart';
+import '../features/wallet/presentation/withdraw_page.dart';
+import '../features/wallet/presentation/withdrawal_queue_page.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
 
@@ -58,7 +63,8 @@ class _AuthRouterNotifier extends ChangeNotifier {
   String? redirect(BuildContext context, GoRouterState state) {
     final auth = _ref.read(authControllerProvider);
     final location = state.matchedLocation;
-    final onAuthScreens = location == '/login' ||
+    final onAuthScreens =
+        location == '/login' ||
         location == '/register' ||
         location == '/forgot-password' ||
         location == '/reset-password';
@@ -124,6 +130,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) =>
             ResetPasswordPage(token: state.uri.queryParameters['token']),
       ),
+      GoRoute(
+        path: '/land-partnership',
+        parentNavigatorKey: _rootKey,
+        builder: (_, __) => const LandPartnershipPage(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => HomeShell(navigationShell: shell),
         branches: [
@@ -149,7 +160,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                         parentNavigatorKey: _rootKey,
                         builder: (context, state) => InvestPage(
                           propertyId:
-                              int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+                              int.tryParse(state.pathParameters['id'] ?? '') ??
+                              0,
                         ),
                       ),
                       GoRoute(
@@ -157,9 +169,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                         parentNavigatorKey: _rootKey,
                         builder: (context, state) => PropertyChatPage(
                           propertyId:
-                              int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-                          propertyTitle:
-                              state.extra is String ? state.extra as String : 'Deal',
+                              int.tryParse(state.pathParameters['id'] ?? '') ??
+                              0,
+                          propertyTitle: state.extra is String
+                              ? state.extra as String
+                              : 'Deal',
                         ),
                       ),
                       GoRoute(
@@ -225,8 +239,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                         path: ':id',
                         parentNavigatorKey: _rootKey,
                         builder: (context, state) => MarketDetailPage(
-                          shareClassId: int.tryParse(
-                                  state.pathParameters['id'] ?? '') ??
+                          shareClassId:
+                              int.tryParse(state.pathParameters['id'] ?? '') ??
                               0,
                           shareClass: state.extra is MarketShareClass
                               ? state.extra as MarketShareClass
@@ -234,6 +248,28 @@ final routerProvider = Provider<GoRouter>((ref) {
                         ),
                       ),
                     ],
+                  ),
+                  GoRoute(
+                    path: 'wallet',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const WalletPage(),
+                    routes: [
+                      GoRoute(
+                        path: 'withdraw',
+                        parentNavigatorKey: _rootKey,
+                        builder: (_, __) => const WithdrawPage(),
+                      ),
+                      GoRoute(
+                        path: 'queue',
+                        parentNavigatorKey: _rootKey,
+                        builder: (_, __) => const WithdrawalQueuePage(),
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: 'share-integrity',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const ShareIntegrityPage(),
                   ),
                 ],
               ),
@@ -302,8 +338,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                         path: ':id',
                         parentNavigatorKey: _rootKey,
                         builder: (context, state) => DistressedDealDetailPage(
-                          listingId: int.tryParse(
-                                  state.pathParameters['id'] ?? '') ??
+                          listingId:
+                              int.tryParse(state.pathParameters['id'] ?? '') ??
                               0,
                         ),
                       ),

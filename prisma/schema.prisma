@@ -706,6 +706,8 @@ model User {
   distressedListings         DistressedListing[]
   ownerSaleProposals         OwnerSaleProposal[]      @relation("OwnerSaleProposals")
   reviewedSaleProposals      OwnerSaleProposal[]      @relation("ReviewedSaleProposals")
+  landPartnerships           LandPartnership[]        @relation("LandPartnershipOwner")
+  reviewedLandPartnerships   LandPartnership[]        @relation("LandPartnershipReviewedBy")
   shareCertificates          ShareCertificate[]       @relation("InvestorCertificates")
   contractorProfile          ContractorProfile?
   createdRFQs                RFQ[]
@@ -752,6 +754,7 @@ model SPV {
   properties         Property[]
   acquisitions       Acquisition[]
   legalDocuments     LegalDocument[]
+  landPartnerships   LandPartnership[]
 
   @@index([status])
   @@index([directorId])
@@ -1968,9 +1971,101 @@ model OwnerSaleProposal {
   @@index([urgencyLevel])
 }
 
-// ─────────────────────────────────────────────────────────────
-// Phase 1: Platform monetization — fee ledger + fee configuration
-// ─────────────────────────────────────────────────────────────
+// ─── Land-into-SPV Partnership (landowner brings land as equity) ──
+// A landowner contributes their land/property into a ring-fenced SPV in
+// exchange for a minority equity stake (default 20%). The platform does
+// all the work (funding, rezoning, development, sale). The agreement is
+// reviewed, signed in-app, and printed with the owner's details auto-filled.
+
+enum LandPartnershipStatus {
+  SUBMITTED // owner submitted the land
+  UNDER_REVIEW // acquisitions team assessing
+  APPROVED // approved; terms set, agreement generated
+  AGREEMENT_READY // agreement generated, awaiting owner signature
+  SIGNED // owner has e-signed
+  COUNTERSIGNED // platform has countersigned
+  SPV_FORMED // SPV incorporated, land contribution underway
+  ACTIVE // live partnership
+  REJECTED
+  WITHDRAWN
+}
+
+model LandPartnership {
+  id                    Int                   @id @default(autoincrement())
+  ownerId               Int
+  referenceCode         String                @unique // LP-YYYY-####
+  // ── Landowner / contact ──
+  ownerFullName         String
+  ownerIdNumber         String?
+  ownerPhone            String?
+  ownerEmail            String?
+  ownerAddress          String?
+  // ── Entity (if land held in a company / trust) ──
+  ownerEntityName       String?
+  ownerEntityRegNumber  String?
+  // ── Land / property ──
+  landTitle             String
+  landDescription       String                @db.Text
+  address               String
+  city                  String
+  province              String                @default("Gauteng")
+  erfNumber             String?
+  titleDeedNumber       String?
+  erfSize               Float? // sqm
+  currentZoning         String?
+  currentUse            String?
+  municipalValue        Float?
+  estimatedLandValue    Float?
+  bondStatus            BondStatus            @default(NONE)
+  bondOutstanding       Float?
+  bondBank              String?
+  ratesStatus           RatesStatus           @default(CURRENT)
+  ratesArrears          Float?
+  coOwners              String? // additional registered owners
+  // ── Proposed development ──
+  developmentType       String? // Residential estate, Flats, Commercial, Flip, etc.
+  intendedStrategy      String? // DEVELOP | FLIP | HOLD
+  proposedUnits         Int?
+  estimatedGDV          Float? // Gross development value
+  estimatedBuildCost    Float?
+  // ── Equity split ──
+  ownerEquityPct        Float                 @default(20)
+  platformEquityPct     Float                 @default(80)
+  // ── Documents / media ──
+  documentUrls          Json? // [{kind, url, name}]
+  imageUrls             Json?
+  // ── Consent ──
+  popiaConsent          Boolean               @default(false)
+  // ── Workflow ──
+  status                LandPartnershipStatus @default(SUBMITTED)
+  reviewedById          Int?
+  reviewNotes           String?               @db.Text
+  reviewedAt            DateTime?
+  rejectedReason        String?               @db.Text
+  // ── Agreement + e-signature ──
+  agreementContent      String?               @db.Text // generated, auto-filled agreement
+  agreementGeneratedAt  DateTime?
+  ownerSignatureName    String? // typed full name used as signature
+  ownerSignatureId      String? // ID number captured at signing
+  ownerSignedAt         DateTime?
+  ownerSignatureIp      String?
+  ownerSignatureData    String?               @db.Text // optional drawn signature (base64)
+  platformSignatoryName String?
+  platformSignedAt      DateTime?
+  // ── SPV / property bridge ──
+  spvId                 Int?
+  spvFormedAt           DateTime?
+  convertedToPropertyId Int?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @default(now()) @updatedAt
+  owner                 User                  @relation("LandPartnershipOwner", fields: [ownerId], references: [id])
+  reviewedBy            User?                 @relation("LandPartnershipReviewedBy", fields: [reviewedById], references: [id])
+  spv                   SPV?                  @relation(fields: [spvId], references: [id])
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([createdAt])
+}
 
 /// Immutable ledger of every platform fee captured across the app.
 /// Each row represents realized platform revenue (ZAR) booked at the

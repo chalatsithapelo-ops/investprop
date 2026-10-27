@@ -101,8 +101,9 @@ class _ApplicationCardState extends ConsumerState<_ApplicationCard> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Keep it')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep it'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(ctx, true),
@@ -175,14 +176,18 @@ class _ApplicationCardState extends ConsumerState<_ApplicationCard> {
                         'Applied ${Fmt.date(app.createdAt)}'
                         '${app.originatorName != null ? ' · ${app.originatorName}' : ''}',
                         style: const TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary),
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: status.color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
@@ -190,9 +195,10 @@ class _ApplicationCardState extends ConsumerState<_ApplicationCard> {
                   child: Text(
                     status.label,
                     style: TextStyle(
-                        color: status.color,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12),
+                      color: status.color,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ],
@@ -202,44 +208,58 @@ class _ApplicationCardState extends ConsumerState<_ApplicationCard> {
             const SizedBox(height: 8),
             Text(
               app.statusNote ?? status.description,
-              style:
-                  const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
             ),
             if (offers.isNotEmpty) ...[
               const Divider(height: 28),
               const Text(
                 'Bank offers',
                 style: TextStyle(
-                    fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 8),
-              ...offers.map((o) => _OfferTile(
-                    offer: o,
-                    busy: _busy,
-                    canAccept: app.isOpen &&
-                        o.status == HomeLoanOfferStatus.offered,
-                    onAccept: () => _accept(o.id),
-                  )),
+              ...offers.map(
+                (o) => _OfferTile(
+                  offer: o,
+                  busy: _busy,
+                  canAccept:
+                      app.isOpen && o.status == HomeLoanOfferStatus.offered,
+                  onAccept: () => _accept(o.id),
+                ),
+              ),
             ],
             if (app.documents.isNotEmpty) ...[
               const Divider(height: 28),
               const Text(
                 'Submitted documents',
                 style: TextStyle(
-                    fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: app.documents
-                    .map((d) => ActionChip(
-                          avatar: const Icon(Icons.description_outlined,
-                              size: 16),
-                          label: Text(d.docType.label,
-                              style: const TextStyle(fontSize: 12)),
-                          onPressed: () => _openDoc(d.fileUrl),
-                        ))
+                    .map(
+                      (d) => ActionChip(
+                        avatar: const Icon(
+                          Icons.description_outlined,
+                          size: 16,
+                        ),
+                        label: Text(
+                          d.docType.label,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        onPressed: () => _openDoc(d.fileUrl),
+                      ),
+                    )
                     .toList(),
               ),
             ],
@@ -250,7 +270,8 @@ class _ApplicationCardState extends ConsumerState<_ApplicationCard> {
                 child: TextButton.icon(
                   onPressed: _busy ? null : _withdraw,
                   style: TextButton.styleFrom(
-                      foregroundColor: AppColors.danger),
+                    foregroundColor: AppColors.danger,
+                  ),
                   icon: const Icon(Icons.cancel_outlined, size: 18),
                   label: const Text('Withdraw'),
                 ),
@@ -271,8 +292,8 @@ class _StatusTracker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Withdrawn / declined applications never reached the happy path.
-    final terminated = status == HomeLoanStatus.withdrawn ||
-        status == HomeLoanStatus.declined;
+    final terminated =
+        status == HomeLoanStatus.withdrawn || status == HomeLoanStatus.declined;
     final currentIndex = HomeLoanStatusX.flow.indexOf(status);
     final steps = HomeLoanStatusX.flow;
 
@@ -288,7 +309,8 @@ class _StatusTracker extends StatelessWidget {
           );
         }
         final index = i ~/ 2;
-        final reached = !terminated && index <= currentIndex && currentIndex >= 0;
+        final reached =
+            !terminated && index <= currentIndex && currentIndex >= 0;
         return _Dot(reached: reached, label: steps[index].label);
       }),
     );
@@ -372,15 +394,18 @@ class _OfferTile extends StatelessWidget {
                 child: Text(
                   offer.bankName,
                   style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: AppColors.textPrimary),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
               Text(
                 Fmt.percent(offer.annualInterestRate, decimals: 2),
                 style: const TextStyle(
-                    fontWeight: FontWeight.w700, color: AppColors.navy),
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                ),
               ),
             ],
           ),
@@ -389,21 +414,25 @@ class _OfferTile extends StatelessWidget {
             '${Fmt.money(offer.monthlyInstalment)} /mo · '
             '${Fmt.money(offer.approvedAmount)} approved · '
             '${offer.loanTermYears} yrs',
-            style:
-                const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
           ),
           if (accepted) ...[
             const SizedBox(height: 8),
             Row(
               children: const [
-                Icon(Icons.check_circle,
-                    size: 16, color: AppColors.success),
+                Icon(Icons.check_circle, size: 16, color: AppColors.success),
                 SizedBox(width: 4),
-                Text('You accepted this offer',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.success)),
+                Text(
+                  'You accepted this offer',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.success,
+                  ),
+                ),
               ],
             ),
           ] else if (canAccept) ...[

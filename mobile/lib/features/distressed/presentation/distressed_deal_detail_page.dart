@@ -31,14 +31,13 @@ class _DistressedDealDetailPageState
       await ref.read(distressedRepositoryProvider).gradeDeal(widget.listingId);
       if (!mounted) return;
       ref.invalidate(distressedDetailProvider(widget.listingId));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Deal graded by AI.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Deal graded by AI.')));
     } catch (e) {
       if (!mounted) return;
       final msg = e is ApiException ? e.message : 'Could not grade this deal.';
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(msg)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } finally {
       if (mounted) setState(() => _grading = false);
     }
@@ -107,8 +106,7 @@ class _DetailBody extends StatelessWidget {
                   errorWidget: (_, __, ___) => Container(
                     color: AppColors.navyLight,
                     child: const Center(
-                      child:
-                          Icon(Icons.gavel, size: 48, color: Colors.white54),
+                      child: Icon(Icons.gavel, size: 48, color: Colors.white54),
                     ),
                   ),
                 )
@@ -135,14 +133,18 @@ class _DetailBody extends StatelessWidget {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  const Icon(Icons.location_on_outlined,
-                      size: 16, color: AppColors.textSecondary),
+                  const Icon(
+                    Icons.location_on_outlined,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
-                      [deal.address, deal.location]
-                          .where((s) => (s ?? '').isNotEmpty)
-                          .join(' · '),
+                      [
+                        deal.address,
+                        deal.location,
+                      ].where((s) => (s ?? '').isNotEmpty).join(' · '),
                       style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   ),
@@ -185,7 +187,8 @@ class _DetailBody extends StatelessWidget {
                         Text(
                           Fmt.date(p.recordedAt),
                           style: const TextStyle(
-                              color: AppColors.textSecondary),
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                         Text(
                           Fmt.money(p.askingPrice),
@@ -232,9 +235,10 @@ class _PriceRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Asking price',
-                  style: TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary)),
+              const Text(
+                'Asking price',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
               const SizedBox(height: 2),
               Text(
                 Fmt.money(deal.askingPrice),
@@ -248,7 +252,9 @@ class _PriceRow extends StatelessWidget {
                 Text(
                   'Market value ${Fmt.compactMoney(deal.marketValue!)}',
                   style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary),
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               if (deal.hasPriceDrop)
                 Text(
@@ -355,8 +361,10 @@ class _AuctionCard extends StatelessWidget {
               if (detail.noReserve) ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.gold.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(6),
@@ -424,8 +432,10 @@ class _AuctionRow extends StatelessWidget {
       children: [
         Icon(icon, size: 15, color: AppColors.textSecondary),
         const SizedBox(width: 8),
-        Text('$label: ',
-            style: const TextStyle(color: AppColors.textSecondary)),
+        Text(
+          '$label: ',
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
         Expanded(
           child: Text(
             value,
@@ -499,7 +509,9 @@ class _AICard extends StatelessWidget {
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Icon(Icons.bolt, size: 18),
               label: Text(grading ? 'Grading…' : 'Grade this deal'),
@@ -509,8 +521,10 @@ class _AICard extends StatelessWidget {
             if (deal.aiRiskScore != null)
               Row(
                 children: [
-                  const Text('Risk score: ',
-                      style: TextStyle(color: AppColors.textSecondary)),
+                  const Text(
+                    'Risk score: ',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
                   Text(
                     '${deal.aiRiskScore!.toStringAsFixed(0)}/100',
                     style: const TextStyle(
@@ -562,7 +576,9 @@ class _AICard extends StatelessWidget {
               Text(
                 'Graded ${Fmt.relative(deal.aiScoredAt)}',
                 style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary),
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ],
@@ -614,8 +630,10 @@ class _BreakdownList extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('•  ',
-                      style: TextStyle(color: AppColors.textSecondary)),
+                  const Text(
+                    '•  ',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
                   Expanded(
                     child: Text(
                       t,
@@ -688,8 +706,11 @@ class _MarketAnalysisCard extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.insights_outlined,
-                size: 18, color: AppColors.textSecondary),
+            const Icon(
+              Icons.insights_outlined,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
             const SizedBox(width: 8),
             const Expanded(
               child: Text(
@@ -730,8 +751,11 @@ class _MarketAnalysisBody extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.insights_outlined,
-                  size: 18, color: AppColors.navy),
+              const Icon(
+                Icons.insights_outlined,
+                size: 18,
+                color: AppColors.navy,
+              ),
               const SizedBox(width: 8),
               const Text(
                 'Market analysis',
@@ -742,8 +766,10 @@ class _MarketAnalysisBody extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: a.verdictColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
@@ -807,13 +833,13 @@ class _MarketAnalysisBody extends StatelessWidget {
                     value: a.trendDirection == 'RISING'
                         ? 'Rising'
                         : a.trendDirection == 'FALLING'
-                            ? 'Softening'
-                            : 'Flat',
+                        ? 'Softening'
+                        : 'Flat',
                     color: a.trendDirection == 'RISING'
                         ? AppColors.success
                         : a.trendDirection == 'FALLING'
-                            ? AppColors.danger
-                            : AppColors.textSecondary,
+                        ? AppColors.danger
+                        : AppColors.textSecondary,
                   ),
               ],
             ),
@@ -865,7 +891,9 @@ class _MarketAnalysisBody extends StatelessWidget {
           if (a.flip != null || a.rental != null) ...[
             const SizedBox(height: 14),
             const _SectionLabel(
-                icon: Icons.handyman_outlined, text: 'Projected returns'),
+              icon: Icons.handyman_outlined,
+              text: 'Projected returns',
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 10,
@@ -918,7 +946,9 @@ class _MarketAnalysisBody extends StatelessWidget {
               Text(
                 a.projectionAssumptions,
                 style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary),
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ],
@@ -927,7 +957,9 @@ class _MarketAnalysisBody extends StatelessWidget {
                   a.maxBid!.breakEvenPrice != null)) ...[
             const SizedBox(height: 14),
             const _SectionLabel(
-                icon: Icons.gps_fixed_outlined, text: 'Bidding guide'),
+              icon: Icons.gps_fixed_outlined,
+              text: 'Bidding guide',
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 10,
@@ -959,7 +991,9 @@ class _MarketAnalysisBody extends StatelessWidget {
           if (a.activity != null && a.activity!.staleness != 'UNKNOWN') ...[
             const SizedBox(height: 14),
             const _SectionLabel(
-                icon: Icons.schedule_outlined, text: 'Market activity'),
+              icon: Icons.schedule_outlined,
+              text: 'Market activity',
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 10,
@@ -994,8 +1028,9 @@ class _MarketAnalysisBody extends StatelessWidget {
           if (a.auctionRisks.isNotEmpty) ...[
             const SizedBox(height: 14),
             const _SectionLabel(
-                icon: Icons.gpp_maybe_outlined,
-                text: 'Auction & distressed-sale risks'),
+              icon: Icons.gpp_maybe_outlined,
+              text: 'Auction & distressed-sale risks',
+            ),
             const SizedBox(height: 8),
             ...a.auctionRisks.map(
               (r) => Container(
@@ -1031,7 +1066,9 @@ class _MarketAnalysisBody extends StatelessWidget {
           if (a.verdictFactors.isNotEmpty) ...[
             const SizedBox(height: 14),
             const _SectionLabel(
-                icon: Icons.checklist_outlined, text: 'How we scored this'),
+              icon: Icons.checklist_outlined,
+              text: 'How we scored this',
+            ),
             const SizedBox(height: 6),
             ...a.verdictFactors.map(
               (f) => Padding(

@@ -153,11 +153,7 @@ class OwnerRepository {
   }) async {
     final data = await _client.mutation(
       'uploadFile',
-      input: {
-        'fileName': fileName,
-        'fileType': fileType,
-        'fileBase64': base64,
-      },
+      input: {'fileName': fileName, 'fileType': fileType, 'fileBase64': base64},
     );
     if (data is Map && data['publicUrl'] != null) {
       return data['publicUrl'].toString();
@@ -182,10 +178,7 @@ class OwnerRepository {
   }) async {
     await _client.mutation(
       'respondToCounterOffer',
-      input: {
-        'proposalId': proposalId,
-        'action': accept ? 'ACCEPT' : 'REJECT',
-      },
+      input: {'proposalId': proposalId, 'action': accept ? 'ACCEPT' : 'REJECT'},
     );
   }
 
@@ -204,13 +197,15 @@ final ownerRepositoryProvider = Provider<OwnerRepository>((ref) {
   return OwnerRepository(ref.watch(trpcClientProvider));
 });
 
-final myProposalsProvider =
-    FutureProvider.autoDispose<List<SaleProposal>>((ref) async {
+final myProposalsProvider = FutureProvider.autoDispose<List<SaleProposal>>((
+  ref,
+) async {
   return ref.watch(ownerRepositoryProvider).myProposals();
 });
 
-final ownerFeeScheduleProvider =
-    FutureProvider.autoDispose<OwnerFeeSchedule>((ref) async {
+final ownerFeeScheduleProvider = FutureProvider.autoDispose<OwnerFeeSchedule>((
+  ref,
+) async {
   return ref.watch(ownerRepositoryProvider).feeSchedule();
 });
 
@@ -227,13 +222,13 @@ class OwnerFeeSchedule {
   });
 
   const OwnerFeeSchedule.empty()
-      : enabled = false,
-        sellerFacilitationPct = 0,
-        assessmentPackFee = 0,
-        jvPromotePct = 0,
-        leaseBackSetupFee = 0,
-        leaseBackMgmtPct = 0,
-        bondReferralFee = 0;
+    : enabled = false,
+      sellerFacilitationPct = 0,
+      assessmentPackFee = 0,
+      jvPromotePct = 0,
+      leaseBackSetupFee = 0,
+      leaseBackMgmtPct = 0,
+      bondReferralFee = 0;
 
   final bool enabled;
   final double sellerFacilitationPct;

@@ -117,9 +117,10 @@ class _Detail extends ConsumerWidget {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        [opportunity.address, opportunity.location]
-                            .where((s) => s.isNotEmpty)
-                            .join(', '),
+                        [
+                          opportunity.address,
+                          opportunity.location,
+                        ].where((s) => s.isNotEmpty).join(', '),
                         style: const TextStyle(color: AppColors.textSecondary),
                       ),
                     ),
@@ -354,7 +355,10 @@ class _FundingStat extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white60, fontSize: 12),
+        ),
         const SizedBox(height: 2),
         Text(
           value,
@@ -385,7 +389,11 @@ class _Disclaimer extends StatelessWidget {
         'Projected returns are illustrative estimates based on the sponsor\'s '
         'assumptions, not financial advice or a guarantee. Capital is at risk. '
         'Review all deal documents before investing.',
-        style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+        style: TextStyle(
+          fontSize: 12,
+          color: AppColors.textSecondary,
+          height: 1.4,
+        ),
       ),
     );
   }

@@ -94,6 +94,7 @@ import { getDistressedListings, triggerDistressedScrape, getDistressedDashboardS
 import { screenDistressedListing, screenDistressedBatch, promoteDistressedToProperty, getDistressedPriceHistory, getDistressedComparables, runDistressedDedup, runDistressedReminders } from "~/server/trpc/procedures/distressed-ai";
 // Owner Sale Proposals
 import { submitSaleProposal, getMySaleProposals, getSaleProposals, reviewSaleProposal, withdrawSaleProposal, bookOwnerRecurringFee, valuateSaleProposal, promoteSaleProposalToProperty } from "~/server/trpc/procedures/owner-proposals";
+import { submitLandPartnership, getMyLandPartnerships, getLandPartnershipById, getAllLandPartnerships, reviewLandPartnership, signLandPartnership, countersignLandPartnership, formSpvForLandPartnership, activateLandPartnership, withdrawLandPartnership } from "~/server/trpc/procedures/land-partnership";
 // Investment Payments (POP + Paystack)
 import { initiateInvestmentPayment, verifyInvestmentPayment, submitProofOfPayment, reviewProofOfPayment, getPendingPayments, getMyAwaitingPayment } from "~/server/trpc/procedures/investment-payments";
 // Share Certificates
@@ -449,7 +450,17 @@ export const appRouter = createTRPCRouter({
   bookOwnerRecurringFee,
   valuateSaleProposal,
   promoteSaleProposalToProperty,
-  // Investment Payments
+  // Land-into-SPV Partnerships
+  submitLandPartnership,
+  getMyLandPartnerships,
+  getLandPartnershipById,
+  getAllLandPartnerships,
+  reviewLandPartnership,
+  signLandPartnership,
+  countersignLandPartnership,
+  formSpvForLandPartnership,
+  activateLandPartnership,
+  withdrawLandPartnership,
   initiateInvestmentPayment,
   verifyInvestmentPayment,
   submitProofOfPayment,

@@ -27,7 +27,10 @@ class DocumentsRepository {
   }
 
   /// Runs (or re-runs) the AI analysis for a legal document.
-  Future<DocumentAiSummary?> analyse(int documentId, {bool force = false}) async {
+  Future<DocumentAiSummary?> analyse(
+    int documentId, {
+    bool force = false,
+  }) async {
     final data = await _client.mutation(
       'summariseLegalDocument',
       input: {'documentId': documentId, 'force': force},
@@ -40,7 +43,8 @@ final documentsRepositoryProvider = Provider<DocumentsRepository>((ref) {
   return DocumentsRepository(ref.watch(trpcClientProvider));
 });
 
-final myDocumentsProvider =
-    FutureProvider.autoDispose<DocumentsResult>((ref) async {
+final myDocumentsProvider = FutureProvider.autoDispose<DocumentsResult>((
+  ref,
+) async {
   return ref.watch(documentsRepositoryProvider).myDocuments();
 });

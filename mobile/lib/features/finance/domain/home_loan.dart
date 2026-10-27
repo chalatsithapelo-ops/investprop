@@ -33,35 +33,34 @@ extension HomeLoanStatusX on HomeLoanStatus {
   }
 
   String get label => switch (this) {
-        HomeLoanStatus.submitted => 'Submitted',
-        HomeLoanStatus.banksReviewing => 'Banks reviewing',
-        HomeLoanStatus.offersIn => 'Offers in',
-        HomeLoanStatus.accepted => 'Accepted',
-        HomeLoanStatus.declined => 'Declined',
-        HomeLoanStatus.withdrawn => 'Withdrawn',
-      };
+    HomeLoanStatus.submitted => 'Submitted',
+    HomeLoanStatus.banksReviewing => 'Banks reviewing',
+    HomeLoanStatus.offersIn => 'Offers in',
+    HomeLoanStatus.accepted => 'Accepted',
+    HomeLoanStatus.declined => 'Declined',
+    HomeLoanStatus.withdrawn => 'Withdrawn',
+  };
 
   String get description => switch (this) {
-        HomeLoanStatus.submitted =>
-          'Received — we are handing your application to a bond originator.',
-        HomeLoanStatus.banksReviewing =>
-          'Your application is with the major banks for a decision.',
-        HomeLoanStatus.offersIn =>
-          'One or more banks have made an offer. Compare and accept the best one.',
-        HomeLoanStatus.accepted => 'You accepted an offer. Congratulations!',
-        HomeLoanStatus.declined =>
-          'The banks could not approve this application.',
-        HomeLoanStatus.withdrawn => 'You withdrew this application.',
-      };
+    HomeLoanStatus.submitted =>
+      'Received — we are handing your application to a bond originator.',
+    HomeLoanStatus.banksReviewing =>
+      'Your application is with the major banks for a decision.',
+    HomeLoanStatus.offersIn =>
+      'One or more banks have made an offer. Compare and accept the best one.',
+    HomeLoanStatus.accepted => 'You accepted an offer. Congratulations!',
+    HomeLoanStatus.declined => 'The banks could not approve this application.',
+    HomeLoanStatus.withdrawn => 'You withdrew this application.',
+  };
 
   Color get color => switch (this) {
-        HomeLoanStatus.submitted => AppColors.textSecondary,
-        HomeLoanStatus.banksReviewing => AppColors.navy,
-        HomeLoanStatus.offersIn => AppColors.warning,
-        HomeLoanStatus.accepted => AppColors.success,
-        HomeLoanStatus.declined => AppColors.danger,
-        HomeLoanStatus.withdrawn => AppColors.textSecondary,
-      };
+    HomeLoanStatus.submitted => AppColors.textSecondary,
+    HomeLoanStatus.banksReviewing => AppColors.navy,
+    HomeLoanStatus.offersIn => AppColors.warning,
+    HomeLoanStatus.accepted => AppColors.success,
+    HomeLoanStatus.declined => AppColors.danger,
+    HomeLoanStatus.withdrawn => AppColors.textSecondary,
+  };
 
   /// Ordered milestones shown in the progress tracker.
   static const flow = <HomeLoanStatus>[
@@ -88,10 +87,10 @@ extension HomeLoanOfferStatusX on HomeLoanOfferStatus {
   }
 
   String get label => switch (this) {
-        HomeLoanOfferStatus.offered => 'Offered',
-        HomeLoanOfferStatus.accepted => 'Accepted',
-        HomeLoanOfferStatus.declined => 'Declined',
-      };
+    HomeLoanOfferStatus.offered => 'Offered',
+    HomeLoanOfferStatus.accepted => 'Accepted',
+    HomeLoanOfferStatus.declined => 'Declined',
+  };
 }
 
 /// Supporting-document types accepted on a home-loan application. Mirrors the
@@ -107,22 +106,22 @@ enum HomeLoanDocType {
 
 extension HomeLoanDocTypeX on HomeLoanDocType {
   String get wire => switch (this) {
-        HomeLoanDocType.payslip => 'PAYSLIP',
-        HomeLoanDocType.bankStatement => 'BANK_STATEMENT',
-        HomeLoanDocType.idDocument => 'ID_DOCUMENT',
-        HomeLoanDocType.proofOfAddress => 'PROOF_OF_ADDRESS',
-        HomeLoanDocType.offerToPurchase => 'OFFER_TO_PURCHASE',
-        HomeLoanDocType.other => 'OTHER',
-      };
+    HomeLoanDocType.payslip => 'PAYSLIP',
+    HomeLoanDocType.bankStatement => 'BANK_STATEMENT',
+    HomeLoanDocType.idDocument => 'ID_DOCUMENT',
+    HomeLoanDocType.proofOfAddress => 'PROOF_OF_ADDRESS',
+    HomeLoanDocType.offerToPurchase => 'OFFER_TO_PURCHASE',
+    HomeLoanDocType.other => 'OTHER',
+  };
 
   String get label => switch (this) {
-        HomeLoanDocType.payslip => 'Payslip (latest 3 months)',
-        HomeLoanDocType.bankStatement => 'Bank statement (3 months)',
-        HomeLoanDocType.idDocument => 'ID document',
-        HomeLoanDocType.proofOfAddress => 'Proof of address',
-        HomeLoanDocType.offerToPurchase => 'Offer to purchase',
-        HomeLoanDocType.other => 'Other supporting document',
-      };
+    HomeLoanDocType.payslip => 'Payslip (latest 3 months)',
+    HomeLoanDocType.bankStatement => 'Bank statement (3 months)',
+    HomeLoanDocType.idDocument => 'ID document',
+    HomeLoanDocType.proofOfAddress => 'Proof of address',
+    HomeLoanDocType.offerToPurchase => 'Offer to purchase',
+    HomeLoanDocType.other => 'Other supporting document',
+  };
 
   static HomeLoanDocType fromWire(String? value) {
     switch ((value ?? '').toUpperCase()) {
@@ -239,12 +238,14 @@ class HomeLoanApplication {
       status != HomeLoanStatus.withdrawn;
 
   factory HomeLoanApplication.fromJson(Map<String, dynamic> json) {
-    final offers = (json['offers'] as List?)
+    final offers =
+        (json['offers'] as List?)
             ?.whereType<Map>()
             .map((e) => HomeLoanOffer.fromJson(Map<String, dynamic>.from(e)))
             .toList() ??
         <HomeLoanOffer>[];
-    final documents = (json['documents'] as List?)
+    final documents =
+        (json['documents'] as List?)
             ?.whereType<Map>()
             .map((e) => HomeLoanDocument.fromJson(Map<String, dynamic>.from(e)))
             .toList() ??

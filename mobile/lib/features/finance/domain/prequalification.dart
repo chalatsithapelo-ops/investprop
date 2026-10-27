@@ -20,16 +20,16 @@ extension PrequalBandX on PrequalBand {
   }
 
   String get label => switch (this) {
-        PrequalBand.strong => 'Strong',
-        PrequalBand.moderate => 'Moderate',
-        PrequalBand.weak => 'Weak',
-      };
+    PrequalBand.strong => 'Strong',
+    PrequalBand.moderate => 'Moderate',
+    PrequalBand.weak => 'Weak',
+  };
 
   Color get color => switch (this) {
-        PrequalBand.strong => AppColors.success,
-        PrequalBand.moderate => AppColors.warning,
-        PrequalBand.weak => AppColors.danger,
-      };
+    PrequalBand.strong => AppColors.success,
+    PrequalBand.moderate => AppColors.warning,
+    PrequalBand.weak => AppColors.danger,
+  };
 }
 
 /// Result of an affordability calculation (indicative, not a credit approval).

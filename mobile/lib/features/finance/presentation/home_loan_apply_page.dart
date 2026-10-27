@@ -114,12 +114,14 @@ class _HomeLoanApplyPageState extends ConsumerState<HomeLoanApplyPage> {
       // Lazy base64 to avoid blocking; encode on submit via repository.
       final b64 = _encode(bytes);
       setState(() {
-        _docs.add(PendingDoc(
-          docType: _docType,
-          fileName: file.name,
-          mime: _mimeForExtension(file.name),
-          base64: b64,
-        ));
+        _docs.add(
+          PendingDoc(
+            docType: _docType,
+            fileName: file.name,
+            mime: _mimeForExtension(file.name),
+            base64: b64,
+          ),
+        );
       });
     } catch (_) {
       _snack('Could not add that document.', error: true);
@@ -187,8 +189,11 @@ class _HomeLoanApplyPageState extends ConsumerState<HomeLoanApplyPage> {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.check_circle,
-            color: AppColors.success, size: 48),
+        icon: const Icon(
+          Icons.check_circle,
+          color: AppColors.success,
+          size: 48,
+        ),
         title: const Text('Application submitted'),
         content: const Text(
           'We have received your application and will hand it to our bond '
@@ -232,8 +237,7 @@ class _HomeLoanApplyPageState extends ConsumerState<HomeLoanApplyPage> {
           const SizedBox(height: 20),
           TextFormField(
             controller: _bondAmount,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
             ],
@@ -255,7 +259,9 @@ class _HomeLoanApplyPageState extends ConsumerState<HomeLoanApplyPage> {
           const Text(
             'Supporting documents',
             style: TextStyle(
-                fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
           ),
           const SizedBox(height: 4),
           const Text(
@@ -272,11 +278,12 @@ class _HomeLoanApplyPageState extends ConsumerState<HomeLoanApplyPage> {
                   isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Document type'),
                   items: HomeLoanDocType.values
-                      .map((t) => DropdownMenuItem(
-                            value: t,
-                            child: Text(t.label,
-                                overflow: TextOverflow.ellipsis),
-                          ))
+                      .map(
+                        (t) => DropdownMenuItem(
+                          value: t,
+                          child: Text(t.label, overflow: TextOverflow.ellipsis),
+                        ),
+                      )
                       .toList(),
                   onChanged: (v) =>
                       setState(() => _docType = v ?? HomeLoanDocType.other),
@@ -301,13 +308,22 @@ class _HomeLoanApplyPageState extends ConsumerState<HomeLoanApplyPage> {
               return Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
-                  leading: const Icon(Icons.description_outlined,
-                      color: AppColors.navy),
-                  title: Text(doc.docType.label,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 14)),
-                  subtitle: Text(doc.fileName,
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  leading: const Icon(
+                    Icons.description_outlined,
+                    color: AppColors.navy,
+                  ),
+                  title: Text(
+                    doc.docType.label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  subtitle: Text(
+                    doc.fileName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   trailing: IconButton(
                     icon: const Icon(Icons.close, size: 20),
                     onPressed: () => setState(() => _docs.removeAt(i)),
@@ -337,7 +353,9 @@ class _HomeLoanApplyPageState extends ConsumerState<HomeLoanApplyPage> {
                     height: 22,
                     width: 22,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Text('Submit application'),
           ),

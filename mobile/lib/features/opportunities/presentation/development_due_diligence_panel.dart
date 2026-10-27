@@ -26,8 +26,11 @@ class DevelopmentDueDiligencePanel extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.account_balance_outlined,
-                    size: 20, color: AppColors.gold),
+                const Icon(
+                  Icons.account_balance_outlined,
+                  size: 20,
+                  color: AppColors.gold,
+                ),
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text(
@@ -54,7 +57,10 @@ class DevelopmentDueDiligencePanel extends StatelessWidget {
             const SizedBox(height: 16),
 
             const _SectionLabel('Financial feasibility'),
-            _MetricRow('Gross development value', Fmt.money(e.grossDevelopmentValue)),
+            _MetricRow(
+              'Gross development value',
+              Fmt.money(e.grossDevelopmentValue),
+            ),
             _MetricRow('Total development cost', Fmt.money(e.totalCost)),
             _MetricRow(
               'Projected profit',
@@ -64,7 +70,9 @@ class DevelopmentDueDiligencePanel extends StatelessWidget {
             _MetricRow(
               'Profit on cost',
               Fmt.percent(e.profitOnCost),
-              valueColor: e.profitOnCost >= 15 ? AppColors.success : AppColors.warning,
+              valueColor: e.profitOnCost >= 15
+                  ? AppColors.success
+                  : AppColors.warning,
             ),
             _MetricRow('Profit on GDV', Fmt.percent(e.profitOnGdv)),
             _MetricRow('Programme', '${e.timelineMonths} months'),
@@ -81,13 +89,22 @@ class DevelopmentDueDiligencePanel extends StatelessWidget {
             _MetricRow(
               'Committed funding',
               Fmt.money(c.committedFunding),
-              valueColor: c.fundingShortfall > 0 ? AppColors.warning : AppColors.success,
+              valueColor: c.fundingShortfall > 0
+                  ? AppColors.warning
+                  : AppColors.success,
             ),
             if (c.fundingShortfall > 0)
-              _MetricRow('Funding shortfall', Fmt.money(c.fundingShortfall),
-                  valueColor: AppColors.warning),
+              _MetricRow(
+                'Funding shortfall',
+                Fmt.money(c.fundingShortfall),
+                valueColor: AppColors.warning,
+              ),
             _MetricRow('Loan to cost', Fmt.percent(c.loanToCost)),
-            _MetricRow('Rolled-up interest', Fmt.money(c.totalInterest), muted: true),
+            _MetricRow(
+              'Rolled-up interest',
+              Fmt.money(c.totalInterest),
+              muted: true,
+            ),
             _MetricRow(
               'Project IRR',
               e.projectIRR.isFinite ? Fmt.percent(e.projectIRR) : '—',
@@ -100,13 +117,17 @@ class DevelopmentDueDiligencePanel extends StatelessWidget {
             ),
             _MetricRow(
               'Equity multiple',
-              e.equityMultiple > 0 ? '${e.equityMultiple.toStringAsFixed(2)}x' : '—',
+              e.equityMultiple > 0
+                  ? '${e.equityMultiple.toStringAsFixed(2)}x'
+                  : '—',
             ),
             _MetricRow('Residual land value', Fmt.money(e.residualLandValue)),
             _MetricRow(
               'Land headroom',
               Fmt.money(e.landHeadroom),
-              valueColor: e.landHeadroom >= 0 ? AppColors.success : AppColors.danger,
+              valueColor: e.landHeadroom >= 0
+                  ? AppColors.success
+                  : AppColors.danger,
             ),
             const SizedBox(height: 16),
 
@@ -116,13 +137,15 @@ class DevelopmentDueDiligencePanel extends StatelessWidget {
             if (dd.professionals.isEmpty)
               const _EmptyNote('No professional appointments recorded yet.')
             else
-              ...dd.professionals.map((p) => _StatusRow(
-                    title: ddLabel(p.role),
-                    subtitle: p.firmName.isEmpty ? 'To be appointed' : p.firmName,
-                    required: p.isRequired,
-                    statusLabel: ddLabel(p.status),
-                    statusColor: _appointmentColor(p.status),
-                  )),
+              ...dd.professionals.map(
+                (p) => _StatusRow(
+                  title: ddLabel(p.role),
+                  subtitle: p.firmName.isEmpty ? 'To be appointed' : p.firmName,
+                  required: p.isRequired,
+                  statusLabel: ddLabel(p.status),
+                  statusColor: _appointmentColor(p.status),
+                ),
+              ),
             const SizedBox(height: 16),
 
             _SectionLabel(
@@ -131,17 +154,19 @@ class DevelopmentDueDiligencePanel extends StatelessWidget {
             if (dd.approvals.isEmpty)
               const _EmptyNote('No statutory approvals recorded yet.')
             else
-              ...dd.approvals.map((a) => _StatusRow(
-                    title: ddLabel(a.type),
-                    subtitle: a.authority.isEmpty
-                        ? (a.targetDate != null
+              ...dd.approvals.map(
+                (a) => _StatusRow(
+                  title: ddLabel(a.type),
+                  subtitle: a.authority.isEmpty
+                      ? (a.targetDate != null
                             ? 'Target ${Fmt.date(a.targetDate)}'
                             : 'Authority t.b.c.')
-                        : a.authority,
-                    required: a.isRequired,
-                    statusLabel: ddLabel(a.status),
-                    statusColor: _approvalColor(a.status),
-                  )),
+                      : a.authority,
+                  required: a.isRequired,
+                  statusLabel: ddLabel(a.status),
+                  statusColor: _approvalColor(a.status),
+                ),
+              ),
           ],
         ),
       ),
@@ -189,8 +214,8 @@ class _ReadinessBlock extends StatelessWidget {
     final color = score >= 75
         ? AppColors.success
         : score >= 50
-            ? AppColors.warning
-            : AppColors.danger;
+        ? AppColors.warning
+        : AppColors.danger;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -213,23 +238,25 @@ class _ReadinessBlock extends StatelessWidget {
                 ),
               ),
               Text.rich(
-                TextSpan(children: [
-                  TextSpan(
-                    text: '$score',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: color,
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '$score',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                      ),
                     ),
-                  ),
-                  const TextSpan(
-                    text: '/100',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
+                    const TextSpan(
+                      text: '/100',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
-                ]),
+                  ],
+                ),
               ),
             ],
           ),
@@ -271,24 +298,31 @@ class _ReadinessBlock extends StatelessWidget {
               ),
             )
           else
-            ...readiness.reasons.map((reason) => Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.warning_amber_rounded,
-                          size: 15, color: AppColors.warning),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          reason,
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.warning),
+            ...readiness.reasons.map(
+              (reason) => Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      size: 15,
+                      color: AppColors.warning,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        reason,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.warning,
                         ),
                       ),
-                    ],
-                  ),
-                )),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -314,13 +348,19 @@ class _Gate extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(pass ? Icons.check_circle : Icons.warning_amber_rounded,
-              size: 14, color: color),
+          Icon(
+            pass ? Icons.check_circle : Icons.warning_amber_rounded,
+            size: 14,
+            color: color,
+          ),
           const SizedBox(width: 5),
           Text(
             label,
             style: TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w600, color: color),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -369,16 +409,19 @@ class _StatusRow extends StatelessWidget {
                     if (required)
                       const Padding(
                         padding: EdgeInsets.only(left: 6),
-                        child: Text('• required',
-                            style:
-                                TextStyle(fontSize: 10, color: AppColors.gold)),
+                        child: Text(
+                          '• required',
+                          style: TextStyle(fontSize: 10, color: AppColors.gold),
+                        ),
                       ),
                   ],
                 ),
                 Text(
                   subtitle,
                   style: const TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary),
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -393,7 +436,10 @@ class _StatusRow extends StatelessWidget {
             child: Text(
               statusLabel,
               style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w600, color: statusColor),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: statusColor,
+              ),
             ),
           ),
         ],
@@ -459,7 +505,8 @@ class _MetricRow extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: valueColor ??
+              color:
+                  valueColor ??
                   (muted ? AppColors.textSecondary : AppColors.textPrimary),
             ),
           ),

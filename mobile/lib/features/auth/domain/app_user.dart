@@ -25,6 +25,13 @@ class AppUser extends Equatable {
   /// They see the Owner Portal instead of investor screens.
   bool get isPropertyOwner => role == 'PROPERTY_OWNER';
 
+  /// Managers/admins can review the withdrawal queue and run the share
+  /// conservation audit.
+  bool get isManager =>
+      role == 'ADMIN' ||
+      role == 'DEVELOPMENT_MANAGER' ||
+      role == 'PROJECT_MANAGER';
+
   String get initials {
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.isEmpty || parts.first.isEmpty) return '?';

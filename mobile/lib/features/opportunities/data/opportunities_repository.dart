@@ -44,7 +44,9 @@ class OpportunitiesRepository {
   }
 }
 
-final opportunitiesRepositoryProvider = Provider<OpportunitiesRepository>((ref) {
+final opportunitiesRepositoryProvider = Provider<OpportunitiesRepository>((
+  ref,
+) {
   return OpportunitiesRepository(ref.watch(trpcClientProvider));
 });
 

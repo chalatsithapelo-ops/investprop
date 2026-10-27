@@ -132,15 +132,18 @@ class DistressedDeal {
       auctionDate: asDate(json['auctionDate']),
       auctionVenue: json['auctionVenue'] as String?,
       aiGrade: json['aiGrade'] as String?,
-      aiRiskScore:
-          json['aiRiskScore'] == null ? null : asDouble(json['aiRiskScore']),
+      aiRiskScore: json['aiRiskScore'] == null
+          ? null
+          : asDouble(json['aiRiskScore']),
       aiSummary: json['aiSummary'] as String?,
       aiScoredAt: asDate(json['aiScoredAt']),
       createdAt: asDate(json['createdAt']),
-      priceDropPct:
-          json['priceDropPct'] == null ? null : asDouble(json['priceDropPct']),
-      previousPrice:
-          json['previousPrice'] == null ? null : asDouble(json['previousPrice']),
+      priceDropPct: json['priceDropPct'] == null
+          ? null
+          : asDouble(json['priceDropPct']),
+      previousPrice: json['previousPrice'] == null
+          ? null
+          : asDouble(json['previousPrice']),
     );
   }
 }
@@ -168,9 +171,9 @@ class DistressedDealsResult {
     final raw = json['listings'];
     final listings = raw is List
         ? raw
-            .whereType<Map>()
-            .map((e) => DistressedDeal.fromJson(Map<String, dynamic>.from(e)))
-            .toList()
+              .whereType<Map>()
+              .map((e) => DistressedDeal.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
         : <DistressedDeal>[];
     return DistressedDealsResult(
       entitled: json['entitled'] == true,
@@ -265,10 +268,12 @@ class DistressedDealDetail {
     final history = json['priceHistory'];
     final points = history is List
         ? history
-            .whereType<Map>()
-            .map((e) =>
-                DistressedPricePoint.fromJson(Map<String, dynamic>.from(e)))
-            .toList()
+              .whereType<Map>()
+              .map(
+                (e) =>
+                    DistressedPricePoint.fromJson(Map<String, dynamic>.from(e)),
+              )
+              .toList()
         : <DistressedPricePoint>[];
     return DistressedDealDetail(
       deal: DistressedDeal.fromJson(json),
@@ -342,8 +347,9 @@ class DistressedComparable {
       suburb: json['suburb'] as String?,
       city: json['city'] as String?,
       askingPrice: asDouble(json['askingPrice']),
-      pricePerSqm:
-          json['pricePerSqm'] == null ? null : asDouble(json['pricePerSqm']),
+      pricePerSqm: json['pricePerSqm'] == null
+          ? null
+          : asDouble(json['pricePerSqm']),
     );
   }
 }
@@ -390,11 +396,13 @@ class DistressedMarketActivity {
 
   factory DistressedMarketActivity.fromJson(Map<String, dynamic> json) {
     return DistressedMarketActivity(
-      daysOnMarket:
-          json['daysOnMarket'] == null ? null : asInt(json['daysOnMarket']),
+      daysOnMarket: json['daysOnMarket'] == null
+          ? null
+          : asInt(json['daysOnMarket']),
       priceDropCount: asInt(json['priceDropCount']),
-      totalDropPct:
-          json['totalDropPct'] == null ? null : asDouble(json['totalDropPct']),
+      totalDropPct: json['totalDropPct'] == null
+          ? null
+          : asDouble(json['totalDropPct']),
       dropVelocityPctPerMonth: json['dropVelocityPctPerMonth'] == null
           ? null
           : asDouble(json['dropVelocityPctPerMonth']),
@@ -642,19 +650,24 @@ class DistressedMarketAnalysis {
     final signalsRaw = json['signals'];
     final signals = signalsRaw is List
         ? signalsRaw
-            .whereType<Map>()
-            .map((e) =>
-                DistressedMarketSignal.fromJson(Map<String, dynamic>.from(e)))
-            .toList()
+              .whereType<Map>()
+              .map(
+                (e) => DistressedMarketSignal.fromJson(
+                  Map<String, dynamic>.from(e),
+                ),
+              )
+              .toList()
         : <DistressedMarketSignal>[];
 
     final compsRaw = json['comparables'];
     final comps = compsRaw is List
         ? compsRaw
-            .whereType<Map>()
-            .map((e) =>
-                DistressedComparable.fromJson(Map<String, dynamic>.from(e)))
-            .toList()
+              .whereType<Map>()
+              .map(
+                (e) =>
+                    DistressedComparable.fromJson(Map<String, dynamic>.from(e)),
+              )
+              .toList()
         : <DistressedComparable>[];
 
     final projections = json['projections'] is Map
@@ -668,19 +681,25 @@ class DistressedMarketAnalysis {
     final risksRaw = json['auctionRisk'];
     final risks = risksRaw is List
         ? risksRaw
-            .whereType<Map>()
-            .map((e) =>
-                DistressedAuctionRisk.fromJson(Map<String, dynamic>.from(e)))
-            .toList()
+              .whereType<Map>()
+              .map(
+                (e) => DistressedAuctionRisk.fromJson(
+                  Map<String, dynamic>.from(e),
+                ),
+              )
+              .toList()
         : <DistressedAuctionRisk>[];
 
     final factorsRaw = verdict['factors'];
     final factors = factorsRaw is List
         ? factorsRaw
-            .whereType<Map>()
-            .map((e) =>
-                DistressedVerdictFactor.fromJson(Map<String, dynamic>.from(e)))
-            .toList()
+              .whereType<Map>()
+              .map(
+                (e) => DistressedVerdictFactor.fromJson(
+                  Map<String, dynamic>.from(e),
+                ),
+              )
+              .toList()
         : <DistressedVerdictFactor>[];
 
     return DistressedMarketAnalysis(
@@ -707,14 +726,18 @@ class DistressedMarketAnalysis {
       comparables: comps,
       activity: activityRaw is Map
           ? DistressedMarketActivity.fromJson(
-              Map<String, dynamic>.from(activityRaw))
+              Map<String, dynamic>.from(activityRaw),
+            )
           : null,
       flip: flipRaw is Map
-          ? DistressedFlipProjection.fromJson(Map<String, dynamic>.from(flipRaw))
+          ? DistressedFlipProjection.fromJson(
+              Map<String, dynamic>.from(flipRaw),
+            )
           : null,
       rental: rentalRaw is Map
           ? DistressedRentalProjection.fromJson(
-              Map<String, dynamic>.from(rentalRaw))
+              Map<String, dynamic>.from(rentalRaw),
+            )
           : null,
       projectionAssumptions: asString(projections['assumptions'], ''),
       maxBid: maxBidRaw is Map
@@ -780,12 +803,14 @@ class DistressedFilter {
     return DistressedFilter(
       province: clearProvince ? null : (province ?? this.province),
       city: clearCity ? null : (city ?? this.city),
-      propertyType:
-          clearPropertyType ? null : (propertyType ?? this.propertyType),
+      propertyType: clearPropertyType
+          ? null
+          : (propertyType ?? this.propertyType),
       minAIGrade: clearMinAIGrade ? null : (minAIGrade ?? this.minAIGrade),
       maxPrice: clearMaxPrice ? null : (maxPrice ?? this.maxPrice),
-      minDiscountPct:
-          clearMinDiscountPct ? null : (minDiscountPct ?? this.minDiscountPct),
+      minDiscountPct: clearMinDiscountPct
+          ? null
+          : (minDiscountPct ?? this.minDiscountPct),
       onlyGraded: onlyGraded ?? this.onlyGraded,
       sortBy: sortBy ?? this.sortBy,
     );

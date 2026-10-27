@@ -37,7 +37,8 @@ class ProposalDocument {
     required this.name,
   });
 
-  final String kind; // TITLE_DEED | ID | RATES_ACCOUNT | BOND_STATEMENT | LEASE | OTHER
+  final String
+  kind; // TITLE_DEED | ID | RATES_ACCOUNT | BOND_STATEMENT | LEASE | OTHER
   final String url;
   final String name;
 
@@ -118,8 +119,9 @@ class SaleProposal {
       province: asString(json['province']),
       propertyType: asString(json['propertyType']),
       askingPrice: asDouble(json['askingPrice']),
-      marketValue:
-          asDouble(json['marketValue']) != 0 ? asDouble(json['marketValue']) : null,
+      marketValue: asDouble(json['marketValue']) != 0
+          ? asDouble(json['marketValue'])
+          : null,
       urgencyLevel: asString(json['urgencyLevel'], 'STANDARD'),
       saleType: asString(json['saleType'], 'CASH'),
       engagementType: asString(json['engagementType'], 'OUTRIGHT_SALE'),
@@ -127,7 +129,8 @@ class SaleProposal {
       counterOfferAmount: asDouble(json['counterOfferAmount']) != 0
           ? asDouble(json['counterOfferAmount'])
           : null,
-      counterOfferTerms: (json['counterOfferTerms'] as String?)?.isNotEmpty == true
+      counterOfferTerms:
+          (json['counterOfferTerms'] as String?)?.isNotEmpty == true
           ? json['counterOfferTerms'] as String
           : null,
       reviewNotes: (json['reviewNotes'] as String?)?.isNotEmpty == true
@@ -259,15 +262,14 @@ class OwnerOptions {
   ];
 
   static bool isDevelopmentEngagement(String engagement) =>
-      engagement == 'JOINT_VENTURE' ||
-      engagement == 'DEVELOPMENT_PARTNERSHIP';
+      engagement == 'JOINT_VENTURE' || engagement == 'DEVELOPMENT_PARTNERSHIP';
 
   /// Document kinds available for the given engagement — development docs are
   /// appended for JV / development-partnership proposals.
   static List<String> documentKindsFor(String engagement) =>
       isDevelopmentEngagement(engagement)
-          ? [...documentKinds, ...developmentDocumentKinds]
-          : [...documentKinds];
+      ? [...documentKinds, ...developmentDocumentKinds]
+      : [...documentKinds];
 
   static String label(String raw) => raw
       .split('_')

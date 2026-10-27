@@ -111,8 +111,7 @@ class _DistressedDealsPageState extends ConsumerState<DistressedDealsPage> {
 
   Future<void> _openPricing() async {
     final uri = Uri.parse('${Env.apiBaseUrl}/pricing');
-    final launched =
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not open the pricing page.')),
@@ -124,10 +123,7 @@ class _DistressedDealsPageState extends ConsumerState<DistressedDealsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Distressed Deals')),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: _buildBody(),
-      ),
+      body: RefreshIndicator(onRefresh: _load, child: _buildBody()),
     );
   }
 
@@ -144,8 +140,11 @@ class _DistressedDealsPageState extends ConsumerState<DistressedDealsPage> {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  const Icon(Icons.cloud_off,
-                      size: 48, color: AppColors.textSecondary),
+                  const Icon(
+                    Icons.cloud_off,
+                    size: 48,
+                    color: AppColors.textSecondary,
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     _error!,
@@ -188,8 +187,11 @@ class _DistressedDealsPageState extends ConsumerState<DistressedDealsPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.search_off,
-                      size: 48, color: AppColors.textSecondary),
+                  Icon(
+                    Icons.search_off,
+                    size: 48,
+                    color: AppColors.textSecondary,
+                  ),
                   SizedBox(height: 12),
                   Text(
                     'No deals match your filters',
@@ -225,8 +227,7 @@ class _DistressedDealsPageState extends ConsumerState<DistressedDealsPage> {
                 final deal = _deals[index];
                 return DistressedDealCard(
                   deal: deal,
-                  onTap: () =>
-                      context.push('/profile/distressed/${deal.id}'),
+                  onTap: () => context.push('/profile/distressed/${deal.id}'),
                 );
               },
             ),
@@ -271,8 +272,10 @@ class _FilterSection extends StatelessWidget {
               ),
               if (newThisWeek > 0)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.gold.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(20),
@@ -304,8 +307,7 @@ class _FilterSection extends StatelessWidget {
               FilterChip(
                 label: const Text('Graded only'),
                 selected: filter.onlyGraded,
-                onSelected: (v) =>
-                    onChanged(filter.copyWith(onlyGraded: v)),
+                onSelected: (v) => onChanged(filter.copyWith(onlyGraded: v)),
                 selectedColor: AppColors.navy,
                 checkmarkColor: Colors.white,
                 labelStyle: TextStyle(
@@ -395,8 +397,9 @@ class _FiltersChip extends StatelessWidget {
     return ActionChip(
       avatar: const Icon(Icons.tune, size: 18, color: AppColors.navy),
       label: Text(count > 0 ? 'Filters ($count)' : 'Filters'),
-      backgroundColor:
-          count > 0 ? AppColors.gold.withValues(alpha: 0.18) : null,
+      backgroundColor: count > 0
+          ? AppColors.gold.withValues(alpha: 0.18)
+          : null,
       onPressed: () async {
         final updated = await showModalBottomSheet<DistressedFilter>(
           context: context,
@@ -500,9 +503,11 @@ class _FilterSheetState extends State<_FilterSheet> {
                   ),
                   const Spacer(),
                   TextButton(
-                    onPressed: () =>
-                        setState(() => _draft = const DistressedFilter()
-                            .copyWith(sortBy: _draft.sortBy)),
+                    onPressed: () => setState(
+                      () => _draft = const DistressedFilter().copyWith(
+                        sortBy: _draft.sortBy,
+                      ),
+                    ),
                     child: const Text('Reset'),
                   ),
                 ],
@@ -512,9 +517,11 @@ class _FilterSheetState extends State<_FilterSheet> {
               _chipWrap(
                 options: _provinces.map((p) => (p, p)).toList(),
                 selected: _draft.province,
-                onSelect: (v) => setState(() => _draft = v == null
-                    ? _draft.copyWith(clearProvince: true)
-                    : _draft.copyWith(province: v)),
+                onSelect: (v) => setState(
+                  () => _draft = v == null
+                      ? _draft.copyWith(clearProvince: true)
+                      : _draft.copyWith(province: v),
+                ),
               ),
               const SizedBox(height: 16),
               _label('City / suburb'),
@@ -534,9 +541,11 @@ class _FilterSheetState extends State<_FilterSheet> {
               _chipWrap(
                 options: _propertyTypes,
                 selected: _draft.propertyType,
-                onSelect: (v) => setState(() => _draft = v == null
-                    ? _draft.copyWith(clearPropertyType: true)
-                    : _draft.copyWith(propertyType: v)),
+                onSelect: (v) => setState(
+                  () => _draft = v == null
+                      ? _draft.copyWith(clearPropertyType: true)
+                      : _draft.copyWith(propertyType: v),
+                ),
               ),
               const SizedBox(height: 16),
               _label('Max asking price'),
@@ -547,21 +556,26 @@ class _FilterSheetState extends State<_FilterSheet> {
                 selected: (_draft.maxPrice ?? 0) > 0
                     ? _draft.maxPrice!.toStringAsFixed(0)
                     : null,
-                onSelect: (v) => setState(() => _draft = v == null
-                    ? _draft.copyWith(clearMaxPrice: true)
-                    : _draft.copyWith(maxPrice: double.parse(v))),
+                onSelect: (v) => setState(
+                  () => _draft = v == null
+                      ? _draft.copyWith(clearMaxPrice: true)
+                      : _draft.copyWith(maxPrice: double.parse(v)),
+                ),
               ),
               const SizedBox(height: 16),
               _label('Minimum discount'),
               _chipWrap(
-                options:
-                    _discounts.map((e) => (e.$1.toStringAsFixed(0), e.$2)).toList(),
+                options: _discounts
+                    .map((e) => (e.$1.toStringAsFixed(0), e.$2))
+                    .toList(),
                 selected: (_draft.minDiscountPct ?? 0) > 0
                     ? _draft.minDiscountPct!.toStringAsFixed(0)
                     : null,
-                onSelect: (v) => setState(() => _draft = v == null
-                    ? _draft.copyWith(clearMinDiscountPct: true)
-                    : _draft.copyWith(minDiscountPct: double.parse(v))),
+                onSelect: (v) => setState(
+                  () => _draft = v == null
+                      ? _draft.copyWith(clearMinDiscountPct: true)
+                      : _draft.copyWith(minDiscountPct: double.parse(v)),
+                ),
               ),
               const SizedBox(height: 24),
               FilledButton(
@@ -580,15 +594,15 @@ class _FilterSheetState extends State<_FilterSheet> {
   }
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontWeight: FontWeight.w700,
+        color: AppColors.textPrimary,
+      ),
+    ),
+  );
 
   /// A wrap of single-select choice chips. Tapping the selected chip clears it
   /// (passes null to onSelect).
@@ -636,8 +650,11 @@ class _UpgradeLock extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           alignment: Alignment.center,
-          child: const Icon(Icons.lock_outline,
-              size: 36, color: AppColors.goldDark),
+          child: const Icon(
+            Icons.lock_outline,
+            size: 36,
+            color: AppColors.goldDark,
+          ),
         ),
         const SizedBox(height: 20),
         const Text(

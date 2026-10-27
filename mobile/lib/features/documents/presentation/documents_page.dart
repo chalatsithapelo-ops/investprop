@@ -83,7 +83,9 @@ class DocumentsPage extends ConsumerWidget {
                     child: Text(
                       group.key,
                       style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 15),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
                   Card(
@@ -93,8 +95,10 @@ class DocumentsPage extends ConsumerWidget {
                         for (var i = 0; i < group.value.length; i++) ...[
                           if (i > 0) const Divider(height: 1),
                           ListTile(
-                            leading: Icon(_iconFor(group.key),
-                                color: AppColors.navy),
+                            leading: Icon(
+                              _iconFor(group.key),
+                              color: AppColors.navy,
+                            ),
                             title: Text(group.value[i].typeLabel),
                             subtitle: Text(
                               '${group.value[i].propertyTitle} · '
@@ -105,11 +109,14 @@ class DocumentsPage extends ConsumerWidget {
                               children: [
                                 if (group.value[i].supportsAiSummary)
                                   IconButton(
-                                    icon: const Icon(Icons.auto_awesome_outlined,
-                                        size: 20, color: AppColors.gold),
+                                    icon: const Icon(
+                                      Icons.auto_awesome_outlined,
+                                      size: 20,
+                                      color: AppColors.gold,
+                                    ),
                                     tooltip: 'AI summary & risk check',
-                                    onPressed: () => _openAiSheet(
-                                        context, group.value[i]),
+                                    onPressed: () =>
+                                        _openAiSheet(context, group.value[i]),
                                   ),
                                 Icon(
                                   group.value[i].documentUrl != null
@@ -209,16 +216,16 @@ class _DocAiSheetState extends ConsumerState<_DocAiSheet> {
   }
 
   Color _riskColor(String level) => switch (level) {
-        'HIGH' => AppColors.danger,
-        'LOW' => AppColors.success,
-        _ => AppColors.warning,
-      };
+    'HIGH' => AppColors.danger,
+    'LOW' => AppColors.success,
+    _ => AppColors.warning,
+  };
 
   Color _flagColor(String severity) => switch (severity) {
-        'WARNING' => AppColors.danger,
-        'ATTENTION' => AppColors.warning,
-        _ => AppColors.textSecondary,
-      };
+    'WARNING' => AppColors.danger,
+    'ATTENTION' => AppColors.warning,
+    _ => AppColors.textSecondary,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -259,8 +266,10 @@ class _DocAiSheetState extends ConsumerState<_DocAiSheet> {
               ),
               if (s != null)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: _riskColor(s.riskLevel).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
@@ -292,8 +301,7 @@ class _DocAiSheetState extends ConsumerState<_DocAiSheet> {
                   'This document has not been analysed yet. Run an AI review '
                   'to get a plain-English summary and a risk check of its '
                   'clauses.',
-                  style: TextStyle(
-                      color: AppColors.textSecondary, height: 1.4),
+                  style: TextStyle(color: AppColors.textSecondary, height: 1.4),
                 ),
                 const SizedBox(height: 16),
                 FilledButton.icon(
@@ -313,16 +321,20 @@ class _DocAiSheetState extends ConsumerState<_DocAiSheet> {
             Text(
               s.summary,
               style: const TextStyle(
-                  color: AppColors.textPrimary, height: 1.5, fontSize: 14),
+                color: AppColors.textPrimary,
+                height: 1.5,
+                fontSize: 14,
+              ),
             ),
             if (s.riskFlags.isNotEmpty) ...[
               const SizedBox(height: 20),
               const Text(
                 'Risk register',
                 style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                    color: AppColors.textPrimary),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 8),
               ...s.riskFlags.map(
@@ -365,9 +377,10 @@ class _DocAiSheetState extends ConsumerState<_DocAiSheet> {
                       Text(
                         f.detail,
                         style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textPrimary,
-                            height: 1.35),
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                          height: 1.35,
+                        ),
                       ),
                       if (f.recommendation.isNotEmpty) ...[
                         const SizedBox(height: 4),

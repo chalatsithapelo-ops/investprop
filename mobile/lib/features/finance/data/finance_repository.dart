@@ -26,14 +26,14 @@ class PrequalInput {
   final int loanTermYears;
 
   Map<String, dynamic> toInput() => {
-        'grossMonthlyIncome': grossMonthlyIncome,
-        'monthlyExpenses': monthlyExpenses,
-        'existingDebtRepayments': existingDebtRepayments,
-        'depositAmount': depositAmount,
-        if (propertyPrice > 0) 'propertyPrice': propertyPrice,
-        'annualInterestRate': annualInterestRate,
-        'loanTermYears': loanTermYears,
-      };
+    'grossMonthlyIncome': grossMonthlyIncome,
+    'monthlyExpenses': monthlyExpenses,
+    'existingDebtRepayments': existingDebtRepayments,
+    'depositAmount': depositAmount,
+    if (propertyPrice > 0) 'propertyPrice': propertyPrice,
+    'annualInterestRate': annualInterestRate,
+    'loanTermYears': loanTermYears,
+  };
 }
 
 class FinanceRepository {
@@ -72,7 +72,9 @@ class FinanceRepository {
         (map['error'] as String?) ?? 'Could not save your prequalification.',
       );
     }
-    return PrequalResult.fromJson(Map<String, dynamic>.from(map['result'] as Map));
+    return PrequalResult.fromJson(
+      Map<String, dynamic>.from(map['result'] as Map),
+    );
   }
 
   Future<List<Prequalification>> myPrequalifications() async {
@@ -95,11 +97,7 @@ class FinanceRepository {
   }) async {
     final data = await _client.mutation(
       'uploadFile',
-      input: {
-        'fileName': fileName,
-        'fileType': fileType,
-        'fileBase64': base64,
-      },
+      input: {'fileName': fileName, 'fileType': fileType, 'fileBase64': base64},
     );
     if (data is Map && data['publicUrl'] != null) {
       return data['publicUrl'].toString();
@@ -130,9 +128,12 @@ class FinanceRepository {
         if (propertyId != null) 'propertyId': propertyId,
         if (propertyPrice != null) 'propertyPrice': propertyPrice,
         if (depositAmount != null) 'depositAmount': depositAmount,
-        if (grossMonthlyIncome != null) 'grossMonthlyIncome': grossMonthlyIncome,
-        if (estimatedInstalment != null) 'estimatedInstalment': estimatedInstalment,
-        if (annualInterestRate != null) 'annualInterestRate': annualInterestRate,
+        if (grossMonthlyIncome != null)
+          'grossMonthlyIncome': grossMonthlyIncome,
+        if (estimatedInstalment != null)
+          'estimatedInstalment': estimatedInstalment,
+        if (annualInterestRate != null)
+          'annualInterestRate': annualInterestRate,
         if (loanTermYears != null) 'loanTermYears': loanTermYears,
         if (applicantPhone != null && applicantPhone.isNotEmpty)
           'applicantPhone': applicantPhone,
@@ -172,10 +173,10 @@ final financeRepositoryProvider = Provider<FinanceRepository>((ref) {
 
 final myHomeLoanApplicationsProvider =
     FutureProvider.autoDispose<List<HomeLoanApplication>>((ref) async {
-  return ref.watch(financeRepositoryProvider).myApplications();
-});
+      return ref.watch(financeRepositoryProvider).myApplications();
+    });
 
 final myPrequalificationsProvider =
     FutureProvider.autoDispose<List<Prequalification>>((ref) async {
-  return ref.watch(financeRepositoryProvider).myPrequalifications();
-});
+      return ref.watch(financeRepositoryProvider).myPrequalifications();
+    });
