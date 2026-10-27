@@ -348,6 +348,8 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
                 style: const TextStyle(color: AppColors.textSecondary),
               ),
             const SizedBox(height: 16),
+            _partnerMyPropertyBanner(context),
+            const SizedBox(height: 16),
             _feeDisclosureCard(),
             _section('Property details', [
               _text(_title, 'Listing title *', minLen: 3),
@@ -604,6 +606,61 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
 
   /// Transparent, itemised seller-fee disclosure (CPA). Nothing is charged
   /// until the sale closes; the assessment pack is credited back on close.
+  Widget _partnerMyPropertyBanner(BuildContext context) {
+    return InkWell(
+      onTap: () => context.go('/land-partnership'),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [AppColors.navy, Color(0xFF14315A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.gold.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.landscape, color: AppColors.gold),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Partner My Property',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'Keep 20% equity — contribute your property or land into an '
+                    'SPV to develop, renovate or flip. We fund and do everything.',
+                    style: TextStyle(fontSize: 12.5, color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right, color: AppColors.gold),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _feeDisclosureCard() {
     final async = ref.watch(ownerFeeScheduleProvider);
     return async.maybeWhen(

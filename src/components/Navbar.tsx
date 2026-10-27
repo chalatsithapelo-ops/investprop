@@ -76,7 +76,9 @@ const navGroups: NavGroup[] = [
       "Contractor Management",
       "Contractor Portal",
       "Sale Proposals",
+      "Property Partnerships",
       "Owner Portal",
+      "Partner My Property",
     ],
   },
   {
