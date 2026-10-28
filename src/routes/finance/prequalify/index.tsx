@@ -141,6 +141,8 @@ function PrequalifyPage() {
   const [docType, setDocType] = useState<DocTypeValue>("PAYSLIP");
   const [docs, setDocs] = useState<AppliedDoc[]>([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [savedPrequalId, setSavedPrequalId] = useState<number | null>(null);
+  const [prefilled, setPrefilled] = useState(false);
 
   useEffect(() => {
     if (hasHydrated && !authToken) navigate({ to: "/login" });
@@ -170,6 +172,26 @@ function PrequalifyPage() {
     ...trpc.getMyPrequalifications.queryOptions({ authToken: authToken ?? "" }),
     enabled: !!authToken,
   });
+
+  // Prefill from the most recent saved prequalification so a returning user
+  // sees "you're prequalified for X" and can apply without re-entering income.
+  useEffect(() => {
+    if (prefilled) return;
+    const latest = historyQuery.data?.prequalifications?.[0];
+    if (!latest) return;
+    setForm((p) => ({
+      ...p,
+      grossMonthlyIncome: latest.grossMonthlyIncome ?? p.grossMonthlyIncome,
+      monthlyExpenses: latest.monthlyExpenses ?? p.monthlyExpenses,
+      existingDebtRepayments: latest.existingDebtRepayments ?? p.existingDebtRepayments,
+      depositAmount: latest.depositAmount ?? p.depositAmount,
+      propertyPrice: search.propertyPrice ?? latest.propertyPrice ?? p.propertyPrice,
+      annualInterestRate: latest.annualInterestRate ?? p.annualInterestRate,
+      loanTermYears: latest.loanTermYears ?? p.loanTermYears,
+    }));
+    setSavedPrequalId(latest.id);
+    setPrefilled(true);
+  }, [historyQuery.data, prefilled, search.propertyPrice]);
 
   const applicationsQuery = useQuery({
     ...trpc.getMyHomeLoanApplications.queryOptions({ authToken: authToken ?? "" }),
@@ -210,6 +232,7 @@ function PrequalifyPage() {
         toast.error(res.error ?? "Could not save prequalification.");
       } else {
         toast.success("Prequalification saved.");
+        setSavedPrequalId(res.id);
         void historyQuery.refetch();
       }
     } catch (err: any) {
@@ -262,10 +285,16 @@ function PrequalifyPage() {
     }
     setApplying(true);
     try {
+      // Apply for what this specific deal needs (capped at affordability), not
+      // blindly the maximum. Falls back to the max when no price is entered.
+      const needed = form.propertyPrice > 0 ? Math.max(form.propertyPrice - form.depositAmount, 0) : 0;
+      const requestedBondAmount =
+        needed > 0 ? Math.min(needed, result.maxBondAmount) : result.maxBondAmount;
       const res = await trpcClient.submitHomeLoanApplication.mutate({
         authToken,
+        prequalificationId: savedPrequalId ?? undefined,
         propertyId: search.propertyId,
-        requestedBondAmount: result.maxBondAmount,
+        requestedBondAmount,
         propertyPrice: form.propertyPrice || undefined,
         depositAmount: form.depositAmount,
         grossMonthlyIncome: form.grossMonthlyIncome,
@@ -394,6 +423,15 @@ function PrequalifyPage() {
               </p>
             ) : (
               <div className="mt-4 space-y-4">
+                {savedPrequalId && (
+                  <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+                    <CheckCircle2 size={16} className="shrink-0" />
+                    <span>
+                      You're prequalified for <strong>{R(result.maxBondAmount)}</strong> — you can
+                      apply to the banks below.
+                    </span>
+                  </div>
+                )}
                 <div className="rounded-lg bg-teal-50 p-4">
                   <p className="text-xs font-medium uppercase tracking-wide text-teal-700">
                     Maximum bond you could qualify for

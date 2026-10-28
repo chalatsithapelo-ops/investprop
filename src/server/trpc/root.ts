@@ -162,9 +162,9 @@ import { getPlatformTrackRecord } from "~/server/trpc/procedures/platform-track"
 import { getSubscriptionPlans, getMySubscription, startFreeTrial, initializeSubscription, verifySubscription, cancelSubscription, getSubscriptionStats, syncPaystackPlans, upsertSubscriptionPlan } from "~/server/trpc/procedures/subscriptions";
 // Phase 3: Distressed standalone — alerts, referrals, market data
 import { getMyDistressedAlerts, upsertDistressedAlerts, runDistressedSubscriberAlerts } from "~/server/trpc/procedures/distressed-alerts";
-import { requestReferralIntro, getReferralPartners, upsertReferralPartner, getReferralLeads, updateReferralLead, getReferralSummary } from "~/server/trpc/procedures/referrals";
+import { requestReferralIntro, getReferralPartners, upsertReferralPartner, getReferralLeads, updateReferralLead, getReferralSummary, getPartnerUsers, createPartnerUser, getMyPartnerLeads } from "~/server/trpc/procedures/referrals";
 import { previewPrequalification, submitPrequalification, getMyPrequalifications } from "~/server/trpc/procedures/prequalification";
-import { submitHomeLoanApplication, getMyHomeLoanApplications, withdrawHomeLoanApplication, acceptHomeLoanOffer, getHomeLoanApplicationsAdmin, updateHomeLoanApplicationAdmin } from "~/server/trpc/procedures/home-loan-application";
+import { submitHomeLoanApplication, getMyHomeLoanApplications, withdrawHomeLoanApplication, acceptHomeLoanOffer, getHomeLoanApplicationsAdmin, updateHomeLoanApplicationAdmin, getOriginatorApplications, originatorAcknowledgeApplication, originatorSubmitOffers, markHomeLoanCommissionReceived } from "~/server/trpc/procedures/home-loan-application";
 import { getSubscriberDistressedDeals, getSubscriberDistressedDetail, screenSubscriberDistressedDeal, getSubscriberDistressedMarketAnalysis } from "~/server/trpc/procedures/distressed-subscriber";
 import { getAnonymisedMarketData } from "~/server/trpc/procedures/market-data";
 // Development management — progress, cost report, approvals, units, lifecycle, appraisal
@@ -592,6 +592,9 @@ export const appRouter = createTRPCRouter({
   getReferralLeads,
   updateReferralLead,
   getReferralSummary,
+  getPartnerUsers,
+  createPartnerUser,
+  getMyPartnerLeads,
   previewPrequalification,
   submitPrequalification,
   getMyPrequalifications,
@@ -601,6 +604,10 @@ export const appRouter = createTRPCRouter({
   acceptHomeLoanOffer,
   getHomeLoanApplicationsAdmin,
   updateHomeLoanApplicationAdmin,
+  getOriginatorApplications,
+  originatorAcknowledgeApplication,
+  originatorSubmitOffers,
+  markHomeLoanCommissionReceived,
   getAnonymisedMarketData,
 });
 

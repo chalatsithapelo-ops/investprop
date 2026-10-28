@@ -46,11 +46,18 @@ function DashboardPage() {
     if (!hasHydrated) return;
     if (!user || !authToken) navigate({ to: "/login" });
     if (user?.role === "CONTRACTOR") navigate({ to: "/contractor-portal" });
+    if (user?.role === "BOND_ORIGINATOR" || user?.role === "CONVEYANCER")
+      navigate({ to: "/partner-portal" });
   }, [user, authToken, hasHydrated]);
 
   // Contractors should never see the general dashboard
   if (user?.role === "CONTRACTOR") {
     window.location.href = "/contractor-portal";
+    return null;
+  }
+  // External referral partners work their own queue, not the investor dashboard
+  if (user?.role === "BOND_ORIGINATOR" || user?.role === "CONVEYANCER") {
+    window.location.href = "/partner-portal";
     return null;
   }
 

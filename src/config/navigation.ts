@@ -115,6 +115,12 @@ export const mainNavigationLinks: NavigationLink[] = [
     roles: ["CONTRACTOR"],
   },
   {
+    label: "Partner Portal",
+    to: "/partner-portal",
+    icon: Landmark,
+    roles: ["BOND_ORIGINATOR", "CONVEYANCER"],
+  },
+  {
     label: "Investment Opportunities",
     to: "/investments/opportunities",
     icon: TrendingUp,

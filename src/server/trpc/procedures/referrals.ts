@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import bcryptjs from "bcryptjs";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
@@ -180,6 +181,9 @@ export const getReferralLeads = baseProcedure
       estimatedValue: l.estimatedValue,
       commissionAmount: l.commissionAmount,
       convertedAt: l.convertedAt,
+      reference: l.reference,
+      commissionReceivedAt: l.commissionReceivedAt,
+      commissionReceivedAmount: l.commissionReceivedAmount,
       notes: l.notes,
       createdAt: l.createdAt,
     }));
@@ -261,3 +265,91 @@ export const getReferralSummary = baseProcedure
       totalCommissionEarned: converted._sum.commissionAmount ?? 0,
     };
   });
+
+// ─── Partner self-service: leads routed to my partner (conveyancer/originator) ──
+export const getMyPartnerLeads = baseProcedure
+  .input(z.object({ authToken: z.string() }))
+  .query(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    if (!["BOND_ORIGINATOR", "CONVEYANCER"].includes(user.role) || !user.referralPartnerId) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Partner access required." });
+    }
+    const leads = await db.referralLead.findMany({
+      where: { partnerId: user.referralPartnerId },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+    return {
+      leads: leads.map((l) => ({
+        id: l.id,
+        contactName: l.contactName,
+        contactEmail: l.contactEmail,
+        contactPhone: l.contactPhone,
+        status: l.status,
+        estimatedValue: l.estimatedValue,
+        reference: l.reference,
+        notes: l.notes,
+        createdAt: l.createdAt,
+      })),
+    };
+  });
+
+// ─── Admin: list partner login accounts (originators / conveyancers) ──
+export const getPartnerUsers = baseProcedure
+  .input(z.object({ authToken: z.string(), partnerId: z.number().int().positive() }))
+  .query(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireAdmin(user.role);
+    const users = await db.user.findMany({
+      where: { referralPartnerId: input.partnerId },
+      select: { id: true, name: true, email: true, role: true, status: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    });
+    return { users };
+  });
+
+// ─── Admin: create a partner login (BOND_ORIGINATOR / CONVEYANCER) ──
+export const createPartnerUser = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      partnerId: z.number().int().positive(),
+      name: z.string().min(1).max(160),
+      email: z.string().email(),
+      password: z.string().min(8).max(200),
+      role: z.enum(["BOND_ORIGINATOR", "CONVEYANCER"]),
+    }),
+  )
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireAdmin(user.role);
+
+    const partner = await db.referralPartner.findUnique({ where: { id: input.partnerId } });
+    if (!partner) throw new TRPCError({ code: "NOT_FOUND", message: "Partner not found." });
+
+    const existing = await db.user.findUnique({ where: { email: input.email.toLowerCase() } });
+    if (existing) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "A user with that email already exists." });
+    }
+
+    const hashedPassword = await bcryptjs.hash(input.password, 12);
+    const created = await db.user.create({
+      data: {
+        name: input.name,
+        email: input.email.toLowerCase(),
+        password: hashedPassword,
+        role: input.role,
+        status: "ACTIVE",
+        emailVerified: true,
+        referralPartnerId: partner.id,
+      },
+      select: { id: true, email: true },
+    });
+
+    await createAuditLog(user.id, "CREATE_PARTNER_USER", "User", created.id, {
+      partnerId: partner.id,
+      role: input.role,
+    });
+    return { id: created.id, email: created.email };
+  });
+

@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Info,
   ListChecks,
+  Landmark,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
@@ -449,6 +450,15 @@ function DealDetailModal({
                   <Stat label="Auction" value={new Date(l.auctionDate).toLocaleDateString("en-ZA")} />
                 ) : null}
               </div>
+
+              {/* Finance this purchase — a distressed buyer is a prime bond candidate */}
+              <Link
+                to="/finance/prequalify"
+                search={{ propertyPrice: Number(l.askingPrice ?? 0) }}
+                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-teal-500/30 bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-700 hover:bg-teal-100"
+              >
+                <Landmark size={14} /> Get prequalified for a home loan
+              </Link>
 
               {/* AI breakdown */}
               <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4">

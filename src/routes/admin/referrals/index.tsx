@@ -110,6 +110,64 @@ function AdminReferralsPage() {
     }
   };
 
+  const handleMarkReceived = async (lead: any) => {
+    if (!authToken) return;
+    const raw = window.prompt(
+      `Confirm commission RECEIVED from partner for ${lead.contactName ?? "lead"} (ref ${lead.reference ?? "—"}).\nAmount received (R):`,
+      String(Math.round(lead.commissionAmount || 0)),
+    );
+    if (raw == null) return;
+    const amount = Number(raw);
+    if (!Number.isFinite(amount) || amount < 0) {
+      toast.error("Enter a valid amount.");
+      return;
+    }
+    try {
+      await trpcClient.markHomeLoanCommissionReceived.mutate({
+        authToken,
+        referralLeadId: lead.id,
+        amount,
+      });
+      toast.success("Commission marked received.");
+      refetchAll();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Could not record receipt.");
+    }
+  };
+
+  const [loginPartnerId, setLoginPartnerId] = useState("");
+  const [loginName, setLoginName] = useState("");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginRole, setLoginRole] = useState("BOND_ORIGINATOR");
+  const [creatingLogin, setCreatingLogin] = useState(false);
+
+  const handleCreateLogin = async () => {
+    if (!authToken || !loginPartnerId || !loginName.trim() || !loginEmail.trim() || loginPassword.length < 8) {
+      toast.error("Partner, name, email and an 8+ char password are required.");
+      return;
+    }
+    setCreatingLogin(true);
+    try {
+      await trpcClient.createPartnerUser.mutate({
+        authToken,
+        partnerId: Number(loginPartnerId),
+        name: loginName.trim(),
+        email: loginEmail.trim(),
+        password: loginPassword,
+        role: loginRole as any,
+      });
+      toast.success("Partner login created.");
+      setLoginName("");
+      setLoginEmail("");
+      setLoginPassword("");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Could not create login.");
+    } finally {
+      setCreatingLogin(false);
+    }
+  };
+
   if (!user || !authToken) return null;
   if (!isManager) {
     return (
@@ -244,8 +302,10 @@ function AdminReferralsPage() {
                   <tr className="text-left text-gray-500">
                     <th className="pb-2">Contact</th>
                     <th className="pb-2">Partner</th>
+                    <th className="pb-2">Ref</th>
                     <th className="pb-2 text-right">Commission</th>
                     <th className="pb-2">Status</th>
+                    <th className="pb-2">Received</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -256,6 +316,7 @@ function AdminReferralsPage() {
                         <div className="text-xs text-gray-400">{l.contactEmail}</div>
                       </td>
                       <td className="py-2">{l.partnerName}</td>
+                      <td className="py-2 font-mono text-xs text-gray-500">{l.reference ?? "—"}</td>
                       <td className="py-2 text-right">{ZAR(l.commissionAmount)}</td>
                       <td className="py-2">
                         <select
@@ -270,6 +331,20 @@ function AdminReferralsPage() {
                           ))}
                         </select>
                       </td>
+                      <td className="py-2">
+                        {l.commissionReceivedAt ? (
+                          <span className="text-xs font-medium text-emerald-600">
+                            {ZAR(l.commissionReceivedAmount ?? 0)}
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleMarkReceived(l)}
+                            className="rounded-md border border-emerald-300 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50"
+                          >
+                            Mark received
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -278,6 +353,63 @@ function AdminReferralsPage() {
           ) : (
             <p className="text-sm text-gray-400">No leads yet.</p>
           )}
+        </div>
+
+        {/* Partner login accounts */}
+        <div className="mt-8 rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-1 font-semibold text-gray-900">Partner portal logins</h2>
+          <p className="mb-4 text-sm text-gray-500">
+            Give a bond originator or conveyancer firm a login so they work their own queue and
+            submit offers directly — you keep live visibility.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <select
+              value={loginPartnerId}
+              onChange={(e) => setLoginPartnerId(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="">Select partner…</option>
+              {partners.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <input
+              placeholder="Contact name"
+              value={loginName}
+              onChange={(e) => setLoginName(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+            <input
+              placeholder="Login email"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+            <input
+              type="password"
+              placeholder="Temp password (8+)"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+            <select
+              value={loginRole}
+              onChange={(e) => setLoginRole(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="BOND_ORIGINATOR">Bond originator</option>
+              <option value="CONVEYANCER">Conveyancer</option>
+            </select>
+          </div>
+          <button
+            onClick={handleCreateLogin}
+            disabled={creatingLogin}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-60"
+          >
+            {creatingLogin && <Loader2 className="animate-spin" size={16} />} Create login
+          </button>
         </div>
       </div>
     </div>

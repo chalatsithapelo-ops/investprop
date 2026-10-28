@@ -632,6 +632,8 @@ model User {
   role                       UserRole
   investorCode               String?                  @unique // Unique investor ID e.g. IP-INV-00009
   investorPreferences        Json?
+  // External partner login (BOND_ORIGINATOR / CONVEYANCER) — scopes their portal queue
+  referralPartnerId          Int?
   createdAt                  DateTime                 @default(now())
   emailVerified              Boolean                  @default(false)
   updatedAt                  DateTime                 @default(now()) @updatedAt
@@ -718,6 +720,7 @@ model User {
   workOrderUpdates           WorkOrderUpdate[]        @relation("WorkOrderUpdateSubmittedBy")
   pushSubscriptions          PushSubscription[]
   deviceTokens               DeviceToken[]
+  referralPartner            ReferralPartner?         @relation("PartnerUsers", fields: [referralPartnerId], references: [id])
   subscription               Subscription?
   subscriptionPayments       SubscriptionPayment[]
   distressedAlertSub         DistressedAlertSubscription?
@@ -1891,6 +1894,8 @@ enum UserRole {
   PROJECT_MANAGER
   PROPERTY_OWNER
   CONTRACTOR
+  BOND_ORIGINATOR // external referral partner: submits bank offers on home-loan applications
+  CONVEYANCER // external referral partner: handles transfer / registration
   ADMIN
 }
 
@@ -1963,6 +1968,10 @@ model OwnerSaleProposal {
   //     promoted into an investable Property (draft) for structuring. ───
   convertedToPropertyId Int?
   convertedAt           DateTime?
+  // ─── Public resale listing: properties the SPV will NOT flip but lists
+  //     for the public to buy outright (buyers use the home-loan flow). ───
+  publiclyListed        Boolean            @default(false)
+  publiclyListedAt      DateTime?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @default(now()) @updatedAt
   owner              User               @relation("OwnerSaleProposals", fields: [ownerId], references: [id])
@@ -2257,6 +2266,7 @@ model ReferralPartner {
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @default(now()) @updatedAt
   leads          ReferralLead[]
+  users          User[]             @relation("PartnerUsers")
 }
 
 /// Commission ledger — each lead sent to a partner; commissionAmount realized
@@ -2273,6 +2283,11 @@ model ReferralLead {
   estimatedValue   Float? // deal size used for commission calc
   commissionAmount Float              @default(0) // realized on CONVERTED
   convertedAt      DateTime?
+  // Commission-protection: unique reference handed to the partner so their
+  // payout can be reconciled back to this lead, plus receipt tracking.
+  reference               String?       @unique
+  commissionReceivedAt    DateTime?
+  commissionReceivedAmount Float?
   notes            String?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @default(now()) @updatedAt
@@ -2365,6 +2380,9 @@ model HomeLoanApplication {
   loanTermYears      Int                        @default(20)
   // Hand-off + lifecycle
   originatorName     String?
+  partnerId          Int? // routed bond-originator partner (for portal scoping)
+  referralReference  String? // unique code handed to the originator (= ReferralLead.reference)
+  originatorConfirmedAt DateTime? // originator acknowledged receipt of the application
   status             HomeLoanApplicationStatus  @default(SUBMITTED)
   consentShareData   Boolean                    @default(false)
   applicantPhone     String?
@@ -2379,6 +2397,7 @@ model HomeLoanApplication {
 
   @@index([userId])
   @@index([status])
+  @@index([partnerId])
   @@index([createdAt])
 }
 
