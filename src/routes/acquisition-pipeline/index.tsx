@@ -45,19 +45,6 @@ function AcquisitionPipelinePage() {
   }, [user, authToken, hasHydrated]);
 
   const isManager = MANAGER_ROLES.includes(user?.role ?? "");
-  if (!user || !authToken) return null;
-  if (!isManager) {
-    return (
-      <div className="min-h-screen bg-navy-950"><Navbar />
-        <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-          <ShieldAlert className="mx-auto mb-4 text-red-600" size={48} />
-          <h1 className="text-2xl font-bold text-gray-900">Access Restricted</h1>
-          <p className="mt-2 text-gray-500">Only managers and property owners can access the acquisition pipeline.</p>
-          <button onClick={() => navigate({ to: "/dashboard" })} className="mt-6 rounded-lg bg-gold-500 px-6 py-2 text-sm font-medium text-white hover:bg-gold-600">Back to Dashboard</button>
-        </div>
-      </div>
-    );
-  }
 
   const acquisitionsQuery = useQuery({
     ...trpc.getAcquisitions.queryOptions({ authToken: authToken ?? "" }),
@@ -73,6 +60,22 @@ function AcquisitionPipelinePage() {
     ...trpc.getProperties.queryOptions({}),
     enabled: !!authToken,
   });
+
+  // Guards must come AFTER all hooks (Rules of Hooks) — otherwise sign-out
+  // unmounts hooks mid-render and throws React error #300.
+  if (!user || !authToken) return null;
+  if (!isManager) {
+    return (
+      <div className="min-h-screen bg-navy-950"><Navbar />
+        <div className="mx-auto max-w-2xl px-4 py-16 text-center">
+          <ShieldAlert className="mx-auto mb-4 text-red-600" size={48} />
+          <h1 className="text-2xl font-bold text-gray-900">Access Restricted</h1>
+          <p className="mt-2 text-gray-500">Only managers and property owners can access the acquisition pipeline.</p>
+          <button onClick={() => navigate({ to: "/dashboard" })} className="mt-6 rounded-lg bg-gold-500 px-6 py-2 text-sm font-medium text-white hover:bg-gold-600">Back to Dashboard</button>
+        </div>
+      </div>
+    );
+  }
 
   const acquisitions = (acquisitionsQuery.data as any)?.acquisitions ?? acquisitionsQuery.data ?? [];
   const acquisitionsArr = Array.isArray(acquisitions) ? acquisitions : [];

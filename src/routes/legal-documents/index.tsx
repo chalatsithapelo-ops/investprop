@@ -43,19 +43,6 @@ function LegalDocumentsPage() {
   }, [user, authToken]);
 
   const isManager = MANAGER_ROLES.includes(user?.role ?? "");
-  if (!user || !authToken) return null;
-  if (!isManager) {
-    return (
-      <div className="min-h-screen bg-navy-950"><Navbar />
-        <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-          <ShieldAlert className="mx-auto mb-4 text-red-600" size={48} />
-          <h1 className="text-2xl font-bold text-gray-900">Access Restricted</h1>
-          <p className="mt-2 text-gray-500">Only managers and property owners can access legal documents.</p>
-          <button onClick={() => navigate({ to: "/dashboard" })} className="mt-6 rounded-lg bg-gold-500 px-6 py-2 text-sm font-medium text-white hover:bg-gold-600">Back to Dashboard</button>
-        </div>
-      </div>
-    );
-  }
 
   const [showGenerate, setShowGenerate] = useState(false);
   const [summaryDocId, setSummaryDocId] = useState<number | null>(null);
@@ -97,6 +84,22 @@ function LegalDocumentsPage() {
       onError: (e: any) => toast.error(e.message),
     })
   );
+
+  // Guards must come AFTER all hooks (Rules of Hooks) — otherwise sign-out
+  // unmounts hooks mid-render and throws React error #300.
+  if (!user || !authToken) return null;
+  if (!isManager) {
+    return (
+      <div className="min-h-screen bg-navy-950"><Navbar />
+        <div className="mx-auto max-w-2xl px-4 py-16 text-center">
+          <ShieldAlert className="mx-auto mb-4 text-red-600" size={48} />
+          <h1 className="text-2xl font-bold text-gray-900">Access Restricted</h1>
+          <p className="mt-2 text-gray-500">Only managers and property owners can access legal documents.</p>
+          <button onClick={() => navigate({ to: "/dashboard" })} className="mt-6 rounded-lg bg-gold-500 px-6 py-2 text-sm font-medium text-white hover:bg-gold-600">Back to Dashboard</button>
+        </div>
+      </div>
+    );
+  }
 
   const properties = (propertiesQuery.data as any)?.properties ?? propertiesQuery.data ?? [];
   const docs = (docsQuery.data ?? []) as any[];
