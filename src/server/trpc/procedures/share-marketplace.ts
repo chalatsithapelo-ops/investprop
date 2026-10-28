@@ -6,6 +6,7 @@ import { TRPCError } from "@trpc/server";
 import { createNotification } from "./notifications";
 import { createAuditLog } from "./audit-log";
 import { getFeeConfig, recordPlatformFee } from "~/server/fees/platform-fees";
+import { reconcileCertificatesForTrade } from "./share-certificates";
 import {
   planFills,
   computeStt,
@@ -814,6 +815,13 @@ async function settleTradeDvP(tx: TxClient, settlement: any, shareClass: any): P
   } catch (err) {
     console.error("[platform-fees] secondary-trade fee capture failed:", err);
   }
+
+  // ── Keep investor-facing certificates in sync with the live cap table ──
+  await reconcileCertificatesForTrade(tx, {
+    propertyId: shareClass.propertyId,
+    sellerId,
+    buyerId,
+  });
 
   return trade;
 }

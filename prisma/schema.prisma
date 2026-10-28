@@ -190,7 +190,7 @@ model InvestorContribution {
 model ShareCertificate {
   id                  Int                  @id @default(autoincrement())
   certificateNumber   String               @unique // Format: CERT-{propertyId}-{seq}-{year}
-  contributionId      Int                  @unique
+  contributionId      Int?                 @unique // null = auto-issued on a secondary-market purchase (no primary contribution)
   propertyId          Int
   investorId          Int
   // ── Public fields (visible to investor) ──────────────────────
@@ -224,7 +224,7 @@ model ShareCertificate {
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @default(now()) @updatedAt
   // ── Relations ────────────────────────────────────────────────
-  contribution        InvestorContribution @relation(fields: [contributionId], references: [id])
+  contribution        InvestorContribution? @relation(fields: [contributionId], references: [id])
   property            Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   investor            User                 @relation("InvestorCertificates", fields: [investorId], references: [id])
 

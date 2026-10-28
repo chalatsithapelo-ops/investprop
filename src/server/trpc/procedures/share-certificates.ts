@@ -201,6 +201,219 @@ export async function ensureShareHoldingForContribution(
 }
 
 // ─────────────────────────────────────────────────────────────
+//  Reconcile certificates with live holdings after a market trade.
+//  The ShareHolding cap table is authoritative; this mirrors it onto
+//  the investor-facing ShareCertificate so the two never drift apart.
+//  Runs inside the settlement transaction (no out-of-tx side effects).
+// ─────────────────────────────────────────────────────────────
+
+type CertTxClient = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+
+function appendAudit(existing: unknown, entry: Record<string, unknown>): any[] {
+  const arr = Array.isArray(existing) ? existing : [];
+  return [...arr, entry];
+}
+
+async function nextCertificateNumber(tx: CertTxClient, propertyId: number): Promise<string> {
+  const year = new Date().getFullYear();
+  const count = await tx.shareCertificate.count({ where: { propertyId } });
+  return `CERT-${propertyId}-${String(count + 1).padStart(4, "0")}-${year}`;
+}
+
+async function reconcileInvestorCertificate(
+  tx: CertTxClient,
+  p: {
+    investorId: number;
+    propertyId: number;
+    propertyTitle: string;
+    propertyAddress: string;
+    shareClassId: number;
+    shareClassName: string;
+    sharePrice: number;
+    totalShares: number;
+  },
+): Promise<void> {
+  const holding = await tx.shareHolding.findUnique({
+    where: { shareClassId_investorId: { shareClassId: p.shareClassId, investorId: p.investorId } },
+    select: { sharesOwned: true },
+  });
+  const liveShares = holding?.sharesOwned ?? 0;
+
+  const validCerts = await tx.shareCertificate.findMany({
+    where: { investorId: p.investorId, propertyId: p.propertyId, isValid: true },
+    orderBy: { issueDate: "asc" },
+  });
+
+  const now = new Date();
+  const ownershipPct = p.totalShares > 0 ? (liveShares / p.totalShares) * 100 : 0;
+  const totalValue = liveShares * p.sharePrice;
+
+  // Case 1 — investor sold out: revoke every live certificate for this property.
+  if (liveShares <= 0) {
+    for (const cert of validCerts) {
+      await tx.shareCertificate.update({
+        where: { id: cert.id },
+        data: {
+          isValid: false,
+          revokedAt: now,
+          revokedReason: "All shares disposed via secondary-market trade",
+          numberOfShares: 0,
+          totalValue: 0,
+          ownershipPercentage: 0,
+          auditTrail: appendAudit(cert.auditTrail, {
+            action: "RECONCILED_REVOKED",
+            userId: p.investorId,
+            timestamp: now.toISOString(),
+            details: "Holding reached 0 after secondary-market settlement",
+          }),
+        },
+      });
+    }
+    return;
+  }
+
+  // Case 2 — investor already holds a certificate: carry the full live balance on
+  // the oldest (primary) one and consolidate/revoke any extras (avoids double count).
+  if (validCerts.length > 0) {
+    const primary = validCerts[0]!;
+    const extras = validCerts.slice(1);
+    const validationHash = computeValidationHash({
+      certificateNumber: primary.certificateNumber,
+      contributionId: primary.contributionId ?? 0,
+      propertyId: p.propertyId,
+      investorId: p.investorId,
+      numberOfShares: liveShares,
+      sharePrice: p.sharePrice,
+      totalValue,
+      ownershipPercentage: ownershipPct,
+      issueDate: primary.issueDate.toISOString(),
+      fingerprint: primary.internalFingerprint,
+    });
+    await tx.shareCertificate.update({
+      where: { id: primary.id },
+      data: {
+        numberOfShares: liveShares,
+        sharePrice: p.sharePrice,
+        totalValue,
+        ownershipPercentage: ownershipPct,
+        validationHash,
+        auditTrail: appendAudit(primary.auditTrail, {
+          action: "RECONCILED",
+          userId: p.investorId,
+          timestamp: now.toISOString(),
+          details: `Share count reconciled to ${liveShares} after secondary-market settlement`,
+        }),
+      },
+    });
+    for (const cert of extras) {
+      await tx.shareCertificate.update({
+        where: { id: cert.id },
+        data: {
+          isValid: false,
+          revokedAt: now,
+          revokedReason: `Consolidated into ${primary.certificateNumber} after secondary-market trade`,
+          auditTrail: appendAudit(cert.auditTrail, {
+            action: "CONSOLIDATED",
+            userId: p.investorId,
+            timestamp: now.toISOString(),
+            details: `Merged into ${primary.certificateNumber}`,
+          }),
+        },
+      });
+    }
+    return;
+  }
+
+  // Case 3 — secondary-market buyer with no prior certificate: auto-issue one.
+  const investor = await tx.user.findUnique({
+    where: { id: p.investorId },
+    select: { name: true },
+  });
+  const certificateNumber = await nextCertificateNumber(tx, p.propertyId);
+  const fingerprint = crypto.randomUUID();
+  const validationHash = computeValidationHash({
+    certificateNumber,
+    contributionId: 0,
+    propertyId: p.propertyId,
+    investorId: p.investorId,
+    numberOfShares: liveShares,
+    sharePrice: p.sharePrice,
+    totalValue,
+    ownershipPercentage: ownershipPct,
+    issueDate: now.toISOString(),
+    fingerprint,
+  });
+  await tx.shareCertificate.create({
+    data: {
+      certificateNumber,
+      contributionId: null,
+      propertyId: p.propertyId,
+      investorId: p.investorId,
+      investorName: investor?.name ?? "Investor",
+      propertyTitle: p.propertyTitle,
+      propertyAddress: p.propertyAddress,
+      numberOfShares: liveShares,
+      sharePrice: p.sharePrice,
+      totalValue,
+      ownershipPercentage: ownershipPct,
+      shareClassName: p.shareClassName,
+      issueDate: now,
+      validationHash,
+      internalFingerprint: fingerprint,
+      issuedById: p.investorId,
+      auditTrail: [
+        {
+          action: "AUTO_ISSUED",
+          userId: p.investorId,
+          timestamp: now.toISOString(),
+          details: `Auto-issued on secondary-market purchase (${liveShares} shares)`,
+        },
+      ],
+    },
+  });
+}
+
+/**
+ * Keep both sides' ShareCertificates in sync with their live ShareHoldings after a
+ * secondary-market settlement. Seller's cert is reduced (or revoked at zero); buyer's
+ * cert is grown (or auto-issued if they had none). Must be called inside the trade tx.
+ */
+export async function reconcileCertificatesForTrade(
+  tx: CertTxClient,
+  params: { propertyId: number; sellerId: number; buyerId: number },
+): Promise<void> {
+  const { propertyId, sellerId, buyerId } = params;
+
+  const property = await tx.property.findUnique({
+    where: { id: propertyId },
+    select: { title: true, address: true, city: true, state: true },
+  });
+  if (!property) return;
+
+  const shareClass = await tx.shareClass.findFirst({
+    where: { propertyId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, name: true, pricePerShare: true, totalShares: true },
+  });
+  if (!shareClass) return;
+
+  const propertyAddress = `${property.address}, ${property.city}, ${property.state}`;
+
+  for (const investorId of [sellerId, buyerId]) {
+    await reconcileInvestorCertificate(tx, {
+      investorId,
+      propertyId,
+      propertyTitle: property.title,
+      propertyAddress,
+      shareClassId: shareClass.id,
+      shareClassName: shareClass.name,
+      sharePrice: shareClass.pricePerShare,
+      totalShares: shareClass.totalShares,
+    });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 //  Issue a certificate (called from confirmPaymentAndUpdateFunding)
 // ─────────────────────────────────────────────────────────────
 
@@ -625,7 +838,7 @@ export const validateCertificate = baseProcedure
     // Recompute hash to detect tampering
     const expectedHash = computeValidationHash({
       certificateNumber: cert.certificateNumber,
-      contributionId: cert.contributionId,
+      contributionId: cert.contributionId ?? 0,
       propertyId: cert.propertyId,
       investorId: cert.investorId,
       numberOfShares: cert.numberOfShares,
