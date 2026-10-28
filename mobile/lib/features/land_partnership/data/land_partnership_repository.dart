@@ -160,5 +160,5 @@ final landPartnershipRepositoryProvider = Provider<LandPartnershipRepository>((
 
 final myLandPartnershipsProvider =
     FutureProvider.autoDispose<List<LandPartnership>>((ref) async {
-  return ref.watch(landPartnershipRepositoryProvider).myPartnerships();
-});
+      return ref.watch(landPartnershipRepositoryProvider).myPartnerships();
+    });

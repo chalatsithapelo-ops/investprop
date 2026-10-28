@@ -114,8 +114,9 @@ class LandPartnership {
       estimatedLandValue: j['estimatedLandValue'] == null
           ? null
           : asDouble(j['estimatedLandValue']),
-      estimatedGdv:
-          j['estimatedGDV'] == null ? null : asDouble(j['estimatedGDV']),
+      estimatedGdv: j['estimatedGDV'] == null
+          ? null
+          : asDouble(j['estimatedGDV']),
       ownerEquityPct: asDouble(j['ownerEquityPct']),
       status: landStatusFromString(asString(j['status'], 'SUBMITTED')),
       reviewNotes: j['reviewNotes']?.toString(),

@@ -76,9 +76,9 @@ class LandPartnershipPage extends ConsumerWidget {
   }
 
   Future<void> _openSubmit(BuildContext context, WidgetRef ref) async {
-    final ok = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const _SubmitLandPage()),
-    );
+    final ok = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const _SubmitLandPage()));
     if (ok == true) ref.invalidate(myLandPartnershipsProvider);
   }
 }
@@ -99,11 +99,17 @@ class _HowItWorksCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(fontWeight: FontWeight.w700)),
-                Text(body,
-                    style: const TextStyle(
-                        color: AppColors.textSecondary, fontSize: 13)),
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
               ],
             ),
           ),
@@ -117,15 +123,26 @@ class _HowItWorksCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('How it works',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            const Text(
+              'How it works',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+            ),
             const SizedBox(height: 12),
-            row(Icons.landscape, 'You bring the property',
-                'Contribute only your property or land. No cash required.'),
-            row(Icons.apartment, 'We do everything',
-                'Funding, approvals, design, build/renovation and sales.'),
-            row(Icons.verified_user, 'You keep 20% equity',
-                'Your property goes into a ring-fenced SPV you hold 20% of.'),
+            row(
+              Icons.landscape,
+              'You bring the property',
+              'Contribute only your property or land. No cash required.',
+            ),
+            row(
+              Icons.apartment,
+              'We do everything',
+              'Funding, approvals, design, build/renovation and sales.',
+            ),
+            row(
+              Icons.verified_user,
+              'You keep 20% equity',
+              'Your property goes into a ring-fenced SPV you hold 20% of.',
+            ),
           ],
         ),
       ),
@@ -165,11 +182,13 @@ class _LandCardState extends ConsumerState<_LandCard> {
         content: const Text('This will withdraw your property submission.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Withdraw')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Withdraw'),
+          ),
         ],
       ),
     );
@@ -218,7 +237,10 @@ class _LandCardState extends ConsumerState<_LandCard> {
                 child: SelectableText(
                   widget.partnership.agreementContent ?? '',
                   style: const TextStyle(
-                      fontFamily: 'monospace', fontSize: 11, height: 1.4),
+                    fontFamily: 'monospace',
+                    fontSize: 11,
+                    height: 1.4,
+                  ),
                 ),
               ),
             ),
@@ -245,39 +267,59 @@ class _LandCardState extends ConsumerState<_LandCard> {
             Row(
               children: [
                 Expanded(
-                  child: Text(p.landTitle,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 16)),
+                  child: Text(
+                    p.landTitle,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: _statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(999),
                   ),
-                  child: Text(p.status.label,
-                      style: TextStyle(
-                          color: _statusColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700)),
+                  child: Text(
+                    p.status.label,
+                    style: TextStyle(
+                      color: _statusColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 2),
-            Text(p.referenceCode,
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 12)),
+            Text(
+              p.referenceCode,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
+            ),
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(Icons.place_outlined,
-                    size: 14, color: AppColors.textSecondary),
+                const Icon(
+                  Icons.place_outlined,
+                  size: 14,
+                  color: AppColors.textSecondary,
+                ),
                 const SizedBox(width: 4),
                 Expanded(
-                  child: Text('${p.address}, ${p.city}, ${p.province}',
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 13)),
+                  child: Text(
+                    '${p.address}, ${p.city}, ${p.province}',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -286,10 +328,12 @@ class _LandCardState extends ConsumerState<_LandCard> {
               spacing: 16,
               runSpacing: 4,
               children: [
-                _stat('Land value',
-                    p.estimatedLandValue == null
-                        ? '—'
-                        : Fmt.money(p.estimatedLandValue!)),
+                _stat(
+                  'Land value',
+                  p.estimatedLandValue == null
+                      ? '—'
+                      : Fmt.money(p.estimatedLandValue!),
+                ),
                 _stat('Your equity', '${p.ownerEquityPct.toStringAsFixed(0)}%'),
                 if (p.spvName != null) _stat('SPV', p.spvName!),
               ],
@@ -303,16 +347,20 @@ class _LandCardState extends ConsumerState<_LandCard> {
                   color: AppColors.background,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text('Notes: ${p.reviewNotes}',
-                    style: const TextStyle(fontSize: 13)),
+                child: Text(
+                  'Notes: ${p.reviewNotes}',
+                  style: const TextStyle(fontSize: 13),
+                ),
               ),
             ],
             if (p.status == LandPartnershipStatus.rejected &&
                 p.rejectedReason != null &&
                 p.rejectedReason!.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text('Reason: ${p.rejectedReason}',
-                  style: const TextStyle(color: AppColors.danger)),
+              Text(
+                'Reason: ${p.rejectedReason}',
+                style: const TextStyle(color: AppColors.danger),
+              ),
             ],
             const SizedBox(height: 12),
             Wrap(
@@ -349,9 +397,10 @@ class _LandCardState extends ConsumerState<_LandCard> {
   Widget _stat(String label, String value) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label,
-          style:
-              const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+      Text(
+        label,
+        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+      ),
       Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
     ],
   );
@@ -391,7 +440,9 @@ class _SignDialogState extends ConsumerState<_SignDialog> {
     }
     setState(() => _busy = true);
     try {
-      await ref.read(landPartnershipRepositoryProvider).sign(
+      await ref
+          .read(landPartnershipRepositoryProvider)
+          .sign(
             id: widget.partnership.id,
             signatureName: _name.text.trim(),
             signatureId: _idNo.text.trim(),
@@ -433,7 +484,10 @@ class _SignDialogState extends ConsumerState<_SignDialog> {
                 child: SelectableText(
                   widget.partnership.agreementContent ?? '',
                   style: const TextStyle(
-                      fontFamily: 'monospace', fontSize: 10.5, height: 1.4),
+                    fontFamily: 'monospace',
+                    fontSize: 10.5,
+                    height: 1.4,
+                  ),
                 ),
               ),
             ),
@@ -452,8 +506,7 @@ class _SignDialogState extends ConsumerState<_SignDialog> {
                   const SizedBox(height: 8),
                   TextField(
                     controller: _idNo,
-                    decoration:
-                        const InputDecoration(labelText: 'ID number'),
+                    decoration: const InputDecoration(labelText: 'ID number'),
                   ),
                   const SizedBox(height: 4),
                   CheckboxListTile(
@@ -477,8 +530,8 @@ class _SignDialogState extends ConsumerState<_SignDialog> {
                           ? const SizedBox(
                               width: 16,
                               height: 16,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2))
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Icon(Icons.edit),
                       label: const Text('Sign Agreement'),
                     ),
@@ -569,7 +622,9 @@ class _SubmitLandPageState extends ConsumerState<_SubmitLandPage> {
     }
     setState(() => _busy = true);
     try {
-      await ref.read(landPartnershipRepositoryProvider).submit(
+      await ref
+          .read(landPartnershipRepositoryProvider)
+          .submit(
             LandPartnershipInput(
               ownerFullName: _ownerName.text.trim(),
               ownerIdNumber: _ownerId.text.trim(),
@@ -586,17 +641,23 @@ class _SubmitLandPageState extends ConsumerState<_SubmitLandPage> {
               erfSize: _num(_erfSize),
               estimatedLandValue: _num(_estLandValue),
               estimatedGdv: _num(_estGdv),
-              bondOutstanding:
-                  _bondStatus == 'EXISTING' ? _num(_bondOutstanding) : null,
-              ratesArrears:
-                  _ratesStatus == 'ARREARS' ? _num(_ratesArrears) : null,
+              bondOutstanding: _bondStatus == 'EXISTING'
+                  ? _num(_bondOutstanding)
+                  : null,
+              ratesArrears: _ratesStatus == 'ARREARS'
+                  ? _num(_ratesArrears)
+                  : null,
               popiaConsent: true,
             ),
           );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content:
-                Text('Your property has been submitted for a partnership.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Your property has been submitted for a partnership.',
+            ),
+          ),
+        );
         Navigator.pop(context, true);
       }
     } catch (e) {
@@ -624,51 +685,76 @@ class _SubmitLandPageState extends ConsumerState<_SubmitLandPage> {
             _field(_ownerName, 'Full name *', required: true),
             _field(_ownerId, 'ID number'),
             _field(_ownerPhone, 'Phone', keyboard: TextInputType.phone),
-            _field(_ownerEmail, 'Email',
-                keyboard: TextInputType.emailAddress),
+            _field(_ownerEmail, 'Email', keyboard: TextInputType.emailAddress),
             _section('The property'),
             _field(_landTitle, 'Short title *', required: true),
             _field(_address, 'Street address *', required: true),
             _field(_city, 'City / town *', required: true),
-            _dropdown('Province', _province, _provinces,
-                (v) => setState(() => _province = v!)),
-            _field(_erfSize, 'Erf size (m²)',
-                keyboard: TextInputType.number),
-            _field(_estLandValue, 'Estimated property value (R)',
-                keyboard: TextInputType.number),
-            _field(_landDescription, 'Describe the property *',
-                required: true, maxLines: 3),
+            _dropdown(
+              'Province',
+              _province,
+              _provinces,
+              (v) => setState(() => _province = v!),
+            ),
+            _field(_erfSize, 'Erf size (m²)', keyboard: TextInputType.number),
+            _field(
+              _estLandValue,
+              'Estimated property value (R)',
+              keyboard: TextInputType.number,
+            ),
+            _field(
+              _landDescription,
+              'Describe the property *',
+              required: true,
+              maxLines: 3,
+            ),
             _section('Bond & rates'),
-            _dropdown('Bond status', _bondStatus, const ['NONE', 'EXISTING'],
-                (v) => setState(() => _bondStatus = v!),
-                labels: const {
-                  'NONE': 'No bond (paid off)',
-                  'EXISTING': 'Existing bond'
-                }),
+            _dropdown(
+              'Bond status',
+              _bondStatus,
+              const ['NONE', 'EXISTING'],
+              (v) => setState(() => _bondStatus = v!),
+              labels: const {
+                'NONE': 'No bond (paid off)',
+                'EXISTING': 'Existing bond',
+              },
+            ),
             if (_bondStatus == 'EXISTING')
-              _field(_bondOutstanding, 'Bond outstanding (R)',
-                  keyboard: TextInputType.number),
-            _dropdown('Rates status', _ratesStatus,
-                const ['CURRENT', 'ARREARS'],
-                (v) => setState(() => _ratesStatus = v!),
-                labels: const {
-                  'CURRENT': 'Up to date',
-                  'ARREARS': 'In arrears'
-                }),
+              _field(
+                _bondOutstanding,
+                'Bond outstanding (R)',
+                keyboard: TextInputType.number,
+              ),
+            _dropdown(
+              'Rates status',
+              _ratesStatus,
+              const ['CURRENT', 'ARREARS'],
+              (v) => setState(() => _ratesStatus = v!),
+              labels: const {'CURRENT': 'Up to date', 'ARREARS': 'In arrears'},
+            ),
             if (_ratesStatus == 'ARREARS')
-              _field(_ratesArrears, 'Rates arrears (R)',
-                  keyboard: TextInputType.number),
+              _field(
+                _ratesArrears,
+                'Rates arrears (R)',
+                keyboard: TextInputType.number,
+              ),
             _section('Proposed project (optional)'),
-            _dropdown('Intended strategy', _strategy,
-                const ['DEVELOP', 'FLIP', 'HOLD'],
-                (v) => setState(() => _strategy = v!),
-                labels: const {
-                  'DEVELOP': 'Develop',
-                  'FLIP': 'Flip / renovate',
-                  'HOLD': 'Hold / rent'
-                }),
-            _field(_estGdv, 'Estimated end value / GDV (R)',
-                keyboard: TextInputType.number),
+            _dropdown(
+              'Intended strategy',
+              _strategy,
+              const ['DEVELOP', 'FLIP', 'HOLD'],
+              (v) => setState(() => _strategy = v!),
+              labels: const {
+                'DEVELOP': 'Develop',
+                'FLIP': 'Flip / renovate',
+                'HOLD': 'Hold / rent',
+              },
+            ),
+            _field(
+              _estGdv,
+              'Estimated end value / GDV (R)',
+              keyboard: TextInputType.number,
+            ),
             const SizedBox(height: 8),
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
@@ -689,7 +775,8 @@ class _SubmitLandPageState extends ConsumerState<_SubmitLandPage> {
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Icon(Icons.add),
               label: const Text('Submit my property'),
             ),
@@ -702,12 +789,15 @@ class _SubmitLandPageState extends ConsumerState<_SubmitLandPage> {
 
   Widget _section(String title) => Padding(
     padding: const EdgeInsets.only(top: 16, bottom: 8),
-    child: Text(title.toUpperCase(),
-        style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-            letterSpacing: 1)),
+    child: Text(
+      title.toUpperCase(),
+      style: const TextStyle(
+        color: AppColors.textSecondary,
+        fontWeight: FontWeight.w700,
+        fontSize: 12,
+        letterSpacing: 1,
+      ),
+    ),
   );
 
   Widget _field(
@@ -741,10 +831,7 @@ class _SubmitLandPageState extends ConsumerState<_SubmitLandPage> {
       value: value,
       decoration: InputDecoration(labelText: label),
       items: options
-          .map((o) => DropdownMenuItem(
-                value: o,
-                child: Text(labels?[o] ?? o),
-              ))
+          .map((o) => DropdownMenuItem(value: o, child: Text(labels?[o] ?? o)))
           .toList(),
       onChanged: onChanged,
     ),

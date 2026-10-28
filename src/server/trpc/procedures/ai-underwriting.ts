@@ -13,6 +13,7 @@ import { generateText } from "ai";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
+import { requireFeature } from "~/server/subscriptions/subscription-service";
 import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
 import { buildPropertyContext, findComparables } from "~/server/ai/property-context";
 import { recordAiPrediction } from "~/server/ai/prediction-log";
@@ -155,7 +156,9 @@ Return the JSON object now.`;
 export const getUnderwriting = baseProcedure
   .input(z.object({ authToken: z.string(), propertyId: z.number() }))
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    // Viewing the independent underwriting is a PRO feature (staff bypass).
+    await requireFeature(user, "AI_UNDERWRITING");
     const p = await db.property.findUnique({
       where: { id: input.propertyId },
       select: {

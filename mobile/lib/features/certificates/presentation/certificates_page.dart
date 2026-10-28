@@ -78,23 +78,33 @@ class _CertificateCard extends StatelessWidget {
                   color: AppColors.gold.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.workspace_premium,
-                    color: AppColors.goldDark),
+                child: const Icon(
+                  Icons.workspace_premium,
+                  color: AppColors.goldDark,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(cert.propertyTitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 15)),
+                    Text(
+                      cert.propertyTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text(cert.certificateNumber,
-                        style: const TextStyle(
-                            color: AppColors.textSecondary, fontSize: 12)),
+                    Text(
+                      cert.certificateNumber,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     Text(
                       '${cert.numberOfShares.toStringAsFixed(0)} shares · '
@@ -104,9 +114,13 @@ class _CertificateCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Text(Fmt.money(cert.totalValue),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700, color: AppColors.navy)),
+              Text(
+                Fmt.money(cert.totalValue),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                ),
+              ),
             ],
           ),
         ),
@@ -130,8 +144,9 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
   Future<void> _download() async {
     setState(() => _busy = true);
     try {
-      final data =
-          await ref.read(certificatesRepositoryProvider).pdfData(widget.cert.id);
+      final data = await ref
+          .read(certificatesRepositoryProvider)
+          .pdfData(widget.cert.id);
       final doc = await buildCertificatePdf(data);
       final bytes = await doc.save();
       await Printing.sharePdf(
@@ -140,9 +155,9 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not generate PDF: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not generate PDF: $e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -170,11 +185,14 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            Text(c.propertyTitle,
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w700)),
-            Text(c.certificateNumber,
-                style: const TextStyle(color: AppColors.textSecondary)),
+            Text(
+              c.propertyTitle,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            Text(
+              c.certificateNumber,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
             const SizedBox(height: 16),
             _kv('Investor', c.investorName),
             _kv('Share class', c.shareClassName),
@@ -220,22 +238,27 @@ class _CertificateSheetState extends ConsumerState<_CertificateSheet> {
   }
 
   Widget _kv(String k, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 120,
-              child: Text(k,
-                  style: const TextStyle(
-                      color: AppColors.textSecondary, fontSize: 13)),
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 120,
+          child: Text(
+            k,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
             ),
-            Expanded(
-              child: Text(v,
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w500)),
-            ),
-          ],
+          ),
         ),
-      );
+        Expanded(
+          child: Text(
+            v,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+        ),
+      ],
+    ),
+  );
 }

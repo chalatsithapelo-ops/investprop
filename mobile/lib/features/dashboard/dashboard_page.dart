@@ -112,7 +112,9 @@ class DashboardPage extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(vertical: 24),
                         child: Text(
                           '$e',
-                          style: const TextStyle(color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ),
@@ -183,7 +185,10 @@ class _OwnerDashboard extends ConsumerWidget {
                           const Text(
                             'Submit a property or land for a cash offer, joint '
                             'venture or development partnership.',
-                            style: TextStyle(color: Colors.white70, height: 1.4),
+                            style: TextStyle(
+                              color: Colors.white70,
+                              height: 1.4,
+                            ),
                           ),
                           const SizedBox(height: 16),
                           FilledButton.icon(
@@ -304,7 +309,9 @@ class _OwnerDashboard extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(vertical: 24),
                         child: Text(
                           '$e',
-                          style: const TextStyle(color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ),
@@ -474,7 +481,10 @@ class _MiniStat extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white60, fontSize: 12),
+        ),
       ],
     );
   }
