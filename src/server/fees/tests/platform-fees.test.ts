@@ -42,6 +42,7 @@ describe("DEFAULT_FEE_CONFIG", () => {
       capitalRaiseFeeBps: 250,
       distributionFeeBps: 200,
       secondaryTradeFeeBps: 100,
+      secondaryTradeBuyerFeeBps: 100,
       sourcingFeeBps: 100,
       sourcingFlatFee: 0,
       sellerFacilitationFeeBps: 200,
@@ -50,6 +51,8 @@ describe("DEFAULT_FEE_CONFIG", () => {
       leaseBackSetupFee: 5000,
       leaseBackMgmtFeeBps: 800,
       bondReferralFee: 0,
+      withdrawalFeeBps: 0,
+      withdrawalFlatFee: 10,
       enabled: true,
     });
   });

@@ -182,7 +182,21 @@ function ShareMarketplacePage() {
                           <td className="px-3 py-2">{s.shareClass?.name}<span className="block text-xs text-gray-400">{s.shareClass?.property?.title}</span></td>
                           <td className="px-3 py-2">{s.quantity}</td>
                           <td className="px-3 py-2">R{Number(s.pricePerShare).toFixed(2)}</td>
-                          <td className="px-3 py-2">R{Number(s.totalAmount).toFixed(2)}</td>
+                          <td className="px-3 py-2">
+                            R{Number(s.totalAmount).toFixed(2)}
+                            {s.role === "BUYER" ? (
+                              <span className="block text-xs text-gray-400">
+                                Pay R{(Number(s.totalAmount) + Number(s.buyerFee ?? 0) + Number(s.securitiesTransferTax ?? 0)).toFixed(2)}
+                                {(Number(s.buyerFee ?? 0) > 0 || Number(s.securitiesTransferTax ?? 0) > 0) && (
+                                  <> (incl. R{Number(s.buyerFee ?? 0).toFixed(2)} fee + R{Number(s.securitiesTransferTax ?? 0).toFixed(2)} STT)</>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="block text-xs text-gray-400">
+                                Receive R{(Number(s.totalAmount) - Number(s.platformFee ?? 0)).toFixed(2)}
+                              </span>
+                            )}
+                          </td>
                           <td className="px-3 py-2"><SettlementStatusBadge status={s.status} /></td>
                           <td className="px-3 py-2 text-xs text-gray-500">{s.expiresAt ? new Date(s.expiresAt).toLocaleDateString() : "—"}</td>
                           <td className="px-3 py-2">
