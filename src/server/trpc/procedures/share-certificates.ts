@@ -155,11 +155,30 @@ export async function ensureShareHoldingForContribution(
     where: { propertyId, investorId, paymentStatus: "PAID" },
     select: { numberOfShares: true, contributionAmount: true },
   });
-  const totalSharesOwned = paidContribs.reduce((sum, c) => {
+  const contributionShares = paidContribs.reduce((sum, c) => {
     const shares = c.numberOfShares ?? c.contributionAmount / shareClass!.pricePerShare;
     return sum + Math.round(shares);
   }, 0);
-  if (totalSharesOwned <= 0) return;
+
+  // Net secondary-market / transfer delta — every ledger movement that is NOT a
+  // primary contribution entry (market buys/sells, transfers, direct purchases).
+  // Added to the contribution baseline so materialising never resets a holding
+  // that has since changed through trading.
+  const marketEntries = await db.shareLedgerEntry.findMany({
+    where: {
+      shareClassId: shareClass.id,
+      investorId,
+      NOT: { reference: { startsWith: "Investment contribution #" } },
+    },
+    select: { shares: true },
+  });
+  const marketDelta = marketEntries.reduce((s, e) => s + e.shares, 0);
+  const targetShares = Math.max(0, contributionShares + marketDelta);
+
+  const existingHolding = await db.shareHolding.findUnique({
+    where: { shareClassId_investorId: { shareClassId: shareClass.id, investorId } },
+  });
+  if (!existingHolding && targetShares <= 0) return;
 
   await db.shareHolding.upsert({
     where: {
@@ -169,10 +188,10 @@ export async function ensureShareHoldingForContribution(
       propertyId,
       shareClassId: shareClass.id,
       investorId,
-      sharesOwned: totalSharesOwned,
+      sharesOwned: targetShares,
       averageCostPerShare: shareClass.pricePerShare,
     },
-    update: { sharesOwned: totalSharesOwned },
+    update: { sharesOwned: targetShares },
   });
 
   // Add a ledger entry for this contribution (guard against duplicates on re-run)
@@ -194,7 +213,7 @@ export async function ensureShareHoldingForContribution(
         pricePerShare: shareClass.pricePerShare,
         totalAmount: contribution.contributionAmount,
         reference: ref,
-        balanceAfter: totalSharesOwned,
+        balanceAfter: targetShares,
       },
     });
   }
