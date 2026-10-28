@@ -13,6 +13,8 @@ export type PlatformFeeType =
   | "CAPITAL_RAISE"
   | "DISTRIBUTION"
   | "SECONDARY_TRADE"
+  | "SECONDARY_TRADE_BUYER"
+  | "WITHDRAWAL"
   | "SOURCING"
   // ─── Owner (seller-side) monetization ───
   | "SELLER_FACILITATION"
@@ -26,6 +28,9 @@ export type FeeConfig = {
   capitalRaiseFeeBps: number;
   distributionFeeBps: number;
   secondaryTradeFeeBps: number;
+  secondaryTradeBuyerFeeBps: number;
+  withdrawalFeeBps: number;
+  withdrawalFlatFee: number;
   sourcingFeeBps: number;
   sourcingFlatFee: number;
   sellerFacilitationFeeBps: number;
@@ -41,7 +46,10 @@ export type FeeConfig = {
 export const DEFAULT_FEE_CONFIG: FeeConfig = {
   capitalRaiseFeeBps: 250, // 2.5%
   distributionFeeBps: 200, // 2.0%
-  secondaryTradeFeeBps: 100, // 1.0%
+  secondaryTradeFeeBps: 100, // 1.0% (seller side)
+  secondaryTradeBuyerFeeBps: 100, // 1.0% (buyer side)
+  withdrawalFeeBps: 0, // % on payouts
+  withdrawalFlatFee: 10, // flat R10 on payouts
   sourcingFeeBps: 100, // 1.0%
   sourcingFlatFee: 0,
   sellerFacilitationFeeBps: 200, // 2.0%
@@ -80,6 +88,9 @@ export async function getFeeConfig(
         capitalRaiseFeeBps: existing.capitalRaiseFeeBps,
         distributionFeeBps: existing.distributionFeeBps,
         secondaryTradeFeeBps: existing.secondaryTradeFeeBps,
+        secondaryTradeBuyerFeeBps: existing.secondaryTradeBuyerFeeBps,
+        withdrawalFeeBps: existing.withdrawalFeeBps,
+        withdrawalFlatFee: existing.withdrawalFlatFee,
         sourcingFeeBps: existing.sourcingFeeBps,
         sourcingFlatFee: existing.sourcingFlatFee,
         sellerFacilitationFeeBps: existing.sellerFacilitationFeeBps,
@@ -98,6 +109,9 @@ export async function getFeeConfig(
       capitalRaiseFeeBps: created.capitalRaiseFeeBps,
       distributionFeeBps: created.distributionFeeBps,
       secondaryTradeFeeBps: created.secondaryTradeFeeBps,
+      secondaryTradeBuyerFeeBps: created.secondaryTradeBuyerFeeBps,
+      withdrawalFeeBps: created.withdrawalFeeBps,
+      withdrawalFlatFee: created.withdrawalFlatFee,
       sourcingFeeBps: created.sourcingFeeBps,
       sourcingFlatFee: created.sourcingFlatFee,
       sellerFacilitationFeeBps: created.sellerFacilitationFeeBps,
@@ -121,7 +135,8 @@ export type RecordPlatformFeeArgs = {
     | "Distribution"
     | "ShareTrade"
     | "Acquisition"
-    | "OwnerSaleProposal";
+    | "OwnerSaleProposal"
+    | "WalletWithdrawal";
   sourceId: number;
   baseAmount: number;
   feeBps: number;

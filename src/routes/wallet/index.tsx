@@ -115,6 +115,12 @@ function WalletPage() {
   });
   const queue = (queueQuery.data ?? []) as any[];
 
+  const feeScheduleQuery = useQuery({
+    ...trpc.getOwnerFeeSchedule.queryOptions(),
+    enabled: !!authToken,
+  });
+  const feeSchedule = feeScheduleQuery.data as any;
+
   // ─── Paystack callback auto-verify ──────────────────────────
   useEffect(() => {
     if (!authToken) return;
@@ -484,6 +490,28 @@ function WalletPage() {
                     className="w-full rounded-xl border border-gray-200/10 bg-navy-950 px-4 py-3 text-gray-900 outline-none focus:border-indigo-500"
                   />
                 </div>
+                {feeSchedule?.enabled &&
+                  Number(wdAmount) >= 100 &&
+                  (() => {
+                    const gross = Number(wdAmount);
+                    const rawFee =
+                      (feeSchedule.withdrawalFlatFee ?? 0) +
+                      (gross * (feeSchedule.withdrawalFeePct ?? 0)) / 100;
+                    const fee = Math.min(gross, rawFee);
+                    const net = Math.max(0, gross - fee);
+                    return (
+                      <div className="rounded-xl border border-gray-200/10 bg-navy-950 px-4 py-3 text-sm">
+                        <div className="flex justify-between text-gray-400">
+                          <span>Withdrawal fee</span>
+                          <span>− {fmt(fee)}</span>
+                        </div>
+                        <div className="mt-1 flex justify-between font-semibold text-gray-900">
+                          <span>Paid to your bank</span>
+                          <span>{fmt(net)}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-400">Bank name</label>

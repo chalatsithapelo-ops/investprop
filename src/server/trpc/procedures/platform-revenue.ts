@@ -112,6 +112,8 @@ export const getPlatformRevenueLedger = adminProcedure
           "CAPITAL_RAISE",
           "DISTRIBUTION",
           "SECONDARY_TRADE",
+          "SECONDARY_TRADE_BUYER",
+          "WITHDRAWAL",
           "SOURCING",
           "SELLER_FACILITATION",
           "ASSESSMENT_PACK",
@@ -169,6 +171,11 @@ export const getOwnerFeeSchedule = baseProcedure.query(async () => {
     leaseBackSetupFee: cfg.leaseBackSetupFee,
     leaseBackMgmtPct: cfg.leaseBackMgmtFeeBps / 100,
     bondReferralFee: cfg.bondReferralFee,
+    // User-facing wallet + trade fees (disclosure)
+    withdrawalFeePct: cfg.withdrawalFeeBps / 100,
+    withdrawalFlatFee: cfg.withdrawalFlatFee,
+    secondaryTradeSellerPct: cfg.secondaryTradeFeeBps / 100,
+    secondaryTradeBuyerPct: cfg.secondaryTradeBuyerFeeBps / 100,
   };
 });
 
@@ -180,6 +187,9 @@ export const updatePlatformFeeConfig = adminProcedure
       capitalRaiseFeeBps: z.number().int().min(0).max(5000).optional(),
       distributionFeeBps: z.number().int().min(0).max(5000).optional(),
       secondaryTradeFeeBps: z.number().int().min(0).max(5000).optional(),
+      secondaryTradeBuyerFeeBps: z.number().int().min(0).max(5000).optional(),
+      withdrawalFeeBps: z.number().int().min(0).max(5000).optional(),
+      withdrawalFlatFee: z.number().min(0).max(10_000_000).optional(),
       sourcingFeeBps: z.number().int().min(0).max(5000).optional(),
       sourcingFlatFee: z.number().min(0).max(10_000_000).optional(),
       sellerFacilitationFeeBps: z.number().int().min(0).max(5000).optional(),
@@ -196,6 +206,10 @@ export const updatePlatformFeeConfig = adminProcedure
     if (input.capitalRaiseFeeBps !== undefined) data.capitalRaiseFeeBps = input.capitalRaiseFeeBps;
     if (input.distributionFeeBps !== undefined) data.distributionFeeBps = input.distributionFeeBps;
     if (input.secondaryTradeFeeBps !== undefined) data.secondaryTradeFeeBps = input.secondaryTradeFeeBps;
+    if (input.secondaryTradeBuyerFeeBps !== undefined)
+      data.secondaryTradeBuyerFeeBps = input.secondaryTradeBuyerFeeBps;
+    if (input.withdrawalFeeBps !== undefined) data.withdrawalFeeBps = input.withdrawalFeeBps;
+    if (input.withdrawalFlatFee !== undefined) data.withdrawalFlatFee = input.withdrawalFlatFee;
     if (input.sourcingFeeBps !== undefined) data.sourcingFeeBps = input.sourcingFeeBps;
     if (input.sourcingFlatFee !== undefined) data.sourcingFlatFee = input.sourcingFlatFee;
     if (input.sellerFacilitationFeeBps !== undefined)
@@ -222,6 +236,9 @@ export const updatePlatformFeeConfig = adminProcedure
       capitalRaiseFeeBps: updated.capitalRaiseFeeBps,
       distributionFeeBps: updated.distributionFeeBps,
       secondaryTradeFeeBps: updated.secondaryTradeFeeBps,
+      secondaryTradeBuyerFeeBps: updated.secondaryTradeBuyerFeeBps,
+      withdrawalFeeBps: updated.withdrawalFeeBps,
+      withdrawalFlatFee: updated.withdrawalFlatFee,
       sourcingFeeBps: updated.sourcingFeeBps,
       sourcingFlatFee: updated.sourcingFlatFee,
       sellerFacilitationFeeBps: updated.sellerFacilitationFeeBps,

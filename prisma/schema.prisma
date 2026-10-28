@@ -1265,7 +1265,8 @@ model ShareTradeSettlement {
   quantity              Int
   pricePerShare         Float
   totalAmount           Float // cash the buyer owes the seller (quantity * pricePerShare)
-  platformFee           Float                 @default(0) // SECONDARY_TRADE fee booked on settlement
+  platformFee           Float                 @default(0) // SECONDARY_TRADE (seller-side) fee deducted from proceeds
+  buyerFee              Float                 @default(0) // SECONDARY_TRADE_BUYER fee added to the buyer's debit
   securitiesTransferTax Float                 @default(0) // STT (~0.25%) on the transfer value
   status                TradeSettlementStatus @default(PENDING_PAYMENT)
   proofOfPaymentUrl     String?
@@ -1332,7 +1333,9 @@ model WalletTransaction {
 model WalletWithdrawal {
   id                   Int               @id @default(autoincrement())
   userId               Int
-  amountCents          Int // cents requested
+  amountCents          Int // gross cents requested (reserved/debited from the wallet)
+  feeCents             Int               @default(0) // WITHDRAWAL fee kept by the platform
+  netCents             Int               @default(0) // cents actually paid to the bank (amountCents - feeCents)
   status               WithdrawalStatus  @default(REQUESTED)
   bankName             String?
   accountNumber        String?
@@ -2100,7 +2103,10 @@ model PlatformFeeConfig {
   id                   Int      @id @default(autoincrement())
   capitalRaiseFeeBps   Int      @default(250) // 2.5% on investor contributions
   distributionFeeBps   Int      @default(200) // 2.0% management fee booked on distributions
-  secondaryTradeFeeBps Int      @default(100) // 1.0% on secondary share trades
+  secondaryTradeFeeBps Int      @default(100) // 1.0% on secondary share trades (seller side)
+  secondaryTradeBuyerFeeBps Int @default(100) // 1.0% on secondary share trades (buyer side)
+  withdrawalFeeBps     Int      @default(0) // % fee on wallet payouts to bank
+  withdrawalFlatFee    Float    @default(10) // flat fee on wallet payouts to bank (ZAR)
   sourcingFeeBps       Int      @default(100) // 1.0% on property acquisition price
   sourcingFlatFee      Float    @default(0) // optional flat sourcing fee (ZAR); used when > 0
   // ─── Owner (seller-side) monetization ───

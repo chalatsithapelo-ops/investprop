@@ -24,6 +24,16 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
   final _accountNumber = TextEditingController();
   final _branchCode = TextEditingController();
   bool _busy = false;
+  double _amountValue = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _amount.addListener(() {
+      final v = double.tryParse(_amount.text.trim()) ?? 0;
+      if (v != _amountValue) setState(() => _amountValue = v);
+    });
+  }
 
   @override
   void dispose() {
@@ -138,6 +148,8 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
                 labelText: 'Branch code (optional)',
               ),
             ),
+            const SizedBox(height: 16),
+            _FeeBreakdown(gross: _amountValue),
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _busy ? null : _submit,
@@ -155,6 +167,59 @@ class _WithdrawPageState extends ConsumerState<WithdrawPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Live disclosure of the withdrawal fee and the net amount the bank receives.
+class _FeeBreakdown extends ConsumerWidget {
+  const _FeeBreakdown({required this.gross});
+
+  final double gross;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(withdrawalFeeScheduleProvider);
+    return async.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (schedule) {
+        if (!schedule.enabled || gross <= 0) return const SizedBox.shrink();
+        final fee = schedule.feeFor(gross);
+        final net = schedule.netFor(gross);
+        String money(double v) => 'R${v.toStringAsFixed(2)}';
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              _row('Requested', money(gross)),
+              const SizedBox(height: 6),
+              _row('Withdrawal fee', '- ${money(fee)}'),
+              const Divider(height: 18),
+              _row('Paid to your bank', money(net), bold: true),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _row(String label, String value, {bool bold = false}) {
+    final style = TextStyle(
+      fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+      color: bold ? AppColors.textPrimary : AppColors.textSecondary,
+    );
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: style),
+        Text(value, style: style),
+      ],
     );
   }
 }

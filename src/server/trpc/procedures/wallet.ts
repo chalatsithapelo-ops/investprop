@@ -8,7 +8,8 @@ import { createNotification } from "./notifications";
 import { createAuditLog } from "./audit-log";
 import { getOrCreateWallet, creditWallet, debitWallet } from "~/server/wallet/wallet";
 import { confirmWalletDeposit } from "~/server/wallet/deposits";
-import { randsToCents, centsToRands } from "~/wallet-calculations";
+import { randsToCents, centsToRands, computeWithdrawalFeeCents } from "~/wallet-calculations";
+import { getFeeConfig, recordPlatformFee } from "~/server/fees/platform-fees";
 
 // ═══════════════════════════════════════════════════════════════
 //  In-app Wallet
@@ -214,12 +215,25 @@ export const requestWithdrawal = baseProcedure
     }
     const reference = `wd-${user.id}-${Date.now()}`;
 
+    // Platform withdrawal fee (flat + %). The full gross is reserved from the
+    // wallet; the bank receives the net (gross − fee) and the platform keeps the fee.
+    const feeConfig = await getFeeConfig();
+    const feeCents = feeConfig.enabled
+      ? computeWithdrawalFeeCents(amountCents, {
+          withdrawalFeeBps: feeConfig.withdrawalFeeBps,
+          withdrawalFlatFee: feeConfig.withdrawalFlatFee,
+        })
+      : 0;
+    const netCents = Math.max(0, amountCents - feeCents);
+
     // Reserve the funds by debiting immediately; refunded if the request is rejected.
     const withdrawal = await db.$transaction(async (tx) => {
       const wd = await tx.walletWithdrawal.create({
         data: {
           userId: user.id,
           amountCents,
+          feeCents,
+          netCents,
           status: "REQUESTED",
           bankName: input.bankName,
           accountNumber: input.accountNumber,
@@ -233,7 +247,7 @@ export const requestWithdrawal = baseProcedure
         amountCents,
         type: "WITHDRAWAL",
         reference,
-        description: `Withdrawal request #${wd.id} to ${input.bankName}`,
+        description: `Withdrawal request #${wd.id} to ${input.bankName} (R${centsToRands(netCents).toFixed(2)} net, R${centsToRands(feeCents).toFixed(2)} fee)`,
         withdrawalId: wd.id,
       });
       return wd;
@@ -254,8 +268,16 @@ export const requestWithdrawal = baseProcedure
     }
     await createAuditLog(user.id, "REQUEST_WITHDRAWAL", "WalletWithdrawal", withdrawal.id, {
       amountRands: input.amountRands,
+      feeRands: centsToRands(feeCents),
+      netRands: centsToRands(netCents),
     });
-    return { id: withdrawal.id, status: withdrawal.status, reference };
+    return {
+      id: withdrawal.id,
+      status: withdrawal.status,
+      reference,
+      feeRands: centsToRands(feeCents),
+      netRands: centsToRands(netCents),
+    };
   });
 
 // ─── My withdrawals ────────────────────────────────────────────
@@ -271,6 +293,8 @@ export const getMyWithdrawals = baseProcedure
     return rows.map((w) => ({
       id: w.id,
       amountRands: centsToRands(w.amountCents),
+      feeRands: centsToRands(w.feeCents),
+      netRands: centsToRands(w.netCents),
       status: w.status,
       bankName: w.bankName,
       accountNumber: w.accountNumber,
@@ -295,6 +319,8 @@ export const getPendingWithdrawals = baseProcedure
     return rows.map((w) => ({
       id: w.id,
       amountRands: centsToRands(w.amountCents),
+      feeRands: centsToRands(w.feeCents),
+      netRands: centsToRands(w.netCents),
       status: w.status,
       bankName: w.bankName,
       accountNumber: w.accountNumber,
@@ -327,7 +353,8 @@ export const reviewWithdrawal = baseProcedure
     }
 
     if (input.action === "MARK_PAID") {
-      // Funds were already debited on request; just mark the payout complete.
+      // Funds were already debited on request; just mark the payout complete and
+      // book the withdrawal fee as platform revenue.
       await db.walletWithdrawal.update({
         where: { id: wd.id },
         data: {
@@ -338,15 +365,31 @@ export const reviewWithdrawal = baseProcedure
           processedAt: new Date(),
         },
       });
+      if (wd.feeCents > 0) {
+        try {
+          await recordPlatformFee({
+            feeType: "WITHDRAWAL",
+            sourceType: "WalletWithdrawal",
+            sourceId: wd.id,
+            baseAmount: centsToRands(wd.amountCents),
+            feeAmount: centsToRands(wd.feeCents),
+            description: `Wallet withdrawal fee — Withdrawal #${wd.id}`,
+          });
+        } catch (err) {
+          console.error("[platform-fees] withdrawal fee capture failed:", err);
+        }
+      }
       await createNotification(
         wd.userId,
         "Withdrawal paid",
-        `Your withdrawal of R${centsToRands(wd.amountCents).toFixed(2)} has been paid to ${wd.bankName}.`,
+        `Your withdrawal has been paid to ${wd.bankName}: R${centsToRands(wd.netCents).toFixed(2)} net (R${centsToRands(wd.amountCents).toFixed(2)} gross less R${centsToRands(wd.feeCents).toFixed(2)} fee).`,
         "SUCCESS",
         "INVESTMENT",
       );
       await createAuditLog(user.id, "MARK_WITHDRAWAL_PAID", "WalletWithdrawal", wd.id, {
         amountRands: centsToRands(wd.amountCents),
+        feeRands: centsToRands(wd.feeCents),
+        netRands: centsToRands(wd.netCents),
       });
       return { success: true, status: "PAID" };
     }

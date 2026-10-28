@@ -547,6 +547,9 @@ async function matchOrders(newOrderId: number): Promise<any[]> {
     const platformFee = feeConfig.enabled
       ? Math.round(totalAmount * (feeConfig.secondaryTradeFeeBps / 10_000) * 100) / 100
       : 0;
+    const buyerFee = feeConfig.enabled
+      ? Math.round(totalAmount * (feeConfig.secondaryTradeBuyerFeeBps / 10_000) * 100) / 100
+      : 0;
     const stt = computeStt(totalAmount);
     const expiresAt = new Date(Date.now() + SETTLEMENT_WINDOW_DAYS * 86400000);
 
@@ -586,6 +589,7 @@ async function matchOrders(newOrderId: number): Promise<any[]> {
           pricePerShare: tradePrice,
           totalAmount,
           platformFee,
+          buyerFee,
           securitiesTransferTax: stt,
           expiresAt,
         },
@@ -809,8 +813,21 @@ async function settleTradeDvP(tx: TxClient, settlement: any, shareClass: any): P
         propertyId: shareClass.propertyId,
         baseAmount: totalAmount,
         feeBps: feeConfig.secondaryTradeFeeBps,
-        description: `Secondary share trade fee (${quantity} shares, Settlement #${settlement.id})`,
+        description: `Secondary share trade fee — seller (${quantity} shares, Settlement #${settlement.id})`,
       });
+      if (settlement.buyerFee > 0) {
+        await recordPlatformFee({
+          tx,
+          feeType: "SECONDARY_TRADE_BUYER",
+          sourceType: "ShareTrade",
+          sourceId: trade.id,
+          propertyId: shareClass.propertyId,
+          baseAmount: totalAmount,
+          feeBps: feeConfig.secondaryTradeBuyerFeeBps,
+          feeAmount: settlement.buyerFee,
+          description: `Secondary share trade fee — buyer (${quantity} shares, Settlement #${settlement.id})`,
+        });
+      }
     }
   } catch (err) {
     console.error("[platform-fees] secondary-trade fee capture failed:", err);
@@ -857,6 +874,7 @@ export async function autoSettleFromWallet(
     totalAmount: settlement.totalAmount,
     platformFee: settlement.platformFee,
     stt: settlement.securitiesTransferTax,
+    buyerFee: settlement.buyerFee,
   });
 
   // Fast pre-check: does the buyer have enough? (The debit is also atomically
@@ -914,7 +932,7 @@ export async function autoSettleFromWallet(
   await createNotification(
     settlement.buyerId,
     "Trade settled — shares delivered",
-    `Settlement #${settlement.id} auto-settled from your wallet. ${settlement.quantity} shares are now in your portfolio (R${settlement.totalAmount.toFixed(2)} + R${settlement.securitiesTransferTax.toFixed(2)} STT debited).`,
+    `Settlement #${settlement.id} auto-settled from your wallet. ${settlement.quantity} shares are now in your portfolio (R${settlement.totalAmount.toFixed(2)} + R${settlement.buyerFee.toFixed(2)} platform fee + R${settlement.securitiesTransferTax.toFixed(2)} STT debited).`,
     "SUCCESS",
     "INVESTMENT",
     shareClass.propertyId,
@@ -1333,6 +1351,7 @@ export const reverseShareTrade = baseProcedure
           totalAmount: settlement.totalAmount,
           platformFee: settlement.platformFee,
           stt: settlement.securitiesTransferTax,
+          buyerFee: settlement.buyerFee,
         });
         await debitWallet(tx, {
           userId: settlement.sellerId,

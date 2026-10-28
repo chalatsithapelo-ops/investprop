@@ -37,7 +37,9 @@ const ZAR = (n: number) =>
 const FEE_TYPE_META: Record<string, { label: string; icon: any; color: string }> = {
   CAPITAL_RAISE: { label: "Capital Raise", icon: Banknote, color: "text-emerald-600" },
   DISTRIBUTION: { label: "Distributions", icon: PiggyBank, color: "text-blue-600" },
-  SECONDARY_TRADE: { label: "Secondary Trades", icon: ArrowLeftRight, color: "text-purple-600" },
+  SECONDARY_TRADE: { label: "Secondary Trades (Seller)", icon: ArrowLeftRight, color: "text-purple-600" },
+  SECONDARY_TRADE_BUYER: { label: "Secondary Trades (Buyer)", icon: ArrowLeftRight, color: "text-violet-600" },
+  WITHDRAWAL: { label: "Withdrawal Fees", icon: Banknote, color: "text-orange-600" },
   SOURCING: { label: "Deal Sourcing", icon: Building2, color: "text-amber-600" },
   SELLER_FACILITATION: { label: "Seller Facilitation", icon: Home, color: "text-rose-600" },
   ASSESSMENT_PACK: { label: "Assessment Pack", icon: FileText, color: "text-cyan-600" },
@@ -76,6 +78,9 @@ function RevenuePage() {
     capitalRaiseFeeBps: number;
     distributionFeeBps: number;
     secondaryTradeFeeBps: number;
+    secondaryTradeBuyerFeeBps: number;
+    withdrawalFeeBps: number;
+    withdrawalFlatFee: number;
     sourcingFeeBps: number;
     sourcingFlatFee: number;
     sellerFacilitationFeeBps: number;
@@ -93,6 +98,9 @@ function RevenuePage() {
         capitalRaiseFeeBps: summary.config.capitalRaiseFeeBps,
         distributionFeeBps: summary.config.distributionFeeBps,
         secondaryTradeFeeBps: summary.config.secondaryTradeFeeBps,
+        secondaryTradeBuyerFeeBps: summary.config.secondaryTradeBuyerFeeBps,
+        withdrawalFeeBps: summary.config.withdrawalFeeBps,
+        withdrawalFlatFee: summary.config.withdrawalFlatFee,
         sourcingFeeBps: summary.config.sourcingFeeBps,
         sourcingFlatFee: summary.config.sourcingFlatFee,
         sellerFacilitationFeeBps: summary.config.sellerFacilitationFeeBps,
@@ -249,10 +257,34 @@ function RevenuePage() {
                     onChange={(v) => setCfg({ ...cfg, distributionFeeBps: v })}
                   />
                   <PercentField
-                    label="Secondary-trade fee"
+                    label="Secondary-trade fee (seller)"
                     bps={cfg.secondaryTradeFeeBps}
                     onChange={(v) => setCfg({ ...cfg, secondaryTradeFeeBps: v })}
                   />
+                  <PercentField
+                    label="Secondary-trade fee (buyer)"
+                    bps={cfg.secondaryTradeBuyerFeeBps}
+                    onChange={(v) => setCfg({ ...cfg, secondaryTradeBuyerFeeBps: v })}
+                  />
+                  <PercentField
+                    label="Withdrawal fee (%)"
+                    bps={cfg.withdrawalFeeBps}
+                    onChange={(v) => setCfg({ ...cfg, withdrawalFeeBps: v })}
+                  />
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      Withdrawal flat fee (ZAR)
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={cfg.withdrawalFlatFee}
+                      onChange={(e) =>
+                        setCfg({ ...cfg, withdrawalFlatFee: Number(e.target.value) || 0 })
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
                   <PercentField
                     label="Sourcing fee"
                     bps={cfg.sourcingFeeBps}

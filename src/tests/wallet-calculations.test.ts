@@ -3,6 +3,7 @@ import {
   randsToCents,
   centsToRands,
   computeSettlementCashLegs,
+  computeWithdrawalFeeCents,
   availableBalanceCents,
 } from "~/wallet-calculations";
 
@@ -52,6 +53,44 @@ describe("computeSettlementCashLegs", () => {
     expect(legs.buyerDebitCents).toBe(10_000);
     expect(legs.sellerCreditCents).toBe(10_000);
     expect(legs.platformRetainsCents).toBe(0);
+  });
+
+  it("charges both sides: buyer pays value + buyerFee + STT, seller gets value − sellerFee", () => {
+    // R10,000 trade; seller fee 1% = R100; buyer fee 1% = R100; STT R25
+    const legs = computeSettlementCashLegs({
+      totalAmount: 10_000,
+      platformFee: 100,
+      stt: 25,
+      buyerFee: 100,
+    });
+    expect(legs.buyerDebitCents).toBe(1_012_500); // R10,125
+    expect(legs.sellerCreditCents).toBe(990_000); // R9,900
+    expect(legs.platformRetainsCents).toBe(22_500); // R225 (R100 + R100 + R25)
+    expect(legs.buyerDebitCents).toBe(legs.sellerCreditCents + legs.platformRetainsCents);
+  });
+});
+
+describe("computeWithdrawalFeeCents", () => {
+  it("applies a flat fee plus a percentage of the gross", () => {
+    // R1,000 gross, flat R10 + 1% = R10 + R10 = R20 => 2000 cents
+    expect(
+      computeWithdrawalFeeCents(100_000, { withdrawalFeeBps: 100, withdrawalFlatFee: 10 }),
+    ).toBe(2_000);
+  });
+
+  it("supports a flat-only fee", () => {
+    expect(
+      computeWithdrawalFeeCents(50_000, { withdrawalFeeBps: 0, withdrawalFlatFee: 10 }),
+    ).toBe(1_000);
+  });
+
+  it("never exceeds the gross and is zero for non-positive input", () => {
+    expect(
+      computeWithdrawalFeeCents(500, { withdrawalFeeBps: 0, withdrawalFlatFee: 10 }),
+    ).toBe(500);
+    expect(
+      computeWithdrawalFeeCents(0, { withdrawalFeeBps: 100, withdrawalFlatFee: 10 }),
+    ).toBe(0);
   });
 });
 

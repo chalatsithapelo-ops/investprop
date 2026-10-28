@@ -6,9 +6,9 @@
  * Rand floats, so these helpers convert at the wallet boundary.
  *
  * Cash-leg model for a settled secondary trade (Delivery-versus-Payment):
- *   buyer pays   = tradeValue + STT            (debited from buyer wallet)
- *   seller gets  = tradeValue − platformFee    (credited to seller wallet)
- *   platform keeps = platformFee + STT
+ *   buyer pays   = tradeValue + buyerFee + STT   (debited from buyer wallet)
+ *   seller gets  = tradeValue − sellerFee         (credited to seller wallet)
+ *   platform keeps = sellerFee + buyerFee + STT
  * These satisfy conservation: buyerDebit === sellerCredit + platformRetains.
  */
 
@@ -25,11 +25,11 @@ export function centsToRands(cents: number): number {
 }
 
 export interface SettlementCashLegs {
-  /** Cents debited from the buyer (trade value + STT). */
+  /** Cents debited from the buyer (trade value + buyer fee + STT). */
   buyerDebitCents: number;
-  /** Cents credited to the seller (trade value − platform fee). */
+  /** Cents credited to the seller (trade value − seller fee). */
   sellerCreditCents: number;
-  /** Cents retained by the platform (platform fee + STT). */
+  /** Cents retained by the platform (seller fee + buyer fee + STT). */
   platformRetainsCents: number;
 }
 
@@ -39,18 +39,36 @@ export interface SettlementCashLegs {
  */
 export function computeSettlementCashLegs(args: {
   totalAmount: number; // trade value in Rands (quantity × price)
-  platformFee: number; // secondary-trade fee in Rands
+  platformFee: number; // secondary-trade fee charged to the SELLER, in Rands
   stt: number; // securities transfer tax in Rands
+  buyerFee?: number; // secondary-trade fee charged to the BUYER, in Rands
 }): SettlementCashLegs {
   const valueCents = randsToCents(args.totalAmount);
   const feeCents = Math.max(0, randsToCents(args.platformFee));
+  const buyerFeeCents = Math.max(0, randsToCents(args.buyerFee ?? 0));
   const sttCents = Math.max(0, randsToCents(args.stt));
 
-  const buyerDebitCents = valueCents + sttCents;
+  const buyerDebitCents = valueCents + buyerFeeCents + sttCents;
   const sellerCreditCents = valueCents - feeCents;
-  const platformRetainsCents = feeCents + sttCents;
+  const platformRetainsCents = feeCents + buyerFeeCents + sttCents;
 
   return { buyerDebitCents, sellerCreditCents, platformRetainsCents };
+}
+
+/**
+ * Compute the fee (in cents) the platform keeps on a wallet withdrawal to a
+ * bank account: a flat component plus a percentage of the gross amount. The
+ * fee is clamped so it can never exceed the gross (the bank would receive 0).
+ */
+export function computeWithdrawalFeeCents(
+  grossCents: number,
+  cfg: { withdrawalFeeBps: number; withdrawalFlatFee: number },
+): number {
+  if (!Number.isFinite(grossCents) || grossCents <= 0) return 0;
+  const flatCents = Math.max(0, randsToCents(cfg.withdrawalFlatFee ?? 0));
+  const bps = Math.max(0, cfg.withdrawalFeeBps ?? 0);
+  const pctCents = Math.round((grossCents * bps) / 10_000);
+  return Math.min(grossCents, flatCents + pctCents);
 }
 
 /**
