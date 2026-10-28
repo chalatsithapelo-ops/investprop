@@ -156,6 +156,19 @@ function SaleProposalsPage() {
     onError: (err: any) => toast.error(err.message ?? "Could not promote proposal"),
   });
 
+  const publishMutation = useMutation({
+    mutationFn: (params: { proposalId: number; publiclyListed: boolean }) =>
+      (trpcClient as any).setSaleProposalPublic.mutate({
+        authToken: authToken ?? "",
+        ...params,
+      }),
+    onSuccess: (res: any) => {
+      toast.success(res?.publiclyListed ? "Listed on the public resale market" : "Removed from public resale market");
+      queryClient.invalidateQueries({ queryKey: trpc.getSaleProposals.queryKey() });
+    },
+    onError: (err: any) => toast.error(err.message ?? "Could not update public listing"),
+  });
+
   const downloadLOI = async (proposalId: number) => {
     try {
       const loi = await (trpcClient as any).generateLetterOfIntent.query({
@@ -633,6 +646,32 @@ function SaleProposalsPage() {
                                   </button>
                                 )}
                               </div>
+                              {/* Public resale marketplace toggle */}
+                              {!proposal.convertedToPropertyId && (
+                                <div className="mt-2">
+                                  {proposal.publiclyListed ? (
+                                    <button
+                                      onClick={() =>
+                                        publishMutation.mutate({ proposalId: proposal.id, publiclyListed: false })
+                                      }
+                                      disabled={publishMutation.isPending}
+                                      className="w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                                    >
+                                      Remove from public resale market
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() =>
+                                        publishMutation.mutate({ proposalId: proposal.id, publiclyListed: true })
+                                      }
+                                      disabled={publishMutation.isPending}
+                                      className="w-full rounded-lg bg-purple-600 px-3 py-2 text-xs font-semibold text-white hover:bg-purple-700 disabled:opacity-50"
+                                    >
+                                      List on public resale market
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )}
 

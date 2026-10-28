@@ -851,3 +851,203 @@ export const promoteSaleProposalToProperty = baseProcedure
 
     return { success: true, propertyId: property.id, title: property.title };
   });
+
+// ═══════════════════════════════════════════════════════════════
+//  Public resale marketplace — properties the SPV chooses NOT to flip
+//  but lists for the public to buy outright. Buyers browse, view a
+//  PII-safe listing, and finance the purchase via the home-loan flow.
+// ═══════════════════════════════════════════════════════════════
+
+/** PII-safe projection for a buyer-facing resale listing. */
+function serialisePublicListing(p: {
+  id: number;
+  title: string;
+  description: string;
+  address: string;
+  city: string;
+  province: string;
+  propertyType: string;
+  askingPrice: number;
+  marketValue: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  squareMeters: number | null;
+  erfSize: number | null;
+  imageUrls: unknown;
+  conditionRating: string;
+  publiclyListedAt: Date | null;
+}) {
+  const images = Array.isArray(p.imageUrls) ? (p.imageUrls as string[]) : [];
+  return {
+    id: p.id,
+    title: p.title,
+    description: p.description,
+    address: p.address,
+    city: p.city,
+    province: p.province,
+    propertyType: p.propertyType,
+    askingPrice: p.askingPrice,
+    marketValue: p.marketValue,
+    bedrooms: p.bedrooms,
+    bathrooms: p.bathrooms,
+    squareMeters: p.squareMeters,
+    erfSize: p.erfSize,
+    imageUrls: images,
+    conditionRating: p.conditionRating,
+    publiclyListedAt: p.publiclyListedAt,
+  };
+}
+
+// ─── Admin: list / delist a proposal on the public resale market ─────
+export const setSaleProposalPublic = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      proposalId: z.number(),
+      publiclyListed: z.boolean(),
+    }),
+  )
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    requireRole(
+      user,
+      ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
+      "Only managers can publish resale listings",
+    );
+
+    const proposal = await db.ownerSaleProposal.findUnique({ where: { id: input.proposalId } });
+    if (!proposal) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Sale proposal not found" });
+    }
+    if (proposal.convertedToPropertyId) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "This proposal was promoted into the investment pipeline and cannot be public-listed.",
+      });
+    }
+
+    const updated = await db.ownerSaleProposal.update({
+      where: { id: proposal.id },
+      data: {
+        publiclyListed: input.publiclyListed,
+        publiclyListedAt: input.publiclyListed ? (proposal.publiclyListedAt ?? new Date()) : null,
+      },
+    });
+
+    await createAuditLog(
+      user.id,
+      input.publiclyListed ? "PUBLISH_RESALE_LISTING" : "UNPUBLISH_RESALE_LISTING",
+      "OwnerSaleProposal",
+      proposal.id,
+    );
+
+    if (input.publiclyListed) {
+      await createNotification(
+        proposal.ownerId,
+        "Your property is now listed for sale to the public",
+        `"${proposal.title}" is live on the InvestProp resale marketplace for buyers to view and make an offer.`,
+        "SUCCESS",
+        "PROPERTY",
+        proposal.id,
+      );
+    }
+
+    return { success: true as const, publiclyListed: updated.publiclyListed };
+  });
+
+// ─── Public (logged-in): browse the resale marketplace ──────────────
+export const getPublicResaleListings = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      province: z.string().optional(),
+      propertyType: z.string().optional(),
+      maxPrice: z.number().positive().optional(),
+      search: z.string().max(120).optional(),
+    }),
+  )
+  .query(async ({ input }) => {
+    await getAuthenticatedUser(input.authToken);
+
+    const where: any = {
+      publiclyListed: true,
+      convertedToPropertyId: null,
+      status: { not: "WITHDRAWN" },
+    };
+    if (input.province) where.province = input.province;
+    if (input.propertyType) where.propertyType = input.propertyType;
+    if (input.maxPrice) where.askingPrice = { lte: input.maxPrice };
+    if (input.search) {
+      where.OR = [
+        { title: { contains: input.search, mode: "insensitive" } },
+        { city: { contains: input.search, mode: "insensitive" } },
+        { address: { contains: input.search, mode: "insensitive" } },
+      ];
+    }
+
+    const rows = await db.ownerSaleProposal.findMany({
+      where,
+      orderBy: { publiclyListedAt: "desc" },
+      take: 120,
+    });
+    return { listings: rows.map(serialisePublicListing) };
+  });
+
+// ─── Public (logged-in): one resale listing ─────────────────────────
+export const getPublicResaleListing = baseProcedure
+  .input(z.object({ authToken: z.string(), id: z.number().int().positive() }))
+  .query(async ({ input }) => {
+    await getAuthenticatedUser(input.authToken);
+    const p = await db.ownerSaleProposal.findFirst({
+      where: { id: input.id, publiclyListed: true, convertedToPropertyId: null },
+    });
+    if (!p) throw new TRPCError({ code: "NOT_FOUND", message: "Listing not found" });
+    return { listing: serialisePublicListing(p) };
+  });
+
+// ─── Buyer: express interest / make an offer on a resale listing ─────
+export const expressResaleInterest = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      id: z.number().int().positive(),
+      offerAmount: z.number().min(0).max(1_000_000_000).optional(),
+      message: z.string().max(1000).optional(),
+      contactPhone: z.string().max(40).optional(),
+    }),
+  )
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    const listing = await db.ownerSaleProposal.findFirst({
+      where: { id: input.id, publiclyListed: true, convertedToPropertyId: null },
+    });
+    if (!listing) throw new TRPCError({ code: "NOT_FOUND", message: "Listing not found" });
+
+    // Notify the managers who handle acquisitions/sales.
+    const managers = await db.user.findMany({
+      where: { role: { in: ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"] }, status: "ACTIVE" },
+      select: { id: true },
+    });
+    const offerText = input.offerAmount
+      ? ` Offer: R${Math.round(input.offerAmount).toLocaleString("en-ZA")}.`
+      : "";
+    await Promise.all(
+      managers.map((m) =>
+        createNotification(
+          m.id,
+          "New resale buyer enquiry",
+          `${user.name} is interested in "${listing.title}".${offerText}`,
+          "INFO",
+          "PROPERTY",
+          listing.id,
+        ),
+      ),
+    );
+
+    await createAuditLog(user.id, "EXPRESS_RESALE_INTEREST", "OwnerSaleProposal", listing.id, {
+      offerAmount: input.offerAmount ?? null,
+    });
+
+    return { success: true as const };
+  });
+

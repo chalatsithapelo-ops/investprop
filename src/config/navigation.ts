@@ -454,6 +454,14 @@ export const mainNavigationLinks: NavigationLink[] = [
     description: "Browse live AI-graded distressed & auction listings",
   },
   {
+    label: "Resale Market",
+    to: "/resale-market",
+    icon: Home,
+    roles: ["INVESTOR", "PROPERTY_OWNER", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
+    hideFromAdmin: true,
+    description: "Browse homes listed by owners for sale to the public",
+  },
+  {
     label: "Deal Alerts",
     to: "/distressed-alerts",
     icon: Gavel,
