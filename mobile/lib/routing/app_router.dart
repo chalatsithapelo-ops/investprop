@@ -14,10 +14,12 @@ import '../features/contributions/presentation/contributions_page.dart';
 import '../features/dashboard/dashboard_page.dart';
 import '../features/distressed/presentation/distressed_deals_page.dart';
 import '../features/distressed/presentation/distressed_deal_detail_page.dart';
+import '../features/distressed/presentation/distressed_alerts_page.dart';
 import '../features/documents/presentation/documents_page.dart';
 import '../features/finance/presentation/home_loan_applications_page.dart';
 import '../features/finance/presentation/home_loan_apply_page.dart';
 import '../features/finance/presentation/prequalification_page.dart';
+import '../features/finance/presentation/referral_services_page.dart';
 import '../features/governance/presentation/distributions_voting_page.dart';
 import '../features/investment/presentation/invest_page.dart';
 import '../features/land_partnership/presentation/land_partnership_page.dart';
@@ -39,6 +41,10 @@ import '../features/portfolio/presentation/holding_detail_page.dart';
 import '../features/portfolio/presentation/portfolio_page.dart';
 import '../features/profile/presentation/edit_profile_page.dart';
 import '../features/profile/presentation/profile_page.dart';
+import '../features/profile/presentation/investment_preferences_page.dart';
+import '../features/resale/presentation/resale_market_page.dart';
+import '../features/resale/presentation/resale_detail_page.dart';
+import '../features/resale/data/resale_repository.dart';
 import '../features/subscription/presentation/subscription_page.dart';
 import '../features/shell/home_shell.dart';
 import '../features/shell/splash_page.dart';
@@ -134,6 +140,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/land-partnership',
         parentNavigatorKey: _rootKey,
         builder: (_, __) => const LandPartnershipPage(),
+      ),
+      GoRoute(
+        path: '/resale-market',
+        parentNavigatorKey: _rootKey,
+        builder: (_, __) => const ResaleMarketPage(),
+        routes: [
+          GoRoute(
+            path: ':id',
+            parentNavigatorKey: _rootKey,
+            builder: (context, state) {
+              final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+              final initial = state.extra is ResaleListing
+                  ? state.extra as ResaleListing
+                  : null;
+              return ResaleDetailPage(id: id, initial: initial);
+            },
+          ),
+        ],
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => HomeShell(navigationShell: shell),
@@ -349,6 +373,21 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'prequalify',
                     parentNavigatorKey: _rootKey,
                     builder: (_, __) => const PrequalificationPage(),
+                  ),
+                  GoRoute(
+                    path: 'preferences',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const InvestmentPreferencesPage(),
+                  ),
+                  GoRoute(
+                    path: 'deal-alerts',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const DistressedAlertsPage(),
+                  ),
+                  GoRoute(
+                    path: 'services',
+                    parentNavigatorKey: _rootKey,
+                    builder: (_, __) => const ReferralServicesPage(),
                   ),
                   GoRoute(
                     path: 'home-loan',

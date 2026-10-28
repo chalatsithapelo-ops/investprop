@@ -126,6 +126,58 @@ class ProfilePage extends ConsumerWidget {
                   const Divider(height: 1),
                   ListTile(
                     leading: const Icon(
+                      Icons.notifications_active_outlined,
+                      color: AppColors.navy,
+                    ),
+                    title: const Text('Distressed deal alerts'),
+                    subtitle: const Text(
+                      'Get notified when matching deals appear',
+                    ),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => context.push('/profile/deal-alerts'),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.tune,
+                      color: AppColors.navy,
+                    ),
+                    title: const Text('Investment preferences'),
+                    subtitle: const Text(
+                      'Tailor opportunities to your strategy',
+                    ),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => context.push('/profile/preferences'),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.storefront_outlined,
+                      color: AppColors.navy,
+                    ),
+                    title: const Text('Resale market'),
+                    subtitle: const Text(
+                      'Browse owner-listed properties for sale',
+                    ),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => context.push('/resale-market'),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.handshake_outlined,
+                      color: AppColors.navy,
+                    ),
+                    title: const Text('Partner services'),
+                    subtitle: const Text(
+                      'Bond originators, conveyancers, insurers & more',
+                    ),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => context.push('/profile/services'),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(
                       Icons.calculate_outlined,
                       color: AppColors.navy,
                     ),
