@@ -86,6 +86,14 @@ export const purchaseShares = baseProcedure
   )
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
+    // Primary-market issuance is a manager action (the Share Issuance Panel is
+    // manager-only). Without this guard any authenticated investor could call
+    // purchaseShares directly to mint themselves free shares (no payment leg).
+    requireRole(
+      user,
+      ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
+      "Only managers can issue shares",
+    );
 
     const shareClass = await db.shareClass.findUnique({
       where: { id: input.shareClassId },

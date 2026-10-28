@@ -262,7 +262,10 @@ export const checkKYCCompliance = baseProcedure
   .input(z.object({ authToken: z.string(), investorId: z.number().optional() }))
   .query(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
-    const targetId = input.investorId ?? user.id;
+    // Only staff may check another investor's compliance; investors are
+    // restricted to their own status regardless of the investorId input.
+    const isStaff = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"].includes(user.role);
+    const targetId = input.investorId && isStaff ? input.investorId : user.id;
 
     const docs = await db.kYCDocument.findMany({
       where: { investorId: targetId },

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
@@ -150,10 +151,17 @@ export const getLegalDocuments = baseProcedure
     })
   )
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
     const where: any = {};
     if (input.propertyId) where.propertyId = input.propertyId;
     if (input.documentType) where.documentType = input.documentType;
+
+    // Non-staff callers may only see property-level/shared documents and their
+    // own personal documents — never another investor's share/tax certificates.
+    const isStaff = (LEGAL_STAFF_ROLES as readonly string[]).includes(user.role);
+    if (!isStaff) {
+      where.OR = [{ generatedFor: null }, { generatedFor: user.id }];
+    }
 
     return db.legalDocument.findMany({
       where,
@@ -192,14 +200,23 @@ export const updateDocumentStatus = baseProcedure
 export const getLegalDocumentById = baseProcedure
   .input(z.object({ authToken: z.string(), documentId: z.number() }))
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
-    return db.legalDocument.findUnique({
+    const user = await getAuthenticatedUser(input.authToken);
+    const doc = await db.legalDocument.findUnique({
       where: { id: input.documentId },
       include: {
         property: true,
         spv: true,
       },
     });
+    if (!doc) throw new TRPCError({ code: "NOT_FOUND", message: "Document not found" });
+
+    // Non-staff callers may only open property-level/shared documents or their
+    // own personal documents — never another investor's certificate by id.
+    const isStaff = (LEGAL_STAFF_ROLES as readonly string[]).includes(user.role);
+    if (!isStaff && doc.generatedFor !== null && doc.generatedFor !== user.id) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this document" });
+    }
+    return doc;
   });
 
 // ─── Investor Document Vault ──────────────────────────────────
