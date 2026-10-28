@@ -51,7 +51,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Properties",
     icon: Building2,
-    matchLabels: ["Property Flips", "Rental Bonds", "Developments"],
+    matchLabels: ["Property Flips", "Rental Bonds", "Developments", "Financial Models"],
   },
   {
     label: "Finance",
@@ -73,6 +73,7 @@ const navGroups: NavGroup[] = [
       "SPV Management",
       "Acquisitions",
       "Project Management",
+      "Project Readiness",
       "Contractor Management",
       "Contractor Portal",
       "Sale Proposals",

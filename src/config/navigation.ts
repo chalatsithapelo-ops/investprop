@@ -85,6 +85,13 @@ export const mainNavigationLinks: NavigationLink[] = [
     roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "INVESTOR"],
   },
   {
+    label: "Financial Models",
+    to: "/financial-models",
+    icon: Calculator,
+    roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "INVESTOR"],
+    description: "Model profitability for shopping centre, affordable housing & rental developments",
+  },
+  {
     label: "Investments",
     to: "/investments",
     icon: DollarSign,
@@ -101,6 +108,13 @@ export const mainNavigationLinks: NavigationLink[] = [
     to: "/project-management",
     icon: Target,
     roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
+  },
+  {
+    label: "Project Readiness",
+    to: "/admin/development-readiness",
+    icon: HardHat,
+    roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"],
+    description: "Feasibility gates, professional team (QS, town planner…) & statutory approvals",
   },
   {
     label: "Contractor Management",
