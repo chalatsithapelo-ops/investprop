@@ -571,6 +571,27 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
   // Phase 12 — Variation Orders
   const [showVariationForm, setShowVariationForm] = useState<number | null>(null);
   const [variationForm, setVariationForm] = useState({ title: "", description: "", amountDelta: "", daysDelta: "0" });
+  // Accept & Sign — capturing the contractor's e-signature is required to accept a work order
+  const [acceptSignWO, setAcceptSignWO] = useState<number | null>(null);
+  const [signatureName, setSignatureName] = useState("");
+  const [accepting, setAccepting] = useState(false);
+
+  const handleAcceptAndSign = async (workOrderId: number) => {
+    if (signatureName.trim().length < 3) { toast.error("Type your full legal name to accept"); return; }
+    setAccepting(true);
+    try {
+      await trpcClient.acceptWorkOrder.mutate({ authToken, workOrderId, signatureFullName: signatureName.trim() });
+      toast.success("Work order accepted & signed");
+      setAcceptSignWO(null);
+      setSignatureName("");
+      queryClient.invalidateQueries({ queryKey: trpc.getWorkOrders.queryKey() });
+      queryClient.invalidateQueries({ queryKey: trpc.getContractorDashboard.queryKey() });
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to accept work order");
+    } finally {
+      setAccepting(false);
+    }
+  };
 
   const submitVariation = async (workOrderId: number) => {
     if (!variationForm.title.trim() || variationForm.title.length < 3) {
@@ -681,6 +702,43 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
 
   return (
     <div className="space-y-4">
+      {acceptSignWO !== null && (() => {
+        const wo = orders.find((o: any) => o.id === acceptSignWO);
+        if (!wo) return null;
+        const retentionPct = wo.retentionPercent ?? 0;
+        const retentionAmount = (wo.agreedAmount * retentionPct) / 100;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !accepting && setAcceptSignWO(null)}>
+            <div className="w-full max-w-md rounded-xl border border-navy-700 bg-navy-900 p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-lg font-semibold text-white">Accept &amp; Sign Work Order</h3>
+              <p className="mt-1 text-sm text-black">{wo.title}</p>
+              <div className="mt-4 space-y-1 rounded-lg bg-navy-800/60 p-4 text-sm text-black">
+                <div className="flex justify-between"><span>Agreed amount</span><span className="font-medium text-gold-400">R {wo.agreedAmount.toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>Retention ({retentionPct}%)</span><span className="font-medium text-white">R {retentionAmount.toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>Due</span><span>{new Date(wo.expectedEndDate).toLocaleDateString("en-ZA")}</span></div>
+              </div>
+              <p className="mt-4 text-xs text-black">
+                By typing your full legal name below you electronically sign and accept this work order and its retention terms, in terms of the Electronic Communications and Transactions Act 25 of 2002.
+              </p>
+              <label className="mt-3 block text-sm font-medium text-black">Full legal name (e-signature)</label>
+              <input
+                type="text"
+                value={signatureName}
+                onChange={(e) => setSignatureName(e.target.value)}
+                placeholder="e.g. Carlos Contractor"
+                className="mt-1 w-full rounded-lg border border-navy-600 bg-navy-950 px-3 py-2 text-sm text-black"
+                autoFocus
+              />
+              <div className="mt-5 flex justify-end gap-2">
+                <button onClick={() => setAcceptSignWO(null)} disabled={accepting} className="rounded-lg border border-navy-600 px-4 py-2 text-sm text-black hover:bg-navy-800 disabled:opacity-50">Cancel</button>
+                <button onClick={() => handleAcceptAndSign(wo.id)} disabled={accepting || signatureName.trim().length < 3} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50">
+                  {accepting ? "Signing…" : "Accept & Sign"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {orders.map((wo: any) => {
         const isExpanded = expandedWO === wo.id;
         return (
@@ -710,8 +768,8 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {wo.status === "ISSUED" && (
-                    <button onClick={() => handleUpdateStatus(wo.id, "ACCEPTED")} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">
-                      Accept
+                    <button onClick={() => { setAcceptSignWO(wo.id); setSignatureName(""); }} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">
+                      Accept &amp; Sign
                     </button>
                   )}
                   {wo.status === "ACCEPTED" && (
