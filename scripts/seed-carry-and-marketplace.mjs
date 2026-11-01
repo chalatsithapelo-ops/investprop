@@ -24,9 +24,9 @@ async function ensureInvestorCode(user) {
   });
 }
 
-/** Carry-aware share count for a funding goal at R1/share (matches backend). */
-function totalSharesFor(fundingGoal) {
-  return Math.max(1, Math.round(fundingGoal / PUBLIC_FRACTION));
+/** Carry-aware share count: public funds goal/publicFraction worth of equity. */
+function totalSharesFor(fundingGoal, pricePerShare) {
+  return Math.max(1, Math.round(fundingGoal / PUBLIC_FRACTION / pricePerShare));
 }
 
 async function main() {
@@ -222,7 +222,7 @@ async function main() {
   } else {
     const [john, naledi, thabo] = investors;
     const price = 100; // R100 / share
-    const totalShares = totalSharesFor(rental.fundingGoal); // carry-aware
+    const totalShares = totalSharesFor(rental.fundingGoal, price); // carry-aware
 
     const shareClass = await db.shareClass.upsert({
       where: { propertyId_name: { propertyId: rental.id, name: "Ordinary" } },
