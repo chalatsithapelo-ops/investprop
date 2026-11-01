@@ -7,6 +7,7 @@ import '../../../config/theme.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/format.dart';
 import '../../../widgets/async_value_widget.dart';
+import '../../wallet/data/wallet_repository.dart';
 import '../data/marketplace_repository.dart';
 import '../domain/marketplace_models.dart';
 
@@ -564,6 +565,19 @@ class _PlaceOrderSheetState extends ConsumerState<_PlaceOrderSheet> {
   @override
   Widget build(BuildContext context) {
     final isBuy = widget.side == 'BUY';
+    final qty = int.tryParse(_qty.text.trim()) ?? 0;
+    final price = double.tryParse(_price.text.trim()) ?? 0;
+    final walletBalance = isBuy
+        ? ref.watch(myWalletProvider).valueOrNull?.balanceRands
+        : null;
+    // Client-side guard mirrors the server's pre-funding rule (value + 0.25%
+    // STT). The server also adds any buyer platform fee and is authoritative.
+    final estTotal = isBuy ? qty * price * 1.0025 : qty * price;
+    final insufficient = isBuy &&
+        walletBalance != null &&
+        qty > 0 &&
+        price > 0 &&
+        estTotal > walletBalance + 0.001;
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
@@ -586,6 +600,15 @@ class _PlaceOrderSheetState extends ConsumerState<_PlaceOrderSheet> {
               'statement).',
               style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
+            if (isBuy) ...[
+              const SizedBox(height: 4),
+              const Text(
+                'Buy orders must be pre-funded: your wallet has to cover the '
+                'full cost before the order is placed, so the trade settles '
+                'instantly on a match.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ],
             const SizedBox(height: 16),
             TextFormField(
               controller: _qty,
@@ -619,14 +642,16 @@ class _PlaceOrderSheetState extends ConsumerState<_PlaceOrderSheet> {
             const SizedBox(height: 16),
             _OrderValuePanel(
               isBuy: isBuy,
-              quantity: int.tryParse(_qty.text.trim()) ?? 0,
-              pricePerShare: double.tryParse(_price.text.trim()) ?? 0,
+              quantity: qty,
+              pricePerShare: price,
+              walletBalanceRands: walletBalance,
+              insufficient: insufficient,
             ),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: _busy ? null : _submit,
+                onPressed: (_busy || insufficient) ? null : _submit,
                 style: FilledButton.styleFrom(
                     backgroundColor:
                         isBuy ? AppColors.success : AppColors.danger),
@@ -636,7 +661,11 @@ class _PlaceOrderSheetState extends ConsumerState<_PlaceOrderSheet> {
                         width: 20,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                    : Text(isBuy ? 'Place buy order' : 'Place sell order'),
+                    : Text(isBuy
+                        ? (insufficient
+                            ? 'Top up wallet to buy'
+                            : 'Place buy order')
+                        : 'Place sell order'),
               ),
             ),
           ],
@@ -653,11 +682,15 @@ class _OrderValuePanel extends StatelessWidget {
     required this.isBuy,
     required this.quantity,
     required this.pricePerShare,
+    this.walletBalanceRands,
+    this.insufficient = false,
   });
 
   final bool isBuy;
   final int quantity;
   final double pricePerShare;
+  final double? walletBalanceRands;
+  final bool insufficient;
 
   // Securities Transfer Tax charged on share purchases in South Africa.
   static const double _sttRate = 0.0025;
@@ -668,6 +701,9 @@ class _OrderValuePanel extends StatelessWidget {
     final stt = isBuy ? value * _sttRate : 0.0;
     final total = isBuy ? value + stt : value;
     final ready = quantity > 0 && pricePerShare > 0;
+    final shortfall = (walletBalanceRands != null)
+        ? (total - walletBalanceRands!).clamp(0, double.infinity)
+        : 0.0;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -692,6 +728,40 @@ class _OrderValuePanel extends StatelessWidget {
             bold: true,
             highlight: true,
           ),
+          if (isBuy && walletBalanceRands != null) ...[
+            const SizedBox(height: 4),
+            _kv('Wallet balance', Fmt.money(walletBalanceRands!)),
+          ],
+          if (isBuy && insufficient && ready) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.danger.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.account_balance_wallet_outlined,
+                      size: 14, color: AppColors.danger),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Top up ${Fmt.money(shortfall.toDouble())} on the Wallet '
+                      'page to place this order.',
+                      style: const TextStyle(
+                          fontSize: 11,
+                          height: 1.35,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.danger),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -701,9 +771,9 @@ class _OrderValuePanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   isBuy
-                      ? 'If your wallet is funded, the trade settles instantly '
-                            'and your share certificate is issued automatically. '
-                            'Otherwise it auto-completes the moment you top up.'
+                      ? 'Your wallet is debited the moment a seller matches, so '
+                            'the trade settles instantly and your share '
+                            'certificate is issued automatically.'
                       : 'When a buyer matches, the shares transfer and your '
                             'wallet is credited automatically — no manual step.',
                   style: const TextStyle(
