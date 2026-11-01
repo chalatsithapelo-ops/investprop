@@ -27,6 +27,7 @@ export type StrategyConfig = {
   financingTermMonths: number;
   stressDownPct: number;
   stressUpPct: number;
+  holdingType: "INDIVIDUAL" | "COMPANY";
 };
 
 export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
@@ -38,6 +39,7 @@ export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
   financingTermMonths: 60,
   stressDownPct: 10,
   stressUpPct: 10,
+  holdingType: "COMPANY",
 };
 
 const STRATEGY_LABELS: Record<InvestorStrategy, { label: string; blurb: string }> = {
@@ -74,6 +76,7 @@ export function InvestmentProjection({ propertyId, amount, config, onConfigChang
       holdMonths: config.holdMonths ?? undefined,
       stressDownPct: config.stressDownPct,
       stressUpPct: config.stressUpPct,
+      holdingType: config.holdingType,
       financing:
         config.usesFinancing && config.financingAmount > 0
           ? {
@@ -219,6 +222,33 @@ export function InvestmentProjection({ propertyId, amount, config, onConfigChang
               className="w-full accent-emerald-500"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Tax treatment: how you hold the stake */}
+      <div className="mb-3 rounded-lg bg-white/60 p-2.5">
+        <p className="mb-1.5 text-[11px] font-semibold text-gray-700">
+          How you hold this investment
+        </p>
+        <p className="mb-2 text-[10px] text-gray-500">
+          Changes the estimated tax assumption below. Company/SPV uses 27% / ~21.6% CGT; individual uses your marginal rate.
+        </p>
+        <div className="flex gap-1.5">
+          {(["COMPANY", "INDIVIDUAL"] as const).map((h) => {
+            const activeH = config.holdingType === h;
+            return (
+              <button
+                key={h}
+                type="button"
+                onClick={() => onConfigChange({ ...config, holdingType: h })}
+                className={`rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
+                  activeH ? "bg-navy-600 text-white" : "bg-white/70 text-gray-600 hover:bg-navy-100"
+                }`}
+              >
+                {h === "COMPANY" ? "Company / SPV" : "Individual"}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -369,6 +399,9 @@ export function InvestmentProjection({ propertyId, amount, config, onConfigChang
                 {base.taxEstimate > 0 && (
                   <FlowRow label="− Estimated tax" value={`-${R(base.taxEstimate)}`} negative />
                 )}
+                {base.transactionCosts > 0 && (
+                  <FlowRow label="− Estimated transaction costs" value={`-${R(base.transactionCosts)}`} negative />
+                )}
                 {base.loanInterestPaid > 0 && (
                   <FlowRow label="− Loan interest" value={`-${R(base.loanInterestPaid)}`} negative term="gearing" />
                 )}
@@ -388,6 +421,18 @@ export function InvestmentProjection({ propertyId, amount, config, onConfigChang
             <p className="mt-3 rounded-lg bg-navy-50 p-2.5 text-[11px] leading-relaxed text-gray-700">
               {data.projection.summary}
             </p>
+          )}
+
+          {/* Disclosure notes (tax / preferred / transaction-cost assumptions) */}
+          {Array.isArray(data?.projection?.notes) && data.projection.notes.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {data.projection.notes.map((n: string, i: number) => (
+                <li key={i} className="flex items-start gap-1 text-[10px] leading-relaxed text-gray-500">
+                  <InfoIcon size={10} className="mt-0.5 shrink-0" />
+                  <span>{n}</span>
+                </li>
+              ))}
+            </ul>
           )}
 
           <p className="mt-2 text-[10px] leading-relaxed text-gray-400">

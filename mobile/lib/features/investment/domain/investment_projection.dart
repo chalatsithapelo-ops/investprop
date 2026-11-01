@@ -56,6 +56,25 @@ enum InvestorStrategy {
   }
 }
 
+/// How the investor holds the stake — drives the estimated tax assumption.
+enum HoldingType {
+  company,
+  individual;
+
+  String get wire => switch (this) {
+    HoldingType.company => 'COMPANY',
+    HoldingType.individual => 'INDIVIDUAL',
+  };
+
+  String get label => switch (this) {
+    HoldingType.company => 'Company / SPV',
+    HoldingType.individual => 'Individual',
+  };
+
+  static HoldingType fromWire(String? v) =>
+      v == 'INDIVIDUAL' ? HoldingType.individual : HoldingType.company;
+}
+
 /// One scenario band of a per-investor projection.
 class InvestorScenario {
   const InvestorScenario({
@@ -65,6 +84,9 @@ class InvestorScenario {
     required this.grossPayout,
     required this.platformFee,
     required this.taxEstimate,
+    required this.incomeTaxEstimate,
+    required this.capitalGainsTaxEstimate,
+    required this.transactionCosts,
     required this.loanInterestPaid,
     required this.loanPrincipalRepaid,
     required this.netProceeds,
@@ -81,6 +103,9 @@ class InvestorScenario {
   final double grossPayout;
   final double platformFee;
   final double taxEstimate;
+  final double incomeTaxEstimate;
+  final double capitalGainsTaxEstimate;
+  final double transactionCosts;
   final double loanInterestPaid;
   final double loanPrincipalRepaid;
   final double netProceeds;
@@ -97,6 +122,9 @@ class InvestorScenario {
     grossPayout: asDouble(j['grossPayout']),
     platformFee: asDouble(j['platformFee']),
     taxEstimate: asDouble(j['taxEstimate']),
+    incomeTaxEstimate: asDouble(j['incomeTaxEstimate']),
+    capitalGainsTaxEstimate: asDouble(j['capitalGainsTaxEstimate']),
+    transactionCosts: asDouble(j['transactionCosts']),
     loanInterestPaid: asDouble(j['loanInterestPaid']),
     loanPrincipalRepaid: asDouble(j['loanPrincipalRepaid']),
     netProceeds: asDouble(j['netProceeds']),
@@ -127,6 +155,8 @@ class InvestmentProjection {
     required this.availableStrategies,
     required this.projectHoldMonths,
     required this.preferredReturnRate,
+    required this.holdingType,
+    required this.notes,
   });
 
   final double numberOfShares;
@@ -145,6 +175,8 @@ class InvestmentProjection {
   final List<InvestorStrategy> availableStrategies;
   final int projectHoldMonths;
   final double preferredReturnRate;
+  final HoldingType holdingType;
+  final List<String> notes;
 
   static InvestmentProjection? fromJson(dynamic json) {
     if (json is! Map) return null;
@@ -178,6 +210,15 @@ class InvestmentProjection {
       availableStrategies: strategies,
       projectHoldMonths: asInt(json['projectHoldMonths']),
       preferredReturnRate: asDouble(json['preferredReturnRate']),
+      holdingType: HoldingType.fromWire(
+        (json['holdingType'] ?? proj['holdingType'])?.toString(),
+      ),
+      notes:
+          (proj['notes'] as List?)
+              ?.map((e) => e?.toString() ?? '')
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          <String>[],
     );
   }
 }
@@ -193,6 +234,7 @@ class StrategyConfig {
     this.financingTermMonths = 60,
     this.stressDownPct = 10,
     this.stressUpPct = 10,
+    this.holdingType = HoldingType.company,
   });
 
   final InvestorStrategy? strategy;
@@ -203,6 +245,7 @@ class StrategyConfig {
   final int financingTermMonths;
   final int stressDownPct;
   final int stressUpPct;
+  final HoldingType holdingType;
 
   StrategyConfig copyWith({
     InvestorStrategy? strategy,
@@ -213,6 +256,7 @@ class StrategyConfig {
     int? financingTermMonths,
     int? stressDownPct,
     int? stressUpPct,
+    HoldingType? holdingType,
   }) => StrategyConfig(
     strategy: strategy ?? this.strategy,
     holdMonths: holdMonths ?? this.holdMonths,
@@ -222,5 +266,6 @@ class StrategyConfig {
     financingTermMonths: financingTermMonths ?? this.financingTermMonths,
     stressDownPct: stressDownPct ?? this.stressDownPct,
     stressUpPct: stressUpPct ?? this.stressUpPct,
+    holdingType: holdingType ?? this.holdingType,
   );
 }

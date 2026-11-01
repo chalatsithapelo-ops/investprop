@@ -80,6 +80,7 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
             financingTermMonths: c.financingTermMonths,
             stressDownPct: c.stressDownPct,
             stressUpPct: c.stressUpPct,
+            holdingType: c.holdingType,
           );
       if (!mounted) return;
       setState(() => _projection = p);
@@ -243,6 +244,14 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
 
           // Investor-controlled stress test
           _StressSection(
+            config: widget.config,
+            onConfigChange: widget.onConfigChange,
+          ),
+
+          const SizedBox(height: 12),
+
+          // Tax treatment: how the stake is held
+          _HoldingSection(
             config: widget.config,
             onConfigChange: widget.onConfigChange,
           ),
@@ -428,6 +437,67 @@ class _StressSection extends StatelessWidget {
             onChanged: (v) => onConfigChange(
               config.copyWith(stressUpPct: (v / 5).round() * 5),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// How the investor holds the stake — flexes the estimated tax assumption.
+class _HoldingSection extends StatelessWidget {
+  const _HoldingSection({required this.config, required this.onConfigChange});
+
+  final StrategyConfig config;
+  final ValueChanged<StrategyConfig> onConfigChange;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'How you hold this investment',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Changes the estimated tax below. Company/SPV uses 27% / ~21.6% CGT; individual uses your marginal rate.',
+            style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            children: HoldingType.values.map((h) {
+              final active = config.holdingType == h;
+              return GestureDetector(
+                onTap: () => onConfigChange(config.copyWith(holdingType: h)),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: active ? AppColors.navy : AppColors.background,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    h.label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: active ? Colors.white : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
@@ -627,6 +697,35 @@ class _ScenarioTable extends StatelessWidget {
             ),
           ),
         ],
+        if (projection.notes.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          ...projection.notes.map(
+            (n) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.info_outline,
+                    size: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      n,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        height: 1.4,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 8),
         Text(
           projection.disclaimer,
@@ -653,6 +752,7 @@ class _BreakdownSection extends StatelessWidget {
     final hasPref = base.preferredReturnPaid > 0.5;
     final hasFee = base.platformFee > 0.5;
     final hasTax = base.taxEstimate > 0.5;
+    final hasTxn = base.transactionCosts > 0.5;
     final hasLoanInt = base.loanInterestPaid > 0.5;
     final hasLoanPrin = base.loanPrincipalRepaid > 0.5;
     return Container(
@@ -709,6 +809,12 @@ class _BreakdownSection extends StatelessWidget {
             _FlowRow(
               label: '− Estimated tax',
               value: base.taxEstimate,
+              sign: _FlowSign.negative,
+            ),
+          if (hasTxn)
+            _FlowRow(
+              label: '− Estimated transaction costs',
+              value: base.transactionCosts,
               sign: _FlowSign.negative,
             ),
           if (hasLoanInt)

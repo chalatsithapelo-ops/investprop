@@ -9,11 +9,13 @@ import {
   calculateFlipMetrics,
   calculateRentalMetrics,
   calculateDevelopmentMetrics,
+  calculateTransferDuty,
 } from "~/financial-calculations";
 import {
   projectInvestorReturn,
   INVESTOR_STRATEGIES,
   type InvestorStrategy,
+  type HoldingType,
   type ScenarioEconomics,
 } from "~/investor-returns";
 
@@ -225,12 +227,50 @@ export function deriveDealEconomics(
   };
 }
 
-/** SARS-aware estimated tax rate on the investor's gain for a given strategy. */
-function taxRateForStrategy(strategy: InvestorStrategy): number {
-  // Flips and development exits are taxed as trading income (~27%);
-  // income/hold/early-resale gains are closer to effective CGT for individuals (~18%).
-  if (strategy === "FLIP" || strategy === "DEVELOPMENT_EXIT") return 27;
-  return 18;
+/**
+ * SARS-aware estimated tax rates on the investor's gain, split into the
+ * rental-income portion and the capital-gain portion and flexed by how the
+ * investor holds the stake (company/SPV vs individual).
+ */
+function taxRatesFor(
+  strategy: InvestorStrategy,
+  holdingType: HoldingType,
+): { incomeRate: number; capitalGainsRate: number } {
+  const trading = strategy === "FLIP" || strategy === "DEVELOPMENT_EXIT";
+  if (holdingType === "INDIVIDUAL") {
+    // Trading/rental income at the top marginal rate (45%); capital growth at
+    // the effective individual CGT ceiling (40% inclusion × 45% ≈ 18%).
+    return trading
+      ? { incomeRate: 45, capitalGainsRate: 45 }
+      : { incomeRate: 45, capitalGainsRate: 18 };
+  }
+  // Company / SPV: 27% on trading & rental income; ~21.6% effective CGT on growth.
+  return trading
+    ? { incomeRate: 27, capitalGainsRate: 27 }
+    : { incomeRate: 27, capitalGainsRate: 21.6 };
+}
+
+/**
+ * Estimate the investor's pro-rata share of SA transaction costs for the deal:
+ * transfer duty + conveyancing on acquisition (scaled to their ownership) plus
+ * 0.25% securities transfer tax on their own share subscription.
+ */
+function estimateInvestorTransactionCosts(
+  property: any,
+  ownershipFraction: number,
+  contribution: number,
+): number {
+  const price =
+    property.price ||
+    property.propertyFlip?.purchasePrice ||
+    property.rentalBond?.purchasePrice ||
+    property.propertyDevelopment?.landAcquisitionCost ||
+    0;
+  const transferDuty = calculateTransferDuty(price);
+  const conveyancing = price * 0.012; // ~1.2% attorney + deeds-office registration
+  const investorAcquisitionShare = (transferDuty + conveyancing) * ownershipFraction;
+  const stt = contribution * 0.0025; // 0.25% STT on the share purchase
+  return Math.max(0, investorAcquisitionShare + stt);
 }
 
 const financingSchema = z
@@ -256,6 +296,7 @@ export const calculateInvestmentProjection = baseProcedure
       financing: financingSchema,
       stressDownPct: z.number().min(0).max(40).optional(),
       stressUpPct: z.number().min(0).max(40).optional(),
+      holdingType: z.enum(["INDIVIDUAL", "COMPANY"]).optional(),
     }),
   )
   .query(async ({ input }) => {
@@ -278,9 +319,18 @@ export const calculateInvestmentProjection = baseProcedure
     const feeConfig = await getFeeConfig().catch(() => null);
     const platformFeeRate = (feeConfig?.distributionFeeBps ?? 200) / 100;
 
+    const holdingType: HoldingType = input.holdingType ?? "COMPANY";
+    const { incomeRate, capitalGainsRate } = taxRatesFor(strategy, holdingType);
+    const ownershipFraction = share.ownershipPercentage / 100;
+    const estimatedTransactionCosts = estimateInvestorTransactionCosts(
+      property,
+      ownershipFraction,
+      input.amount,
+    );
+
     const projection = projectInvestorReturn({
       contributionAmount: input.amount,
-      ownershipFraction: share.ownershipPercentage / 100,
+      ownershipFraction,
       strategy,
       holdMonths,
       projectHoldMonths: econ.projectHoldMonths,
@@ -288,7 +338,10 @@ export const calculateInvestmentProjection = baseProcedure
       preferredReturnRate: property.preferredReturnRate ?? 0,
       investorProfitShare: property.investorProfitShare ?? 100,
       platformFeeRate,
-      taxRate: taxRateForStrategy(strategy),
+      incomeTaxRate: incomeRate,
+      capitalGainsTaxRate: capitalGainsRate,
+      estimatedTransactionCosts,
+      holdingType,
       financing: input.financing,
     });
 
@@ -306,6 +359,7 @@ export const calculateInvestmentProjection = baseProcedure
       propertyType: econ.propertyType,
       preferredReturnRate: property.preferredReturnRate ?? 0,
       investorProfitShare: property.investorProfitShare ?? 100,
+      holdingType,
       stressDownPct: normaliseStress({ downPct: input.stressDownPct, upPct: input.stressUpPct }).downPct,
       stressUpPct: normaliseStress({ downPct: input.stressDownPct, upPct: input.stressUpPct }).upPct,
     };

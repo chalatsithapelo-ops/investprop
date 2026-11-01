@@ -88,6 +88,9 @@ export interface InvestorFinancing {
   termMonths: number;
 }
 
+/** How the investor holds the stake — drives which tax rates are assumed. */
+export type HoldingType = "INDIVIDUAL" | "COMPANY";
+
 /** Whole-deal figures for a single scenario band (downside / base / upside). */
 export interface ScenarioEconomics {
   /** Whole-project profit over the project's life, in Rand. */
@@ -119,8 +122,20 @@ export interface InvestorReturnInput {
   investorProfitShare?: number;
   /** Platform fee charged on the investor's profit, as a %. */
   platformFeeRate?: number;
-  /** Estimated tax rate applied to the investor's taxable gain, as a %. */
+  /** Estimated tax rate applied to the investor's taxable gain, as a %. Used as
+   *  the fallback for both the income and capital-gains rates below. */
   taxRate?: number;
+  /** Estimated tax rate on the rental-income portion of profit, as a %.
+   *  Defaults to `taxRate` when omitted. */
+  incomeTaxRate?: number;
+  /** Estimated effective CGT rate on the capital-gain portion, as a %.
+   *  Defaults to `taxRate` when omitted. */
+  capitalGainsTaxRate?: number;
+  /** Investor's pro-rata share of estimated SA transaction costs (transfer
+   *  duty, conveyancing, STT), in Rand. Defaults to 0. */
+  estimatedTransactionCosts?: number;
+  /** How the investor holds the stake (drives the tax-assumption label). */
+  holdingType?: HoldingType;
   /** Optional personal gearing. */
   financing?: InvestorFinancing;
 }
@@ -137,8 +152,14 @@ export interface InvestorScenario {
   grossPayout: number;
   /** Platform fee charged on profit. */
   platformFee: number;
-  /** Estimated tax on the taxable gain. */
+  /** Estimated tax on the taxable gain (income tax + CGT). */
   taxEstimate: number;
+  /** Estimated income tax on the rental-income portion of profit. */
+  incomeTaxEstimate: number;
+  /** Estimated CGT on the capital-gain portion of profit. */
+  capitalGainsTaxEstimate: number;
+  /** Investor's pro-rata share of estimated SA transaction costs. */
+  transactionCosts: number;
   /** Total loan interest paid over the hold (0 when ungeared). */
   loanInterestPaid: number;
   /** Outstanding loan principal repaid from the exit proceeds (0 when ungeared). */
@@ -168,6 +189,10 @@ export interface InvestorReturnProjection {
     base: InvestorScenario;
     upside: InvestorScenario;
   };
+  /** How the investor holds the stake (echoed back for the UI toggle). */
+  holdingType: HoldingType;
+  /** Short disclosure lines the UI should surface (tax/pref/cost assumptions). */
+  notes: string[];
   /** Plain-English, base-case one-liner for the UI. */
   summary: string;
   disclaimer: string;
@@ -225,8 +250,14 @@ function computeScenario(
     investorProfitShare = 100,
     platformFeeRate = 0,
     taxRate = 0,
+    incomeTaxRate,
+    capitalGainsTaxRate,
+    estimatedTransactionCosts = 0,
     financing,
   } = input;
+
+  const incomeRate = incomeTaxRate ?? taxRate;
+  const capitalRate = capitalGainsTaxRate ?? taxRate;
 
   const years = holdMonths > 0 ? holdMonths / 12 : 0;
 
@@ -275,8 +306,20 @@ function computeScenario(
   // ── Fees & tax (only on positive profit) ───────────────────────────────
   const profitForFees = Math.max(0, preferredReturnPaid + profitShare);
   const platformFee = profitForFees * (platformFeeRate / 100);
-  const taxableGain = Math.max(0, profitForFees - platformFee);
-  const taxEstimate = taxableGain * (taxRate / 100);
+  const netTaxable = Math.max(0, profitForFees - platformFee);
+  // Split the realised profit into income vs capital gain in the same ratio as
+  // the gross profit was composed, so rental income is taxed as income and
+  // capital growth is taxed at CGT (recommendation: don't blend the two).
+  const incomeShare = grossProfit > 0 ? clamp(income / grossProfit, 0, 1) : 0;
+  const incomeTaxable = netTaxable * incomeShare;
+  const capitalTaxable = netTaxable - incomeTaxable;
+  const incomeTaxEstimate = incomeTaxable * (incomeRate / 100);
+  const capitalGainsTaxEstimate = capitalTaxable * (capitalRate / 100);
+  const taxEstimate = incomeTaxEstimate + capitalGainsTaxEstimate;
+
+  // Estimated SA transaction costs (transfer duty / conveyancing / STT),
+  // already pro-rated to this investor's stake by the caller.
+  const transactionCosts = Math.max(0, estimatedTransactionCosts);
 
   // ── Personal gearing ───────────────────────────────────────────────────
   const loanAmount = financing?.amount ?? 0;
@@ -297,7 +340,7 @@ function computeScenario(
   }
 
   const netProceeds =
-    grossPayout - platformFee - taxEstimate - loanInterestPaid - loanPrincipalRepaid;
+    grossPayout - platformFee - taxEstimate - transactionCosts - loanInterestPaid - loanPrincipalRepaid;
 
   const denominator = ownCashInvested > 0 ? ownCashInvested : contributionAmount;
   const netProfit = netProceeds - denominator;
@@ -319,7 +362,7 @@ function computeScenario(
     }
     // Exit proceeds: gross payout less fees/tax, less the loan balance settled
     // at exit (monthly payments already deducted above cover the rest).
-    flows[n] += grossPayout - platformFee - taxEstimate - loanPrincipalRepaid;
+    flows[n] += grossPayout - platformFee - taxEstimate - transactionCosts - loanPrincipalRepaid;
     const solved = calculateAnnualIRRFromMonthly(flows);
     if (!Number.isNaN(solved)) irr = solved;
   }
@@ -332,6 +375,9 @@ function computeScenario(
     grossPayout,
     platformFee,
     taxEstimate,
+    incomeTaxEstimate,
+    capitalGainsTaxEstimate,
+    transactionCosts,
     loanInterestPaid,
     loanPrincipalRepaid,
     netProceeds,
@@ -375,6 +421,24 @@ export function projectInvestorReturn(
     (usesFinancing ? " and after settling the loan" : "") +
     ` (≈${base.annualisedReturn.toFixed(1)}% a year).`;
 
+  const holdingType: HoldingType = input.holdingType ?? "COMPANY";
+  const notes: string[] = [];
+  if (input.preferredReturnRate && input.preferredReturnRate > 0) {
+    notes.push(
+      "Preferred return is simple (non-compounded) and is paid only to the extent profit allows — any unpaid preferred does not accrue to later periods.",
+    );
+  }
+  notes.push(
+    holdingType === "COMPANY"
+      ? "Estimated tax assumes a company/SPV holding (27% on trading income, ~21.6% effective CGT). Switch to ‘Individual’ to model personal marginal rates."
+      : "Estimated tax assumes an individual holding at the top marginal rate (45% on trading/rental income, ~18% effective CGT). Your actual rate may be lower.",
+  );
+  if (base.transactionCosts > 0) {
+    notes.push(
+      "Estimated transaction costs include your pro-rata share of transfer duty, conveyancing and securities transfer tax (STT). Actual costs vary by deal and province.",
+    );
+  }
+
   return {
     strategy: input.strategy,
     holdMonths: input.holdMonths,
@@ -382,6 +446,8 @@ export function projectInvestorReturn(
     ownCashInvested: ownCash > 0 ? ownCash : input.contributionAmount,
     loanAmount,
     scenarios: { downside, base, upside },
+    holdingType,
+    notes,
     summary,
     disclaimer: DISCLAIMER,
   };

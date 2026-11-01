@@ -73,6 +73,7 @@ class InvestmentRepository {
     int? financingTermMonths,
     int? stressDownPct,
     int? stressUpPct,
+    HoldingType? holdingType,
   }) async {
     final data = await _client.query(
       'calculateInvestmentProjection',
@@ -83,6 +84,7 @@ class InvestmentRepository {
         if (holdMonths != null) 'holdMonths': holdMonths,
         if (stressDownPct != null) 'stressDownPct': stressDownPct,
         if (stressUpPct != null) 'stressUpPct': stressUpPct,
+        if (holdingType != null) 'holdingType': holdingType.wire,
         if (financingAmount != null && financingAmount > 0)
           'financing': {
             'amount': financingAmount,
