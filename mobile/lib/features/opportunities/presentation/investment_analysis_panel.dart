@@ -154,11 +154,11 @@ class _RentalAnalysis extends StatelessWidget {
           Fmt.percent(c.cashOnCashReturn),
           valueColor: _tone(c.cashOnCashReturn, 8, 4),
         ),
-        _MetricRow('Gross rent multiplier', c.grossRentMultiplier.toStringAsFixed(1)),
+        _MetricRow('Gross rent multiplier', Fmt.fixed(c.grossRentMultiplier, decimals: 1)),
         if (leveraged)
           _MetricRow(
             'DSCR',
-            c.dscr.toStringAsFixed(2),
+            Fmt.fixed(c.dscr),
             valueColor: _tone(c.dscr, 1.2, 1),
           ),
         _MetricRow(
@@ -248,7 +248,7 @@ class _DevelopmentAnalysis extends StatelessWidget {
             'Pre-sold units',
             '${input.preSaleUnits.toStringAsFixed(0)} of '
                 '${input.numberOfUnits.toStringAsFixed(0)} '
-                '(${c.preSalePercentage.toStringAsFixed(0)}%)',
+                '(${Fmt.fixed(c.preSalePercentage, decimals: 0)}%)',
           ),
         ] else ...[
           const SizedBox(height: 16),

@@ -46,13 +46,24 @@ class Fmt {
   static final _date = DateFormat('d MMM yyyy');
   static final _dateTime = DateFormat('d MMM yyyy, HH:mm');
 
-  static String money(num value, {bool detailed = false}) =>
-      (detailed ? _currencyDetailed : _currency).format(value);
+  /// Coerces NaN / ±Infinity to 0 so downstream formatters (which call
+  /// toStringAsFixed) never throw and blank the screen. A divide-by-zero in the
+  /// financial engine (e.g. ROI on a zero-cost record) otherwise produces a
+  /// non-finite value that crashes the whole page.
+  static num _finite(num value) => value.isFinite ? value : 0;
 
-  static String compactMoney(num value) => _compact.format(value);
+  static String money(num value, {bool detailed = false}) =>
+      (detailed ? _currencyDetailed : _currency).format(_finite(value));
+
+  static String compactMoney(num value) => _compact.format(_finite(value));
 
   static String percent(num value, {int decimals = 1}) =>
-      '${value.toStringAsFixed(decimals)}%';
+      '${_finite(value).toStringAsFixed(decimals)}%';
+
+  /// Fixed-decimal number formatter that is safe for non-finite inputs (e.g. a
+  /// DSCR or multiple computed from a zero denominator).
+  static String fixed(num value, {int decimals = 2}) =>
+      _finite(value).toStringAsFixed(decimals);
 
   static String date(DateTime? value) => value == null ? '—' : _date.format(value);
 

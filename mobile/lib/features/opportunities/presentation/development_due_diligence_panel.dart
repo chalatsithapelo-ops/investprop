@@ -118,7 +118,7 @@ class DevelopmentDueDiligencePanel extends StatelessWidget {
             _MetricRow(
               'Equity multiple',
               e.equityMultiple > 0
-                  ? '${e.equityMultiple.toStringAsFixed(2)}x'
+                  ? '${Fmt.fixed(e.equityMultiple)}x'
                   : '—',
             ),
             _MetricRow('Residual land value', Fmt.money(e.residualLandValue)),

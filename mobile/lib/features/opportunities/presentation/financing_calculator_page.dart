@@ -444,7 +444,7 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
             ),
             _resultRow(
               'DSCR',
-              r.dscr.toStringAsFixed(2),
+              Fmt.fixed(r.dscr),
               color: _tone(r.dscr, 1.2, 1),
             ),
             _resultRow(
@@ -475,7 +475,7 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
             ),
             _resultRow(
               'Stressed DSCR',
-              r.stressedDSCR.toStringAsFixed(2),
+              Fmt.fixed(r.stressedDSCR),
               color: _tone(r.stressedDSCR, 1.1, 1),
             ),
           ]),
