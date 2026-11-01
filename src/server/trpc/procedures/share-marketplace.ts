@@ -216,7 +216,7 @@ export const getOrderBook = baseProcedure
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
       orderBy: { pricePerShare: "desc" }, // Best buy price first
-      include: { investor: { select: { id: true, name: true } } },
+      include: { investor: { select: { id: true, name: true, investorCode: true } } },
     });
 
     const sellOrders = await db.shareOrder.findMany({
@@ -227,7 +227,7 @@ export const getOrderBook = baseProcedure
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
       orderBy: { pricePerShare: "asc" }, // Best sell price first
-      include: { investor: { select: { id: true, name: true } } },
+      include: { investor: { select: { id: true, name: true, investorCode: true } } },
     });
 
     // Aggregate by price level
@@ -634,7 +634,9 @@ function sanitizeOrder(order: any) {
     remainingQuantity: order.quantity - order.filledQuantity,
     pricePerShare: order.pricePerShare,
     status: order.status,
+    investorId: order.investor?.id,
     investorName: order.investor?.name,
+    investorCode: order.investor?.investorCode,
     createdAt: order.createdAt,
     expiresAt: order.expiresAt,
   };

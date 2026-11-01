@@ -29,6 +29,8 @@ class _MarketDetailPageState extends ConsumerState<MarketDetailPage> {
   Widget build(BuildContext context) {
     final book = ref.watch(orderBookProvider(widget.shareClassId));
     final myOrders = ref.watch(myOrdersProvider);
+    final myOrderIds =
+        myOrders.valueOrNull?.map((o) => o.id).toSet() ?? <int>{};
     final title = widget.shareClass?.propertyTitle ?? 'Share class';
 
     return Scaffold(
@@ -51,7 +53,7 @@ class _MarketDetailPageState extends ConsumerState<MarketDetailPage> {
               value: book,
               onRetry: () =>
                   ref.invalidate(orderBookProvider(widget.shareClassId)),
-              data: (b) => _OrderBookView(book: b),
+              data: (b) => _OrderBookView(book: b, myOrderIds: myOrderIds),
             ),
             const SizedBox(height: 20),
             Row(
@@ -149,7 +151,7 @@ class _MarketDetailPageState extends ConsumerState<MarketDetailPage> {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () =>
-                      context.push('/opportunities/${sc.propertyId}'),
+                      context.push('/property-financials/${sc.propertyId}'),
                   icon: const Icon(Icons.insights_outlined, size: 18),
                   label: const Text(
                       'View property financials & performance'),
@@ -239,57 +241,59 @@ class _SumCell extends StatelessWidget {
 }
 
 class _OrderBookView extends StatelessWidget {
-  const _OrderBookView({required this.book});
+  const _OrderBookView({required this.book, required this.myOrderIds});
   final OrderBook book;
+  final Set<int> myOrderIds;
 
   @override
   Widget build(BuildContext context) {
-    final buys = [...book.buyLevels]..sort((a, b) => b.price.compareTo(a.price));
-    final sells = [...book.sellLevels]
-      ..sort((a, b) => a.price.compareTo(b.price));
+    // Sellers first (lowest price = best deal for a buyer), then buyers
+    // (highest offer first).
+    final sells = [...book.sellOrders]
+      ..sort((a, b) => a.pricePerShare.compareTo(b.pricePerShare));
+    final buys = [...book.buyOrders]
+      ..sort((a, b) => b.pricePerShare.compareTo(a.pricePerShare));
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _BestChip(
-                    label: 'Best bid',
-                    value: book.bestBid,
-                    color: AppColors.success),
+                    label: 'Lowest sell price',
+                    value: book.bestAsk,
+                    color: AppColors.danger),
                 if (book.spread != null)
-                  Text('Spread ${Fmt.money(book.spread!)}',
+                  Text('Gap ${Fmt.money(book.spread!)}',
                       style: const TextStyle(
                           fontSize: 11, color: AppColors.textSecondary)),
                 _BestChip(
-                    label: 'Best ask',
-                    value: book.bestAsk,
-                    color: AppColors.danger),
+                    label: 'Highest buy offer',
+                    value: book.bestBid,
+                    color: AppColors.success),
               ],
             ),
             const Divider(height: 20),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _LevelColumn(
-                    heading: 'Bids',
-                    color: AppColors.success,
-                    levels: buys,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _LevelColumn(
-                    heading: 'Asks',
-                    color: AppColors.danger,
-                    levels: sells,
-                  ),
-                ),
-              ],
+            _OrderSection(
+              heading: 'Shares for sale',
+              subtitle: 'Sellers offering shares — lowest price first',
+              emptyText: 'No shares are listed for sale yet.',
+              color: AppColors.danger,
+              orders: sells,
+              myOrderIds: myOrderIds,
+            ),
+            const SizedBox(height: 16),
+            _OrderSection(
+              heading: 'Buyers',
+              subtitle: 'Buy offers on the book — highest price first',
+              emptyText: 'No buy offers yet.',
+              color: AppColors.success,
+              orders: buys,
+              myOrderIds: myOrderIds,
             ),
           ],
         ),
@@ -318,44 +322,112 @@ class _BestChip extends StatelessWidget {
   }
 }
 
-class _LevelColumn extends StatelessWidget {
-  const _LevelColumn({
+/// Lists every resting order so a buyer/seller can see exactly WHO is trading,
+/// HOW MANY shares, and AT WHAT price — their own orders are flagged "You" so
+/// it is clear you cannot trade against yourself.
+class _OrderSection extends StatelessWidget {
+  const _OrderSection({
     required this.heading,
+    required this.subtitle,
+    required this.emptyText,
     required this.color,
-    required this.levels,
+    required this.orders,
+    required this.myOrderIds,
   });
   final String heading;
+  final String subtitle;
+  final String emptyText;
   final Color color;
-  final List<OrderLevel> levels;
+  final List<BookOrder> orders;
+  final Set<int> myOrderIds;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(heading,
-            style: TextStyle(
-                fontWeight: FontWeight.w700, fontSize: 12, color: color)),
-        const SizedBox(height: 6),
-        if (levels.isEmpty)
-          const Text('—',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary))
-        else
-          for (final l in levels.take(6))
+        Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+            Text(heading,
+                style: TextStyle(
+                    fontWeight: FontWeight.w700, fontSize: 13, color: color)),
+            const SizedBox(width: 6),
+            Text('(${orders.length})',
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary)),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(subtitle,
+            style: const TextStyle(
+                fontSize: 10.5, color: AppColors.textSecondary)),
+        const SizedBox(height: 8),
+        if (orders.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(emptyText,
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary)),
+          )
+        else ...[
+          for (final o in orders.take(12))
+            _BookOrderRow(order: o, mine: myOrderIds.contains(o.id)),
+          if (orders.length > 12)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(Fmt.money(l.price),
-                      style: const TextStyle(fontSize: 12)),
-                  Text('${l.quantity}',
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary)),
-                ],
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('+ ${orders.length - 12} more',
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textSecondary)),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _BookOrderRow extends StatelessWidget {
+  const _BookOrderRow({required this.order, required this.mine});
+  final BookOrder order;
+  final bool mine;
+
+  @override
+  Widget build(BuildContext context) {
+    final who =
+        mine ? 'You' : (order.investorCode ?? order.investorName ?? 'Investor');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(Icons.person_outline,
+              size: 14,
+              color: mine ? AppColors.goldDark : AppColors.textSecondary),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              who,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: mine ? FontWeight.w700 : FontWeight.w600,
+                color: mine ? AppColors.goldDark : AppColors.textPrimary,
               ),
             ),
-      ],
+          ),
+          Text('${order.remainingQuantity} shares',
+              style: const TextStyle(
+                  fontSize: 12, color: AppColors.textSecondary)),
+          const SizedBox(width: 10),
+          Text('@ ${Fmt.money(order.pricePerShare)}',
+              style:
+                  const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+        ],
+      ),
     );
   }
 }
@@ -790,6 +862,43 @@ class _TransferSheetState extends ConsumerState<_TransferSheet> {
           children: [
             const Text('Transfer shares',
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+            const SizedBox(height: 4),
+            const Text(
+              'Move shares you own directly to another investor by their '
+              'investor code — for example a private sale, a gift or settling '
+              'a deal outside the open market.',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(8),
+                border:
+                    Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+              ),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      size: 16, color: AppColors.warning),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'This moves the shares immediately and cannot be '
+                      'reversed. Payment settles off-platform — Investprop '
+                      'does not process money between the two parties.',
+                      style: TextStyle(
+                          fontSize: 11,
+                          height: 1.35,
+                          color: AppColors.textSecondary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 16),
             Row(
               children: [

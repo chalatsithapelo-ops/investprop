@@ -80,6 +80,8 @@ class OrderBook {
   const OrderBook({
     required this.buyLevels,
     required this.sellLevels,
+    required this.buyOrders,
+    required this.sellOrders,
     required this.bestBid,
     required this.bestAsk,
     required this.spread,
@@ -87,6 +89,8 @@ class OrderBook {
 
   final List<OrderLevel> buyLevels;
   final List<OrderLevel> sellLevels;
+  final List<BookOrder> buyOrders;
+  final List<BookOrder> sellOrders;
   final double? bestBid;
   final double? bestAsk;
   final double? spread;
@@ -99,12 +103,59 @@ class OrderBook {
         .toList();
   }
 
+  static List<BookOrder> _orders(dynamic list) {
+    if (list is! List) return const [];
+    return list
+        .whereType<Map>()
+        .map((e) => BookOrder.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
   factory OrderBook.fromJson(Map<String, dynamic> json) => OrderBook(
         buyLevels: _levels(json['buyLevels']),
         sellLevels: _levels(json['sellLevels']),
+        buyOrders: _orders(json['buyOrders']),
+        sellOrders: _orders(json['sellOrders']),
         bestBid: json['bestBid'] == null ? null : asDouble(json['bestBid']),
         bestAsk: json['bestAsk'] == null ? null : asDouble(json['bestAsk']),
         spread: json['spread'] == null ? null : asDouble(json['spread']),
+      );
+}
+
+/// A single resting order on the book, including who placed it so buyers and
+/// sellers can see exactly who is offering how many shares and at what price.
+class BookOrder {
+  const BookOrder({
+    required this.id,
+    required this.side,
+    required this.remainingQuantity,
+    required this.pricePerShare,
+    required this.investorName,
+    required this.investorCode,
+  });
+
+  final int id;
+  final String side;
+  final int remainingQuantity;
+  final double pricePerShare;
+  final String? investorName;
+  final String? investorCode;
+
+  bool get isBuy => side == 'BUY';
+
+  factory BookOrder.fromJson(Map<String, dynamic> json) => BookOrder(
+        id: asInt(json['id']),
+        side: asString(json['side'], 'BUY'),
+        remainingQuantity: json['remainingQuantity'] != null
+            ? asInt(json['remainingQuantity'])
+            : asInt(json['quantity']) - asInt(json['filledQuantity']),
+        pricePerShare: asDouble(json['pricePerShare']),
+        investorName: json['investorName'] == null
+            ? null
+            : asString(json['investorName']),
+        investorCode: json['investorCode'] == null
+            ? null
+            : asString(json['investorCode']),
       );
 }
 

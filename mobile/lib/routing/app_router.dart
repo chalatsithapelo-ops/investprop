@@ -159,6 +159,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+      // Root-level entry so pages pushed on the root navigator (e.g. the share
+      // marketplace detail page) can open a property's financials & performance
+      // view. Pushing the branch route `/opportunities/:id` from a root page
+      // leaves the StatefulShell inactive and renders a blank screen, so we
+      // reuse OpportunityDetailPage via this dedicated root route instead.
+      GoRoute(
+        path: '/property-financials/:id',
+        parentNavigatorKey: _rootKey,
+        builder: (context, state) => OpportunityDetailPage(
+          id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => HomeShell(navigationShell: shell),
         branches: [
