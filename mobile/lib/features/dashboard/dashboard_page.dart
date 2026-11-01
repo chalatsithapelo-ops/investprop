@@ -59,6 +59,10 @@ class DashboardPage extends ConsumerWidget {
                         distributed: 0,
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    _MarketQuickAction(
+                      onTap: () => context.push('/portfolio/marketplace'),
+                    ),
                     const SizedBox(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -393,6 +397,72 @@ class _OwnerDealTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MarketQuickAction extends StatelessWidget {
+  const _MarketQuickAction({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.navy, AppColors.navyLight],
+            ),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.gold.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.storefront, color: AppColors.gold),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Live Share Market',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'See shares on sale now — buy, place an offer or sell yours.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 8),
+              Icon(Icons.chevron_right, color: Colors.white70),
+            ],
+          ),
+        ),
       ),
     );
   }

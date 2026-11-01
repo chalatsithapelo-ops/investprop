@@ -1,5 +1,6 @@
 import '../../../core/format.dart';
 import 'investment_constants.dart';
+import 'investment_projection.dart';
 
 /// An investor's contribution / investment proposal into a property.
 ///
@@ -19,6 +20,8 @@ class Contribution {
     required this.propertyTitle,
     required this.createdAt,
     required this.coolingOffExpiresAt,
+    this.strategy,
+    this.strategyHoldMonths,
   });
 
   final int id;
@@ -33,6 +36,8 @@ class Contribution {
   final String propertyTitle;
   final DateTime? createdAt;
   final DateTime? coolingOffExpiresAt;
+  final InvestorStrategy? strategy;
+  final int? strategyHoldMonths;
 
   bool get isPending => status == 'PENDING';
   bool get isApproved => status == 'APPROVED';
@@ -76,6 +81,10 @@ class Contribution {
           : asString(json['propertyTitle'], 'Property'),
       createdAt: asDate(json['createdAt']),
       coolingOffExpiresAt: asDate(json['coolingOffExpiresAt']),
+      strategy: InvestorStrategy.fromWire(json['strategy']?.toString()),
+      strategyHoldMonths: json['strategyHoldMonths'] == null
+          ? null
+          : asInt(json['strategyHoldMonths']),
     );
   }
 }

@@ -113,6 +113,41 @@ export const FINANCIAL_TERMS = {
     text: "The cap rate measured against everything you put in — purchase price plus transfer duty and fees — rather than just the price. It's a more honest yield because it counts the true money invested. It will always be a little lower than the headline cap rate.",
     formula: "NOI ÷ (Price + Transfer Duty + Costs)",
   },
+  moic: {
+    term: "Equity Multiple (MOIC)",
+    text: "How many times your money comes back. A 1.5× multiple means for every R1 you put in you get R1.50 back in total (your R1 plus 50c profit). Above 1× is a profit; below 1× is a loss. It ignores how long it took — pair it with the annualised return.",
+    formula: "Equity Multiple = Total Cash Returned ÷ Cash Invested",
+  },
+  preferredReturn: {
+    term: "Preferred Return",
+    text: "A minimum yearly return investors are paid out of profit before the sponsor/manager earns any share of the upside. It puts investors first in the queue for profit. A 10% preferred return means you receive 10% a year before the manager's slice kicks in.",
+    formula: "Preferred = Capital × Preferred Rate × Years",
+  },
+  promote: {
+    term: "Promote (Carried Interest)",
+    text: "The share of profit the sponsor/manager keeps as their reward for running the deal — but only after investors have had their capital back plus the preferred return. A 20% promote means the manager keeps 20% of the leftover profit and investors keep 80%.",
+    formula: "Promote = Residual Profit × Manager's Share",
+  },
+  gearing: {
+    term: "Gearing (Using a Loan to Invest)",
+    text: "Funding part of your investment with a bank loan instead of your own cash. It can magnify your return on the cash you put down — but it magnifies losses too, and you pay interest whatever happens. Your return is then measured on your OWN cash, not the full amount.",
+    formula: "Return on Own Cash = Net Proceeds ÷ (Investment − Loan)",
+  },
+  netProceeds: {
+    term: "Net Proceeds",
+    text: "The actual cash you walk away with at the end — your capital plus profit, after platform fees, estimated tax, and after settling any loan you used to invest. This is the real money in your pocket, not the headline profit.",
+    formula: "Net Proceeds = Payout − Fees − Tax − Loan Settled",
+  },
+  scenarioBands: {
+    term: "Downside / Base / Upside",
+    text: "Three what-if outcomes. Base is the sponsor's plan going as expected. Downside stresses the deal (costs up, prices/rent down) to show what a tough outcome looks like. Upside shows a better-than-planned result. Real life usually lands somewhere in between — always weigh the downside.",
+    formula: "Stress-tested ranges, not guarantees",
+  },
+  investorStrategy: {
+    term: "Your Investment Strategy",
+    text: "Your own plan for this investment, which can differ from the platform's. For example, if the platform plans to hold for 5 years, you might choose to exit after 3 by selling your shares on the marketplace. Your projected returns adjust to the strategy and hold period you pick.",
+    formula: "Return depends on strategy + hold period",
+  },
 } as const;
 
 export type FinancialTermKey = keyof typeof FINANCIAL_TERMS;

@@ -13,8 +13,10 @@ import '../../opportunities/data/opportunities_repository.dart';
 import '../../opportunities/domain/opportunity.dart';
 import '../data/investment_repository.dart';
 import '../domain/investment_constants.dart';
+import '../domain/investment_projection.dart';
 import '../domain/share_preview.dart';
 import 'appropriateness_questionnaire_page.dart';
+import 'investment_projection_card.dart';
 
 class InvestPage extends ConsumerWidget {
   const InvestPage({super.key, required this.propertyId});
@@ -61,6 +63,7 @@ class _InvestFormState extends ConsumerState<_InvestForm> {
   SharePreview? _preview;
   bool _loadingPreview = false;
   bool _submitting = false;
+  StrategyConfig _config = const StrategyConfig();
 
   // Terms & conditions gates (all required).
   bool _tcFees = false;
@@ -153,6 +156,12 @@ class _InvestFormState extends ConsumerState<_InvestForm> {
       await ref.read(investmentRepositoryProvider).submitProposal(
             propertyId: _propertyId,
             amount: _amount,
+            strategy: _config.strategy,
+            strategyHoldMonths: _config.holdMonths,
+            usesFinancing: _config.usesFinancing,
+            financingAmount: _config.financingAmount,
+            financingRate: _config.financingRate,
+            financingTermMonths: _config.financingTermMonths,
           );
       if (!mounted) return;
       ref.invalidate(investGateProvider(_propertyId));
@@ -273,6 +282,17 @@ class _InvestFormState extends ConsumerState<_InvestForm> {
 
         // 3. Live share preview.
         _PreviewCard(preview: _preview, loading: _loadingPreview),
+
+        // 3b. Strategy-aware projection.
+        if (_amount >= InvestmentRules.minInvestment) ...[
+          const SizedBox(height: 16),
+          ProjectionCard(
+            propertyId: _propertyId,
+            amount: _amount,
+            config: _config,
+            onConfigChange: (c) => setState(() => _config = c),
+          ),
+        ],
 
         // 4. FICA warning.
         if (gate.fica.blocksAmount(_amount)) ...[

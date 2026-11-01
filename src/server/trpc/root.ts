@@ -99,6 +99,8 @@ import { submitLandPartnership, getMyLandPartnerships, getLandPartnershipById, g
 import { initiateInvestmentPayment, verifyInvestmentPayment, submitProofOfPayment, reviewProofOfPayment, getPendingPayments, getMyAwaitingPayment } from "~/server/trpc/procedures/investment-payments";
 // Share Certificates
 import { getMyCertificates, getCertificateDetail, getCertificatePDFData, validateCertificate, revokeCertificate, getAllCertificates, updateCertificateNotes, calculateSharePreview } from "~/server/trpc/procedures/share-certificates";
+// Per-investor return projection
+import { calculateInvestmentProjection, updateInvestorStrategy } from "~/server/trpc/procedures/investment-projection";
 // FICA Verification
 import { getMyFicaStatus, verifyInvestorFica, getInvestorsFicaStatus } from "~/server/trpc/procedures/fica-verification";
 // Phase 10: Financial Reports
@@ -480,6 +482,8 @@ export const appRouter = createTRPCRouter({
   getAllCertificates,
   updateCertificateNotes,
   calculateSharePreview,
+  calculateInvestmentProjection,
+  updateInvestorStrategy,
   // FICA Verification
   getMyFicaStatus,
   verifyInvestorFica,

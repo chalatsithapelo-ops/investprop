@@ -4,6 +4,7 @@ import '../../../core/api/trpc_client.dart';
 import '../../../core/providers.dart';
 import '../domain/compliance_status.dart';
 import '../domain/contribution.dart';
+import '../domain/investment_projection.dart';
 import '../domain/share_preview.dart';
 
 /// Payload for `submitAppropriatenessQuestionnaire` (FAIS hard gate).
@@ -61,6 +62,33 @@ class InvestmentRepository {
     return SharePreview.fromJson(data);
   }
 
+  Future<InvestmentProjection?> investmentProjection({
+    required int propertyId,
+    required double amount,
+    InvestorStrategy? strategy,
+    int? holdMonths,
+    double? financingAmount,
+    double? financingRate,
+    int? financingTermMonths,
+  }) async {
+    final data = await _client.query(
+      'calculateInvestmentProjection',
+      input: {
+        'propertyId': propertyId,
+        'amount': amount,
+        if (strategy != null) 'strategy': strategy.wire,
+        if (holdMonths != null) 'holdMonths': holdMonths,
+        if (financingAmount != null && financingAmount > 0)
+          'financing': {
+            'amount': financingAmount,
+            'annualRate': financingRate ?? 11.75,
+            'termMonths': financingTermMonths ?? 60,
+          },
+      },
+    );
+    return InvestmentProjection.fromJson(data);
+  }
+
   Future<AppropriatenessStatus> appropriatenessStatus() async {
     final data = await _client.query('getAppropriatenessStatus');
     return AppropriatenessStatus.fromJson(data);
@@ -94,6 +122,12 @@ class InvestmentRepository {
     required int propertyId,
     required double amount,
     String? notes,
+    InvestorStrategy? strategy,
+    int? strategyHoldMonths,
+    bool usesFinancing = false,
+    double financingAmount = 0,
+    double financingRate = 0,
+    int financingTermMonths = 0,
   }) async {
     final data = await _client.mutation(
       'submitInvestmentProposal',
@@ -101,6 +135,12 @@ class InvestmentRepository {
         'propertyId': propertyId,
         'contributionAmount': amount,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
+        if (strategy != null) 'strategy': strategy.wire,
+        if (strategyHoldMonths != null) 'strategyHoldMonths': strategyHoldMonths,
+        'usesFinancing': usesFinancing,
+        'financingAmount': usesFinancing ? financingAmount : 0,
+        'financingRate': usesFinancing ? financingRate : 0,
+        'financingTermMonths': usesFinancing ? financingTermMonths : 0,
       },
     );
     final contribution = data is Map ? data['contribution'] : null;

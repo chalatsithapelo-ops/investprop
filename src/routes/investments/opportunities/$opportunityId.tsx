@@ -27,6 +27,7 @@ import { AICopilotChat } from "~/components/AICopilotChat";
 import { AIMatchBadge } from "~/components/AIMatchBadge";
 import { AIConfidenceRating } from "~/components/AIConfidenceRating";
 import { InfoTooltip, type FinancialTermKey } from "~/components/InfoTooltip";
+import { InvestmentProjection, DEFAULT_STRATEGY_CONFIG, type StrategyConfig } from "~/components/InvestmentProjection";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 import { calculateFlipMetrics, calculateRentalMetrics, calculateDevelopmentMetrics } from "~/financial-calculations";
@@ -49,6 +50,7 @@ function OpportunityDetailPage() {
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
 
   const [investmentAmount, setInvestmentAmount] = useState("");
+  const [strategyConfig, setStrategyConfig] = useState<StrategyConfig>(DEFAULT_STRATEGY_CONFIG);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -185,6 +187,12 @@ function OpportunityDetailPage() {
         propertyId: Number(opportunityId),
         contributionAmount: Number(investmentAmount),
         notes,
+        strategy: strategyConfig.strategy ?? undefined,
+        strategyHoldMonths: strategyConfig.holdMonths ?? undefined,
+        usesFinancing: strategyConfig.usesFinancing,
+        financingAmount: strategyConfig.usesFinancing ? strategyConfig.financingAmount : 0,
+        financingRate: strategyConfig.usesFinancing ? strategyConfig.financingRate : 0,
+        financingTermMonths: strategyConfig.usesFinancing ? strategyConfig.financingTermMonths : 0,
       });
       setSubmitSuccess(true);
       setInvestmentAmount("");
@@ -1211,6 +1219,16 @@ function OpportunityDetailPage() {
                             A share certificate will be issued once your proposal is approved and payment confirmed.
                           </p>
                         </div>
+                      )}
+
+                      {/* Strategy-aware return projection */}
+                      {investmentAmount && Number(investmentAmount) > 0 && (
+                        <InvestmentProjection
+                          propertyId={Number(opportunityId)}
+                          amount={Number(investmentAmount)}
+                          config={strategyConfig}
+                          onConfigChange={setStrategyConfig}
+                        />
                       )}
 
                       {/* FICA Verification Warning */}

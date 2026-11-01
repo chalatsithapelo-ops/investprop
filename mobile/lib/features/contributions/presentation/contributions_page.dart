@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../config/theme.dart';
@@ -421,6 +422,47 @@ class _ContributionCardState extends ConsumerState<_ContributionCard> {
             _kv('Expected return',
                 '${Fmt.money(c.expectedReturnAmount)} (${Fmt.percent(c.expectedReturnRate)})'),
             _kv('Date', Fmt.date(c.contributionDate)),
+            if (c.strategy != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.navy.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.track_changes,
+                            size: 14, color: AppColors.navy),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Your strategy: ${c.strategy!.label}',
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.navy),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (c.strategyHoldMonths != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Planned hold: ${c.strategyHoldMonths} months. Track '
+                        'performance and exit early by selling your shares.',
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
             if (c.paymentReference.isNotEmpty)
               _kv('Reference', c.paymentReference),
             if (remaining != null) ...[
@@ -500,6 +542,17 @@ class _ContributionCardState extends ConsumerState<_ContributionCard> {
                       ),
                     ),
                 ],
+              ),
+            ],
+            if (c.status == 'PAID') ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => context.push('/portfolio/marketplace'),
+                  icon: const Icon(Icons.storefront_outlined, size: 18),
+                  label: const Text('Sell shares on marketplace'),
+                ),
               ),
             ],
           ],

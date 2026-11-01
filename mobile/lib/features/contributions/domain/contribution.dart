@@ -1,4 +1,5 @@
 import '../../../core/format.dart';
+import '../../investment/domain/investment_projection.dart';
 
 /// Real-time budget/return metrics attached to a contribution.
 class ContributionMetrics {
@@ -50,6 +51,8 @@ class Contribution {
     required this.status,
     required this.coolingOffExpiresAt,
     required this.metrics,
+    this.strategy,
+    this.strategyHoldMonths,
   });
 
   final int id;
@@ -70,6 +73,8 @@ class Contribution {
   final String status;
   final DateTime? coolingOffExpiresAt;
   final ContributionMetrics? metrics;
+  final InvestorStrategy? strategy;
+  final int? strategyHoldMonths;
 
   bool get isInCoolingOff =>
       coolingOffExpiresAt != null &&
@@ -148,6 +153,10 @@ class Contribution {
       status: asString(json['status'], 'PENDING'),
       coolingOffExpiresAt: asDate(json['coolingOffExpiresAt']),
       metrics: metrics,
+      strategy: InvestorStrategy.fromWire(json['strategy']?.toString()),
+      strategyHoldMonths: json['strategyHoldMonths'] == null
+          ? null
+          : asInt(json['strategyHoldMonths']),
     );
   }
 }

@@ -27,6 +27,13 @@ export const submitInvestmentProposal = baseProcedure
       propertyId: z.number(),
       contributionAmount: z.number().positive(),
       notes: z.string().optional(),
+      strategy: z.string().optional(),
+      strategyHoldMonths: z.number().int().min(1).max(600).optional(),
+      strategyNotes: z.string().max(1000).optional(),
+      usesFinancing: z.boolean().optional(),
+      financingAmount: z.number().min(0).optional(),
+      financingRate: z.number().min(0).max(40).optional(),
+      financingTermMonths: z.number().int().min(0).max(360).optional(),
     })
   )
   .mutation(async ({ input }) => {
@@ -284,8 +291,15 @@ export const submitInvestmentProposal = baseProcedure
         ownershipPercentage: shareInfo?.ownershipPercentage ?? null,
         status: "PENDING",
         notes: input.notes,
+        strategy: input.strategy ?? null,
+        strategyHoldMonths: input.strategyHoldMonths ?? null,
+        strategyNotes: input.strategyNotes ?? null,
+        usesFinancing: input.usesFinancing ?? false,
+        financingAmount: input.financingAmount ?? 0,
+        financingRate: input.financingRate ?? 0,
+        financingTermMonths: input.financingTermMonths ?? 0,
         coolingOffExpiresAt,
-      },
+      } as any,
       include: {
         property: {
           select: {

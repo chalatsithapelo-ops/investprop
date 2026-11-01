@@ -166,6 +166,14 @@ model InvestorContribution {
   paymentReviewNotes   String?
   contributionDate     DateTime          @default(now())
   notes                String?
+  // ── Investor's own strategy (may differ from the sponsor's plan) ──
+  strategy             String? // FLIP | DEVELOPMENT_EXIT | RENTAL_INCOME | BUY_AND_HOLD | EARLY_RESALE
+  strategyHoldMonths   Int? // the investor's chosen hold period
+  strategyNotes        String?
+  usesFinancing        Boolean           @default(false) // investor used a bank loan to co-invest
+  financingAmount      Float             @default(0)
+  financingRate        Float             @default(0) // annual %
+  financingTermMonths  Int               @default(0)
   reviewedAt           DateTime?
   coolingOffExpiresAt  DateTime?
   cancelledAt          DateTime?
@@ -356,6 +364,10 @@ model Property {
   minimumInvestment         Float                    @default(0) // Minimum investment amount in Rands
   maxInvestors              Int                      @default(50) // Companies Act §96(1)(b) — max 50 unique investors per SPV
   expectedReturns           Float                    @default(0) // Expected return rate as percentage
+  // ── Investor return terms (co-investment waterfall) ──
+  preferredReturnRate       Float                    @default(0) // annual preferred return to investors before promote, %
+  investorProfitShare       Float                    @default(100) // % of residual profit kept by investors (rest is sponsor promote)
+  targetHoldMonths          Int                      @default(0) // sponsor's planned hold / timeline in months
   // Phase 9: investor disclosures
   riskRating                PropertyRiskRating       @default(MEDIUM)
   documentsPackUrls         Json? // Array of {label, url} — MOI, valuation, SPV cert, sale agreement etc.
