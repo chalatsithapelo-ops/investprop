@@ -290,6 +290,8 @@ function OpportunityDetailPage() {
   );
   const expectedReturns =
     property.expectedReturns ?? property.projectedReturn ?? property.roi ?? 0;
+  const platformCarryPct = Number(property.platformCarryPct ?? 0);
+  const publicEquityPct = 100 - platformCarryPct;
 
   // shareInfo is an array of share classes — aggregate for display
   const shareInfoArr = Array.isArray(shareInfo) ? shareInfo : [];
@@ -313,6 +315,26 @@ function OpportunityDetailPage() {
           <p className="font-medium text-gray-900">
             Profit Distribution Waterfall:
           </p>
+          {platformCarryPct > 0 && (
+            <div className="rounded-lg border border-gold-500/30 bg-gold-500/5 p-3">
+              <p className="text-xs font-medium text-gold-600">
+                Equity split (platform carry {platformCarryPct.toFixed(1)}%)
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                Investors fund the full goal but own{" "}
+                <span className="font-semibold text-emerald-600">
+                  {publicEquityPct.toFixed(1)}%
+                </span>{" "}
+                of the equity (split pro-rata by contribution); the platform keeps{" "}
+                <span className="font-semibold text-gold-600">
+                  {platformCarryPct.toFixed(1)}%
+                </span>{" "}
+                as carry. Investors are repaid their capital first — the platform's
+                carry only participates in the profit that remains, split by these
+                equity shares.
+              </p>
+            </div>
+          )}
           <ol className="list-inside list-decimal space-y-2 text-gray-500">
             <li>
               <span className="font-medium text-gray-600">Capital Return</span>{" "}

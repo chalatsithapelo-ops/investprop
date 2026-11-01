@@ -25,6 +25,7 @@ class Opportunity {
     this.developmentInput,
     this.developmentTypeRaw,
     this.preferredReturn,
+    this.platformCarryPct = 0,
   });
 
   final int id;
@@ -49,6 +50,17 @@ class Opportunity {
   final PropertyDevelopmentInput? developmentInput;
   final String? developmentTypeRaw;
   final double? preferredReturn;
+
+  /// Equity the platform keeps as free carry. Investors fund the whole goal but
+  /// own only the remaining fraction.
+  final double platformCarryPct;
+
+  /// Public share of the equity (what investors collectively own at full
+  /// funding), as a percentage.
+  double get publicEquityPct =>
+      (100 - platformCarryPct).clamp(0, 100).toDouble();
+
+  bool get hasPlatformCarry => platformCarryPct > 0;
 
   bool get hasAnalysis =>
       flipInput != null || rentalInput != null || developmentInput != null;
@@ -128,6 +140,7 @@ class Opportunity {
       preferredReturn: asDouble(json['preferredReturn']) != 0
           ? asDouble(json['preferredReturn'])
           : null,
+      platformCarryPct: asDouble(json['platformCarryPct']),
     );
   }
 }

@@ -36,6 +36,7 @@ type PropertyFormData = {
   minimumInvestment?: number;
   maximumInvestors?: number;
   expectedReturnRate?: number;
+  platformCarryPct?: number;
   budgetItems?: BudgetItem[];
 };
 
@@ -89,6 +90,7 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
     minimumInvestment: defaults?.minimumInvestment,
     maximumInvestors: defaults?.maximumInvestors ?? (defaults as any)?.maxInvestors,
     expectedReturnRate: defaults?.expectedReturnRate ?? (defaults as any)?.expectedReturns,
+    platformCarryPct: defaults?.platformCarryPct ?? (defaults as any)?.platformCarryPct ?? 0,
     budgetItems: defaults?.budgetItems ?? [],
   });
 
@@ -651,6 +653,28 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
               onChange={(e) => updateField("expectedReturnRate", Number(e.target.value))}
               min={0}
             />
+          </div>
+          <div>
+            <label className={labelClass}>Platform Carry (% of equity)</label>
+            <input
+              type="number"
+              className={inputClass}
+              placeholder="0 = investors own 100%"
+              value={form.platformCarryPct ?? ""}
+              onChange={(e) =>
+                updateField(
+                  "platformCarryPct",
+                  Math.min(99, Math.max(0, Number(e.target.value))),
+                )
+              }
+              min={0}
+              max={99}
+              step={0.5}
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Equity kept by the platform as carry. Investors fund the whole goal
+              but own {(100 - (form.platformCarryPct ?? 0)).toFixed(1)}%.
+            </p>
           </div>
         </div>
       </div>

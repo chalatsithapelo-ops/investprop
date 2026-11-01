@@ -18,6 +18,7 @@ export const publishPropertyForFunding = baseProcedure
       propertyId: z.number(),
       fundingGoal: z.number().positive(),
       fundingClosingDate: z.string(), // ISO date string
+      platformCarryPct: z.number().min(0).max(99).optional(),
       fundingBreakdown: z.array(fundingBreakdownItemSchema).min(1, "At least one funding breakdown item is required"),
     })
   )
@@ -97,6 +98,9 @@ export const publishPropertyForFunding = baseProcedure
         fundingGoal: input.fundingGoal,
         fundingClosingDate: closingDate,
         fundingBreakdown: input.fundingBreakdown,
+        ...(input.platformCarryPct !== undefined
+          ? { platformCarryPct: input.platformCarryPct }
+          : {}),
       },
     });
 

@@ -57,6 +57,7 @@ function FundingCampaignsPage() {
     propertyId: 0,
     fundingGoal: 0,
     fundingClosingDate: "",
+    platformCarryPct: 0,
     fundingBreakdown: [{ category: "", amount: 0, description: "" }],
   });
 
@@ -133,6 +134,7 @@ function FundingCampaignsPage() {
         propertyId: publishForm.propertyId,
         fundingGoal: publishForm.fundingGoal,
         fundingClosingDate: publishForm.fundingClosingDate,
+        platformCarryPct: publishForm.platformCarryPct || 0,
         fundingBreakdown: breakdown,
       });
       toast.success("Property published for funding");
@@ -144,6 +146,7 @@ function FundingCampaignsPage() {
         propertyId: 0,
         fundingGoal: 0,
         fundingClosingDate: "",
+        platformCarryPct: 0,
         fundingBreakdown: [{ category: "", amount: 0, description: "" }],
       });
     } catch (e: any) {
@@ -301,6 +304,33 @@ function FundingCampaignsPage() {
                   className="w-full rounded-lg border border-navy-700 bg-navy-800 px-4 py-2 text-gray-900 focus:border-gold-500 focus:outline-none"
                 />
               </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="mb-1 block text-sm text-gray-500">
+                Platform Carry (% of equity)
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={99}
+                step={0.5}
+                value={publishForm.platformCarryPct || ""}
+                onChange={(e) =>
+                  setPublishForm({
+                    ...publishForm,
+                    platformCarryPct: Math.min(99, Math.max(0, Number(e.target.value))),
+                  })
+                }
+                className="w-full rounded-lg border border-navy-700 bg-navy-800 px-4 py-2 text-gray-900 focus:border-gold-500 focus:outline-none"
+                placeholder="e.g. 20 (0 = investors own 100%)"
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                Equity the platform keeps as free carry. Investors fund the whole
+                goal but own only {(100 - (publishForm.platformCarryPct || 0)).toFixed(1)}% —
+                they get their capital back first, then profit is split by equity
+                share. Leave 0 for investors to own 100%.
+              </p>
             </div>
 
             {/* Funding breakdown — amounts must sum to the funding goal */}

@@ -367,6 +367,7 @@ model Property {
   // ── Investor return terms (co-investment waterfall) ──
   preferredReturnRate       Float                    @default(0) // annual preferred return to investors before promote, %
   investorProfitShare       Float                    @default(100) // % of residual profit kept by investors (rest is sponsor promote)
+  platformCarryPct          Float                    @default(0) // % of total equity retained by the platform as free carry (public owns 100 − this). Public funds the whole goal but only owns the remainder.
   targetHoldMonths          Int                      @default(0) // sponsor's planned hold / timeline in months
   // Phase 9: investor disclosures
   riskRating                PropertyRiskRating       @default(MEDIUM)

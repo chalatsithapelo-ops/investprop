@@ -5,6 +5,7 @@ import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
 import { createAuditLog } from "./audit-log";
 import { createNotification } from "./notifications";
+import { publicEquityFraction } from "./share-certificates";
 
 /* ────────────────────────────────────────────────────────────────────
    Phase 10 — Investor P1: payment proof resubmit, refund path,
@@ -167,6 +168,10 @@ export const getCapTablePreview = baseProcedure
 
     const totalCommitted = contributions.reduce((s, c) => s + c.contributionAmount, 0);
     const goal = property.fundingGoal || 1;
+    // The platform keeps `platformCarryPct` of the equity as free carry; the
+    // public funds the whole goal but owns only the remaining fraction.
+    const carryPct = Math.min(99, Math.max(0, property.platformCarryPct ?? 0));
+    const publicFraction = publicEquityFraction(carryPct);
     const rows = contributions.map((c) => ({
       investorId: c.investor.id,
       investorName: c.investor.name,
@@ -174,12 +179,20 @@ export const getCapTablePreview = baseProcedure
       shares: c.numberOfShares ?? 0,
       pctOfRaised: totalCommitted > 0 ? (c.contributionAmount / totalCommitted) * 100 : 0,
       pctOfGoal: (c.contributionAmount / goal) * 100,
+      // True ownership of the whole SPV once the carry is accounted for.
+      pctOfEquity: (c.contributionAmount / goal) * publicFraction * 100,
       status: c.status,
     }));
+    // Public investors own `publicFraction` of the equity at full funding; the
+    // platform carry is the balance.
+    const publicEquityPct = (totalCommitted / goal) * publicFraction * 100;
     return {
       property: { id: property.id, title: property.title, fundingGoal: goal },
       totalCommitted,
       totalInvestors: contributions.length,
+      platformCarryPct: carryPct,
+      publicEquityPct,
+      platformCarryEquityPct: carryPct, // platform always holds its carry % of total equity
       rows: rows.sort((a, b) => b.amount - a.amount),
     };
   });

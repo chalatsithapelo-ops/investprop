@@ -39,6 +39,7 @@ export const createDistribution = baseProcedure
       select: {
         id: true,
         title: true,
+        platformCarryPct: true,
         spv: {
           select: {
             id: true,
@@ -90,6 +91,24 @@ export const createDistribution = baseProcedure
     // Calculate total shares across all classes for this property
     const totalSharesOutstanding = holdings.reduce((s, h) => s + h.sharesOwned, 0);
 
+    // ── Platform carry (equity waterfall) ──────────────────────────────
+    // The platform keeps `platformCarryPct` of the equity as free carry. Carry
+    // participates in PROFIT distributions only — investors always get their
+    // capital back first, so a CAPITAL_RETURN pays investors 100% and the
+    // platform nothing. For profit types, we gross up a notional carry share
+    // block so the platform receives exactly carryPct of the net and the rest
+    // is split among investors pro-rata by their holdings.
+    const carryPct = Math.min(99, Math.max(0, property.platformCarryPct ?? 0));
+    const isReturnOfCapital = input.type === "CAPITAL_RETURN";
+    const carryShares =
+      !isReturnOfCapital && carryPct > 0 && totalSharesOutstanding > 0
+        ? (totalSharesOutstanding * carryPct) / (100 - carryPct)
+        : 0;
+    const denomShares = totalSharesOutstanding + carryShares;
+    const platformCarryAmount =
+      denomShares > 0 ? netAmount * (carryShares / denomShares) : 0;
+    const investorPool = netAmount - platformCarryAmount;
+
     const result = await db.$transaction(async (tx) => {
       // Resolve tax classification. Caller may override (e.g. SALE_PROCEEDS
       // typically reclassified as CAPITAL_GAIN). Otherwise derive from `type`.
@@ -128,10 +147,16 @@ export const createDistribution = baseProcedure
         },
       });
 
-      // Create payouts for each holder
+      // Create payouts for each holder. Investors split the investor pool
+      // (net minus platform carry) pro-rata by their holdings; percentageShare
+      // reflects their slice of TOTAL equity including the platform's carry.
       const payouts = holdings.map((h) => {
-        const percentageShare = (h.sharesOwned / totalSharesOutstanding) * 100;
-        const grossPayout = netAmount * (percentageShare / 100);
+        const percentageShare =
+          denomShares > 0 ? (h.sharesOwned / denomShares) * 100 : 0;
+        const grossPayout =
+          totalSharesOutstanding > 0
+            ? investorPool * (h.sharesOwned / totalSharesOutstanding)
+            : 0;
         // SARS withholding based on tax classification (DIVIDEND → 20% per s64E Income Tax Act)
         const taxWithheld = grossPayout * taxRate;
         const netPayout = grossPayout - taxWithheld;
@@ -150,6 +175,22 @@ export const createDistribution = baseProcedure
 
       await tx.distributionPayout.createMany({ data: payouts });
 
+      // Book the platform's carry (its share of profit) into the revenue ledger.
+      // Idempotent per distribution; joins this transaction for atomicity.
+      if (platformCarryAmount > 0) {
+        await recordPlatformFee({
+          tx,
+          feeType: "JV_PROMOTE",
+          sourceType: "Distribution",
+          sourceId: distribution.id,
+          propertyId: input.propertyId,
+          baseAmount: netAmount,
+          feeBps: Math.round(carryPct * 100),
+          feeAmount: platformCarryAmount,
+          description: `Platform carry (${carryPct}%) on ${input.type.replace("_", " ").toLowerCase()} distribution`,
+        });
+      }
+
       // Mark as approved (ready for payment)
       await tx.distribution.update({
         where: { id: distribution.id },
@@ -161,6 +202,9 @@ export const createDistribution = baseProcedure
         totalInvestors: holdings.length,
         netAmount,
         managementFee,
+        platformCarryPct: carryPct,
+        platformCarryAmount,
+        investorPool,
         spv: property.spv
           ? {
               name: property.spv.name,
@@ -182,7 +226,7 @@ export const createDistribution = baseProcedure
       createNotification(
         h.investorId,
         "New Distribution Created",
-        `A ${input.type.replace("_", " ").toLowerCase()} distribution of R${input.grossAmount.toLocaleString()} has been created for your property investment. Your estimated payout: R${((netAmount * (h.sharesOwned / holdings.reduce((s, hh) => s + hh.sharesOwned, 0))) ).toFixed(2)}.`,
+        `A ${input.type.replace("_", " ").toLowerCase()} distribution of R${input.grossAmount.toLocaleString()} has been created for your property investment. Your estimated payout: R${((investorPool * (h.sharesOwned / (totalSharesOutstanding || 1)))).toFixed(2)}.`,
         "INFO",
         "INVESTMENT",
         input.propertyId
@@ -328,7 +372,10 @@ export const executeDistribution = baseProcedure
 
       return {
         success: true,
-        totalPaid: distribution.netAmount,
+        totalPaid: distribution.payouts.reduce(
+          (sum, p) => sum + p.netAmount,
+          0,
+        ),
         investorsPaid: distribution.payouts.length,
       };
     });

@@ -58,6 +58,16 @@ function computeValidationHash(data: {
   return crypto.createHash("sha256").update(payload).digest("hex");
 }
 
+/**
+ * Fraction (0..1) of total equity owned by the public (investors). The platform
+ * retains `platformCarryPct` of the equity as free carry — the public funds the
+ * whole goal but only owns this remaining fraction. Clamped to (0,1].
+ */
+export function publicEquityFraction(platformCarryPct: number | null | undefined): number {
+  const carry = Math.min(99, Math.max(0, Number(platformCarryPct ?? 0)));
+  return (100 - carry) / 100;
+}
+
 /** Calculate share info for a given contribution amount and property */
 export async function calculateShareInfo(
   propertyId: number,
@@ -78,14 +88,18 @@ export async function calculateShareInfo(
     // No share class — fall back to funding-goal-based calculation
     const property = await db.property.findUnique({
       where: { id: propertyId },
+      select: { fundingGoal: true, platformCarryPct: true },
     });
     if (!property || property.fundingGoal <= 0) return null;
 
-    // Each R1 of funding goal = 1 share (effectively, shares = amount)
-    // ownershipPercentage = (contribution / fundingGoal) * 100
+    // Each R1 of funding goal = 1 share (the public float, at R1/share). When
+    // the platform keeps a carry, the public funds the whole goal but owns only
+    // the remaining fraction — so total equity = fundingGoal / publicFraction and
+    // ownership = (contribution / fundingGoal) * publicFraction.
     const effectiveSharePrice = 1; // R1 per share
     const numShares = contributionAmount / effectiveSharePrice;
-    const ownershipPct = (contributionAmount / property.fundingGoal) * 100;
+    const publicFraction = publicEquityFraction(property.platformCarryPct);
+    const ownershipPct = (contributionAmount / property.fundingGoal) * publicFraction * 100;
 
     return {
       numberOfShares: numShares,
@@ -121,7 +135,7 @@ export async function ensureShareHoldingForContribution(
 ): Promise<void> {
   const contribution = await db.investorContribution.findUnique({
     where: { id: contributionId },
-    include: { property: { select: { id: true, fundingGoal: true } } },
+    include: { property: { select: { id: true, fundingGoal: true, platformCarryPct: true } } },
   });
   if (!contribution) return;
 
@@ -135,10 +149,11 @@ export async function ensureShareHoldingForContribution(
   });
   if (!shareClass) {
     const fundingGoal = contribution.property?.fundingGoal ?? 0;
-    const totalShares = Math.max(
-      1,
-      Math.round(fundingGoal > 0 ? fundingGoal : contribution.contributionAmount),
-    );
+    // Total equity = public float (fundingGoal at R1/share) grossed up for the
+    // platform carry, so the public owns only (100 − carry)% once fully funded.
+    const publicFraction = publicEquityFraction(contribution.property?.platformCarryPct);
+    const floatShares = fundingGoal > 0 ? fundingGoal : contribution.contributionAmount;
+    const totalShares = Math.max(1, Math.round(floatShares / publicFraction));
     shareClass = await db.shareClass.create({
       data: {
         propertyId,

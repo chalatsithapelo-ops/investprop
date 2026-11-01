@@ -338,6 +338,51 @@ class _FundingSection extends StatelessWidget {
               ),
             ],
           ),
+          if (opportunity.hasPlatformCarry) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.gold.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.pie_chart_outline,
+                          size: 16, color: AppColors.gold),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Platform carry ${Fmt.percent(opportunity.platformCarryPct)}',
+                        style: const TextStyle(
+                          color: AppColors.gold,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'You fund the full goal but investors own '
+                    '${Fmt.percent(opportunity.publicEquityPct)} of the equity '
+                    '(split pro-rata by contribution); the platform keeps '
+                    '${Fmt.percent(opportunity.platformCarryPct)} as carry. '
+                    'Investors are repaid their capital first — the carry only '
+                    'shares in the profit that remains.',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -51,25 +51,41 @@ export const createShareClass = baseProcedure
 export const getShareInfo = baseProcedure
   .input(z.object({ propertyId: z.number() }))
   .query(async ({ input }) => {
-    const shareClasses = await db.shareClass.findMany({
-      where: { propertyId: input.propertyId },
-      include: {
-        holdings: {
-          include: {
-            investor: { select: { id: true, name: true, email: true } },
+    const [shareClasses, property] = await Promise.all([
+      db.shareClass.findMany({
+        where: { propertyId: input.propertyId },
+        include: {
+          holdings: {
+            include: {
+              investor: { select: { id: true, name: true, email: true } },
+            },
           },
         },
-      },
-    });
+      }),
+      db.property.findUnique({
+        where: { id: input.propertyId },
+        select: { platformCarryPct: true },
+      }),
+    ]);
+
+    // The platform keeps `platformCarryPct` of each class as carry — those shares
+    // are not offered to the public, so public availability and % sold are
+    // measured against the public float (total minus the carry block).
+    const carryPct = Math.min(99, Math.max(0, property?.platformCarryPct ?? 0));
 
     // Calculate summary for each class
     return shareClasses.map((sc) => {
       const totalSold = sc.holdings.reduce((s, h) => s + h.sharesOwned, 0);
+      const platformCarryShares = Math.round((sc.totalShares * carryPct) / 100);
+      const publicFloatShares = Math.max(0, sc.totalShares - platformCarryShares);
       return {
         ...sc,
         totalSold,
-        availableShares: sc.totalShares - totalSold,
-        percentageSold: (totalSold / sc.totalShares) * 100,
+        platformCarryPct: carryPct,
+        platformCarryShares,
+        publicFloatShares,
+        availableShares: Math.max(0, publicFloatShares - totalSold),
+        percentageSold: publicFloatShares > 0 ? (totalSold / publicFloatShares) * 100 : 0,
       };
     });
   });

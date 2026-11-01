@@ -100,6 +100,28 @@ function CapTablePage() {
                   </div>
                 </div>
 
+                {/* Platform carry banner */}
+                {Number(data.platformCarryPct) > 0 && (
+                  <div className="rounded-xl border border-gold-500/30 bg-gold-500/5 p-4">
+                    <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-gold-600">
+                      <PieChart size={14} /> Platform Carry
+                    </div>
+                    <p className="mt-1 text-sm text-gray-700">
+                      The platform retains{" "}
+                      <span className="font-bold text-gold-600">
+                        {Number(data.platformCarryPct).toFixed(1)}%
+                      </span>{" "}
+                      of the equity as carry. Investors fund the full goal but own the
+                      remaining{" "}
+                      <span className="font-bold text-emerald-600">
+                        {(100 - Number(data.platformCarryPct)).toFixed(1)}%
+                      </span>{" "}
+                      — split between them pro-rata. Investors receive their capital
+                      back first; profit is then split by these equity shares.
+                    </p>
+                  </div>
+                )}
+
                 {/* Table */}
                 <div className="overflow-x-auto rounded-xl border border-navy-800/50 bg-navy-900/50">
                   <table className="w-full text-sm">
@@ -111,13 +133,14 @@ function CapTablePage() {
                         <th className="px-4 py-3 text-right">Shares</th>
                         <th className="px-4 py-3 text-right">% of Raised</th>
                         <th className="px-4 py-3 text-right">% of Goal</th>
+                        <th className="px-4 py-3 text-right">% of Equity</th>
                         <th className="px-4 py-3 pr-4 text-right">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {rows.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="py-8 text-center text-gray-500">
+                          <td colSpan={8} className="py-8 text-center text-gray-500">
                             No investors yet. Cap-table will populate as commitments
                             come in.
                           </td>
@@ -144,6 +167,9 @@ function CapTablePage() {
                             <td className="px-4 py-3 text-right text-blue-600">
                               {Number(r.pctOfGoal).toFixed(2)}%
                             </td>
+                            <td className="px-4 py-3 text-right font-medium text-emerald-600">
+                              {Number(r.pctOfEquity ?? r.pctOfGoal).toFixed(2)}%
+                            </td>
                             <td className="px-4 py-3 pr-4 text-right">
                               <span
                                 className={`rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -159,6 +185,26 @@ function CapTablePage() {
                             </td>
                           </tr>
                         ))
+                      )}
+                      {Number(data.platformCarryPct) > 0 && rows.length > 0 && (
+                        <tr className="border-t border-gold-500/30 bg-gold-500/5">
+                          <td className="py-3 pl-4 pr-4 text-gold-600">★</td>
+                          <td className="px-4 py-3 font-semibold text-gold-700">
+                            Platform (carry)
+                          </td>
+                          <td className="px-4 py-3 text-right text-gray-400">—</td>
+                          <td className="px-4 py-3 text-right text-gray-400">—</td>
+                          <td className="px-4 py-3 text-right text-gray-400">—</td>
+                          <td className="px-4 py-3 text-right text-gray-400">—</td>
+                          <td className="px-4 py-3 text-right font-semibold text-gold-700">
+                            {Number(data.platformCarryPct).toFixed(2)}%
+                          </td>
+                          <td className="px-4 py-3 pr-4 text-right">
+                            <span className="rounded-full bg-gold-50 px-2 py-0.5 text-xs font-medium text-gold-700">
+                              CARRY
+                            </span>
+                          </td>
+                        </tr>
                       )}
                     </tbody>
                   </table>

@@ -143,6 +143,7 @@ export const updateProperty = baseProcedure
       maximumInvestors: z.number().optional(),
       expectedReturnRate: z.number().optional(),
       fundingGoal: z.number().optional(),
+      platformCarryPct: z.number().min(0).max(99).optional(),
     })
   )
   .mutation(async ({ input }) => {
@@ -202,6 +203,7 @@ export const updateProperty = baseProcedure
       if (input.minimumInvestment !== undefined) propertyUpdateData.minimumInvestment = input.minimumInvestment;
       if (input.maximumInvestors !== undefined) propertyUpdateData.maxInvestors = input.maximumInvestors;
       if (input.expectedReturnRate !== undefined) propertyUpdateData.expectedReturns = input.expectedReturnRate;
+      if (input.platformCarryPct !== undefined) propertyUpdateData.platformCarryPct = input.platformCarryPct;
 
       // Handle mark complete action
       if (input.markComplete) {
