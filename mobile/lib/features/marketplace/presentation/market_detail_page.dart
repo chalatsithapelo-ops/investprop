@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../config/theme.dart';
 import '../../../core/api/api_exception.dart';
@@ -142,6 +143,19 @@ class _MarketDetailPageState extends ConsumerState<MarketDetailPage> {
                 _SumCell(label: 'Holders', value: '${sc.totalInvestors}'),
               ],
             ),
+            if (sc.propertyId > 0) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      context.push('/opportunities/${sc.propertyId}'),
+                  icon: const Icon(Icons.insights_outlined, size: 18),
+                  label: const Text(
+                      'View property financials & performance'),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -421,7 +435,18 @@ class _PlaceOrderSheetState extends ConsumerState<_PlaceOrderSheet> {
   bool _busy = false;
 
   @override
+  void initState() {
+    super.initState();
+    _qty.addListener(_onInputChanged);
+    _price.addListener(_onInputChanged);
+  }
+
+  void _onInputChanged() => setState(() {});
+
+  @override
   void dispose() {
+    _qty.removeListener(_onInputChanged);
+    _price.removeListener(_onInputChanged);
     _qty.dispose();
     _price.dispose();
     super.dispose();
@@ -519,6 +544,12 @@ class _PlaceOrderSheetState extends ConsumerState<_PlaceOrderSheet> {
                 return null;
               },
             ),
+            const SizedBox(height: 16),
+            _OrderValuePanel(
+              isBuy: isBuy,
+              quantity: int.tryParse(_qty.text.trim()) ?? 0,
+              pricePerShare: double.tryParse(_price.text.trim()) ?? 0,
+            ),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
@@ -538,6 +569,115 @@ class _PlaceOrderSheetState extends ConsumerState<_PlaceOrderSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Live order-value breakdown so buyers/sellers see exactly how many shares
+/// they are trading and the rand value — plus the auto-settlement note.
+class _OrderValuePanel extends StatelessWidget {
+  const _OrderValuePanel({
+    required this.isBuy,
+    required this.quantity,
+    required this.pricePerShare,
+  });
+
+  final bool isBuy;
+  final int quantity;
+  final double pricePerShare;
+
+  // Securities Transfer Tax charged on share purchases in South Africa.
+  static const double _sttRate = 0.0025;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = quantity * pricePerShare;
+    final stt = isBuy ? value * _sttRate : 0.0;
+    final total = isBuy ? value + stt : value;
+    final ready = quantity > 0 && pricePerShare > 0;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _kv('Shares', ready ? '$quantity' : '—'),
+          _kv('Price per share', ready ? Fmt.money(pricePerShare) : '—'),
+          _kv('Order value', ready ? Fmt.money(value) : '—', bold: true),
+          if (isBuy)
+            _kv('+ Securities Transfer Tax (0.25%)',
+                ready ? Fmt.money(stt) : '—'),
+          const Divider(height: 16),
+          _kv(
+            isBuy ? 'Total to pay' : 'You receive (before fee)',
+            ready ? Fmt.money(total) : '—',
+            bold: true,
+            highlight: true,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.bolt, size: 13, color: AppColors.goldDark),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  isBuy
+                      ? 'If your wallet is funded, the trade settles instantly '
+                            'and your share certificate is issued automatically. '
+                            'Otherwise it auto-completes the moment you top up.'
+                      : 'When a buyer matches, the shares transfer and your '
+                            'wallet is credited automatically — no manual step.',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _kv(String k, String v, {bool bold = false, bool highlight = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              k,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text(
+              v,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: bold ? 13 : 12,
+                fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
+                color: highlight ? AppColors.goldDark : AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

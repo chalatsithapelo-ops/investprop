@@ -66,14 +66,15 @@ class ReferralServicesPage extends ConsumerWidget {
     if (confirmed != true || !context.mounted) return;
 
     try {
-      await ref.read(referralRepositoryProvider).requestIntro(
-            type: type,
-            note: noteController.text,
-          );
+      await ref
+          .read(referralRepositoryProvider)
+          .requestIntro(type: type, note: noteController.text);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Request sent — we'll connect you with a ${type.label.toLowerCase()}."),
+          content: Text(
+            "Request sent — we'll connect you with a ${type.label.toLowerCase()}.",
+          ),
           backgroundColor: AppColors.success,
         ),
       );

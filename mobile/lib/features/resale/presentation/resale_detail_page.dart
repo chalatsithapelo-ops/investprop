@@ -52,8 +52,9 @@ class _ResaleDetailPageState extends ConsumerState<ResaleDetailPage> {
               const SizedBox(height: 16),
               TextField(
                 controller: offer,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                 ],
@@ -99,7 +100,9 @@ class _ResaleDetailPageState extends ConsumerState<ResaleDetailPage> {
 
     try {
       final offerVal = double.tryParse(offer.text.trim().replaceAll(',', ''));
-      await ref.read(resaleRepositoryProvider).expressInterest(
+      await ref
+          .read(resaleRepositoryProvider)
+          .expressInterest(
             id: listing.id,
             offerAmount: offerVal,
             message: message.text,
@@ -175,14 +178,19 @@ class _ResaleDetailPageState extends ConsumerState<ResaleDetailPage> {
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              const Icon(Icons.place_outlined,
-                                  size: 16, color: AppColors.textSecondary),
+                              const Icon(
+                                Icons.place_outlined,
+                                size: 16,
+                                color: AppColors.textSecondary,
+                              ),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  [listing.address, listing.city, listing.province]
-                                      .where((e) => e.isNotEmpty)
-                                      .join(', '),
+                                  [
+                                    listing.address,
+                                    listing.city,
+                                    listing.province,
+                                  ].where((e) => e.isNotEmpty).join(', '),
                                   style: const TextStyle(
                                     color: AppColors.textSecondary,
                                   ),
@@ -225,8 +233,9 @@ class _ResaleDetailPageState extends ConsumerState<ResaleDetailPage> {
                                   vertical: 5,
                                 ),
                                 decoration: BoxDecoration(
-                                  color:
-                                      AppColors.success.withValues(alpha: 0.12),
+                                  color: AppColors.success.withValues(
+                                    alpha: 0.12,
+                                  ),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
@@ -292,11 +301,15 @@ class _Specs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = <(IconData, String)>[
-      if (listing.bedrooms != null) (Icons.bed_outlined, '${listing.bedrooms} bed'),
+      if (listing.bedrooms != null)
+        (Icons.bed_outlined, '${listing.bedrooms} bed'),
       if (listing.bathrooms != null)
         (Icons.bathtub_outlined, '${listing.bathrooms} bath'),
       if (listing.squareMeters != null)
-        (Icons.square_foot_outlined, '${listing.squareMeters!.toStringAsFixed(0)} m²'),
+        (
+          Icons.square_foot_outlined,
+          '${listing.squareMeters!.toStringAsFixed(0)} m²',
+        ),
       if (listing.erfSize != null)
         (Icons.crop_square, 'Erf ${listing.erfSize!.toStringAsFixed(0)} m²'),
       if (listing.propertyType.isNotEmpty)

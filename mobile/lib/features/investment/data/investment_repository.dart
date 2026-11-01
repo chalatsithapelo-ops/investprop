@@ -19,7 +19,8 @@ class AppropriatenessAnswers {
     required this.maxLossTolerance,
   });
 
-  final String investmentExperience; // NONE | BASIC | EXPERIENCED | PROFESSIONAL
+  final String
+  investmentExperience; // NONE | BASIC | EXPERIENCED | PROFESSIONAL
   final String annualIncome; // UNDER_350K | 350_750K | 750K_1_5M | OVER_1_5M
   final String netWorth; // UNDER_500K | 500K_2M | 2M_10M | OVER_10M
   final bool understandsIlliquid;
@@ -70,6 +71,8 @@ class InvestmentRepository {
     double? financingAmount,
     double? financingRate,
     int? financingTermMonths,
+    int? stressDownPct,
+    int? stressUpPct,
   }) async {
     final data = await _client.query(
       'calculateInvestmentProjection',
@@ -78,6 +81,8 @@ class InvestmentRepository {
         'amount': amount,
         if (strategy != null) 'strategy': strategy.wire,
         if (holdMonths != null) 'holdMonths': holdMonths,
+        if (stressDownPct != null) 'stressDownPct': stressDownPct,
+        if (stressUpPct != null) 'stressUpPct': stressUpPct,
         if (financingAmount != null && financingAmount > 0)
           'financing': {
             'amount': financingAmount,
@@ -136,7 +141,8 @@ class InvestmentRepository {
         'contributionAmount': amount,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
         if (strategy != null) 'strategy': strategy.wire,
-        if (strategyHoldMonths != null) 'strategyHoldMonths': strategyHoldMonths,
+        if (strategyHoldMonths != null)
+          'strategyHoldMonths': strategyHoldMonths,
         'usesFinancing': usesFinancing,
         'financingAmount': usesFinancing ? financingAmount : 0,
         'financingRate': usesFinancing ? financingRate : 0,
@@ -245,7 +251,8 @@ final investGateProvider = FutureProvider.autoDispose
       );
     });
 
-final awaitingPaymentProvider =
-    FutureProvider.autoDispose<List<Contribution>>((ref) async {
-      return ref.watch(investmentRepositoryProvider).awaitingPayment();
-    });
+final awaitingPaymentProvider = FutureProvider.autoDispose<List<Contribution>>((
+  ref,
+) async {
+  return ref.watch(investmentRepositoryProvider).awaitingPayment();
+});

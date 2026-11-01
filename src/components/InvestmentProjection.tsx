@@ -25,6 +25,8 @@ export type StrategyConfig = {
   financingAmount: number;
   financingRate: number;
   financingTermMonths: number;
+  stressDownPct: number;
+  stressUpPct: number;
 };
 
 export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
@@ -34,6 +36,8 @@ export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
   financingAmount: 0,
   financingRate: 11.75,
   financingTermMonths: 60,
+  stressDownPct: 10,
+  stressUpPct: 10,
 };
 
 const STRATEGY_LABELS: Record<InvestorStrategy, { label: string; blurb: string }> = {
@@ -68,6 +72,8 @@ export function InvestmentProjection({ propertyId, amount, config, onConfigChang
       amount,
       strategy: config.strategy ?? undefined,
       holdMonths: config.holdMonths ?? undefined,
+      stressDownPct: config.stressDownPct,
+      stressUpPct: config.stressUpPct,
       financing:
         config.usesFinancing && config.financingAmount > 0
           ? {
@@ -170,6 +176,50 @@ export function InvestmentProjection({ propertyId, amount, config, onConfigChang
             Platform plan: ~{data.projectHoldMonths} months. You can exit earlier by selling shares on the marketplace.
           </p>
         )}
+      </div>
+
+      {/* Investor-controlled stress test */}
+      <div className="mb-3 rounded-lg bg-white/60 p-2.5">
+        <p className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold text-gray-700">
+          <Target size={12} className="text-gold-600" />
+          Stress the deal yourself
+          <InfoTooltip term="scenarioBands" />
+        </p>
+        <p className="mb-2 text-[10px] text-gray-500">
+          Choose how hard to push revenue down (downside) and up (upside). The table and breakdown update live.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <div className="mb-0.5 flex items-center justify-between">
+              <span className="text-[10px] font-medium text-red-500">Downside severity</span>
+              <span className="text-[10px] font-semibold text-red-500">−{config.stressDownPct}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={40}
+              step={5}
+              value={config.stressDownPct}
+              onChange={(e) => onConfigChange({ ...config, stressDownPct: Number(e.target.value) })}
+              className="w-full accent-red-500"
+            />
+          </div>
+          <div>
+            <div className="mb-0.5 flex items-center justify-between">
+              <span className="text-[10px] font-medium text-emerald-600">Upside optimism</span>
+              <span className="text-[10px] font-semibold text-emerald-600">+{config.stressUpPct}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={40}
+              step={5}
+              value={config.stressUpPct}
+              onChange={(e) => onConfigChange({ ...config, stressUpPct: Number(e.target.value) })}
+              className="w-full accent-emerald-500"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Bank-loan gearing */}
@@ -292,24 +342,43 @@ export function InvestmentProjection({ propertyId, amount, config, onConfigChang
             — real outcomes usually land in between.
           </p>
 
-          {/* Waterfall mini-bar (base case) */}
-          {waterfall && base && (
-            <div className="mt-3">
-              <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold text-gray-600">
-                How your base-case payout splits
+          {/* Full money-flow breakdown (base case) */}
+          {base && (
+            <div className="mt-3 rounded-lg border border-navy-100 bg-white p-2.5">
+              <p className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold text-gray-600">
+                Where your base-case money comes from &amp; goes
                 <InfoTooltip term="promote" />
               </p>
-              <div className="flex h-3 overflow-hidden rounded-full">
-                <div className="bg-navy-400" style={{ width: `${waterfall.capital}%` }} title="Your capital back" />
-                <div className="bg-gold-400" style={{ width: `${waterfall.pref}%` }} title="Preferred return" />
-                <div className="bg-emerald-500" style={{ width: `${waterfall.promoteInvestor}%` }} title="Your profit share" />
-              </div>
-              <div className="mt-1 flex flex-wrap gap-2 text-[9px] text-gray-500">
-                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-navy-400" /> Capital {R(base.capitalReturned)}</span>
+              {waterfall && (
+                <div className="mb-2 flex h-3 overflow-hidden rounded-full">
+                  <div className="bg-navy-400" style={{ width: `${waterfall.capital}%` }} title="Your capital back" />
+                  <div className="bg-gold-400" style={{ width: `${waterfall.pref}%` }} title="Preferred return" />
+                  <div className="bg-emerald-500" style={{ width: `${waterfall.promoteInvestor}%` }} title="Your profit share" />
+                </div>
+              )}
+              <div className="space-y-0.5 text-[11px]">
+                <FlowRow label="Your capital returned" value={R(base.capitalReturned)} term="netProceeds" />
                 {base.preferredReturnPaid > 0 && (
-                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-gold-400" /> Preferred {R(base.preferredReturnPaid)} <InfoTooltip term="preferredReturn" /></span>
+                  <FlowRow label="+ Preferred return" value={R(base.preferredReturnPaid)} term="preferredReturn" positive />
                 )}
-                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Your profit {R(base.profitShare)}</span>
+                <FlowRow label="+ Your profit share" value={R(base.profitShare)} term="promote" positive />
+                <FlowRow label="= Gross payout" value={R(base.grossPayout ?? base.capitalReturned + base.preferredReturnPaid + base.profitShare)} bold />
+                {base.platformFee > 0 && (
+                  <FlowRow label="− Platform fee" value={`-${R(base.platformFee)}`} negative />
+                )}
+                {base.taxEstimate > 0 && (
+                  <FlowRow label="− Estimated tax" value={`-${R(base.taxEstimate)}`} negative />
+                )}
+                {base.loanInterestPaid > 0 && (
+                  <FlowRow label="− Loan interest" value={`-${R(base.loanInterestPaid)}`} negative term="gearing" />
+                )}
+                {base.loanPrincipalRepaid > 0 && (
+                  <FlowRow label="− Loan repaid at exit" value={`-${R(base.loanPrincipalRepaid)}`} negative />
+                )}
+                <div className="my-1 border-t border-navy-100" />
+                <FlowRow label="= Net payout to you" value={R(base.netProceeds)} bold highlight />
+                <FlowRow label="Less your cash in" value={`-${R(base.ownCashInvested ?? amount)}`} />
+                <FlowRow label="= Net profit" value={R(base.netProfit)} bold highlight={base.netProfit >= 0} negative={base.netProfit < 0} />
               </div>
             </div>
           )}
@@ -361,3 +430,39 @@ function ProjRow({
     </tr>
   );
 }
+
+function FlowRow({
+  label,
+  value,
+  term,
+  positive,
+  negative,
+  bold,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  term?: Parameters<typeof InfoTooltip>[0]["term"];
+  positive?: boolean;
+  negative?: boolean;
+  bold?: boolean;
+  highlight?: boolean;
+}) {
+  const valueColor = negative
+    ? "text-red-500"
+    : positive
+      ? "text-emerald-600"
+      : highlight
+        ? "text-gold-700"
+        : "text-gray-800";
+  return (
+    <div className="flex items-center justify-between">
+      <span className={`inline-flex items-center gap-0.5 text-gray-600 ${bold ? "font-semibold" : ""}`}>
+        {label}
+        {term && <InfoTooltip term={term} />}
+      </span>
+      <span className={`${valueColor} ${bold ? "font-bold" : "font-medium"}`}>{value}</span>
+    </div>
+  );
+}
+

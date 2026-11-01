@@ -39,7 +39,32 @@ type PropertyWithDeal = {
   propertyDevelopment: any | null;
 };
 
-export function deriveDealEconomics(property: PropertyWithDeal): DealEconomics {
+/**
+ * Investor-controllable stress applied to the downside / upside bands. The
+ * percentages represent how far the investor wants to swing revenue and costs
+ * against (down) and for (up) the deal. Defaults reproduce the platform's
+ * standard ±10% sensitivity so existing behaviour is unchanged.
+ */
+export type ScenarioStress = { downPct: number; upPct: number };
+
+const DEFAULT_STRESS: ScenarioStress = { downPct: 10, upPct: 10 };
+
+function normaliseStress(stress?: Partial<ScenarioStress>): ScenarioStress {
+  const clampPct = (v: number | undefined, fallback: number) =>
+    Math.max(0, Math.min(40, Number.isFinite(v as number) ? (v as number) : fallback));
+  return {
+    downPct: clampPct(stress?.downPct, DEFAULT_STRESS.downPct),
+    upPct: clampPct(stress?.upPct, DEFAULT_STRESS.upPct),
+  };
+}
+
+export function deriveDealEconomics(
+  property: PropertyWithDeal,
+  stressInput?: Partial<ScenarioStress>,
+): DealEconomics {
+  const stress = normaliseStress(stressInput);
+  const dn = stress.downPct / 100; // revenue haircut / cost overrun on the downside
+  const up = stress.upPct / 100; // revenue upside / cost saving on the upside
   if (property.propertyFlip) {
     const f = property.propertyFlip;
     const fc = calculateFlipMetrics({
@@ -63,9 +88,9 @@ export function deriveDealEconomics(property: PropertyWithDeal): DealEconomics {
     const hold = fc.holdingMonths > 0 ? fc.holdingMonths : property.targetHoldMonths || 6;
     return {
       scenarios: {
-        downside: { projectProfit: resale * 0.9 - cost * 1.1 },
+        downside: { projectProfit: resale * (1 - dn) - cost * (1 + dn) },
         base: { projectProfit: fc.expectedProfit },
-        upside: { projectProfit: resale * 1.1 - cost * 0.95 },
+        upside: { projectProfit: resale * (1 + up) - cost * (1 - up / 2) },
       },
       projectHoldMonths: hold,
       defaultStrategy: "FLIP",
@@ -109,9 +134,15 @@ export function deriveDealEconomics(property: PropertyWithDeal): DealEconomics {
     const growthProfit = value * (Math.pow(1 + appreciation, hold / 12) - 1);
     return {
       scenarios: {
-        downside: { projectProfit: growthProfit * 0.5, projectAnnualIncome: noi * 0.85 },
+        downside: {
+          projectProfit: growthProfit * Math.max(0, 1 - dn * 5),
+          projectAnnualIncome: noi * Math.max(0, 1 - dn * 1.5),
+        },
         base: { projectProfit: growthProfit, projectAnnualIncome: noi },
-        upside: { projectProfit: growthProfit * 1.3, projectAnnualIncome: noi * 1.1 },
+        upside: {
+          projectProfit: growthProfit * (1 + up * 3),
+          projectAnnualIncome: noi * (1 + up),
+        },
       },
       projectHoldMonths: hold,
       defaultStrategy: "RENTAL_INCOME",
@@ -153,9 +184,9 @@ export function deriveDealEconomics(property: PropertyWithDeal): DealEconomics {
       const noi = dc.noi ?? 0;
       return {
         scenarios: {
-          downside: { projectProfit: 0, projectAnnualIncome: noi * 0.85 },
+          downside: { projectProfit: 0, projectAnnualIncome: noi * Math.max(0, 1 - dn * 1.5) },
           base: { projectProfit: 0, projectAnnualIncome: noi },
-          upside: { projectProfit: 0, projectAnnualIncome: noi * 1.1 },
+          upside: { projectProfit: 0, projectAnnualIncome: noi * (1 + up) },
         },
         projectHoldMonths: hold,
         defaultStrategy: "RENTAL_INCOME",
@@ -168,9 +199,9 @@ export function deriveDealEconomics(property: PropertyWithDeal): DealEconomics {
     const cost = dc.totalCosts;
     return {
       scenarios: {
-        downside: { projectProfit: gdv * 0.9 - cost * 1.1 },
+        downside: { projectProfit: gdv * (1 - dn) - cost * (1 + dn) },
         base: { projectProfit: dc.derivedProfit ?? d.expectedProfit ?? 0 },
-        upside: { projectProfit: gdv * 1.1 - cost * 0.95 },
+        upside: { projectProfit: gdv * (1 + up) - cost * (1 - up / 2) },
       },
       projectHoldMonths: hold,
       defaultStrategy: "DEVELOPMENT_EXIT",
@@ -223,6 +254,8 @@ export const calculateInvestmentProjection = baseProcedure
       strategy: z.enum(INVESTOR_STRATEGIES as [InvestorStrategy, ...InvestorStrategy[]]).optional(),
       holdMonths: z.number().int().min(1).max(600).optional(),
       financing: financingSchema,
+      stressDownPct: z.number().min(0).max(40).optional(),
+      stressUpPct: z.number().min(0).max(40).optional(),
     }),
   )
   .query(async ({ input }) => {
@@ -235,7 +268,10 @@ export const calculateInvestmentProjection = baseProcedure
     const share = await calculateShareInfo(input.propertyId, input.amount);
     if (!share) return null;
 
-    const econ = deriveDealEconomics(property);
+    const econ = deriveDealEconomics(property, {
+      downPct: input.stressDownPct,
+      upPct: input.stressUpPct,
+    });
     const strategy = input.strategy ?? econ.defaultStrategy;
     const holdMonths = input.holdMonths ?? econ.projectHoldMonths;
 
@@ -270,6 +306,8 @@ export const calculateInvestmentProjection = baseProcedure
       propertyType: econ.propertyType,
       preferredReturnRate: property.preferredReturnRate ?? 0,
       investorProfitShare: property.investorProfitShare ?? 100,
+      stressDownPct: normaliseStress({ downPct: input.stressDownPct, upPct: input.stressUpPct }).downPct,
+      stressUpPct: normaliseStress({ downPct: input.stressDownPct, upPct: input.stressUpPct }).upPct,
     };
   });
 

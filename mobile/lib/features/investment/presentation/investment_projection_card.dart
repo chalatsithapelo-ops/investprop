@@ -68,7 +68,9 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
     setState(() => _loading = true);
     try {
       final c = widget.config;
-      final p = await ref.read(investmentRepositoryProvider).investmentProjection(
+      final p = await ref
+          .read(investmentRepositoryProvider)
+          .investmentProjection(
             propertyId: widget.propertyId,
             amount: widget.amount,
             strategy: c.strategy,
@@ -76,6 +78,8 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
             financingAmount: c.usesFinancing ? c.financingAmount : null,
             financingRate: c.financingRate,
             financingTermMonths: c.financingTermMonths,
+            stressDownPct: c.stressDownPct,
+            stressUpPct: c.stressUpPct,
           );
       if (!mounted) return;
       setState(() => _projection = p);
@@ -106,11 +110,18 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
         children: [
           Row(
             children: [
-              const Icon(Icons.track_changes, size: 16, color: AppColors.goldDark),
+              const Icon(
+                Icons.track_changes,
+                size: 16,
+                color: AppColors.goldDark,
+              ),
               const SizedBox(width: 6),
               const Text(
                 'Your Investment Projection',
-                style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.goldDark),
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.goldDark,
+                ),
               ),
               const InfoTip(term: 'investorStrategy'),
             ],
@@ -127,8 +138,10 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
           if ((p?.availableStrategies ?? []).isNotEmpty) ...[
             Row(
               children: [
-                const Text('Your strategy',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                const Text(
+                  'Your strategy',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                ),
                 const InfoTip(term: 'investorStrategy'),
               ],
             ),
@@ -139,9 +152,14 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
               children: p!.availableStrategies.map((s) {
                 final active = activeStrategy == s;
                 return GestureDetector(
-                  onTap: () => widget.onConfigChange(widget.config.copyWith(strategy: s)),
+                  onTap: () => widget.onConfigChange(
+                    widget.config.copyWith(strategy: s),
+                  ),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: active ? AppColors.gold : AppColors.surface,
                       borderRadius: BorderRadius.circular(20),
@@ -163,8 +181,13 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
             ),
             if (activeStrategy != null) ...[
               const SizedBox(height: 6),
-              Text(activeStrategy.blurb,
-                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              Text(
+                activeStrategy.blurb,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
             ],
             const SizedBox(height: 12),
           ],
@@ -173,14 +196,19 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Your hold period',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+              const Text(
+                'Your hold period',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+              ),
               Text(
                 activeHold >= 12 && activeHold % 12 == 0
                     ? '${activeHold ~/ 12} year${activeHold == 12 ? '' : 's'}'
                     : '$activeHold months',
                 style: const TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.goldDark),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.goldDark,
+                ),
               ),
             ],
           ),
@@ -191,26 +219,46 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
             divisions: 39,
             activeColor: AppColors.gold,
             onChanged: (v) => widget.onConfigChange(
-                widget.config.copyWith(holdMonths: (v ~/ 3) * 3)),
+              widget.config.copyWith(holdMonths: (v ~/ 3) * 3),
+            ),
           ),
           if ((p?.projectHoldMonths ?? 0) > 0)
             Text(
               'Platform plan: ~${p!.projectHoldMonths} months. Exit earlier by '
               'selling shares on the marketplace.',
-              style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppColors.textSecondary,
+              ),
             ),
           const SizedBox(height: 12),
 
           // Gearing toggle
-          _GearingSection(config: widget.config, onConfigChange: widget.onConfigChange),
+          _GearingSection(
+            config: widget.config,
+            onConfigChange: widget.onConfigChange,
+          ),
+
+          const SizedBox(height: 12),
+
+          // Investor-controlled stress test
+          _StressSection(
+            config: widget.config,
+            onConfigChange: widget.onConfigChange,
+          ),
 
           const SizedBox(height: 12),
           if (_loading && p == null)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 10),
               child: Center(
-                child: Text('Calculating your projection…',
-                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                child: Text(
+                  'Calculating your projection…',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               ),
             ),
 
@@ -239,7 +287,9 @@ class _GearingSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GestureDetector(
-            onTap: () => onConfigChange(config.copyWith(usesFinancing: !config.usesFinancing)),
+            onTap: () => onConfigChange(
+              config.copyWith(usesFinancing: !config.usesFinancing),
+            ),
             behavior: HitTestBehavior.opaque,
             child: Row(
               children: [
@@ -249,16 +299,23 @@ class _GearingSection extends StatelessWidget {
                   child: Checkbox(
                     value: config.usesFinancing,
                     activeColor: AppColors.gold,
-                    onChanged: (v) =>
-                        onConfigChange(config.copyWith(usesFinancing: v ?? false)),
+                    onChanged: (v) => onConfigChange(
+                      config.copyWith(usesFinancing: v ?? false),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 6),
-                const Icon(Icons.account_balance, size: 14, color: AppColors.goldDark),
+                const Icon(
+                  Icons.account_balance,
+                  size: 14,
+                  color: AppColors.goldDark,
+                ),
                 const SizedBox(width: 4),
                 const Flexible(
-                  child: Text('Use a bank loan to co-invest (gearing)',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                  child: Text(
+                    'Use a bank loan to co-invest (gearing)',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                  ),
                 ),
                 const InfoTip(term: 'gearing'),
               ],
@@ -275,7 +332,8 @@ class _GearingSection extends StatelessWidget {
                         ? ''
                         : config.financingAmount.toStringAsFixed(0),
                     onChanged: (v) => onConfigChange(
-                        config.copyWith(financingAmount: double.tryParse(v) ?? 0)),
+                      config.copyWith(financingAmount: double.tryParse(v) ?? 0),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -284,7 +342,10 @@ class _GearingSection extends StatelessWidget {
                     label: 'Rate % p.a.',
                     value: config.financingRate.toStringAsFixed(2),
                     onChanged: (v) => onConfigChange(
-                        config.copyWith(financingRate: double.tryParse(v) ?? 11.75)),
+                      config.copyWith(
+                        financingRate: double.tryParse(v) ?? 11.75,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -293,7 +354,10 @@ class _GearingSection extends StatelessWidget {
                     label: 'Term (mo)',
                     value: config.financingTermMonths.toString(),
                     onChanged: (v) => onConfigChange(
-                        config.copyWith(financingTermMonths: int.tryParse(v) ?? 60)),
+                      config.copyWith(
+                        financingTermMonths: int.tryParse(v) ?? 60,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -305,8 +369,137 @@ class _GearingSection extends StatelessWidget {
   }
 }
 
+/// Investor-controlled downside / upside stress sliders so they can push the
+/// deal themselves and see the table + breakdown react live.
+class _StressSection extends StatelessWidget {
+  const _StressSection({required this.config, required this.onConfigChange});
+
+  final StrategyConfig config;
+  final ValueChanged<StrategyConfig> onConfigChange;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.tune,
+                size: 14,
+                color: AppColors.goldDark,
+              ),
+              const SizedBox(width: 4),
+              const Flexible(
+                child: Text(
+                  'Stress the deal yourself',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                ),
+              ),
+              const InfoTip(term: 'scenarioBands'),
+            ],
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Push revenue down (downside) and up (upside). The table updates live.',
+            style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 6),
+          _StressSlider(
+            label: 'Downside severity',
+            valueLabel: '-${config.stressDownPct}%',
+            color: AppColors.danger,
+            value: config.stressDownPct.toDouble(),
+            onChanged: (v) => onConfigChange(
+              config.copyWith(stressDownPct: (v / 5).round() * 5),
+            ),
+          ),
+          _StressSlider(
+            label: 'Upside optimism',
+            valueLabel: '+${config.stressUpPct}%',
+            color: AppColors.success,
+            value: config.stressUpPct.toDouble(),
+            onChanged: (v) => onConfigChange(
+              config.copyWith(stressUpPct: (v / 5).round() * 5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StressSlider extends StatelessWidget {
+  const _StressSlider({
+    required this.label,
+    required this.valueLabel,
+    required this.color,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String valueLabel;
+  final Color color;
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+          ),
+        ),
+        Expanded(
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 2,
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+            ),
+            child: Slider(
+              value: value.clamp(0, 40),
+              min: 0,
+              max: 40,
+              divisions: 8,
+              activeColor: color,
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 44,
+          child: Text(
+            valueLabel,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _MiniField extends StatelessWidget {
-  const _MiniField({required this.label, required this.value, required this.onChanged});
+  const _MiniField({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
 
   final String label;
   final String value;
@@ -317,12 +510,17 @@ class _MiniField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+        ),
         const SizedBox(height: 2),
         TextFormField(
           initialValue: value,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+          ],
           style: const TextStyle(fontSize: 12),
           decoration: const InputDecoration(
             isDense: true,
@@ -395,13 +593,21 @@ class _ScenarioTable extends StatelessWidget {
         const SizedBox(height: 6),
         Row(
           children: [
-            const Icon(Icons.info_outline, size: 11, color: AppColors.textSecondary),
+            const Icon(
+              Icons.info_outline,
+              size: 11,
+              color: AppColors.textSecondary,
+            ),
             const SizedBox(width: 3),
-            const Text('Downside / Base / Upside',
-                style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+            const Text(
+              'Downside / Base / Upside',
+              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+            ),
             const InfoTip(term: 'scenarioBands', size: 13),
           ],
         ),
+        const SizedBox(height: 10),
+        _BreakdownSection(base: b),
         if (projection.summary.isNotEmpty) ...[
           const SizedBox(height: 10),
           Container(
@@ -411,14 +617,205 @@ class _ScenarioTable extends StatelessWidget {
               color: AppColors.background,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(projection.summary,
-                style: const TextStyle(fontSize: 11, height: 1.5, color: AppColors.textPrimary)),
+            child: Text(
+              projection.summary,
+              style: const TextStyle(
+                fontSize: 11,
+                height: 1.5,
+                color: AppColors.textPrimary,
+              ),
+            ),
           ),
         ],
         const SizedBox(height: 8),
-        Text(projection.disclaimer,
-            style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, height: 1.4)),
+        Text(
+          projection.disclaimer,
+          style: const TextStyle(
+            fontSize: 10,
+            color: AppColors.textSecondary,
+            height: 1.4,
+          ),
+        ),
       ],
+    );
+  }
+}
+
+/// Base-case money-flow breakdown so the investor can see exactly where the
+/// payout comes from and where it goes — not just the headline net figure.
+class _BreakdownSection extends StatelessWidget {
+  const _BreakdownSection({required this.base});
+
+  final InvestorScenario base;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPref = base.preferredReturnPaid > 0.5;
+    final hasFee = base.platformFee > 0.5;
+    final hasTax = base.taxEstimate > 0.5;
+    final hasLoanInt = base.loanInterestPaid > 0.5;
+    final hasLoanPrin = base.loanPrincipalRepaid > 0.5;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.account_tree_outlined,
+                size: 13,
+                color: AppColors.goldDark,
+              ),
+              const SizedBox(width: 4),
+              const Flexible(
+                child: Text(
+                  'Where your base-case money comes from & goes',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                ),
+              ),
+              const InfoTip(term: 'promote', size: 13),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _FlowRow(label: 'Your capital returned', value: base.capitalReturned),
+          if (hasPref)
+            _FlowRow(
+              label: '+ Preferred return',
+              value: base.preferredReturnPaid,
+              sign: _FlowSign.positive,
+              term: 'preferredReturn',
+            ),
+          _FlowRow(
+            label: '+ Your profit share',
+            value: base.profitShare,
+            sign: _FlowSign.positive,
+            term: 'promote',
+          ),
+          _FlowRow(label: '= Gross payout', value: base.grossPayout, bold: true),
+          if (hasFee)
+            _FlowRow(
+              label: '− Platform fee',
+              value: base.platformFee,
+              sign: _FlowSign.negative,
+            ),
+          if (hasTax)
+            _FlowRow(
+              label: '− Estimated tax',
+              value: base.taxEstimate,
+              sign: _FlowSign.negative,
+            ),
+          if (hasLoanInt)
+            _FlowRow(
+              label: '− Loan interest',
+              value: base.loanInterestPaid,
+              sign: _FlowSign.negative,
+              term: 'gearing',
+            ),
+          if (hasLoanPrin)
+            _FlowRow(
+              label: '− Loan repaid at exit',
+              value: base.loanPrincipalRepaid,
+              sign: _FlowSign.negative,
+            ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 4),
+            child: Divider(height: 1, color: AppColors.border),
+          ),
+          _FlowRow(
+            label: '= Net payout to you',
+            value: base.netProceeds,
+            bold: true,
+            highlight: true,
+          ),
+          _FlowRow(
+            label: 'Less your cash in',
+            value: base.ownCashInvested,
+            sign: _FlowSign.negative,
+          ),
+          _FlowRow(
+            label: '= Net profit',
+            value: base.netProfit,
+            bold: true,
+            highlight: base.netProfit >= 0,
+            sign: base.netProfit < 0 ? _FlowSign.negative : _FlowSign.none,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _FlowSign { none, positive, negative }
+
+class _FlowRow extends StatelessWidget {
+  const _FlowRow({
+    required this.label,
+    required this.value,
+    this.sign = _FlowSign.none,
+    this.bold = false,
+    this.highlight = false,
+    this.term,
+  });
+
+  final String label;
+  final double value;
+  final _FlowSign sign;
+  final bool bold;
+  final bool highlight;
+  final String? term;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (sign) {
+      _FlowSign.negative => AppColors.danger,
+      _FlowSign.positive => AppColors.success,
+      _FlowSign.none => highlight ? AppColors.goldDark : AppColors.textPrimary,
+    };
+    final prefix = sign == _FlowSign.negative ? '-' : '';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                if (term != null) InfoTip(term: term!, size: 12),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text(
+              '$prefix${Fmt.money(value.abs())}',
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -439,21 +836,39 @@ class _HeaderRow extends StatelessWidget {
           Expanded(flex: 3, child: SizedBox.shrink()),
           Expanded(
             flex: 2,
-            child: Text('Down',
-                textAlign: TextAlign.right,
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.danger)),
+            child: Text(
+              'Down',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: AppColors.danger,
+              ),
+            ),
           ),
           Expanded(
             flex: 2,
-            child: Text('Base',
-                textAlign: TextAlign.right,
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            child: Text(
+              'Base',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
           ),
           Expanded(
             flex: 2,
-            child: Text('Up',
-                textAlign: TextAlign.right,
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.success)),
+            child: Text(
+              'Up',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: AppColors.success,
+              ),
+            ),
           ),
         ],
       ),
@@ -486,7 +901,9 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.border.withValues(alpha: 0.7))),
+        border: Border(
+          top: BorderSide(color: AppColors.border.withValues(alpha: 0.7)),
+        ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Row(
@@ -496,8 +913,13 @@ class _Row extends StatelessWidget {
             child: Row(
               children: [
                 Flexible(
-                  child: Text(label,
-                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ),
                 if (term != null) InfoTip(term: term!, size: 13),
               ],
@@ -505,28 +927,51 @@ class _Row extends StatelessWidget {
           ),
           Expanded(
             flex: 2,
-            child: Text(down,
-                textAlign: TextAlign.right,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                down,
+                maxLines: 1,
                 style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: downNeg ? AppColors.danger : AppColors.textPrimary)),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: downNeg ? AppColors.danger : AppColors.textPrimary,
+                ),
+              ),
+            ),
           ),
           Expanded(
             flex: 2,
-            child: Text(base,
-                textAlign: TextAlign.right,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                base,
+                maxLines: 1,
                 style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: baseNeg ? AppColors.danger : AppColors.textPrimary)),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: baseNeg ? AppColors.danger : AppColors.textPrimary,
+                ),
+              ),
+            ),
           ),
           Expanded(
             flex: 2,
-            child: Text(up,
-                textAlign: TextAlign.right,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                up,
+                maxLines: 1,
                 style: const TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.success)),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.success,
+                ),
+              ),
+            ),
           ),
         ],
       ),

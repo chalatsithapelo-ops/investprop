@@ -36,10 +36,7 @@ class InvestPage extends ConsumerWidget {
         data: (opp) => AsyncValueView(
           value: gate,
           onRetry: () => ref.invalidate(investGateProvider(propertyId)),
-          data: (status) => _InvestForm(
-            opportunity: opp,
-            gate: status,
-          ),
+          data: (status) => _InvestForm(opportunity: opp, gate: status),
         ),
       ),
     );
@@ -94,7 +91,10 @@ class _InvestFormState extends ConsumerState<_InvestForm> {
       setState(() => _preview = null);
       return;
     }
-    _debounce = Timer(const Duration(milliseconds: 450), () => _loadPreview(amount));
+    _debounce = Timer(
+      const Duration(milliseconds: 450),
+      () => _loadPreview(amount),
+    );
   }
 
   Future<void> _loadPreview(double amount) async {
@@ -153,7 +153,9 @@ class _InvestFormState extends ConsumerState<_InvestForm> {
     }
     setState(() => _submitting = true);
     try {
-      await ref.read(investmentRepositoryProvider).submitProposal(
+      await ref
+          .read(investmentRepositoryProvider)
+          .submitProposal(
             propertyId: _propertyId,
             amount: _amount,
             strategy: _config.strategy,
@@ -179,7 +181,11 @@ class _InvestFormState extends ConsumerState<_InvestForm> {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.check_circle, color: AppColors.success, size: 48),
+        icon: const Icon(
+          Icons.check_circle,
+          color: AppColors.success,
+          size: 48,
+        ),
         title: const Text('Proposal submitted'),
         content: Text(
           'Your commitment of ${Fmt.money(_amount)} is now pending review. '
@@ -274,8 +280,7 @@ class _InvestFormState extends ConsumerState<_InvestForm> {
           decoration: InputDecoration(
             prefixText: 'R ',
             hintText: '${InvestmentRules.minInvestment.toStringAsFixed(0)}+',
-            helperText:
-                'Minimum ${Fmt.money(InvestmentRules.minInvestment)}',
+            helperText: 'Minimum ${Fmt.money(InvestmentRules.minInvestment)}',
           ),
         ),
         const SizedBox(height: 16),
@@ -340,12 +345,14 @@ class _InvestFormState extends ConsumerState<_InvestForm> {
         _Term(
           value: _tcRisk,
           onChanged: (v) => setState(() => _tcRisk = v),
-          text: 'I understand my capital is at risk and returns are not guaranteed.',
+          text:
+              'I understand my capital is at risk and returns are not guaranteed.',
         ),
         _Term(
           value: _tcData,
           onChanged: (v) => setState(() => _tcData = v),
-          text: 'I consent to my information being processed for this investment.',
+          text:
+              'I consent to my information being processed for this investment.',
         ),
 
         const SizedBox(height: 24),
@@ -399,8 +406,10 @@ class _PreviewCard extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
             SizedBox(width: 12),
-            Text('Calculating your shares…',
-                style: TextStyle(color: AppColors.textSecondary)),
+            Text(
+              'Calculating your shares…',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ],
         ),
       );
@@ -443,7 +452,10 @@ class _PreviewCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _Stat('Share price', Fmt.money(p.sharePrice, detailed: true)),
-              _Stat('Ownership', Fmt.percent(p.ownershipPercentage, decimals: 2)),
+              _Stat(
+                'Ownership',
+                Fmt.percent(p.ownershipPercentage, decimals: 2),
+              ),
             ],
           ),
         ],
@@ -452,10 +464,10 @@ class _PreviewCard extends StatelessWidget {
   }
 
   BoxDecoration _boxDecoration() => BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      );
+    color: AppColors.surface,
+    borderRadius: BorderRadius.circular(16),
+    border: Border.all(color: AppColors.border),
+  );
 }
 
 class _Stat extends StatelessWidget {
@@ -469,8 +481,10 @@ class _Stat extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(color: Colors.white60, fontSize: 12)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white60, fontSize: 12),
+        ),
         const SizedBox(height: 2),
         Text(
           value,
@@ -595,7 +609,10 @@ class _PendingBanner extends StatelessWidget {
               'You already have $count pending '
               '${count == 1 ? 'proposal' : 'proposals'} on this deal. You can '
               'add another below.',
-              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         ],

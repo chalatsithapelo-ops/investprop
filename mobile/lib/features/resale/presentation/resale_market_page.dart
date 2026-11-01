@@ -62,9 +62,9 @@ class _ResaleMarketPageState extends ConsumerState<ResaleMarketPage> {
                             icon: const Icon(Icons.clear),
                             onPressed: () {
                               _search.clear();
-                              ref.read(resaleFilterProvider.notifier).update(
-                                    (f) => f.copyWith(search: ''),
-                                  );
+                              ref
+                                  .read(resaleFilterProvider.notifier)
+                                  .update((f) => f.copyWith(search: ''));
                             },
                           ),
                   ),
@@ -137,7 +137,10 @@ class _ProvinceDropdown extends StatelessWidget {
           value: (value != null && value!.isNotEmpty) ? value : null,
           hint: const Text('All provinces'),
           items: [
-            const DropdownMenuItem<String?>(value: null, child: Text('All provinces')),
+            const DropdownMenuItem<String?>(
+              value: null,
+              child: Text('All provinces'),
+            ),
             ..._provinces.map(
               (p) => DropdownMenuItem<String?>(value: p, child: Text(p)),
             ),
@@ -161,7 +164,8 @@ class _ResaleCard extends StatelessWidget {
       child: Card(
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => context.push('/resale-market/${listing.id}', extra: listing),
+          onTap: () =>
+              context.push('/resale-market/${listing.id}', extra: listing),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -223,14 +227,18 @@ class _ResaleCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.place_outlined,
-                            size: 14, color: AppColors.textSecondary),
+                        const Icon(
+                          Icons.place_outlined,
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            [listing.city, listing.province]
-                                .where((e) => e.isNotEmpty)
-                                .join(', '),
+                            [
+                              listing.city,
+                              listing.province,
+                            ].where((e) => e.isNotEmpty).join(', '),
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 13,

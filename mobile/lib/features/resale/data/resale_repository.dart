@@ -79,7 +79,12 @@ class ResaleListing {
 }
 
 class ResaleFilter {
-  const ResaleFilter({this.province, this.propertyType, this.maxPrice, this.search});
+  const ResaleFilter({
+    this.province,
+    this.propertyType,
+    this.maxPrice,
+    this.search,
+  });
 
   final String? province;
   final String? propertyType;
@@ -88,7 +93,8 @@ class ResaleFilter {
 
   Map<String, dynamic> toInput() => {
     if (province != null && province!.isNotEmpty) 'province': province,
-    if (propertyType != null && propertyType!.isNotEmpty) 'propertyType': propertyType,
+    if (propertyType != null && propertyType!.isNotEmpty)
+      'propertyType': propertyType,
     if (maxPrice != null && maxPrice! > 0) 'maxPrice': maxPrice,
     if (search != null && search!.trim().isNotEmpty) 'search': search!.trim(),
   };
@@ -120,14 +126,19 @@ class ResaleRepository {
     final rows = data is Map ? data['listings'] : null;
     if (rows is List) {
       return rows
-          .map((e) => ResaleListing.fromJson(Map<String, dynamic>.from(e as Map)))
+          .map(
+            (e) => ResaleListing.fromJson(Map<String, dynamic>.from(e as Map)),
+          )
           .toList();
     }
     return const [];
   }
 
   Future<ResaleListing?> fetchListing(int id) async {
-    final data = await _client.query('getPublicResaleListing', input: {'id': id});
+    final data = await _client.query(
+      'getPublicResaleListing',
+      input: {'id': id},
+    );
     final row = data is Map ? data['listing'] : null;
     if (row is Map) {
       return ResaleListing.fromJson(Map<String, dynamic>.from(row));
@@ -146,7 +157,8 @@ class ResaleRepository {
       input: {
         'id': id,
         if (offerAmount != null && offerAmount > 0) 'offerAmount': offerAmount,
-        if (message != null && message.trim().isNotEmpty) 'message': message.trim(),
+        if (message != null && message.trim().isNotEmpty)
+          'message': message.trim(),
         if (contactPhone != null && contactPhone.trim().isNotEmpty)
           'contactPhone': contactPhone.trim(),
       },
@@ -158,11 +170,13 @@ final resaleRepositoryProvider = Provider<ResaleRepository>((ref) {
   return ResaleRepository(ref.watch(trpcClientProvider));
 });
 
-final resaleFilterProvider =
-    StateProvider.autoDispose<ResaleFilter>((ref) => const ResaleFilter());
+final resaleFilterProvider = StateProvider.autoDispose<ResaleFilter>(
+  (ref) => const ResaleFilter(),
+);
 
-final resaleListingsProvider =
-    FutureProvider.autoDispose<List<ResaleListing>>((ref) async {
-      final filter = ref.watch(resaleFilterProvider);
-      return ref.watch(resaleRepositoryProvider).fetchListings(filter);
-    });
+final resaleListingsProvider = FutureProvider.autoDispose<List<ResaleListing>>((
+  ref,
+) async {
+  final filter = ref.watch(resaleFilterProvider);
+  return ref.watch(resaleRepositoryProvider).fetchListings(filter);
+});

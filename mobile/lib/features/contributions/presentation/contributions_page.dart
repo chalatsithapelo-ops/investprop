@@ -44,8 +44,9 @@ class ContributionsPage extends ConsumerWidget {
               children: [
                 _SummaryCard(summary: r.summary),
                 const SizedBox(height: 16),
-                ...r.contributions
-                    .map((c) => _ContributionCard(contribution: c)),
+                ...r.contributions.map(
+                  (c) => _ContributionCard(contribution: c),
+                ),
               ],
             );
           },
@@ -75,14 +76,19 @@ class _SummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Total contributed',
-              style: TextStyle(color: Colors.white70)),
+          const Text(
+            'Total contributed',
+            style: TextStyle(color: Colors.white70),
+          ),
           const SizedBox(height: 4),
-          Text(Fmt.money(summary.totalContributions),
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800)),
+          Text(
+            Fmt.money(summary.totalContributions),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -123,13 +129,18 @@ class _MiniStat extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(value,
-            style: const TextStyle(
-                color: AppColors.gold,
-                fontWeight: FontWeight.w700,
-                fontSize: 15)),
-        Text(label,
-            style: const TextStyle(color: Colors.white70, fontSize: 11)),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.gold,
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white70, fontSize: 11),
+        ),
       ],
     );
   }
@@ -176,7 +187,9 @@ class _ContributionCardState extends ConsumerState<_ContributionCard> {
     if (reason == null) return;
     setState(() => _busy = true);
     try {
-      await ref.read(contributionsRepositoryProvider).cancelDuringCoolingOff(
+      await ref
+          .read(contributionsRepositoryProvider)
+          .cancelDuringCoolingOff(
             contributionId: widget.contribution.id,
             reason: reason.isEmpty ? null : reason,
           );
@@ -201,7 +214,9 @@ class _ContributionCardState extends ConsumerState<_ContributionCard> {
     if (reason == null) return;
     setState(() => _busy = true);
     try {
-      await ref.read(contributionsRepositoryProvider).requestRefund(
+      await ref
+          .read(contributionsRepositoryProvider)
+          .requestRefund(
             contributionId: widget.contribution.id,
             reason: reason,
           );
@@ -232,9 +247,13 @@ class _ContributionCardState extends ConsumerState<_ContributionCard> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(message,
-                    style: const TextStyle(
-                        fontSize: 13, color: AppColors.textSecondary)),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: controller,
@@ -256,8 +275,10 @@ class _ContributionCardState extends ConsumerState<_ContributionCard> {
                 onPressed: () {
                   final text = controller.text.trim();
                   if (text.length < minLength) {
-                    setLocal(() => error =
-                        'Please enter at least $minLength characters');
+                    setLocal(
+                      () =>
+                          error = 'Please enter at least $minLength characters',
+                    );
                     return;
                   }
                   Navigator.pop(ctx, text);
@@ -273,8 +294,7 @@ class _ContributionCardState extends ConsumerState<_ContributionCard> {
 
   void _toast(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   Future<void> _submitPop() async {
@@ -396,22 +416,31 @@ class _ContributionCardState extends ConsumerState<_ContributionCard> {
             Row(
               children: [
                 Expanded(
-                  child: Text(c.propertyTitle,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 16)),
+                  child: Text(
+                    c.propertyTitle,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: _statusColor(c.status).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text(c.statusLabel,
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _statusColor(c.status))),
+                  child: Text(
+                    c.statusLabel,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: _statusColor(c.status),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -419,8 +448,10 @@ class _ContributionCardState extends ConsumerState<_ContributionCard> {
             _kv('Amount', Fmt.money(c.contributionAmount)),
             _kv('Shares', '${c.numberOfShares} @ ${Fmt.money(c.sharePrice)}'),
             _kv('Ownership', Fmt.percent(c.ownershipPercentage)),
-            _kv('Expected return',
-                '${Fmt.money(c.expectedReturnAmount)} (${Fmt.percent(c.expectedReturnRate)})'),
+            _kv(
+              'Expected return',
+              '${Fmt.money(c.expectedReturnAmount)} (${Fmt.percent(c.expectedReturnRate)})',
+            ),
             _kv('Date', Fmt.date(c.contributionDate)),
             if (c.strategy != null) ...[
               const SizedBox(height: 10),
@@ -436,16 +467,20 @@ class _ContributionCardState extends ConsumerState<_ContributionCard> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.track_changes,
-                            size: 14, color: AppColors.navy),
+                        const Icon(
+                          Icons.track_changes,
+                          size: 14,
+                          color: AppColors.navy,
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             'Your strategy: ${c.strategy!.label}',
                             style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.navy),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.navy,
+                            ),
                           ),
                         ),
                       ],
@@ -456,7 +491,9 @@ class _ContributionCardState extends ConsumerState<_ContributionCard> {
                         'Planned hold: ${c.strategyHoldMonths} months. Track '
                         'performance and exit early by selling your shares.',
                         style: const TextStyle(
-                            fontSize: 11, color: AppColors.textSecondary),
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ],
@@ -475,16 +512,20 @@ class _ContributionCardState extends ConsumerState<_ContributionCard> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.timelapse,
-                        size: 16, color: AppColors.goldDark),
+                    const Icon(
+                      Icons.timelapse,
+                      size: 16,
+                      color: AppColors.goldDark,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Cooling-off ends in ${_formatDuration(remaining)}',
                         style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.goldDark,
-                            fontWeight: FontWeight.w600),
+                          fontSize: 12,
+                          color: AppColors.goldDark,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -505,15 +546,17 @@ class _ContributionCardState extends ConsumerState<_ContributionCard> {
               const SizedBox(height: 10),
               const Row(
                 children: [
-                  Icon(Icons.hourglass_top,
-                      size: 16, color: AppColors.warning),
+                  Icon(Icons.hourglass_top, size: 16, color: AppColors.warning),
                   SizedBox(width: 8),
                   Expanded(
-                    child: Text('Proof of payment under review',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.warning,
-                            fontWeight: FontWeight.w600)),
+                    child: Text(
+                      'Proof of payment under review',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.warning,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -527,8 +570,9 @@ class _ContributionCardState extends ConsumerState<_ContributionCard> {
                       child: OutlinedButton(
                         onPressed: _busy ? null : _cancel,
                         style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.danger,
-                            side: const BorderSide(color: AppColors.danger)),
+                          foregroundColor: AppColors.danger,
+                          side: const BorderSide(color: AppColors.danger),
+                        ),
                         child: const Text('Cancel'),
                       ),
                     ),
@@ -562,19 +606,21 @@ class _ContributionCardState extends ConsumerState<_ContributionCard> {
   }
 
   Widget _kv(String label, String value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label,
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 13)),
-            Text(value,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600, fontSize: 13)),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
         ),
-      );
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+      ],
+    ),
+  );
 
   String _formatDuration(Duration d) {
     if (d.inDays >= 1) {

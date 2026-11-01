@@ -132,7 +132,8 @@ class Contribution {
         : const <String, dynamic>{};
     final metrics = json['realTimeMetrics'] is Map
         ? ContributionMetrics.fromJson(
-            Map<String, dynamic>.from(json['realTimeMetrics'] as Map))
+            Map<String, dynamic>.from(json['realTimeMetrics'] as Map),
+          )
         : null;
     return Contribution(
       id: asInt(json['id']),
@@ -188,7 +189,10 @@ class ContributionsSummary {
 }
 
 class ContributionsResult {
-  const ContributionsResult({required this.contributions, required this.summary});
+  const ContributionsResult({
+    required this.contributions,
+    required this.summary,
+  });
 
   final List<Contribution> contributions;
   final ContributionsSummary summary;
@@ -197,7 +201,8 @@ class ContributionsResult {
     final list = json['contributions'] as List? ?? const [];
     final summary = json['summary'] is Map
         ? ContributionsSummary.fromJson(
-            Map<String, dynamic>.from(json['summary'] as Map))
+            Map<String, dynamic>.from(json['summary'] as Map),
+          )
         : const ContributionsSummary(
             totalProperties: 0,
             totalContributions: 0,

@@ -138,10 +138,7 @@ class ProfilePage extends ConsumerWidget {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(
-                      Icons.tune,
-                      color: AppColors.navy,
-                    ),
+                    leading: const Icon(Icons.tune, color: AppColors.navy),
                     title: const Text('Investment preferences'),
                     subtitle: const Text(
                       'Tailor opportunities to your strategy',

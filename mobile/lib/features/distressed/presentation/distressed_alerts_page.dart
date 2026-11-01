@@ -29,7 +29,13 @@ const _provinces = [
   'Northern Cape',
 ];
 
-const _propertyTypes = ['House', 'Apartment', 'Townhouse', 'Vacant Land', 'Commercial'];
+const _propertyTypes = [
+  'House',
+  'Apartment',
+  'Townhouse',
+  'Vacant Land',
+  'Commercial',
+];
 const _grades = ['A', 'B', 'C', 'D', 'E'];
 
 class _DistressedAlertsPageState extends ConsumerState<DistressedAlertsPage> {
@@ -123,7 +129,10 @@ class _DistressedAlertsPageState extends ConsumerState<DistressedAlertsPage> {
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Text('Could not load alerts.\n$e', textAlign: TextAlign.center),
+            child: Text(
+              'Could not load alerts.\n$e',
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
         data: (state) {
@@ -144,13 +153,20 @@ class _DistressedAlertsPageState extends ConsumerState<DistressedAlertsPage> {
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.lock_outline, color: AppColors.warning, size: 20),
+                      Icon(
+                        Icons.lock_outline,
+                        color: AppColors.warning,
+                        size: 20,
+                      ),
                       SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'Distressed alerts are a paid feature. You can set your filters now; '
                           'upgrade your plan to start receiving matches.',
-                          style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ],

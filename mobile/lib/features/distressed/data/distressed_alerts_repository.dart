@@ -107,7 +107,10 @@ class DistressedAlertSubscription {
 /// Result of `getMyDistressedAlerts`: whether the user is entitled (plan gate)
 /// plus the existing subscription (may be null if never configured).
 class DistressedAlertsState {
-  const DistressedAlertsState({required this.entitled, required this.subscription});
+  const DistressedAlertsState({
+    required this.entitled,
+    required this.subscription,
+  });
 
   final bool entitled;
   final DistressedAlertSubscription? subscription;
@@ -135,10 +138,11 @@ class DistressedAlertsRepository {
   }
 }
 
-final distressedAlertsRepositoryProvider =
-    Provider<DistressedAlertsRepository>((ref) {
-      return DistressedAlertsRepository(ref.watch(trpcClientProvider));
-    });
+final distressedAlertsRepositoryProvider = Provider<DistressedAlertsRepository>(
+  (ref) {
+    return DistressedAlertsRepository(ref.watch(trpcClientProvider));
+  },
+);
 
 final distressedAlertsProvider =
     FutureProvider.autoDispose<DistressedAlertsState>((ref) async {

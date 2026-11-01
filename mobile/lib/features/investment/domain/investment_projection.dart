@@ -10,33 +10,33 @@ enum InvestorStrategy {
 
   /// Wire value expected by the backend.
   String get wire => switch (this) {
-        InvestorStrategy.flip => 'FLIP',
-        InvestorStrategy.developmentExit => 'DEVELOPMENT_EXIT',
-        InvestorStrategy.rentalIncome => 'RENTAL_INCOME',
-        InvestorStrategy.buyAndHold => 'BUY_AND_HOLD',
-        InvestorStrategy.earlyResale => 'EARLY_RESALE',
-      };
+    InvestorStrategy.flip => 'FLIP',
+    InvestorStrategy.developmentExit => 'DEVELOPMENT_EXIT',
+    InvestorStrategy.rentalIncome => 'RENTAL_INCOME',
+    InvestorStrategy.buyAndHold => 'BUY_AND_HOLD',
+    InvestorStrategy.earlyResale => 'EARLY_RESALE',
+  };
 
   String get label => switch (this) {
-        InvestorStrategy.flip => 'Flip to completion',
-        InvestorStrategy.developmentExit => 'Hold to development exit',
-        InvestorStrategy.rentalIncome => 'Rental income',
-        InvestorStrategy.buyAndHold => 'Long buy & hold',
-        InvestorStrategy.earlyResale => 'Early resale',
-      };
+    InvestorStrategy.flip => 'Flip to completion',
+    InvestorStrategy.developmentExit => 'Hold to development exit',
+    InvestorStrategy.rentalIncome => 'Rental income',
+    InvestorStrategy.buyAndHold => 'Long buy & hold',
+    InvestorStrategy.earlyResale => 'Early resale',
+  };
 
   String get blurb => switch (this) {
-        InvestorStrategy.flip =>
-          'Ride the buy-renovate-sell to the sale — a one-off capital gain.',
-        InvestorStrategy.developmentExit =>
-          'Stay in until the development is built and sold.',
-        InvestorStrategy.rentalIncome =>
-          'Collect your share of rental distributions, plus growth on exit.',
-        InvestorStrategy.buyAndHold =>
-          'Hold long term for income plus compounding capital growth.',
-        InvestorStrategy.earlyResale =>
-          'Exit early by selling your shares on the marketplace.',
-      };
+    InvestorStrategy.flip =>
+      'Ride the buy-renovate-sell to the sale — a one-off capital gain.',
+    InvestorStrategy.developmentExit =>
+      'Stay in until the development is built and sold.',
+    InvestorStrategy.rentalIncome =>
+      'Collect your share of rental distributions, plus growth on exit.',
+    InvestorStrategy.buyAndHold =>
+      'Hold long term for income plus compounding capital growth.',
+    InvestorStrategy.earlyResale =>
+      'Exit early by selling your shares on the marketplace.',
+  };
 
   static InvestorStrategy? fromWire(String? v) {
     switch (v) {
@@ -62,35 +62,50 @@ class InvestorScenario {
     required this.capitalReturned,
     required this.preferredReturnPaid,
     required this.profitShare,
+    required this.grossPayout,
+    required this.platformFee,
+    required this.taxEstimate,
+    required this.loanInterestPaid,
+    required this.loanPrincipalRepaid,
     required this.netProceeds,
+    required this.ownCashInvested,
     required this.netProfit,
     required this.moic,
     required this.annualisedReturn,
     required this.irr,
-    required this.loanInterestPaid,
   });
 
   final double capitalReturned;
   final double preferredReturnPaid;
   final double profitShare;
+  final double grossPayout;
+  final double platformFee;
+  final double taxEstimate;
+  final double loanInterestPaid;
+  final double loanPrincipalRepaid;
   final double netProceeds;
+  final double ownCashInvested;
   final double netProfit;
   final double moic;
   final double annualisedReturn;
   final double irr;
-  final double loanInterestPaid;
 
   static InvestorScenario fromJson(Map j) => InvestorScenario(
-        capitalReturned: asDouble(j['capitalReturned']),
-        preferredReturnPaid: asDouble(j['preferredReturnPaid']),
-        profitShare: asDouble(j['profitShare']),
-        netProceeds: asDouble(j['netProceeds']),
-        netProfit: asDouble(j['netProfit']),
-        moic: asDouble(j['moic']),
-        annualisedReturn: asDouble(j['annualisedReturn']),
-        irr: asDouble(j['irr']),
-        loanInterestPaid: asDouble(j['loanInterestPaid']),
-      );
+    capitalReturned: asDouble(j['capitalReturned']),
+    preferredReturnPaid: asDouble(j['preferredReturnPaid']),
+    profitShare: asDouble(j['profitShare']),
+    grossPayout: asDouble(j['grossPayout']),
+    platformFee: asDouble(j['platformFee']),
+    taxEstimate: asDouble(j['taxEstimate']),
+    loanInterestPaid: asDouble(j['loanInterestPaid']),
+    loanPrincipalRepaid: asDouble(j['loanPrincipalRepaid']),
+    netProceeds: asDouble(j['netProceeds']),
+    ownCashInvested: asDouble(j['ownCashInvested']),
+    netProfit: asDouble(j['netProfit']),
+    moic: asDouble(j['moic']),
+    annualisedReturn: asDouble(j['annualisedReturn']),
+    irr: asDouble(j['irr']),
+  );
 }
 
 /// Full per-investor projection returned by `calculateInvestmentProjection`.
@@ -138,7 +153,8 @@ class InvestmentProjection {
     if (share is! Map || proj is! Map) return null;
     final scenarios = proj['scenarios'];
     if (scenarios is! Map) return null;
-    final strategies = (json['availableStrategies'] as List?)
+    final strategies =
+        (json['availableStrategies'] as List?)
             ?.map((e) => InvestorStrategy.fromWire(e?.toString()))
             .whereType<InvestorStrategy>()
             .toList() ??
@@ -156,7 +172,9 @@ class InvestmentProjection {
       usesFinancing: proj['usesFinancing'] == true,
       ownCashInvested: asDouble(proj['ownCashInvested']),
       loanAmount: asDouble(proj['loanAmount']),
-      defaultStrategy: InvestorStrategy.fromWire(json['defaultStrategy']?.toString()),
+      defaultStrategy: InvestorStrategy.fromWire(
+        json['defaultStrategy']?.toString(),
+      ),
       availableStrategies: strategies,
       projectHoldMonths: asInt(json['projectHoldMonths']),
       preferredReturnRate: asDouble(json['preferredReturnRate']),
@@ -173,6 +191,8 @@ class StrategyConfig {
     this.financingAmount = 0,
     this.financingRate = 11.75,
     this.financingTermMonths = 60,
+    this.stressDownPct = 10,
+    this.stressUpPct = 10,
   });
 
   final InvestorStrategy? strategy;
@@ -181,6 +201,8 @@ class StrategyConfig {
   final double financingAmount;
   final double financingRate;
   final int financingTermMonths;
+  final int stressDownPct;
+  final int stressUpPct;
 
   StrategyConfig copyWith({
     InvestorStrategy? strategy,
@@ -189,13 +211,16 @@ class StrategyConfig {
     double? financingAmount,
     double? financingRate,
     int? financingTermMonths,
-  }) =>
-      StrategyConfig(
-        strategy: strategy ?? this.strategy,
-        holdMonths: holdMonths ?? this.holdMonths,
-        usesFinancing: usesFinancing ?? this.usesFinancing,
-        financingAmount: financingAmount ?? this.financingAmount,
-        financingRate: financingRate ?? this.financingRate,
-        financingTermMonths: financingTermMonths ?? this.financingTermMonths,
-      );
+    int? stressDownPct,
+    int? stressUpPct,
+  }) => StrategyConfig(
+    strategy: strategy ?? this.strategy,
+    holdMonths: holdMonths ?? this.holdMonths,
+    usesFinancing: usesFinancing ?? this.usesFinancing,
+    financingAmount: financingAmount ?? this.financingAmount,
+    financingRate: financingRate ?? this.financingRate,
+    financingTermMonths: financingTermMonths ?? this.financingTermMonths,
+    stressDownPct: stressDownPct ?? this.stressDownPct,
+    stressUpPct: stressUpPct ?? this.stressUpPct,
+  );
 }

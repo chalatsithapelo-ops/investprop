@@ -122,8 +122,10 @@ class _InvestmentPreferencesPageState
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Text('Could not load preferences.\n$e',
-                textAlign: TextAlign.center),
+            child: Text(
+              'Could not load preferences.\n$e',
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
         data: (prefs) {

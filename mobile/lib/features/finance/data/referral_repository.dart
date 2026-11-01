@@ -6,11 +6,31 @@ import '../../../core/providers.dart';
 /// A partner service an investor can request a warm introduction to.
 /// Values must match the backend `partnerTypeEnum`.
 enum PartnerType {
-  bondOriginator('BOND_ORIGINATOR', 'Bond originator', 'Compare home-loan offers across the major banks'),
-  conveyancer('CONVEYANCER', 'Conveyancer', 'Transfer & registration attorneys for your purchase'),
-  auctionHouse('AUCTION_HOUSE', 'Auction house', 'Access distressed & on-auction property stock'),
-  insurance('INSURANCE', 'Insurance', 'Buildings, homeowner and landlord cover'),
-  other('OTHER', 'Other service', 'Tell us what you need and we will connect you');
+  bondOriginator(
+    'BOND_ORIGINATOR',
+    'Bond originator',
+    'Compare home-loan offers across the major banks',
+  ),
+  conveyancer(
+    'CONVEYANCER',
+    'Conveyancer',
+    'Transfer & registration attorneys for your purchase',
+  ),
+  auctionHouse(
+    'AUCTION_HOUSE',
+    'Auction house',
+    'Access distressed & on-auction property stock',
+  ),
+  insurance(
+    'INSURANCE',
+    'Insurance',
+    'Buildings, homeowner and landlord cover',
+  ),
+  other(
+    'OTHER',
+    'Other service',
+    'Tell us what you need and we will connect you',
+  );
 
   const PartnerType(this.wire, this.label, this.blurb);
   final String wire;
