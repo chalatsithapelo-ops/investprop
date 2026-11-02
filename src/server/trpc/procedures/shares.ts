@@ -285,6 +285,15 @@ export const transferShares = baseProcedure
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
 
+    // A share transfer must move shares between two different parties. Transferring
+    // to yourself is a no-op that would churn the ledger and holding balance.
+    if (input.toInvestorId === user.id) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "You cannot transfer shares to yourself — enter a different investor's code.",
+      });
+    }
+
     const fromHolding = await db.shareHolding.findUnique({
       where: {
         shareClassId_investorId: {
