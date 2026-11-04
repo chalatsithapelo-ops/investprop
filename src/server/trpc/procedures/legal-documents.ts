@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser, requireRole } from "~/server/trpc/auth-helpers";
+import { ensureCertificatesForHoldings } from "~/server/trpc/procedures/share-certificates";
 
 // Generating/altering official legal documents is a manager-only action
 // (the UI route restricts it to the same roles).
@@ -225,6 +226,8 @@ export const getMyDocuments = baseProcedure
   .input(z.object({ authToken: z.string() }))
   .query(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
+
+    await ensureCertificatesForHoldings(user.id);
 
     // Fetch documents explicitly generated for this investor
     const personalDocs = await db.legalDocument.findMany({

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:printing/printing.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../config/env.dart';
 import '../../../config/theme.dart';
 import '../../../core/format.dart';
 import '../../../widgets/async_value_widget.dart';
+import '../../certificates/data/certificates_repository.dart';
+import '../../certificates/presentation/certificate_pdf.dart';
 import '../data/documents_repository.dart';
 import '../domain/investor_document.dart';
 
@@ -27,7 +30,36 @@ class DocumentsPage extends ConsumerWidget {
     }
   }
 
-  Future<void> _open(BuildContext context, InvestorDocument doc) async {
+  Future<void> _downloadCertificate(
+    BuildContext context,
+    WidgetRef ref,
+    InvestorDocument doc,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final data = await ref
+          .read(certificatesRepositoryProvider)
+          .pdfData(doc.id);
+      final pdf = await buildCertificatePdf(data);
+      await Printing.sharePdf(
+        bytes: await pdf.save(),
+        filename: '${data.certificateNumber}.pdf',
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not generate PDF: $e')),
+      );
+    }
+  }
+
+  Future<void> _open(
+    BuildContext context,
+    WidgetRef ref,
+    InvestorDocument doc,
+  ) async {
+    if (doc.isCertificateRecord) {
+      return _downloadCertificate(context, ref, doc);
+    }
     final url = doc.documentUrl;
     if (url == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -119,17 +151,20 @@ class DocumentsPage extends ConsumerWidget {
                                         _openAiSheet(context, group.value[i]),
                                   ),
                                 Icon(
-                                  group.value[i].documentUrl != null
+                                  group.value[i].documentUrl != null ||
+                                          group.value[i].isCertificateRecord
                                       ? Icons.download_outlined
                                       : Icons.lock_outline,
                                   size: 20,
-                                  color: group.value[i].documentUrl != null
+                                  color:
+                                      group.value[i].documentUrl != null ||
+                                          group.value[i].isCertificateRecord
                                       ? AppColors.navy
                                       : AppColors.textSecondary,
                                 ),
                               ],
                             ),
-                            onTap: () => _open(context, group.value[i]),
+                            onTap: () => _open(context, ref, group.value[i]),
                           ),
                         ],
                       ],

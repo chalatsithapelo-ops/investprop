@@ -113,14 +113,22 @@ class PlatformTrackRecordPage extends ConsumerWidget {
       _StatTile(label: 'In progress', value: '${r.inProgress}'),
       _StatTile(label: 'Raising now', value: '${r.raising}'),
     ];
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 2.6,
-      children: tiles,
+    Widget row(_StatTile a, _StatTile b) => IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: a),
+          const SizedBox(width: 12),
+          Expanded(child: b),
+        ],
+      ),
+    );
+    return Column(
+      children: [
+        row(tiles[0], tiles[1]),
+        const SizedBox(height: 12),
+        row(tiles[2], tiles[3]),
+      ],
     );
   }
 
@@ -195,7 +203,7 @@ class _StatTile extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(value,
               style: TextStyle(

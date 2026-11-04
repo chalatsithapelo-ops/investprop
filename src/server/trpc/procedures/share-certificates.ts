@@ -447,6 +447,60 @@ export async function reconcileCertificatesForTrade(
   }
 }
 
+/**
+ * Issue a certificate for every live ShareHolding that has no valid certificate
+ * (e.g. holdings created outside the payment/trade flows). Existing certificates
+ * are left untouched. Failures are logged and never block the calling query.
+ */
+export async function ensureCertificatesForHoldings(investorId: number): Promise<void> {
+  try {
+    const holdings = await db.shareHolding.findMany({
+      where: { investorId, sharesOwned: { gt: 0 } },
+      select: { propertyId: true, shareClassId: true },
+    });
+    if (holdings.length === 0) return;
+
+    const certified = await db.shareCertificate.findMany({
+      where: {
+        investorId,
+        isValid: true,
+        propertyId: { in: holdings.map((h) => h.propertyId) },
+      },
+      select: { propertyId: true },
+    });
+    const certifiedIds = new Set(certified.map((c) => c.propertyId));
+
+    for (const holding of holdings.filter((h) => !certifiedIds.has(h.propertyId))) {
+      await db.$transaction(async (tx) => {
+        const [property, shareClass] = await Promise.all([
+          tx.property.findUnique({
+            where: { id: holding.propertyId },
+            select: { title: true, address: true, city: true, state: true },
+          }),
+          tx.shareClass.findUnique({
+            where: { id: holding.shareClassId },
+            select: { id: true, name: true, pricePerShare: true, totalShares: true },
+          }),
+        ]);
+        if (!property || !shareClass) return;
+
+        await reconcileInvestorCertificate(tx, {
+          investorId,
+          propertyId: holding.propertyId,
+          propertyTitle: property.title,
+          propertyAddress: `${property.address}, ${property.city}, ${property.state}`,
+          shareClassId: shareClass.id,
+          shareClassName: shareClass.name,
+          sharePrice: shareClass.pricePerShare,
+          totalShares: shareClass.totalShares,
+        });
+      });
+    }
+  } catch (err) {
+    console.error("ensureCertificatesForHoldings failed", err);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 //  Issue a certificate (called from confirmPaymentAndUpdateFunding)
 // ─────────────────────────────────────────────────────────────
@@ -578,6 +632,8 @@ export const getMyCertificates = baseProcedure
   .input(z.object({ authToken: z.string() }))
   .query(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
+
+    await ensureCertificatesForHoldings(user.id);
 
     const certificates = await db.shareCertificate.findMany({
       where: {

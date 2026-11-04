@@ -10,6 +10,7 @@ class InvestorDocument {
     required this.propertyTitle,
     required this.createdAt,
     this.supportsAiSummary = false,
+    this.isCertificateRecord = false,
   });
 
   final int id;
@@ -20,6 +21,9 @@ class InvestorDocument {
   final String propertyTitle;
   final DateTime? createdAt;
   final bool supportsAiSummary;
+
+  /// True for issued ShareCertificate records; their PDF is generated on demand.
+  final bool isCertificateRecord;
 
   String get typeLabel => documentType
       .split('_')
@@ -48,6 +52,7 @@ class InvestorDocument {
       ),
       createdAt: asDate(json['createdAt'] ?? json['issueDate']),
       supportsAiSummary: supportsAiSummary,
+      isCertificateRecord: json['isCertificateRecord'] == true,
     );
   }
 }
