@@ -15,6 +15,7 @@ import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { requireFeature } from "~/server/subscriptions/subscription-service";
 import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
 import { calculateRentalMetrics, buildRentalInput } from "~/financial-calculations";
+import { HOLDING_BASIS, liveHoldingSelect, summariseLiveHoldings } from "./ai-investor-profile";
 
 interface PortfolioInsightShape {
   summary: string;
@@ -22,6 +23,8 @@ interface PortfolioInsightShape {
 }
 
 const SEVERITIES = new Set(["INFO", "ATTENTION", "WARNING"]);
+// Only reuse briefs generated with this version's live ownership snapshot.
+const portfolioSnapshots = new Map<string, string>();
 
 function currentPeriod(): string {
   const d = new Date();
@@ -40,21 +43,7 @@ export async function generatePortfolioInsightCore(
 ) {
     const period = currentPeriod();
 
-    if (!opts.force) {
-      const existing = await db.portfolioInsight.findUnique({
-        where: { investorId_period: { investorId: user.id, period } },
-      });
-      if (existing) {
-        return {
-          summary: existing.summary,
-          insights: existing.insights as PortfolioInsightShape["insights"],
-          period: existing.period,
-          generatedAt: existing.generatedAt,
-        };
-      }
-    }
-
-    const [contributions, distributions, openOpps] = await Promise.all([
+    const [contributions, holdings, distributions, openOpps] = await Promise.all([
       db.investorContribution.findMany({
         where: { investorId: user.id, deletedAt: null, status: { not: "CANCELLED" } },
         include: {
@@ -74,6 +63,11 @@ export async function generatePortfolioInsightCore(
           },
         },
       }),
+      db.shareHolding.findMany({
+        where: { investorId: user.id, sharesOwned: { gt: 0 } },
+        select: liveHoldingSelect,
+        orderBy: { shareClassId: "asc" },
+      }),
       db.distributionPayout.findMany({
         where: { investorId: user.id },
         orderBy: { createdAt: "desc" },
@@ -91,26 +85,30 @@ export async function generatePortfolioInsightCore(
       }),
     ]);
 
-    if (contributions.length === 0 && distributions.length === 0) {
+    const portfolio = summariseLiveHoldings(holdings);
+    if (portfolio.positions.length === 0 && contributions.length === 0 && distributions.length === 0) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "No portfolio activity yet — make your first contribution to unlock the Portfolio Advisor.",
+        message: "No portfolio activity yet — acquire shares or make your first contribution to unlock the Portfolio Advisor.",
       });
     }
 
-    const total = contributions.reduce((s, c) => s + c.contributionAmount, 0);
-    const byCity = new Map<string, number>();
-    const byRisk = new Map<string, number>();
-    const byType = new Map<string, number>();
-    for (const c of contributions) {
-      byCity.set(c.property.city, (byCity.get(c.property.city) ?? 0) + c.contributionAmount);
-      byRisk.set(c.property.riskRating, (byRisk.get(c.property.riskRating) ?? 0) + c.contributionAmount);
-      const t = c.property.propertyFlip ? "flip" : c.property.rentalBond ? "rental" : c.property.propertyDevelopment ? "development" : "other";
-      byType.set(t, (byType.get(t) ?? 0) + c.contributionAmount);
+    const snapshotKey = `${user.id}:${period}`;
+    const snapshot = JSON.stringify([holdings, contributions, distributions, openOpps]);
+    if (!opts.force && portfolioSnapshots.get(snapshotKey) === snapshot) {
+      const existing = await db.portfolioInsight.findUnique({
+        where: { investorId_period: { investorId: user.id, period } },
+      });
+      if (existing) {
+        return { summary: existing.summary, insights: existing.insights as PortfolioInsightShape["insights"], period: existing.period, generatedAt: existing.generatedAt };
+      }
     }
+
+    const contributionTotal = contributions.reduce((s, c) => s + c.contributionAmount, 0);
+    const { total, byCity, byRisk, byType } = portfolio;
     const concentration = (m: Map<string, number>) =>
       Array.from(m.entries())
-        .map(([k, v]) => `${k}=${((v / Math.max(total, 1)) * 100).toFixed(0)}%`)
+        .map(([k, v]) => `${k}=${(total > 0 ? (v / total) * 100 : 0).toFixed(0)}%`)
         .join(", ");
 
     const totalDistributions = distributions.reduce(
@@ -130,6 +128,8 @@ Return ONLY JSON in this exact shape (no prose, no code fences):
 
 Rules:
 - 3-7 insights.
+- Concentration and current deals use positive live share ownership only, never historical contributions. Sold-out investments are absent; secondary acquisitions are included.
+- The stated cost/indicative basis is NOT fair market value. Do not infer unrealised gains/losses, available exit proceeds, or changes this month from this snapshot. Unpriced holdings make concentration incomplete.
 - WARNING only when concentration >50% in one city/type, or unrealised loss, or compliance gap.
 - Tax: if distributions paid this month > R5,000, mention provisional tax (Feb / Aug). If SARS tax cert hasn't been generated this year, flag it.
 - Liquidity: remind that the share marketplace is thin; cooling-off (5 business days) is the only guaranteed exit window.
@@ -138,7 +138,10 @@ Rules:
 
     const userPrompt = `INVESTOR: id=${user.id}, role=${user.role}
 PERIOD: ${period}
-TOTAL COMMITTED: R${Math.round(total).toLocaleString()} across ${contributions.length} deals
+CURRENT OWNERSHIP: R${Math.round(total).toLocaleString()} on a cost/indicative basis across ${portfolio.propertyCount} properties (${portfolio.positions.length} share-class holdings)
+BASIS: ${HOLDING_BASIS}
+UNPRICED POSITIVE HOLDINGS: ${portfolio.unpricedCount} (excluded from monetary percentages; concentration is incomplete if non-zero)
+CONTRIBUTION HISTORY (non-cancelled, non-deleted records; not current ownership): R${Math.round(contributionTotal).toLocaleString()} across ${contributions.length} contribution records
 CONCENTRATION:
 - by city: ${concentration(byCity) || "n/a"}
 - by type: ${concentration(byType) || "n/a"}
@@ -146,8 +149,11 @@ CONCENTRATION:
 
 DISTRIBUTIONS (recent, up to 10): ${distributions.length} payouts, total R${Math.round(totalDistributions).toLocaleString()}
 
-CURRENT DEALS:
-${contributions.map((c) => `- #${c.property.id} ${c.property.title} (${c.property.city}) — R${Math.round(c.contributionAmount).toLocaleString()} | ${c.property.riskRating} risk | ${c.property.investmentStatus}`).join("\n")}
+CURRENT OWNED DEALS:
+${portfolio.positions.map((p) => `- #${p.property.id} ${p.property.title} (${p.property.city}) — ${p.sharesOwned} shares, R${Math.round(p.amount).toLocaleString()} (${p.basis}) | ${p.property.riskRating} risk | ${p.property.investmentStatus}`).join("\n") || "(no positive share holdings)"}
+
+ACTUAL CONTRIBUTION HISTORY (not an ownership list):
+${contributions.map((c) => `- #${c.property.id} ${c.property.title} — R${Math.round(c.contributionAmount).toLocaleString()} | ${c.status}`).join("\n") || "(no primary contributions; secondary ownership may still exist)"}
 
 OPEN OPPORTUNITIES ON PLATFORM (for gap-fill candidate):
 ${openOpps.map((o) => {
@@ -185,6 +191,7 @@ Return the JSON object now.`;
       update: { summary: parsed.summary, insights, dismissedAt: null, generatedAt: new Date() },
       create: { investorId: user.id, period, summary: parsed.summary, insights },
     });
+    portfolioSnapshots.set(snapshotKey, snapshot);
 
     return {
       summary: saved.summary,

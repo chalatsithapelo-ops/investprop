@@ -45,6 +45,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Only when you opt in, InvestProp records your office question for OpenAI transcription. You can cancel at any time.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>InvestProp uses the camera so you can photograph your FICA verification documents.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

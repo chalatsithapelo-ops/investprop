@@ -61,6 +61,12 @@ export type NavigationLink = {
  */
 export const mainNavigationLinks: NavigationLink[] = [
   {
+    label: "AI Property Office",
+    to: "/ai-office",
+    icon: Sparkles,
+    description: "Research specialists, live evidence and approval-only office tasks",
+  },
+  {
     label: "Dashboard",
     to: "/dashboard",
     icon: Building2,

@@ -742,6 +742,89 @@ model User {
   homeLoanApplications       HomeLoanApplication[]
   wallet                     Wallet?
   walletWithdrawals          WalletWithdrawal[]
+  officeConversations        OfficeConversation[]
+  officeTasks                OfficeTask[]
+  officeActionEvents         OfficeActionEvent[]
+}
+
+// Office records are self-scoped, including for staff. Events are appended with task writes.
+model OfficeConversation {
+  id        String          @id @default(cuid())
+  userId    Int
+  title     String
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @default(now()) @updatedAt
+  user      User            @relation(fields: [userId], references: [id])
+  messages  OfficeMessage[]
+
+  @@index([userId, createdAt, id])
+}
+
+model OfficeMessage {
+  id             String             @id @default(cuid())
+  conversationId String
+  role           String
+  content        String             @db.Text
+  evidence       Json?
+  createdAt      DateTime           @default(now())
+  conversation   OfficeConversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId, createdAt, id])
+}
+
+model OfficeTask {
+  id             String              @id @default(cuid())
+  userId         Int
+  title          String
+  kind           String
+  status         String              @default("PREPARED")
+  parameters     Json
+  result         Json?
+  approvalDigest String
+  expiresAt      DateTime
+  approvedAt     DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @default(now()) @updatedAt
+  user           User                @relation(fields: [userId], references: [id])
+  events         OfficeActionEvent[]
+
+  @@index([userId, createdAt, id])
+  @@index([status, expiresAt])
+}
+
+model OfficeTaxSource {
+  id            String    @id @default(cuid())
+  title         String
+  url           String
+  authority     String
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  reviewedAt    DateTime?
+  status        String    @default("DRAFT")
+  content       String    @db.Text
+  // Human-attested applicability, not an inferred personal tax classification.
+  applicability String    @default("GENERAL_RESEARCH_ONLY")
+  contentHash   String
+  version       Int       @default(1)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+
+  @@index([status, effectiveFrom])
+}
+
+model OfficeActionEvent {
+  id        String     @id @default(cuid())
+  taskId    String
+  userId    Int
+  action    String
+  payload   Json
+  createdAt DateTime  @default(now())
+  task      OfficeTask @relation(fields: [taskId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@index([taskId, createdAt, id])
+  @@index([userId, createdAt])
 }
 
 enum DevelopmentType {

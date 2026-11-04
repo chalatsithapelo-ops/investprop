@@ -90,6 +90,19 @@ class ProfilePage extends ConsumerWidget {
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(
+                    Icons.smart_toy_outlined,
+                    color: AppColors.navy,
+                  ),
+                  title: const Text('AI Property Office'),
+                  subtitle: const Text(
+                    'Evidence-led chat, income and office tasks',
+                  ),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () => context.push('/ai-office'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(
                     Icons.edit_outlined,
                     color: AppColors.navy,
                   ),

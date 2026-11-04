@@ -17,45 +17,42 @@ import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
+import { confirmedProfileSchema, onboardingSubmissionSchema, onboardingTurnSchema } from "./ai-investor-profile";
 
 const SYSTEM_PROMPT = `You are Investprop's onboarding co-pilot. You guide a new South African retail investor through the FSCA-aligned appropriateness questionnaire in a warm, conversational way.
 
 You MUST collect ALL of these fields before completing:
-  - experience: one of "NONE" | "SOME" | "EXPERIENCED" (their property/equity investing background)
-  - monthlyIncomeBand: one of "U10K" | "10_25K" | "25_50K" | "50_100K" | "100K_PLUS" (Rand)
-  - netWorthBand: one of "U100K" | "100_500K" | "500K_2M" | "2M_PLUS" (Rand, excl. primary residence)
-  - riskTolerance: one of "LOW" | "MEDIUM" | "HIGH"
-  - illiquidityAck: boolean — they understand fractional property is illiquid (no easy resale)
-  - lossAck: boolean — they understand they can lose their entire investment
-  - notAdviceAck: boolean — they understand Investprop does NOT provide financial advice
+  - investmentExperience: "NONE" | "BASIC" | "EXPERIENCED" | "PROFESSIONAL"
+  - annualIncome: "UNDER_350K" | "350_750K" | "750K_1_5M" | "OVER_1_5M" (annual Rand income)
+  - netWorth: "UNDER_500K" | "500K_2M" | "2M_10M" | "OVER_10M" (Rand)
+  - maxLossTolerance: finite non-negative number — maximum Rand amount they can afford to lose, NOT a risk category
+  - understandsIlliquid: boolean — "I understand that property investments are illiquid and capital may be locked up for years."
+  - understandsLossOfCapital: boolean — "I understand I may lose some or all of my invested capital."
+  - understandsCoolingOff: boolean — "I understand I have a 5-business-day cooling-off period to cancel and receive a full refund."
 
 Rules:
 - Ask ONE question per turn. Keep it under 2 sentences. Use plain English. South African spelling.
 - If user gives a free-text answer (e.g. "I earn about R30k a month"), interpret it into the structured value yourself — don't make them recite codes.
 - If user seems confused, briefly explain why the question matters then re-ask.
-- After all 7 fields are collected, ask: "Ready to submit?". If yes, return the COMPLETE JSON.
+- Never infer acknowledgement from income, experience, silence or another acknowledgement; ask each disclosure explicitly.
+- After all 7 fields are valid and all 3 acknowledgements are explicitly true, present the answers for review. The client must submit an explicit structured submission with confirmed=true; chat and model output alone never complete the assessment.
+- You provide information, NOT financial advice; this disclaimer is not a replacement legal acknowledgement.
 
 Return ONLY JSON on EVERY turn, in this exact shape:
 {
   "message": "<your next question or confirmation, what to say to the user>",
   "collected": {
-    "experience": "...",
-    "monthlyIncomeBand": "...",
-    "netWorthBand": "...",
-    "riskTolerance": "...",
-    "illiquidityAck": true/false,
-    "lossAck": true/false,
-    "notAdviceAck": true/false
+    "investmentExperience": "...",
+    "annualIncome": "...",
+    "netWorth": "...",
+    "maxLossTolerance": 0,
+    "understandsIlliquid": true/false,
+    "understandsLossOfCapital": true/false,
+    "understandsCoolingOff": true/false
   },
   "complete": true | false
 }
-Set values to null if not yet collected. Set complete=true ONLY when ALL 7 are non-null AND the user has confirmed submission.`;
-
-interface OnboardingTurn {
-  message: string;
-  collected: Record<string, string | boolean | null>;
-  complete: boolean;
-}
+Set values to null if not yet collected. Always set complete=false: only the server can complete an explicitly confirmed submission.`;
 
 export const startOnboardingSession = baseProcedure
   .input(z.object({ authToken: z.string() }))
@@ -76,12 +73,13 @@ export const startOnboardingSession = baseProcedure
       extractUsage: (r) => ({ promptTokens: r.usage?.promptTokens, completionTokens: r.usage?.completionTokens }),
     });
 
-    const parsed = safeParseJson<OnboardingTurn>(result.text) ?? {
+    const turn = onboardingTurnSchema.safeParse(safeParseJson<unknown>(result.text));
+    const parsed = turn.success ? turn.data : {
       message: "Welcome! Let's start. How much experience do you have with property or share investing?",
       collected: {},
       complete: false,
     };
-    return parsed;
+    return { ...parsed, complete: false, readyForConfirmation: false };
   });
 
 export const continueOnboardingSession = baseProcedure
@@ -90,10 +88,33 @@ export const continueOnboardingSession = baseProcedure
       authToken: z.string(),
       history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() })).max(40),
       userMessage: z.string().min(1).max(2000),
+      // Explicit user-reviewed fields, never populated from model output on the server.
+      submission: onboardingSubmissionSchema.optional(),
     })
   )
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
+
+    if (input.submission) {
+      const profile = confirmedProfileSchema.parse(input.submission);
+      const completedAt = new Date();
+      await db.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: user.id },
+          data: {
+            appropriatenessAssessment: { ...profile, completedAt: completedAt.toISOString(), source: "ai-onboarding" },
+            appropriatenessCompletedAt: completedAt,
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            userId: user.id, action: "APPROPRIATENESS_COMPLETED", entity: "User", entityId: user.id,
+            changes: { experience: profile.investmentExperience, tolerance: profile.maxLossTolerance, source: "ai-onboarding" },
+          },
+        });
+      });
+      return { message: "Your confirmed assessment has been submitted.", collected: profile, complete: true, readyForConfirmation: false };
+    }
 
     const messages = [
       ...input.history.map((m) => ({ role: m.role, content: m.content })),
@@ -109,32 +130,14 @@ export const continueOnboardingSession = baseProcedure
       extractUsage: (r) => ({ promptTokens: r.usage?.promptTokens, completionTokens: r.usage?.completionTokens }),
     });
 
-    const parsed = safeParseJson<OnboardingTurn>(result.text);
-    if (!parsed?.message) {
+    const turn = onboardingTurnSchema.safeParse(safeParseJson<unknown>(result.text));
+    if (!turn.success) {
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Onboarding assistant returned an unparseable response." });
     }
 
-    // If the assistant says we're complete AND all 7 fields are present, persist.
-    if (parsed.complete) {
-      const c = parsed.collected ?? {};
-      const required = ["experience", "monthlyIncomeBand", "netWorthBand", "riskTolerance", "illiquidityAck", "lossAck", "notAdviceAck"];
-      const allPresent = required.every((k) => c[k] != null);
-      if (allPresent) {
-        await db.user.update({
-          where: { id: user.id },
-          data: {
-            appropriatenessAssessment: {
-              ...c,
-              completedAt: new Date().toISOString(),
-              source: "ai-onboarding",
-            },
-          },
-        });
-      } else {
-        // Roll back the complete flag — assistant got ahead of itself.
-        parsed.complete = false;
-      }
-    }
-
-    return parsed;
+    return {
+      ...turn.data,
+      complete: false,
+      readyForConfirmation: confirmedProfileSchema.safeParse(turn.data.collected).success,
+    };
   });

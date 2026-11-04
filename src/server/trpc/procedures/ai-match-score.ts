@@ -16,6 +16,7 @@ import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
 import { calculateRentalMetrics, type RentalPropertyInput } from "~/financial-calculations";
+import { HOLDING_BASIS, liveHoldingSelect, readCompletedProfile, summariseLiveHoldings } from "./ai-investor-profile";
 
 type CacheEntry = {
   score: number;
@@ -23,6 +24,8 @@ type CacheEntry = {
   justification: string;
   factors: { label: string; weight: number; positive: boolean }[];
   generatedAt: number;
+  profilePortfolioKey: string;
+  contextKey: string;
 };
 const cache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -36,30 +39,16 @@ function bandFromScore(s: number): CacheEntry["band"] {
   return "MISMATCH";
 }
 
-interface AssessmentShape {
-  experience?: string;
-  income?: string;
-  netWorth?: string;
-  tolerance?: string;
-  horizon?: string;
-  goals?: string[] | string;
-}
+const matchProfileSelect = {
+  id: true, appropriatenessAssessment: true, appropriatenessCompletedAt: true, ficaVerified: true,
+} as const;
 
 async function computeMatch(userId: number, propertyId: number): Promise<CacheEntry> {
   const k = key(userId, propertyId);
-  const hit = cache.get(k);
-  if (hit && Date.now() - hit.generatedAt < CACHE_TTL_MS) return hit;
-
-  const [user, property, portfolio] = await Promise.all([
+  const [user, property, holdings, contributions] = await Promise.all([
     db.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        appropriatenessAssessment: true,
-        appropriatenessCompletedAt: true,
-        ficaVerified: true,
-        investorPreferences: true,
-      },
+      select: matchProfileSelect,
     }),
     db.property.findUnique({
       where: { id: propertyId },
@@ -89,33 +78,33 @@ async function computeMatch(userId: number, propertyId: number): Promise<CacheEn
         propertyDevelopment: { select: { developmentTimelineMonths: true, expectedIRR: true, developmentType: true } },
       },
     }),
+    db.shareHolding.findMany({
+      where: { investorId: userId, sharesOwned: { gt: 0 } },
+      select: liveHoldingSelect,
+      orderBy: { shareClassId: "asc" },
+    }),
     db.investorContribution.findMany({
       where: { investorId: userId, deletedAt: null, status: { not: "CANCELLED" } },
       select: {
         contributionAmount: true,
-        property: { select: { id: true, city: true, riskRating: true, propertyFlip: { select: { id: true } }, rentalBond: { select: { id: true } }, propertyDevelopment: { select: { id: true } } } },
       },
     }),
   ]);
 
   if (!property) throw new TRPCError({ code: "NOT_FOUND", message: "Property not found" });
 
-  const assessment = (user?.appropriatenessAssessment as AssessmentShape | null) ?? null;
-  const totalCommitted = portfolio.reduce((s, c) => s + c.contributionAmount, 0);
+  const assessment = readCompletedProfile(user?.appropriatenessAssessment, user?.appropriatenessCompletedAt);
+  const totalCommitted = contributions.reduce((s, c) => s + c.contributionAmount, 0);
+  const profilePortfolioKey = JSON.stringify([user, holdings, totalCommitted]);
+  const hit = cache.get(k);
+  const contextKey = JSON.stringify(property);
+  if (hit && hit.profilePortfolioKey === profilePortfolioKey && hit.contextKey === contextKey && Date.now() - hit.generatedAt < CACHE_TTL_MS) return hit;
 
-  // Concentration analysis
-  const byCity = new Map<string, number>();
-  const byType = new Map<string, number>();
-  const byRisk = new Map<string, number>();
-  for (const c of portfolio) {
-    byCity.set(c.property.city, (byCity.get(c.property.city) ?? 0) + c.contributionAmount);
-    byRisk.set(c.property.riskRating, (byRisk.get(c.property.riskRating) ?? 0) + c.contributionAmount);
-    const t = c.property.propertyFlip ? "flip" : c.property.rentalBond ? "rental" : c.property.propertyDevelopment ? "development" : "other";
-    byType.set(t, (byType.get(t) ?? 0) + c.contributionAmount);
-  }
+  const portfolio = summariseLiveHoldings(holdings);
+  const { total, byCity, byType } = portfolio;
   const thisType = property.propertyFlip ? "flip" : property.rentalBond ? "rental" : property.propertyDevelopment ? "development" : "other";
-  const cityShare = totalCommitted > 0 ? ((byCity.get(property.city) ?? 0) / totalCommitted) * 100 : 0;
-  const typeShare = totalCommitted > 0 ? ((byType.get(thisType) ?? 0) / totalCommitted) * 100 : 0;
+  const cityShare = total > 0 ? ((byCity.get(property.city) ?? 0) / total) * 100 : 0;
+  const typeShare = total > 0 ? ((byType.get(thisType) ?? 0) / total) * 100 : 0;
 
   let rentalDealLine = "";
   if (property.rentalBond) {
@@ -169,21 +158,25 @@ Return ONLY a JSON object, no prose, no code fences, in this exact shape:
 }
 
 Scoring rubric:
-- Risk tolerance vs. deal risk rating: largest single contributor (up to ±30 pts)
+- Maximum affordable loss in Rand vs. minimum investment and capital-at-risk: largest single contributor (up to ±30 pts). Do not convert this amount into an invented LOW/MEDIUM/HIGH risk tolerance.
 - Experience level vs. deal complexity (flip < rental < development): ±15 pts
-- Concentration: penalise if this would push city share or type share above 50% of portfolio
-- Minimum investment vs. inferred income/net-worth band: penalise if minimum > ~20% of stated net-worth
+- Concentration: discuss current live ownership city/type percentages; no proposed investment amount was supplied, so do not claim a calculated post-purchase concentration. Historical contributions are not current ownership.
+- Minimum investment vs. stated annual income/net-worth bands: treat bands as ranges, not exact amounts; do not invent values or affordability guarantees.
 - AI Confidence Rating (A best, E worst): ±10 pts
-- Liquidity expectation (cooling-off only, share marketplace thin): mention if horizon is short
+- Liquidity: use the explicit illiquidity/cooling-off acknowledgements; no investment horizon was collected, so do not invent one.
 - Diversification bonus if this fills a gap (new city or new type)
 
 If the investor has NOT completed the appropriateness questionnaire, give a neutral baseline score (50-60) and explicitly tell them to complete it for a better match.`;
 
   const userPrompt = `INVESTOR PROFILE:
-- Appropriateness completed: ${user?.appropriatenessCompletedAt ? "yes (" + user.appropriatenessCompletedAt.toISOString().slice(0, 10) + ")" : "NO"}
+- Appropriateness completed and server-validated: ${assessment ? "yes" : "NO (missing, invalid or unacknowledged profile)"}
 - FICA verified: ${user?.ficaVerified ? "yes" : "no"}
-- Self-assessed: experience=${assessment?.experience ?? "?"}, income=${assessment?.income ?? "?"}, netWorth=${assessment?.netWorth ?? "?"}, tolerance=${assessment?.tolerance ?? "?"}, horizon=${assessment?.horizon ?? "?"}
-- Portfolio so far: ${portfolio.length} deals, R${Math.round(totalCommitted).toLocaleString()} total committed
+- Self-assessed: investmentExperience=${assessment?.investmentExperience ?? "?"}, annualIncome=${assessment?.annualIncome ?? "?"}, netWorth=${assessment?.netWorth ?? "?"}, maxLossTolerance (Rand)=${assessment?.maxLossTolerance ?? "?"}
+- Explicit acknowledgements: illiquid=${assessment?.understandsIlliquid ?? "?"}, lossOfCapital=${assessment?.understandsLossOfCapital ?? "?"}, coolingOff=${assessment?.understandsCoolingOff ?? "?"}
+- Live ownership: ${portfolio.propertyCount} properties, R${Math.round(total).toLocaleString()} on a cost/indicative basis
+- Basis: ${HOLDING_BASIS}
+- Unpriced positive holdings: ${portfolio.unpricedCount}; percentages exclude these and may be incomplete
+- Actual contribution history (not current ownership): ${contributions.length} records, R${Math.round(totalCommitted).toLocaleString()} non-cancelled, non-deleted contributions
 - Concentration: ${cityShare.toFixed(0)}% in ${property.city}, ${typeShare.toFixed(0)}% in ${thisType}s
 
 DEAL:
@@ -212,13 +205,16 @@ Return the JSON object now.`;
     factors: { label: string; weight: number; positive: boolean }[];
   }>(result.text);
 
-  const score = Math.max(0, Math.min(100, Math.round(parsed?.score ?? 50)));
+  const candidateScore = typeof parsed?.score === "number" && Number.isFinite(parsed.score) ? parsed.score : 50;
+  const score = assessment ? Math.max(0, Math.min(100, Math.round(candidateScore))) : 50;
   const entry: CacheEntry = {
     score,
     band: bandFromScore(score),
-    justification: parsed?.justification ?? "We couldn't generate a personalised assessment for this deal. Complete your appropriateness questionnaire for tailored matches.",
-    factors: Array.isArray(parsed?.factors) ? parsed!.factors.slice(0, 6) : [],
+    justification: !assessment ? "Complete your appropriateness questionnaire and acknowledge all key risks for a personalised match. This is a neutral baseline, not an affordability assessment." : typeof parsed?.justification === "string" ? parsed.justification : "We couldn't generate a personalised assessment for this deal.",
+    factors: assessment && Array.isArray(parsed?.factors) ? parsed.factors.filter((f) => f && typeof f.label === "string" && Number.isFinite(f.weight) && f.weight >= 1 && f.weight <= 25 && typeof f.positive === "boolean").slice(0, 6) : [],
     generatedAt: Date.now(),
+    profilePortfolioKey,
+    contextKey,
   };
   cache.set(k, entry);
   return entry;
@@ -231,7 +227,8 @@ export const getMatchScore = baseProcedure
     if (user.role !== "INVESTOR" && user.role !== "ADMIN") {
       return null; // Match score is only meaningful for investors
     }
-    return computeMatch(user.id, input.propertyId);
+    const { profilePortfolioKey: _profile, contextKey: _context, ...result } = await computeMatch(user.id, input.propertyId);
+    return result;
   });
 
 export const getMatchScoresBatch = baseProcedure
@@ -239,10 +236,16 @@ export const getMatchScoresBatch = baseProcedure
   .query(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
     if (user.role !== "INVESTOR" && user.role !== "ADMIN") return [];
+    const [profile, holdings, contributions] = await Promise.all([
+      db.user.findUnique({ where: { id: user.id }, select: matchProfileSelect }),
+      db.shareHolding.findMany({ where: { investorId: user.id, sharesOwned: { gt: 0 } }, select: liveHoldingSelect, orderBy: { shareClassId: "asc" } }),
+      db.investorContribution.findMany({ where: { investorId: user.id, deletedAt: null, status: { not: "CANCELLED" } }, select: { contributionAmount: true } }),
+    ]);
+    const profilePortfolioKey = JSON.stringify([profile, holdings, contributions.reduce((sum, c) => sum + c.contributionAmount, 0)]);
     // Only return cache hits in batch mode (don't burn quota on a grid view).
     return input.propertyIds.map((pid) => {
       const hit = cache.get(key(user.id, pid));
-      if (!hit) return { propertyId: pid, score: null, band: null };
+      if (!hit || hit.profilePortfolioKey !== profilePortfolioKey || Date.now() - hit.generatedAt >= CACHE_TTL_MS) return { propertyId: pid, score: null, band: null };
       return { propertyId: pid, score: hit.score, band: hit.band };
     });
   });

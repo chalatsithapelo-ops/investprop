@@ -204,7 +204,19 @@ import {
   recordInterest,
   recordDeferredTax,
 } from "~/server/trpc/procedures/ledger";
+import {
+  officeOverview, officeConversations, officeConversation, officeChat,
+  officeTasks, officePrepareTask, officeApproveTask, officeCancelTask,
+  officeTaxSources, officeCreateTaxSource, officePublishTaxSource,
+} from "~/server/trpc/procedures/ai-office";
+import { officeVoiceTurn } from "~/server/trpc/procedures/office-voice";
+import { officePropertyScenario, officeAccountingExceptions } from "~/server/trpc/procedures/office-scenarios";
 export const appRouter = createTRPCRouter({
+  officeOverview, officeConversations, officeConversation, officeChat,
+  officeTasks, officePrepareTask, officeApproveTask, officeCancelTask,
+  officeTaxSources, officeCreateTaxSource, officePublishTaxSource,
+  officeVoiceTurn,
+  officePropertyScenario, officeAccountingExceptions,
   register,
   login,
   logout,

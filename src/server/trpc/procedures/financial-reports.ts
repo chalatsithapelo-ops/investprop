@@ -1,7 +1,19 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
+import { isEvidenceStaff, requirePropertyEvidenceAccess, type EvidenceUser } from "~/server/ai/evidence-access";
+
+// Defence in depth: do not return identifiers even if a query is later broadened.
+function sanitiseSPV<T extends { taxNumber?: string | null; bankAccountNumber?: string | null }>(
+  user: EvidenceUser,
+  spv: T | null,
+) {
+  if (!spv || isEvidenceStaff(user)) return spv;
+  const { taxNumber: _taxNumber, bankAccountNumber: _bankAccountNumber, ...safe } = spv;
+  return safe;
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  SPV FINANCIAL REPORTING AUTOMATION
@@ -22,7 +34,8 @@ export const getSPVIncomeStatement = baseProcedure
     })
   )
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    await requirePropertyEvidenceAccess(user, input.propertyId, { allowPublished: false });
 
     const from = new Date(input.fromDate);
     const to = new Date(input.toDate);
@@ -41,7 +54,7 @@ export const getSPVIncomeStatement = baseProcedure
             id: true,
             name: true,
             registrationNumber: true,
-            taxNumber: true,
+            taxNumber: isEvidenceStaff(user),
             status: true,
           },
         },
@@ -106,8 +119,8 @@ export const getSPVIncomeStatement = baseProcedure
     for (const e of entries) {
       const month = `${e.date.getFullYear()}-${String(e.date.getMonth() + 1).padStart(2, "0")}`;
       if (!monthlyTrend[month]) monthlyTrend[month] = { revenue: 0, expenses: 0 };
-      if (e.type === "INCOME") monthlyTrend[month]!.revenue += e.amount;
-      else monthlyTrend[month]!.expenses += e.amount;
+      if (e.type === "INCOME") monthlyTrend[month].revenue += e.amount;
+      else monthlyTrend[month].expenses += e.amount;
     }
 
     const monthlyData = Object.entries(monthlyTrend)
@@ -126,7 +139,7 @@ export const getSPVIncomeStatement = baseProcedure
         address: `${property.address}, ${property.city}`,
         value: propertyValue,
       },
-      spv: property.spv,
+      spv: sanitiseSPV(user, property.spv),
       period: { from: input.fromDate, to: input.toDate, taxYear: input.taxYear },
       revenue: {
         total: totalRevenue,
@@ -166,7 +179,8 @@ export const getSPVBalanceSheet = baseProcedure
     })
   )
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    await requirePropertyEvidenceAccess(user, input.propertyId, { allowPublished: false });
 
     const asAt = new Date(input.asAtDate);
 
@@ -183,9 +197,9 @@ export const getSPVBalanceSheet = baseProcedure
             id: true,
             name: true,
             registrationNumber: true,
-            taxNumber: true,
+            taxNumber: isEvidenceStaff(user),
             bankName: true,
-            bankAccountNumber: true,
+            bankAccountNumber: isEvidenceStaff(user),
           },
         },
       },
@@ -250,7 +264,7 @@ export const getSPVBalanceSheet = baseProcedure
 
     return {
       property: { id: property.id, title: property.title, value: propertyValue },
-      spv: property.spv,
+      spv: sanitiseSPV(user, property.spv),
       asAtDate: input.asAtDate,
       assets: {
         propertyAtCost: propertyValue,
@@ -442,7 +456,8 @@ export const getAnnualTaxReport = baseProcedure
     })
   )
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    await requirePropertyEvidenceAccess(user, input.propertyId, { allowPublished: false });
 
     // SA tax year: 1 March to 28/29 February
     const from = new Date(`${input.taxYear - 1}-03-01`);
@@ -458,7 +473,7 @@ export const getAnnualTaxReport = baseProcedure
           select: {
             name: true,
             registrationNumber: true,
-            taxNumber: true,
+            taxNumber: isEvidenceStaff(user),
           },
         },
       },
@@ -528,7 +543,7 @@ export const getAnnualTaxReport = baseProcedure
     const cgt = cgtInclusion * 0.27; // at corporate rate
 
     return {
-      spv: property.spv,
+      spv: sanitiseSPV(user, property.spv),
       property: { id: property.id, title: property.title },
       taxYear: {
         year: input.taxYear,
@@ -575,13 +590,33 @@ export const getSPVPortfolioSummary = baseProcedure
     })
   )
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+
+    // Authorize ALL constituent properties before fetching any financial/cap-table
+    // data. Access to one property must not unlock unrelated properties in the SPV.
+    const scope = await db.sPV.findUnique({
+      where: { id: input.spvId },
+      select: { properties: { select: { id: true } } },
+    });
+    if (!scope) return null;
+    if (!isEvidenceStaff(user) && scope.properties.length === 0) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this SPV" });
+    }
+    for (const property of scope.properties) {
+      await requirePropertyEvidenceAccess(user, property.id, { allowPublished: false });
+    }
 
     const spv = await db.sPV.findUnique({
       where: { id: input.spvId },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        registrationNumber: true,
+        taxNumber: isEvidenceStaff(user),
+        status: true,
         director: { select: { id: true, name: true } },
         properties: {
+          where: { id: { in: scope.properties.map((property) => property.id) } },
           select: {
             id: true,
             title: true,
@@ -649,14 +684,14 @@ export const getSPVPortfolioSummary = baseProcedure
     const totalExpenses = entries.filter((e) => e.type === "EXPENSE").reduce((s, e) => s + e.amount, 0);
 
     return {
-      spv: {
+      spv: sanitiseSPV(user, {
         id: spv.id,
         name: spv.name,
         registrationNumber: spv.registrationNumber,
         taxNumber: spv.taxNumber,
         status: spv.status,
         director: spv.director,
-      },
+      }),
       portfolio: {
         propertyCount: spv.properties.length,
         totalPropertyValue,

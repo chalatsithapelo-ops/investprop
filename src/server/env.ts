@@ -43,6 +43,13 @@ const envSchema = z.object({
   FIREBASE_CLIENT_EMAIL: z.string().optional(),
   FIREBASE_PRIVATE_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
+  // Opt-in voice processing. Never expose this key to web/mobile clients.
+  OPENAI_API_KEY: z.string().optional(),
+  OFFICE_VOICE_ENABLED: z.enum(["true", "false"]).default("false"),
+  // whisper-1 verbose_json supplies duration for server-side turn-length checks.
+  OFFICE_TRANSCRIPTION_MODEL: z.literal("whisper-1").default("whisper-1"),
+  OFFICE_SPEECH_MODEL: z.string().default("gpt-4o-mini-tts"),
+  OFFICE_SPEECH_VOICE: z.string().default("alloy"),
   // Payment gateway (Paystack)
   PAYSTACK_SECRET_KEY: z.string().optional(),
   PAYSTACK_PUBLIC_KEY: z.string().optional(),

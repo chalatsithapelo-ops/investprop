@@ -65,7 +65,8 @@ class Fmt {
   static String fixed(num value, {int decimals = 2}) =>
       _finite(value).toStringAsFixed(decimals);
 
-  static String date(DateTime? value) => value == null ? '—' : _date.format(value);
+  static String date(DateTime? value) =>
+      value == null ? '—' : _date.format(value);
 
   static String dateTime(DateTime? value) =>
       value == null ? '—' : _dateTime.format(value);

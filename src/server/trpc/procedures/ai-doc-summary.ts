@@ -11,6 +11,7 @@ import { db } from "~/server/db";
 import { baseProcedure } from "~/server/trpc/main";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
+import { requireLegalEvidenceAccess, type EvidenceUser } from "~/server/ai/evidence-access";
 
 interface AISummaryShape {
   summary: string;
@@ -66,7 +67,7 @@ function normalise(parsed: unknown): AISummaryShape | null {
 }
 
 async function summariseInternal(
-  userId: number,
+  user: EvidenceUser,
   documentId: number,
   force = false
 ): Promise<{
@@ -77,6 +78,7 @@ async function summariseInternal(
   riskLevel: AISummaryShape["riskLevel"];
   generatedAt: Date;
 }> {
+  await requireLegalEvidenceAccess(user, documentId);
   const doc = await db.legalDocument.findUnique({
     where: { id: documentId },
     select: {
@@ -145,7 +147,7 @@ ${content}
 Return the JSON object now.`;
 
   const result = await runAIWithGuard({
-    userId,
+    userId: user.id,
     feature: "doc-summary",
     model: getModelId("cheap"),
     metadata: { documentId },
@@ -178,13 +180,14 @@ export const summariseLegalDocument = baseProcedure
   .input(z.object({ authToken: z.string(), documentId: z.number(), force: z.boolean().optional() }))
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
-    return summariseInternal(user.id, input.documentId, input.force ?? false);
+    return summariseInternal(user, input.documentId, input.force ?? false);
   });
 
 export const getLegalDocumentSummary = baseProcedure
   .input(z.object({ authToken: z.string(), documentId: z.number() }))
   .query(async ({ input }) => {
-    await getAuthenticatedUser(input.authToken);
+    const user = await getAuthenticatedUser(input.authToken);
+    await requireLegalEvidenceAccess(user, input.documentId);
     const doc = await db.legalDocument.findUnique({
       where: { id: input.documentId },
       select: {

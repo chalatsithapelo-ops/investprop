@@ -31,6 +31,7 @@ import '../features/investment/presentation/payments_page.dart';
 import '../features/kyc/presentation/kyc_page.dart';
 import '../features/metrics/presentation/metrics_page.dart';
 import '../features/notifications/presentation/notifications_page.dart';
+import '../features/office/presentation/office_page.dart';
 import '../features/opportunities/presentation/opportunities_page.dart';
 import '../features/opportunities/presentation/opportunity_detail_page.dart';
 import '../features/opportunities/presentation/financing_calculator_page.dart';
@@ -135,6 +136,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/reset-password',
         builder: (_, state) =>
             ResetPasswordPage(token: state.uri.queryParameters['token']),
+      ),
+      GoRoute(
+        path: '/ai-office',
+        parentNavigatorKey: _rootKey,
+        builder: (_, __) => const OfficePage(),
       ),
       GoRoute(
         path: '/land-partnership',

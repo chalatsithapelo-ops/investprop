@@ -70,6 +70,7 @@ const navGroups: NavGroup[] = [
     label: "Management",
     icon: Briefcase,
     matchLabels: [
+      "AI Property Office",
       "SPV Management",
       "Acquisitions",
       "Project Management",
