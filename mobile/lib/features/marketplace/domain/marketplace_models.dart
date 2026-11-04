@@ -70,10 +70,10 @@ class OrderLevel {
   final int orders;
 
   factory OrderLevel.fromJson(Map<String, dynamic> json) => OrderLevel(
-        price: asDouble(json['price']),
-        quantity: asInt(json['quantity']),
-        orders: asInt(json['orders']),
-      );
+    price: asDouble(json['price']),
+    quantity: asInt(json['quantity']),
+    orders: asInt(json['orders']),
+  );
 }
 
 class OrderBook {
@@ -112,14 +112,14 @@ class OrderBook {
   }
 
   factory OrderBook.fromJson(Map<String, dynamic> json) => OrderBook(
-        buyLevels: _levels(json['buyLevels']),
-        sellLevels: _levels(json['sellLevels']),
-        buyOrders: _orders(json['buyOrders']),
-        sellOrders: _orders(json['sellOrders']),
-        bestBid: json['bestBid'] == null ? null : asDouble(json['bestBid']),
-        bestAsk: json['bestAsk'] == null ? null : asDouble(json['bestAsk']),
-        spread: json['spread'] == null ? null : asDouble(json['spread']),
-      );
+    buyLevels: _levels(json['buyLevels']),
+    sellLevels: _levels(json['sellLevels']),
+    buyOrders: _orders(json['buyOrders']),
+    sellOrders: _orders(json['sellOrders']),
+    bestBid: json['bestBid'] == null ? null : asDouble(json['bestBid']),
+    bestAsk: json['bestAsk'] == null ? null : asDouble(json['bestAsk']),
+    spread: json['spread'] == null ? null : asDouble(json['spread']),
+  );
 }
 
 /// A single resting order on the book, including who placed it so buyers and
@@ -144,19 +144,19 @@ class BookOrder {
   bool get isBuy => side == 'BUY';
 
   factory BookOrder.fromJson(Map<String, dynamic> json) => BookOrder(
-        id: asInt(json['id']),
-        side: asString(json['side'], 'BUY'),
-        remainingQuantity: json['remainingQuantity'] != null
-            ? asInt(json['remainingQuantity'])
-            : asInt(json['quantity']) - asInt(json['filledQuantity']),
-        pricePerShare: asDouble(json['pricePerShare']),
-        investorName: json['investorName'] == null
-            ? null
-            : asString(json['investorName']),
-        investorCode: json['investorCode'] == null
-            ? null
-            : asString(json['investorCode']),
-      );
+    id: asInt(json['id']),
+    side: asString(json['side'], 'BUY'),
+    remainingQuantity: json['remainingQuantity'] != null
+        ? asInt(json['remainingQuantity'])
+        : asInt(json['quantity']) - asInt(json['filledQuantity']),
+    pricePerShare: asDouble(json['pricePerShare']),
+    investorName: json['investorName'] == null
+        ? null
+        : asString(json['investorName']),
+    investorCode: json['investorCode'] == null
+        ? null
+        : asString(json['investorCode']),
+  );
 }
 
 class MyOrder {

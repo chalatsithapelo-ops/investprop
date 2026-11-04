@@ -399,11 +399,7 @@ class _StressSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.tune,
-                size: 14,
-                color: AppColors.goldDark,
-              ),
+              const Icon(Icons.tune, size: 14, color: AppColors.goldDark),
               const SizedBox(width: 4),
               const Flexible(
                 child: Text(
@@ -528,7 +524,10 @@ class _StressSlider extends StatelessWidget {
           width: 110,
           child: Text(
             label,
-            style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 10,
+              color: AppColors.textSecondary,
+            ),
           ),
         ),
         Expanded(
@@ -798,7 +797,11 @@ class _BreakdownSection extends StatelessWidget {
             sign: _FlowSign.positive,
             term: 'promote',
           ),
-          _FlowRow(label: '= Gross payout', value: base.grossPayout, bold: true),
+          _FlowRow(
+            label: '= Gross payout',
+            value: base.grossPayout,
+            bold: true,
+          ),
           if (hasFee)
             _FlowRow(
               label: '− Platform fee',

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Outlet, createRootRoute } from "@tanstack/react-router";
 import { Footer } from "~/components/Footer";
+import { VoiceAgentButton } from "~/components/office/VoiceAgentButton";
 import { useAuthStore } from "~/stores/authStore";
 
 export const Route = createRootRoute({
@@ -30,6 +31,7 @@ function RootComponent() {
         </div>
         <Footer />
       </div>
+      <VoiceAgentButton />
     </React.Fragment>
   );
 }

@@ -169,6 +169,23 @@ export const officeApi = {
   voice: async (input: Turn & {
     speechConsent: true; audioBase64: string; mimeType: AudioMime;
   }) => voiceReplySchema.parse(await trpcClient.officeVoiceTurn.mutate(input)),
+  voiceAgentStatus: async (input: Auth) =>
+    z.object({
+      available: z.boolean(),
+      capabilities: z.object({
+        textAI: z.boolean(),
+        voice: z.boolean(),
+        regulatedActions: z.literal(false),
+      }),
+    }).parse(await trpcClient.officeVoiceAgentStatus.query(input)),
+  voiceAgentSession: async (input: Auth) =>
+    z.object({
+      url: z.string().url(),
+      token: z.string().min(1),
+      roomName: z.string().min(1),
+      identity: z.string().min(1),
+      expiresInSeconds: z.number().int().positive(),
+    }).parse(await trpcClient.officeVoiceAgentSession.mutate(input)),
 };
 
 export function errorMessage(error: unknown): string {

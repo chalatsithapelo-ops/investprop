@@ -1,0 +1,5 @@
+# Investprop AI Property Office — realtime voice agent worker.
+# Pinned to the 1.x livekit-agents line with the OpenAI Realtime + Silero plugins.
+livekit-agents[openai,silero]~=1.0
+httpx~=0.27
+python-dotenv~=1.0

@@ -1,4 +1,4 @@
-﻿import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
@@ -19,21 +19,13 @@ import {
   Loader2,
   RefreshCw,
   Filter,
-  MapPin,
-  Phone,
-  Calendar,
-  Hash,
-  Building,
-  ExternalLink,
-  ThumbsUp,
-  ThumbsDown,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 import toast from "react-hot-toast";
 
-const MANAGER_ROLES = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"];
+const MANAGER_ROLES = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"];
 const FICA_THRESHOLD = 20_000;
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -65,9 +57,6 @@ function FicaVerificationPage() {
   const [selectedInvestor, setSelectedInvestor] = useState<any>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [actionLoading, setActionLoading] = useState<number | null>(null);
-  const [docActionLoading, setDocActionLoading] = useState<number | null>(null);
-  const [docRejectNotes, setDocRejectNotes] = useState<Record<number, string>>({});
-  const [showRejectSection, setShowRejectSection] = useState(false);
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -93,8 +82,6 @@ function FicaVerificationPage() {
       !search ||
       (i.name ?? i.email ?? "").toLowerCase().includes(search.toLowerCase()),
   );
-
-  // ── Actions ──────────────────────────────────────────────────
 
   const handleVerify = async (investorId: number) => {
     setActionLoading(investorId);
@@ -135,43 +122,10 @@ function FicaVerificationPage() {
       });
       setSelectedInvestor(null);
       setRejectReason("");
-      setShowRejectSection(false);
     } catch (e: any) {
       toast.error(e.message ?? "Failed to reject FICA");
     } finally {
       setActionLoading(null);
-    }
-  };
-
-  const handleDocReview = async (
-    docId: number,
-    status: "APPROVED" | "REJECTED",
-  ) => {
-    setDocActionLoading(docId);
-    try {
-      await trpcClient.reviewKYCDocument.mutate({
-        authToken: authToken!,
-        documentId: docId,
-        status,
-        reviewNotes:
-          status === "REJECTED" ? docRejectNotes[docId] : undefined,
-      });
-      toast.success(
-        `Document ${status === "APPROVED" ? "approved" : "rejected"}`,
-      );
-      // Refresh data so the modal updates
-      const result = await ficaQuery.refetch();
-      // Update selectedInvestor from refreshed data
-      if (selectedInvestor && result.data) {
-        const updated = (result.data as any).investors?.find(
-          (i: any) => i.id === selectedInvestor.id,
-        );
-        if (updated) setSelectedInvestor(updated);
-      }
-    } catch (e: any) {
-      toast.error(e.message ?? "Failed to review document");
-    } finally {
-      setDocActionLoading(null);
     }
   };
 
@@ -204,7 +158,8 @@ function FicaVerificationPage() {
               FICA Verification
             </h1>
             <p className="text-gray-500">
-              Review and verify investor FICA compliance
+              Review and verify investor FICA compliance (R
+              {FICA_THRESHOLD.toLocaleString()} threshold)
             </p>
           </div>
         </div>
@@ -231,7 +186,7 @@ function FicaVerificationPage() {
           </div>
           <div className="rounded-xl border bg-white p-4 shadow-sm">
             <p className="text-xs text-gray-500">
-              Urgent ({"\u2265"}R{FICA_THRESHOLD.toLocaleString()})
+              Urgent (≥R{FICA_THRESHOLD.toLocaleString()})
             </p>
             <p className="text-2xl font-bold text-red-600">
               {stats.requiresFicaUrgent ?? 0}
@@ -248,7 +203,7 @@ function FicaVerificationPage() {
             />
             <input
               type="text"
-              placeholder="Search by name or email..."
+              placeholder="Search investors..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full rounded-lg border bg-white py-2 pl-10 pr-4 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
@@ -270,9 +225,7 @@ function FicaVerificationPage() {
               >
                 {f === "PENDING_DOCS"
                   ? "Pending Docs"
-                  : f === "ALL"
-                    ? "All"
-                    : f.charAt(0) + f.slice(1).toLowerCase()}
+                  : f.charAt(0) + f.slice(1).toLowerCase()}
               </button>
             ))}
           </div>
@@ -324,7 +277,10 @@ function FicaVerificationPage() {
                         }`}
                       >
                         {inv.ficaVerified ? (
-                          <ShieldCheck className="text-green-600" size={20} />
+                          <ShieldCheck
+                            className="text-green-600"
+                            size={20}
+                          />
                         ) : inv.hasPendingDocs ? (
                           <Clock className="text-amber-600" size={20} />
                         ) : (
@@ -340,9 +296,13 @@ function FicaVerificationPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 text-xs">
-                      {inv.kycSubmittedAt && (
-                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-blue-700">
-                          KYC Submitted
+                      <span className="flex items-center gap-1">
+                        <DollarSign size={12} />R
+                        {(inv.totalInvested ?? 0).toLocaleString()}
+                      </span>
+                      {inv.requiresFica && !inv.ficaVerified && (
+                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-red-700">
+                          FICA Required
                         </span>
                       )}
                       <span
@@ -351,36 +311,31 @@ function FicaVerificationPage() {
                             ? "bg-green-100 text-green-700"
                             : inv.ficaRejectedAt
                               ? "bg-red-100 text-red-700"
-                              : inv.hasPendingDocs
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-gray-100 text-gray-600"
+                              : "bg-gray-100 text-gray-600"
                         }`}
                       >
                         {inv.ficaVerified
                           ? "Verified"
                           : inv.ficaRejectedAt
                             ? "Rejected"
-                            : inv.hasPendingDocs
-                              ? "Pending"
-                              : "Unverified"}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <DollarSign size={12} />R
-                        {(inv.totalInvested ?? 0).toLocaleString()} invested
+                            : "Unverified"}
                       </span>
                       <span className="text-gray-400">
-                        {inv.documentsApproved} approved, {inv.documentsPending}{" "}
-                        pending
+                        Docs: {inv.documentsApproved} approved,{" "}
+                        {inv.documentsPending} pending
                       </span>
+                      {inv.missingDocuments?.length > 0 && (
+                        <span className="text-amber-600">
+                          Missing:{" "}
+                          {inv.missingDocuments
+                            .map((d: string) => docLabel(d))
+                            .join(", ")}
+                        </span>
+                      )}
                     </div>
 
                     <button
-                      onClick={() => {
-                        setSelectedInvestor(inv);
-                        setRejectReason("");
-                        setShowRejectSection(false);
-                        setDocRejectNotes({});
-                      }}
+                      onClick={() => setSelectedInvestor(inv)}
                       className="flex items-center gap-1 rounded-lg bg-gold-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-gold-600"
                     >
                       <Eye size={14} />
@@ -400,316 +355,123 @@ function FicaVerificationPage() {
           </div>
         )}
 
-        {/* ═══ REVIEW MODAL ═══════════════════════════════════════ */}
+        {/* Detail Modal */}
         {selectedInvestor && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-10">
-            <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
-              {/* Modal Header */}
-              <div className="mb-5 flex items-center justify-between border-b pb-4">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">
-                    KYC / FICA Review
-                  </h2>
-                  <p className="text-sm text-gray-500">
-                    {selectedInvestor.name} &mdash; {selectedInvestor.email}
-                  </p>
-                </div>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900">
+                  FICA Review — {selectedInvestor.name}
+                </h2>
                 <button
                   onClick={() => {
                     setSelectedInvestor(null);
                     setRejectReason("");
-                    setShowRejectSection(false);
                   }}
                 >
-                  <X size={20} className="text-gray-500 hover:text-gray-700" />
+                  <X
+                    size={20}
+                    className="text-gray-500 hover:text-gray-700"
+                  />
                 </button>
               </div>
 
-              {/* ── Status Banner ─────────────────────────────── */}
-              {selectedInvestor.ficaVerified && (
-                <div className="mb-4 flex items-center gap-2 rounded-lg bg-green-50 px-4 py-3 text-green-700">
-                  <ShieldCheck size={20} />
-                  <span className="font-medium">
-                    FICA Verified on{" "}
-                    {new Date(selectedInvestor.ficaVerifiedAt).toLocaleDateString()}
+              {/* Investor Info */}
+              <div className="mb-4 space-y-2 rounded-lg bg-gray-50 p-3">
+                <p className="text-sm">
+                  <span className="font-medium">Email:</span>{" "}
+                  {selectedInvestor.email}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">Total Invested:</span> R
+                  {(selectedInvestor.totalInvested ?? 0).toLocaleString()}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">FICA Required:</span>{" "}
+                  {selectedInvestor.requiresFica
+                    ? "Yes (≥R20,000)"
+                    : "No (<R20,000)"}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">Status:</span>{" "}
+                  {selectedInvestor.ficaVerified ? (
+                    <span className="text-green-600">
+                      Verified on{" "}
+                      {new Date(
+                        selectedInvestor.ficaVerifiedAt,
+                      ).toLocaleDateString()}
+                    </span>
+                  ) : selectedInvestor.ficaRejectedAt ? (
+                    <span className="text-red-600">
+                      Rejected — {selectedInvestor.ficaRejectedReason}
+                    </span>
+                  ) : (
+                    <span className="text-amber-600">
+                      Pending verification
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              {/* KYC Documents */}
+              <h3 className="mb-2 text-sm font-semibold text-gray-700">
+                KYC Documents
+              </h3>
+              {selectedInvestor.kycDocuments?.length === 0 ? (
+                <p className="mb-4 text-sm text-gray-400">
+                  No documents submitted
+                </p>
+              ) : (
+                <div className="mb-4 space-y-2">
+                  {selectedInvestor.kycDocuments?.map((doc: any) => (
+                    <div
+                      key={doc.id}
+                      className="flex items-center justify-between rounded-lg border px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText size={14} className="text-gray-400" />
+                        <span className="text-sm">
+                          {docLabel(doc.documentType)}
+                        </span>
+                      </div>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs ${
+                          doc.status === "APPROVED"
+                            ? "bg-green-100 text-green-700"
+                            : doc.status === "PENDING"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {doc.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* All docs approved indicator */}
+              {selectedInvestor.allDocsApproved && (
+                <div className="mb-4 flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-green-700">
+                  <CheckCircle size={16} />
+                  <span className="text-sm font-medium">
+                    All required documents approved
                   </span>
                 </div>
               )}
-              {selectedInvestor.ficaRejectedAt &&
-                !selectedInvestor.ficaVerified && (
-                  <div className="mb-4 flex items-start gap-2 rounded-lg bg-red-50 px-4 py-3 text-red-700">
-                    <ShieldX size={20} className="mt-0.5" />
-                    <div>
-                      <p className="font-medium">Previously Rejected</p>
-                      <p className="text-xs">
-                        {selectedInvestor.ficaRejectedReason}
-                      </p>
-                    </div>
-                  </div>
-                )}
+              {selectedInvestor.missingDocuments?.length > 0 && (
+                <div className="mb-4 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-amber-700">
+                  <AlertTriangle size={16} />
+                  <span className="text-sm">
+                    Missing:{" "}
+                    {selectedInvestor.missingDocuments
+                      .map((d: string) => docLabel(d))
+                      .join(", ")}
+                  </span>
+                </div>
+              )}
 
-              {/* ── Personal Details ──────────────────────────── */}
-              <div className="mb-5 rounded-xl border bg-gray-50 p-4">
-                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
-                  <User size={16} className="text-gold-500" />
-                  Personal Details
-                  {!selectedInvestor.kycSubmittedAt && (
-                    <span className="ml-auto rounded bg-gray-200 px-2 py-0.5 text-[10px] text-gray-500">
-                      NOT SUBMITTED
-                    </span>
-                  )}
-                </h3>
-
-                {selectedInvestor.kycSubmittedAt ? (
-                  <div className="grid gap-2 text-sm sm:grid-cols-2">
-                    <div>
-                      <span className="text-xs font-medium text-gray-400">
-                        Full Name
-                      </span>
-                      <p className="text-gray-900">
-                        {selectedInvestor.name ?? "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-xs font-medium text-gray-400">
-                        ID / Passport Number
-                      </span>
-                      <p className="text-gray-900">
-                        {selectedInvestor.idNumber ?? "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-xs font-medium text-gray-400">
-                        Date of Birth
-                      </span>
-                      <p className="text-gray-900">
-                        {selectedInvestor.dateOfBirth
-                          ? new Date(
-                              selectedInvestor.dateOfBirth,
-                            ).toLocaleDateString()
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-xs font-medium text-gray-400">
-                        Contact Number
-                      </span>
-                      <p className="text-gray-900">
-                        {selectedInvestor.phoneNumber ?? "—"}
-                      </p>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <span className="text-xs font-medium text-gray-400">
-                        Residential Address
-                      </span>
-                      <p className="text-gray-900">
-                        {[
-                          selectedInvestor.residentialAddress,
-                          selectedInvestor.city,
-                          selectedInvestor.province,
-                          selectedInvestor.postalCode,
-                        ]
-                          .filter(Boolean)
-                          .join(", ") || "—"}
-                      </p>
-                    </div>
-                    {selectedInvestor.taxNumber && (
-                      <div>
-                        <span className="text-xs font-medium text-gray-400">
-                          Tax Number
-                        </span>
-                        <p className="text-gray-900">
-                          {selectedInvestor.taxNumber}
-                        </p>
-                      </div>
-                    )}
-                    {selectedInvestor.companyName && (
-                      <div>
-                        <span className="text-xs font-medium text-gray-400">
-                          Company
-                        </span>
-                        <p className="text-gray-900">
-                          {selectedInvestor.companyName}
-                          {selectedInvestor.companyRegNumber &&
-                            ` (${selectedInvestor.companyRegNumber})`}
-                        </p>
-                      </div>
-                    )}
-                    <div className="sm:col-span-2">
-                      <span className="text-xs font-medium text-gray-400">
-                        Total Invested
-                      </span>
-                      <p className="text-gray-900">
-                        R{(selectedInvestor.totalInvested ?? 0).toLocaleString()}
-                        {selectedInvestor.requiresFica && (
-                          <span className="ml-2 text-xs text-red-600">
-                            (FICA Required)
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400">
-                    This investor has not submitted their KYC profile yet.
-                  </p>
-                )}
-              </div>
-
-              {/* ── Supporting Documents ──────────────────────── */}
-              <div className="mb-5 rounded-xl border bg-gray-50 p-4">
-                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
-                  <FileText size={16} className="text-gold-500" />
-                  Supporting Documents
-                </h3>
-
-                {selectedInvestor.kycDocuments?.length === 0 ? (
-                  <p className="text-sm text-gray-400">
-                    No documents submitted yet.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {selectedInvestor.kycDocuments?.map((doc: any) => (
-                      <div
-                        key={doc.id}
-                        className={`rounded-lg border bg-white p-3 ${
-                          doc.status === "APPROVED"
-                            ? "border-green-200"
-                            : doc.status === "REJECTED"
-                              ? "border-red-200"
-                              : "border-amber-200"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <FileText
-                              size={16}
-                              className={
-                                doc.status === "APPROVED"
-                                  ? "text-green-600"
-                                  : doc.status === "REJECTED"
-                                    ? "text-red-600"
-                                    : "text-amber-600"
-                              }
-                            />
-                            <span className="text-sm font-medium text-gray-900">
-                              {docLabel(doc.documentType)}
-                            </span>
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                                doc.status === "APPROVED"
-                                  ? "bg-green-100 text-green-700"
-                                  : doc.status === "REJECTED"
-                                    ? "bg-red-100 text-red-700"
-                                    : "bg-amber-100 text-amber-700"
-                              }`}
-                            >
-                              {doc.status}
-                            </span>
-                          </div>
-
-                          {/* View link */}
-                          {doc.documentUrl && (
-                            <a
-                              href={doc.documentUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-100"
-                            >
-                              <ExternalLink size={12} />
-                              View Document
-                            </a>
-                          )}
-                        </div>
-
-                        {doc.reviewNotes && (
-                          <p className="mt-1 text-xs text-gray-500">
-                            Review notes: {doc.reviewNotes}
-                          </p>
-                        )}
-
-                        {/* Approve / Reject individual document */}
-                        {doc.status === "PENDING" && (
-                          <div className="mt-2 flex items-center gap-2 border-t pt-2">
-                            <button
-                              onClick={() =>
-                                handleDocReview(doc.id, "APPROVED")
-                              }
-                              disabled={docActionLoading === doc.id}
-                              className="flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                            >
-                              {docActionLoading === doc.id ? (
-                                <Loader2
-                                  size={12}
-                                  className="animate-spin"
-                                />
-                              ) : (
-                                <ThumbsUp size={12} />
-                              )}
-                              Approve
-                            </button>
-                            <div className="flex flex-1 items-center gap-1">
-                              <input
-                                type="text"
-                                value={docRejectNotes[doc.id] ?? ""}
-                                onChange={(e) =>
-                                  setDocRejectNotes((prev) => ({
-                                    ...prev,
-                                    [doc.id]: e.target.value,
-                                  }))
-                                }
-                                placeholder="Reason (optional)..."
-                                className="flex-1 rounded border px-2 py-1 text-xs focus:border-red-400 focus:outline-none"
-                              />
-                              <button
-                                onClick={() =>
-                                  handleDocReview(doc.id, "REJECTED")
-                                }
-                                disabled={docActionLoading === doc.id}
-                                className="flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                              >
-                                {docActionLoading === doc.id ? (
-                                  <Loader2
-                                    size={12}
-                                    className="animate-spin"
-                                  />
-                                ) : (
-                                  <ThumbsDown size={12} />
-                                )}
-                                Reject
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Missing documents warning */}
-                {selectedInvestor.missingDocuments?.length > 0 && (
-                  <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-amber-700">
-                    <AlertTriangle size={14} />
-                    <span className="text-xs">
-                      Missing required:{" "}
-                      {selectedInvestor.missingDocuments
-                        .map((d: string) => docLabel(d))
-                        .join(", ")}
-                    </span>
-                  </div>
-                )}
-
-                {selectedInvestor.allDocsApproved && (
-                  <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-green-700">
-                    <CheckCircle size={14} />
-                    <span className="text-xs font-medium">
-                      All required documents approved
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* ── FICA Actions ──────────────────────────────── */}
+              {/* Actions */}
               {!selectedInvestor.ficaVerified && (
                 <div className="space-y-3 border-t pt-4">
                   <button
@@ -718,7 +480,7 @@ function FicaVerificationPage() {
                       actionLoading === selectedInvestor.id ||
                       !selectedInvestor.allDocsApproved
                     }
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 py-2.5 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 py-2.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
                   >
                     {actionLoading === selectedInvestor.id ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -729,56 +491,44 @@ function FicaVerificationPage() {
                   </button>
                   {!selectedInvestor.allDocsApproved && (
                     <p className="text-center text-xs text-gray-400">
-                      All required KYC documents must be approved before
-                      FICA can be verified
+                      All required KYC documents must be approved before FICA
+                      verification
                     </p>
                   )}
 
-                  {!showRejectSection ? (
+                  <div className="rounded-lg border p-3">
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      Rejection Reason
+                    </label>
+                    <textarea
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                      rows={2}
+                      className="w-full rounded-lg border px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                      placeholder="Reason for rejecting FICA..."
+                    />
                     <button
-                      onClick={() => setShowRejectSection(true)}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                      onClick={() => handleReject(selectedInvestor.id)}
+                      disabled={actionLoading === selectedInvestor.id}
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
                     >
-                      <ShieldX size={16} />
-                      Reject FICA...
+                      {actionLoading === selectedInvestor.id ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <ShieldX size={16} />
+                      )}
+                      Reject FICA
                     </button>
-                  ) : (
-                    <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                      <label className="mb-1 block text-xs font-medium text-red-700">
-                        Rejection Reason *
-                      </label>
-                      <textarea
-                        value={rejectReason}
-                        onChange={(e) => setRejectReason(e.target.value)}
-                        rows={2}
-                        className="w-full rounded-lg border px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-                        placeholder="Explain why the FICA verification is being rejected..."
-                      />
-                      <div className="mt-2 flex gap-2">
-                        <button
-                          onClick={() => handleReject(selectedInvestor.id)}
-                          disabled={actionLoading === selectedInvestor.id}
-                          className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                        >
-                          {actionLoading === selectedInvestor.id ? (
-                            <Loader2 size={14} className="animate-spin" />
-                          ) : (
-                            <ShieldX size={14} />
-                          )}
-                          Confirm Rejection
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowRejectSection(false);
-                            setRejectReason("");
-                          }}
-                          className="rounded-lg px-4 py-2 text-sm text-gray-500 hover:bg-gray-100"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  </div>
+                </div>
+              )}
+
+              {selectedInvestor.ficaVerified && (
+                <div className="border-t pt-4">
+                  <div className="flex items-center gap-2 rounded-lg bg-green-50 px-4 py-3 text-green-700">
+                    <ShieldCheck size={20} />
+                    <span className="font-medium">FICA Verified</span>
+                  </div>
                 </div>
               )}
             </div>

@@ -65,6 +65,9 @@ dependencies:
   # Display notifications while the app is in the foreground
   flutter_local_notifications: ^17.2.3
   record: 6.1.2
+  # Realtime voice agent (LiveKit) for the floating AI Property Office assistant
+  livekit_client: ^2.3.0
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:

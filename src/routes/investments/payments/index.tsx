@@ -25,6 +25,7 @@ import {
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import { useBlockPropertyOwner } from "~/utils/use-require-role";
 import toast from "react-hot-toast";
 
 export const Route = createFileRoute("/investments/payments/")({
@@ -39,6 +40,7 @@ function InvestmentPaymentsPage() {
   const authToken = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user) as any;
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
+  useBlockPropertyOwner();
 
   const [payingId, setPayingId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -65,7 +67,7 @@ function InvestmentPaymentsPage() {
 
   const contributions = (awaitingQuery.data as any[]) ?? [];
 
-  // Upload file to server
+  // ── Upload file to server ──
   const uploadFile = async (file: File): Promise<string> => {
     const reader = new FileReader();
     const base64: string = await new Promise((resolve) => {
@@ -83,7 +85,7 @@ function InvestmentPaymentsPage() {
     return result.publicUrl;
   };
 
-  // Paystack Flow
+  // ── Paystack Flow ──
   const handlePaystack = async (contributionId: number) => {
     setSubmitting(true);
     try {
@@ -96,6 +98,7 @@ function InvestmentPaymentsPage() {
       toast.success("Redirecting to payment gateway...");
       window.open(result.authorizationUrl, "_blank");
 
+      // Store reference for verification
       setVerifyingRef(result.reference);
       setPayingId(contributionId);
     } catch (e: any) {
@@ -105,7 +108,7 @@ function InvestmentPaymentsPage() {
     }
   };
 
-  // Verify Paystack Payment
+  // ── Verify Paystack Payment ──
   const handleVerify = async (contributionId: number, reference: string) => {
     setSubmitting(true);
     try {
@@ -136,7 +139,7 @@ function InvestmentPaymentsPage() {
     }
   };
 
-  // Submit POP
+  // ── Submit POP ──
   const handleSubmitPOP = async (contributionId: number) => {
     if (!popFile) {
       toast.error("Please select a proof of payment file");
@@ -189,6 +192,7 @@ function InvestmentPaymentsPage() {
 
     setPopFile(file);
 
+    // Preview for images
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onload = () => setPopPreview(reader.result as string);
@@ -376,12 +380,15 @@ function InvestmentPaymentsPage() {
                       c.paymentStatus === "AWAITING_PAYMENT" ||
                       c.paymentStatus === "POP_REJECTED") && (
                       <div className="p-4">
+                        {/* Heading */}
                         <p className="mb-3 text-sm font-medium text-gray-700">
                           Choose your payment method:
                         </p>
 
+                        {/* Two option cards */}
                         {!isPayingThis ? (
                           <div className="grid gap-3 sm:grid-cols-2">
+                            {/* Option 1: Paystack Gateway */}
                             <button
                               onClick={() => {
                                 setPayingId(c.id);
@@ -401,6 +408,7 @@ function InvestmentPaymentsPage() {
                               </span>
                             </button>
 
+                            {/* Option 2: Upload POP */}
                             <button
                               onClick={() => {
                                 setPayingId(c.id);
@@ -422,6 +430,7 @@ function InvestmentPaymentsPage() {
                           </div>
                         ) : (
                           <>
+                            {/* Method Tabs */}
                             <div className="mb-4 flex gap-2">
                               <button
                                 onClick={() => setPayMethod("paystack")}
@@ -452,10 +461,11 @@ function InvestmentPaymentsPage() {
                                 }}
                                 className="ml-auto text-xs text-gray-400 hover:text-gray-600"
                               >
-                                &#8592; Back
+                                ← Back
                               </button>
                             </div>
 
+                            {/* Paystack Option */}
                             {payMethod === "paystack" && (
                               <div className="rounded-lg border bg-gray-50 p-4">
                                 <p className="mb-3 text-sm text-gray-600">
@@ -485,6 +495,7 @@ function InvestmentPaymentsPage() {
                               </div>
                             )}
 
+                            {/* POP Option */}
                             {payMethod === "pop" && (
                               <div className="space-y-3 rounded-lg border bg-gray-50 p-4">
                                 <p className="text-sm text-gray-600">
@@ -493,16 +504,18 @@ function InvestmentPaymentsPage() {
                                   will review and confirm your payment.
                                 </p>
 
+                                {/* Payment Details */}
                                 <div className="rounded-lg bg-blue-50 p-3">
                                   <p className="text-xs font-medium text-blue-700 mb-1">Payment Details:</p>
                                   <div className="grid grid-cols-2 gap-1 text-xs text-blue-600">
                                     <span>Property:</span>
-                                    <span className="font-medium">{c.property?.title ?? "&#8212;"}</span>
+                                    <span className="font-medium">{c.property?.title ?? "—"}</span>
                                     <span>Amount:</span>
                                     <span className="font-bold">R{c.contributionAmount?.toLocaleString()}</span>
                                   </div>
                                 </div>
 
+                                {/* File Upload */}
                                 <div>
                                   <label className="mb-1 block text-xs font-medium text-gray-600">
                                     Proof of Payment *
@@ -532,6 +545,7 @@ function InvestmentPaymentsPage() {
                                   )}
                                 </div>
 
+                                {/* Reference */}
                                 <div>
                                   <label className="mb-1 block text-xs font-medium text-gray-600">
                                     Payment Reference (optional)
@@ -545,6 +559,7 @@ function InvestmentPaymentsPage() {
                                   />
                                 </div>
 
+                                {/* Notes */}
                                 <div>
                                   <label className="mb-1 block text-xs font-medium text-gray-600">
                                     Notes (optional)
@@ -580,6 +595,7 @@ function InvestmentPaymentsPage() {
                       </div>
                     )}
 
+                    {/* Processing / Verifying State */}
                     {c.paymentStatus === "PROCESSING" && (
                       <div className="m-4 rounded-lg border bg-blue-50 p-4 text-sm text-blue-700">
                         <p className="mb-2 font-medium">
@@ -605,6 +621,7 @@ function InvestmentPaymentsPage() {
                       </div>
                     )}
 
+                    {/* POP Submitted State */}
                     {c.paymentStatus === "POP_SUBMITTED" && (
                       <div className="m-4 flex items-center gap-3 rounded-lg border bg-yellow-50 p-4 text-sm text-yellow-700">
                         <Clock size={20} />
@@ -627,6 +644,7 @@ function InvestmentPaymentsPage() {
           </div>
         )}
 
+        {/* Paystack Verification Modal (for reference from URL callback) */}
         {verifyingRef && payingId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
             <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl text-center">

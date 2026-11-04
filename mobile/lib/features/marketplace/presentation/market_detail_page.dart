@@ -47,8 +47,10 @@ class _MarketDetailPageState extends ConsumerState<MarketDetailPage> {
           children: [
             if (widget.shareClass != null) _summary(widget.shareClass!),
             const SizedBox(height: 16),
-            const Text('Order book',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const Text(
+              'Order book',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            ),
             const SizedBox(height: 8),
             AsyncValueView<OrderBook>(
               value: book,
@@ -65,7 +67,8 @@ class _MarketDetailPageState extends ConsumerState<MarketDetailPage> {
                     icon: const Icon(Icons.shopping_cart_outlined, size: 18),
                     label: const Text('Buy'),
                     style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.success),
+                      backgroundColor: AppColors.success,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -75,7 +78,8 @@ class _MarketDetailPageState extends ConsumerState<MarketDetailPage> {
                     icon: const Icon(Icons.sell_outlined, size: 18),
                     label: const Text('Sell'),
                     style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.danger),
+                      backgroundColor: AppColors.danger,
+                    ),
                   ),
                 ),
               ],
@@ -87,8 +91,10 @@ class _MarketDetailPageState extends ConsumerState<MarketDetailPage> {
               label: const Text('Transfer shares to an investor'),
             ),
             const SizedBox(height: 24),
-            const Text('My orders',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const Text(
+              'My orders',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            ),
             const SizedBox(height: 8),
             AsyncValueView<List<MyOrder>>(
               value: myOrders,
@@ -129,20 +135,29 @@ class _MarketDetailPageState extends ConsumerState<MarketDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(sc.name,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w700, fontSize: 16)),
+            Text(
+              sc.name,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            ),
             const SizedBox(height: 2),
-            Text(sc.propertyCity,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary)),
+            Text(
+              sc.propertyCity,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
             const SizedBox(height: 14),
             Row(
               children: [
-                _SumCell(label: 'List price', value: Fmt.money(sc.pricePerShare)),
                 _SumCell(
-                    label: 'Available',
-                    value: '${sc.availableShares}/${sc.totalShares}'),
+                  label: 'List price',
+                  value: Fmt.money(sc.pricePerShare),
+                ),
+                _SumCell(
+                  label: 'Available',
+                  value: '${sc.availableShares}/${sc.totalShares}',
+                ),
                 _SumCell(label: 'Holders', value: '${sc.totalInvestors}'),
               ],
             ),
@@ -154,8 +169,7 @@ class _MarketDetailPageState extends ConsumerState<MarketDetailPage> {
                   onPressed: () =>
                       context.push('/property-financials/${sc.propertyId}'),
                   icon: const Icon(Icons.insights_outlined, size: 18),
-                  label: const Text(
-                      'View property financials & performance'),
+                  label: const Text('View property financials & performance'),
                 ),
               ),
             ],
@@ -203,15 +217,15 @@ class _MarketDetailPageState extends ConsumerState<MarketDetailPage> {
       ref.invalidate(myOrdersProvider);
       ref.invalidate(orderBookProvider(widget.shareClassId));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Order cancelled.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Order cancelled.')));
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
       }
     }
   }
@@ -228,13 +242,18 @@ class _SumCell extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.textSecondary)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+            ),
+          ),
           const SizedBox(height: 2),
-          Text(value,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700, fontSize: 14)),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          ),
         ],
       ),
     );
@@ -265,17 +284,23 @@ class _OrderBookView extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _BestChip(
-                    label: 'Lowest sell price',
-                    value: book.bestAsk,
-                    color: AppColors.danger),
+                  label: 'Lowest sell price',
+                  value: book.bestAsk,
+                  color: AppColors.danger,
+                ),
                 if (book.spread != null)
-                  Text('Gap ${Fmt.money(book.spread!)}',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary)),
+                  Text(
+                    'Gap ${Fmt.money(book.spread!)}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 _BestChip(
-                    label: 'Highest buy offer',
-                    value: book.bestBid,
-                    color: AppColors.success),
+                  label: 'Highest buy offer',
+                  value: book.bestBid,
+                  color: AppColors.success,
+                ),
               ],
             ),
             const Divider(height: 20),
@@ -304,7 +329,11 @@ class _OrderBookView extends StatelessWidget {
 }
 
 class _BestChip extends StatelessWidget {
-  const _BestChip({required this.label, required this.value, required this.color});
+  const _BestChip({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
   final String label;
   final double? value;
   final Color color;
@@ -313,11 +342,14 @@ class _BestChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(label,
-            style:
-                const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-        Text(value == null ? '—' : Fmt.money(value!),
-            style: TextStyle(fontWeight: FontWeight.w700, color: color)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
+        Text(
+          value == null ? '—' : Fmt.money(value!),
+          style: TextStyle(fontWeight: FontWeight.w700, color: color),
+        ),
       ],
     );
   }
@@ -355,26 +387,43 @@ class _OrderSection extends StatelessWidget {
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
             const SizedBox(width: 6),
-            Text(heading,
-                style: TextStyle(
-                    fontWeight: FontWeight.w700, fontSize: 13, color: color)),
+            Text(
+              heading,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: color,
+              ),
+            ),
             const SizedBox(width: 6),
-            Text('(${orders.length})',
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary)),
+            Text(
+              '(${orders.length})',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 2),
-        Text(subtitle,
-            style: const TextStyle(
-                fontSize: 10.5, color: AppColors.textSecondary)),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            fontSize: 10.5,
+            color: AppColors.textSecondary,
+          ),
+        ),
         const SizedBox(height: 8),
         if (orders.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Text(emptyText,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary)),
+            child: Text(
+              emptyText,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
           )
         else ...[
           for (final o in orders.take(12))
@@ -382,9 +431,13 @@ class _OrderSection extends StatelessWidget {
           if (orders.length > 12)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text('+ ${orders.length - 12} more',
-                  style: const TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary)),
+              child: Text(
+                '+ ${orders.length - 12} more',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
             ),
         ],
       ],
@@ -399,15 +452,18 @@ class _BookOrderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final who =
-        mine ? 'You' : (order.investorCode ?? order.investorName ?? 'Investor');
+    final who = mine
+        ? 'You'
+        : (order.investorCode ?? order.investorName ?? 'Investor');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(Icons.person_outline,
-              size: 14,
-              color: mine ? AppColors.goldDark : AppColors.textSecondary),
+          Icon(
+            Icons.person_outline,
+            size: 14,
+            color: mine ? AppColors.goldDark : AppColors.textSecondary,
+          ),
           const SizedBox(width: 4),
           Expanded(
             child: Text(
@@ -420,13 +476,18 @@ class _BookOrderRow extends StatelessWidget {
               ),
             ),
           ),
-          Text('${order.remainingQuantity} shares',
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary)),
+          Text(
+            '${order.remainingQuantity} shares',
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
           const SizedBox(width: 10),
-          Text('@ ${Fmt.money(order.pricePerShare)}',
-              style:
-                  const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+          Text(
+            '@ ${Fmt.money(order.pricePerShare)}',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          ),
         ],
       ),
     );
@@ -453,30 +514,40 @@ class _MyOrderTile extends StatelessWidget {
                 color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: Text(order.side,
-                  style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+              child: Text(
+                order.side,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${order.remaining}/${order.quantity} @ '
-                      '${Fmt.money(order.pricePerShare)}',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13)),
-                  Text('${order.propertyTitle} · ${order.statusLabel}',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary)),
+                  Text(
+                    '${order.remaining}/${order.quantity} @ '
+                    '${Fmt.money(order.pricePerShare)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                  Text(
+                    '${order.propertyTitle} · ${order.statusLabel}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ],
               ),
             ),
             if (order.canCancel)
-              TextButton(
-                onPressed: onCancel,
-                child: const Text('Cancel'),
-              ),
+              TextButton(onPressed: onCancel, child: const Text('Cancel')),
           ],
         ),
       ),
@@ -502,9 +573,10 @@ class _PlaceOrderSheetState extends ConsumerState<_PlaceOrderSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _qty = TextEditingController();
   late final TextEditingController _price = TextEditingController(
-      text: widget.defaultPrice == null
-          ? ''
-          : widget.defaultPrice!.toStringAsFixed(2));
+    text: widget.defaultPrice == null
+        ? ''
+        : widget.defaultPrice!.toStringAsFixed(2),
+  );
   bool _busy = false;
 
   @override
@@ -529,7 +601,9 @@ class _PlaceOrderSheetState extends ConsumerState<_PlaceOrderSheet> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _busy = true);
     try {
-      final trades = await ref.read(marketplaceRepositoryProvider).placeOrder(
+      final trades = await ref
+          .read(marketplaceRepositoryProvider)
+          .placeOrder(
             shareClassId: widget.shareClassId,
             side: widget.side,
             quantity: int.parse(_qty.text.trim()),
@@ -539,18 +613,20 @@ class _PlaceOrderSheetState extends ConsumerState<_PlaceOrderSheet> {
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(trades > 0
-                ? 'Order placed — $trades trade(s) executed.'
-                : 'Order placed on the book.'),
+            content: Text(
+              trades > 0
+                  ? 'Order placed — $trades trade(s) executed.'
+                  : 'Order placed on the book.',
+            ),
           ),
         );
       }
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
       }
     } catch (_) {
       if (mounted) {
@@ -573,7 +649,8 @@ class _PlaceOrderSheetState extends ConsumerState<_PlaceOrderSheet> {
     // Client-side guard mirrors the server's pre-funding rule (value + 0.25%
     // STT). The server also adds any buyer platform fee and is authoritative.
     final estTotal = isBuy ? qty * price * 1.0025 : qty * price;
-    final insufficient = isBuy &&
+    final insufficient =
+        isBuy &&
         walletBalance != null &&
         qty > 0 &&
         price > 0 &&
@@ -591,9 +668,10 @@ class _PlaceOrderSheetState extends ConsumerState<_PlaceOrderSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${isBuy ? 'Buy' : 'Sell'} shares',
-                style: const TextStyle(
-                    fontWeight: FontWeight.w700, fontSize: 18)),
+            Text(
+              '${isBuy ? 'Buy' : 'Sell'} shares',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+            ),
             const SizedBox(height: 4),
             const Text(
               'Requires an approved KYC profile (ID, proof of address & bank '
@@ -627,8 +705,9 @@ class _PlaceOrderSheetState extends ConsumerState<_PlaceOrderSheet> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _price,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Price per share (R)',
                 border: OutlineInputBorder(),
@@ -653,19 +732,24 @@ class _PlaceOrderSheetState extends ConsumerState<_PlaceOrderSheet> {
               child: FilledButton(
                 onPressed: (_busy || insufficient) ? null : _submit,
                 style: FilledButton.styleFrom(
-                    backgroundColor:
-                        isBuy ? AppColors.success : AppColors.danger),
+                  backgroundColor: isBuy ? AppColors.success : AppColors.danger,
+                ),
                 child: _busy
                     ? const SizedBox(
                         height: 20,
                         width: 20,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : Text(isBuy
-                        ? (insufficient
-                            ? 'Top up wallet to buy'
-                            : 'Place buy order')
-                        : 'Place sell order'),
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        isBuy
+                            ? (insufficient
+                                  ? 'Top up wallet to buy'
+                                  : 'Place buy order')
+                            : 'Place sell order',
+                      ),
               ),
             ),
           ],
@@ -719,8 +803,10 @@ class _OrderValuePanel extends StatelessWidget {
           _kv('Price per share', ready ? Fmt.money(pricePerShare) : '—'),
           _kv('Order value', ready ? Fmt.money(value) : '—', bold: true),
           if (isBuy)
-            _kv('+ Securities Transfer Tax (0.25%)',
-                ready ? Fmt.money(stt) : '—'),
+            _kv(
+              '+ Securities Transfer Tax (0.25%)',
+              ready ? Fmt.money(stt) : '—',
+            ),
           const Divider(height: 16),
           _kv(
             isBuy ? 'Total to pay' : 'You receive (before fee)',
@@ -744,18 +830,22 @@ class _OrderValuePanel extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.account_balance_wallet_outlined,
-                      size: 14, color: AppColors.danger),
+                  const Icon(
+                    Icons.account_balance_wallet_outlined,
+                    size: 14,
+                    color: AppColors.danger,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       'Top up ${Fmt.money(shortfall.toDouble())} on the Wallet '
                       'page to place this order.',
                       style: const TextStyle(
-                          fontSize: 11,
-                          height: 1.35,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.danger),
+                        fontSize: 11,
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.danger,
+                      ),
                     ),
                   ),
                 ],
@@ -839,9 +929,10 @@ class _TransferSheetState extends ConsumerState<_TransferSheet> {
   final _code = TextEditingController();
   final _shares = TextEditingController();
   late final TextEditingController _price = TextEditingController(
-      text: widget.defaultPrice == null
-          ? ''
-          : widget.defaultPrice!.toStringAsFixed(2));
+    text: widget.defaultPrice == null
+        ? ''
+        : widget.defaultPrice!.toStringAsFixed(2),
+  );
   bool _busy = false;
   Map<String, dynamic>? _investor;
 
@@ -858,8 +949,9 @@ class _TransferSheetState extends ConsumerState<_TransferSheet> {
     if (code.length < 3) return;
     setState(() => _busy = true);
     try {
-      final inv =
-          await ref.read(marketplaceRepositoryProvider).lookupInvestor(code);
+      final inv = await ref
+          .read(marketplaceRepositoryProvider)
+          .lookupInvestor(code);
       setState(() => _investor = inv.isEmpty ? null : inv);
       if (inv.isEmpty && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -868,8 +960,9 @@ class _TransferSheetState extends ConsumerState<_TransferSheet> {
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -887,7 +980,9 @@ class _TransferSheetState extends ConsumerState<_TransferSheet> {
     }
     setState(() => _busy = true);
     try {
-      await ref.read(marketplaceRepositoryProvider).transferShares(
+      await ref
+          .read(marketplaceRepositoryProvider)
+          .transferShares(
             shareClassId: widget.shareClassId,
             toInvestorId: inv['id'] as int,
             shares: int.parse(_shares.text.trim()),
@@ -895,15 +990,16 @@ class _TransferSheetState extends ConsumerState<_TransferSheet> {
           );
       if (mounted) {
         Navigator.of(context).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Shares transferred.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Shares transferred.')));
       }
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
       }
     } catch (_) {
       if (mounted) {
@@ -930,8 +1026,10 @@ class _TransferSheetState extends ConsumerState<_TransferSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Transfer shares',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+            const Text(
+              'Transfer shares',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+            ),
             const SizedBox(height: 4),
             const Text(
               'Move shares you own directly to another investor by their '
@@ -946,14 +1044,18 @@ class _TransferSheetState extends ConsumerState<_TransferSheet> {
               decoration: BoxDecoration(
                 color: AppColors.warning.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(8),
-                border:
-                    Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: AppColors.warning.withValues(alpha: 0.4),
+                ),
               ),
               child: const Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.warning_amber_rounded,
-                      size: 16, color: AppColors.warning),
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    size: 16,
+                    color: AppColors.warning,
+                  ),
                   SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -961,9 +1063,10 @@ class _TransferSheetState extends ConsumerState<_TransferSheet> {
                       'reversed. Payment settles off-platform — Investprop '
                       'does not process money between the two parties.',
                       style: TextStyle(
-                          fontSize: 11,
-                          height: 1.35,
-                          color: AppColors.textSecondary),
+                        fontSize: 11,
+                        height: 1.35,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 ],
@@ -992,11 +1095,14 @@ class _TransferSheetState extends ConsumerState<_TransferSheet> {
             if (_investor != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text('Recipient: ${_investor!['name']}',
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.success)),
+                child: Text(
+                  'Recipient: ${_investor!['name']}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.success,
+                  ),
+                ),
               ),
             const SizedBox(height: 12),
             TextFormField(
@@ -1016,8 +1122,9 @@ class _TransferSheetState extends ConsumerState<_TransferSheet> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _price,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Price per share (R)',
                 border: OutlineInputBorder(),
@@ -1038,7 +1145,10 @@ class _TransferSheetState extends ConsumerState<_TransferSheet> {
                         height: 20,
                         width: 20,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Text('Transfer'),
               ),
             ),

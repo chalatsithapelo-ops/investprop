@@ -17,7 +17,10 @@ class InvestmentAnalysisPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final o = opportunity;
     if (o.flipInput != null) {
-      return _FlipAnalysis(input: o.flipInput!, preferredReturn: o.preferredReturn);
+      return _FlipAnalysis(
+        input: o.flipInput!,
+        preferredReturn: o.preferredReturn,
+      );
     }
     if (o.rentalInput != null) {
       return _RentalAnalysis(
@@ -58,7 +61,9 @@ class _FlipAnalysis extends StatelessWidget {
         _MetricRow(
           'Expected profit',
           Fmt.money(c.expectedProfit),
-          valueColor: c.expectedProfit >= 0 ? AppColors.success : AppColors.danger,
+          valueColor: c.expectedProfit >= 0
+              ? AppColors.success
+              : AppColors.danger,
         ),
         _MetricRow(
           'Return on investment (ROI)',
@@ -70,16 +75,25 @@ class _FlipAnalysis extends StatelessWidget {
         _MetricRow(
           'Margin of safety',
           Fmt.percent(c.marginOfSafety),
-          valueColor: c.marginOfSafety >= 0 ? AppColors.success : AppColors.danger,
+          valueColor: c.marginOfSafety >= 0
+              ? AppColors.success
+              : AppColors.danger,
         ),
         const SizedBox(height: 16),
         const _SectionLabel('Cost breakdown'),
         _MetricRow('Purchase price', Fmt.money(input.purchasePrice)),
         _MetricRow('Renovation budget', Fmt.money(input.renovationBudget)),
         _MetricRow('Holding costs', Fmt.money(input.holdingCosts)),
-        _MetricRow('Closing costs (purchase)', Fmt.money(input.closingCostsPurchase)),
+        _MetricRow(
+          'Closing costs (purchase)',
+          Fmt.money(input.closingCostsPurchase),
+        ),
         _MetricRow('Closing costs (sale)', Fmt.money(input.closingCostsSale)),
-        _MetricRow('Total investment', Fmt.money(c.totalInvestment), emphasize: true),
+        _MetricRow(
+          'Total investment',
+          Fmt.money(c.totalInvestment),
+          emphasize: true,
+        ),
         _MetricRow(
           'Est. SARS transfer duty',
           Fmt.money(c.estimatedTransferDuty),
@@ -88,7 +102,11 @@ class _FlipAnalysis extends StatelessWidget {
         const SizedBox(height: 16),
         const _SectionLabel('Fees & net returns'),
         _MetricRow('2% management fee', Fmt.money(c.totalInvestment * 0.02)),
-        _MetricRow('Est. income tax (27%)', Fmt.money(c.estimatedIncomeTax), muted: true),
+        _MetricRow(
+          'Est. income tax (27%)',
+          Fmt.money(c.estimatedIncomeTax),
+          muted: true,
+        ),
         _MetricRow(
           'Net profit after fees & tax',
           Fmt.money(c.netProfitAfterFeesAndTax),
@@ -102,13 +120,19 @@ class _FlipAnalysis extends StatelessWidget {
           preferredReturn != null ? Fmt.percent(preferredReturn!) : '8–10%',
         ),
         const SizedBox(height: 16),
-        _SensitivityTable(rows: [
-          _SensitivityRow('Resale −10%',
-              (c.resaleValue * 0.9) - c.breakEvenPrice),
-          _SensitivityRow('Resale as planned', c.expectedProfit),
-          _SensitivityRow('Resale +10%',
-              (c.resaleValue * 1.1) - c.breakEvenPrice),
-        ]),
+        _SensitivityTable(
+          rows: [
+            _SensitivityRow(
+              'Resale −10%',
+              (c.resaleValue * 0.9) - c.breakEvenPrice,
+            ),
+            _SensitivityRow('Resale as planned', c.expectedProfit),
+            _SensitivityRow(
+              'Resale +10%',
+              (c.resaleValue * 1.1) - c.breakEvenPrice,
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
         const _WaterfallNote(),
       ],
@@ -141,7 +165,9 @@ class _RentalAnalysis extends StatelessWidget {
         _MetricRow(
           'Monthly cash flow',
           Fmt.money(c.monthlyCashFlow),
-          valueColor: c.monthlyCashFlow >= 0 ? AppColors.success : AppColors.danger,
+          valueColor: c.monthlyCashFlow >= 0
+              ? AppColors.success
+              : AppColors.danger,
         ),
         const SizedBox(height: 16),
         const _SectionLabel('Yield & return analysis'),
@@ -154,7 +180,10 @@ class _RentalAnalysis extends StatelessWidget {
           Fmt.percent(c.cashOnCashReturn),
           valueColor: _tone(c.cashOnCashReturn, 8, 4),
         ),
-        _MetricRow('Gross rent multiplier', Fmt.fixed(c.grossRentMultiplier, decimals: 1)),
+        _MetricRow(
+          'Gross rent multiplier',
+          Fmt.fixed(c.grossRentMultiplier, decimals: 1),
+        ),
         if (leveraged)
           _MetricRow(
             'DSCR',
@@ -170,9 +199,15 @@ class _RentalAnalysis extends StatelessWidget {
         _MetricRow('Property tax', Fmt.money(input.annualPropertyTax)),
         _MetricRow('Insurance', Fmt.money(input.annualInsurance)),
         _MetricRow('HOA / levies', Fmt.money(input.monthlyHOAFees * 12)),
-        _MetricRow('Maintenance reserve', Fmt.money(input.monthlyMaintenanceReserve * 12)),
+        _MetricRow(
+          'Maintenance reserve',
+          Fmt.money(input.monthlyMaintenanceReserve * 12),
+        ),
         _MetricRow('Utilities', Fmt.money(input.monthlyUtilities * 12)),
-        _MetricRow('Management fee', Fmt.money(input.monthlyManagementFee * 12)),
+        _MetricRow(
+          'Management fee',
+          Fmt.money(input.monthlyManagementFee * 12),
+        ),
         _MetricRow(
           'Total operating expenses',
           Fmt.money(c.annualOperatingExpenses),
@@ -215,13 +250,23 @@ class _DevelopmentAnalysis extends StatelessWidget {
         _MetricRow(
           'Profit margin',
           Fmt.percent(c.profitMargin),
-          valueColor: c.profitMargin >= 0 ? AppColors.success : AppColors.danger,
+          valueColor: c.profitMargin >= 0
+              ? AppColors.success
+              : AppColors.danger,
         ),
         _MetricRow('Cost per unit', Fmt.money(c.costPerUnit)),
         if (input.expectedROI > 0)
-          _MetricRow("Manager's target ROI", Fmt.percent(input.expectedROI), muted: true),
+          _MetricRow(
+            "Manager's target ROI",
+            Fmt.percent(input.expectedROI),
+            muted: true,
+          ),
         if (input.expectedIRR > 0)
-          _MetricRow("Manager's target IRR", Fmt.percent(input.expectedIRR), muted: true),
+          _MetricRow(
+            "Manager's target IRR",
+            Fmt.percent(input.expectedIRR),
+            muted: true,
+          ),
         _MetricRow(
           'Preferred return',
           preferredReturn != null ? Fmt.percent(preferredReturn!) : '8–12%',
@@ -229,7 +274,10 @@ class _DevelopmentAnalysis extends StatelessWidget {
         if (isResale) ...[
           const SizedBox(height: 16),
           const _SectionLabel('Sale projections'),
-          _MetricRow('Sale price per unit', Fmt.money(input.expectedSalePricePerUnit)),
+          _MetricRow(
+            'Sale price per unit',
+            Fmt.money(input.expectedSalePricePerUnit),
+          ),
           _MetricRow(
             'Gross development value',
             Fmt.money(c.grossDevelopmentValue ?? 0),
@@ -253,7 +301,10 @@ class _DevelopmentAnalysis extends StatelessWidget {
         ] else ...[
           const SizedBox(height: 16),
           const _SectionLabel('Rental projections'),
-          _MetricRow('Monthly rent per unit', Fmt.money(input.expectedMonthlyRentPerUnit)),
+          _MetricRow(
+            'Monthly rent per unit',
+            Fmt.money(input.expectedMonthlyRentPerUnit),
+          ),
           _MetricRow(
             'Annual gross rental income',
             Fmt.money(c.annualGrossRentalIncome ?? 0),
@@ -267,13 +318,20 @@ class _DevelopmentAnalysis extends StatelessWidget {
         const _SectionLabel('Cost breakdown'),
         _MetricRow('Land acquisition', Fmt.money(input.landAcquisitionCost)),
         _MetricRow('Construction (hard costs)', Fmt.money(input.hardCosts)),
-        _MetricRow('Professional fees (soft costs)', Fmt.money(input.softCosts)),
+        _MetricRow(
+          'Professional fees (soft costs)',
+          Fmt.money(input.softCosts),
+        ),
         _MetricRow('Financing costs', Fmt.money(input.financingCosts)),
         _MetricRow(
           'Contingency (${input.contingencyPercent.toStringAsFixed(0)}%)',
           Fmt.money(c.contingencyAmount),
         ),
-        _MetricRow('Total development cost', Fmt.money(c.totalCosts), emphasize: true),
+        _MetricRow(
+          'Total development cost',
+          Fmt.money(c.totalCosts),
+          emphasize: true,
+        ),
         if (isResale) ...[
           const SizedBox(height: 8),
           const Text(
@@ -288,13 +346,19 @@ class _DevelopmentAnalysis extends StatelessWidget {
         ],
         if (isResale) ...[
           const SizedBox(height: 16),
-          _SensitivityTable(rows: [
-            _SensitivityRow('Cost +10% / Revenue −10%',
-                ((c.grossDevelopmentValue ?? 0) * 0.9) - (c.totalCosts * 1.1)),
-            _SensitivityRow('As planned', c.derivedProfit ?? 0),
-            _SensitivityRow('Cost −5% / Revenue +10%',
-                ((c.grossDevelopmentValue ?? 0) * 1.1) - (c.totalCosts * 0.95)),
-          ]),
+          _SensitivityTable(
+            rows: [
+              _SensitivityRow(
+                'Cost +10% / Revenue −10%',
+                ((c.grossDevelopmentValue ?? 0) * 0.9) - (c.totalCosts * 1.1),
+              ),
+              _SensitivityRow('As planned', c.derivedProfit ?? 0),
+              _SensitivityRow(
+                'Cost −5% / Revenue +10%',
+                ((c.grossDevelopmentValue ?? 0) * 1.1) - (c.totalCosts * 0.95),
+              ),
+            ],
+          ),
         ],
         const SizedBox(height: 16),
         const _WaterfallNote(),
@@ -339,7 +403,11 @@ class _AnalysisCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.analytics_outlined, size: 20, color: AppColors.gold),
+              const Icon(
+                Icons.analytics_outlined,
+                size: 20,
+                color: AppColors.gold,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -356,7 +424,10 @@ class _AnalysisCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: 16),
           ...children,
@@ -425,7 +496,8 @@ class _MetricRow extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: emphasize ? FontWeight.w700 : FontWeight.w600,
-              color: valueColor ??
+              color:
+                  valueColor ??
                   (muted ? AppColors.textSecondary : AppColors.textPrimary),
             ),
           ),
@@ -477,7 +549,9 @@ class _SensitivityTable extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: r.value >= 0 ? AppColors.success : AppColors.danger,
+                      color: r.value >= 0
+                          ? AppColors.success
+                          : AppColors.danger,
                     ),
                   ),
                 ],
@@ -537,7 +611,10 @@ class _WaterfallNote extends StatelessWidget {
                   Expanded(
                     child: Text(
                       steps[i],
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],

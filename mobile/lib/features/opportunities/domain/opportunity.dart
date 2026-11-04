@@ -65,8 +65,9 @@ class Opportunity {
   bool get hasAnalysis =>
       flipInput != null || rentalInput != null || developmentInput != null;
 
-  double get fundingProgress =>
-      fundingGoal > 0 ? (fundingRaised / fundingGoal).clamp(0, 1).toDouble() : 0;
+  double get fundingProgress => fundingGoal > 0
+      ? (fundingRaised / fundingGoal).clamp(0, 1).toDouble()
+      : 0;
 
   double get remainingToRaise =>
       (fundingGoal - fundingRaised).clamp(0, double.infinity).toDouble();
@@ -145,7 +146,10 @@ class Opportunity {
   }
 }
 
-PropertyFlipInput _buildFlipInput(Map<String, dynamic> f, double propertyPrice) {
+PropertyFlipInput _buildFlipInput(
+  Map<String, dynamic> f,
+  double propertyPrice,
+) {
   return PropertyFlipInput(
     purchasePrice: asDouble(f['purchasePrice']) != 0
         ? asDouble(f['purchasePrice'])
@@ -184,9 +188,12 @@ RentalPropertyInput _buildRentalInput(
     monthlyMaintenanceReserve: asDouble(r['monthlyMaintenanceReserve']),
     monthlyUtilities: asDouble(r['monthlyUtilities']),
     monthlyManagementFee: asDouble(r['monthlyManagementFee']),
-    vacancyRate: asDouble(r['vacancyRate']) != 0 ? asDouble(r['vacancyRate']) : 5,
-    appreciationRate:
-        asDouble(r['appreciationRate']) != 0 ? asDouble(r['appreciationRate']) : 3,
+    vacancyRate: asDouble(r['vacancyRate']) != 0
+        ? asDouble(r['vacancyRate'])
+        : 5,
+    appreciationRate: asDouble(r['appreciationRate']) != 0
+        ? asDouble(r['appreciationRate'])
+        : 3,
     capRate: asDouble(r['capRate']),
     downPaymentAmount: asDouble(r['downPaymentAmount']),
     loanAmount: loan,
@@ -201,7 +208,9 @@ RentalPropertyInput _buildRentalInput(
 
 PropertyDevelopmentInput _buildDevelopmentInput(Map<String, dynamic> d) {
   return PropertyDevelopmentInput(
-    developmentType: developmentTypeFromString(d['developmentType']?.toString()),
+    developmentType: developmentTypeFromString(
+      d['developmentType']?.toString(),
+    ),
     landAcquisitionCost: asDouble(d['landAcquisitionCost']),
     hardCosts: asDouble(d['hardCosts']),
     softCosts: asDouble(d['softCosts']),

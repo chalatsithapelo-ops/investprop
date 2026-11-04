@@ -50,6 +50,20 @@ const envSchema = z.object({
   OFFICE_TRANSCRIPTION_MODEL: z.literal("whisper-1").default("whisper-1"),
   OFFICE_SPEECH_MODEL: z.string().default("gpt-4o-mini-tts"),
   OFFICE_SPEECH_VOICE: z.string().default("alloy"),
+  // Realtime LiveKit voice agent. The server mints short-lived room tokens and
+  // dispatches the Python agent worker; the worker talks back to the server
+  // through the authenticated action bridge. All three LiveKit values and the
+  // shared agent secret must be set for the floating voice agent to work.
+  VOICE_AGENT_ENABLED: z.enum(["true", "false"]).default("false"),
+  LIVEKIT_URL: z.string().optional(),
+  LIVEKIT_API_KEY: z.string().optional(),
+  LIVEKIT_API_SECRET: z.string().optional(),
+  // Shared secret the agent worker presents to /api/office-agent/execute. The
+  // worker also forwards each caller's own JWT, so this secret only gates which
+  // process may reach the bridge, never which user's data it may read.
+  AGENT_SHARED_SECRET: z.string().optional(),
+  // Name the worker registers under for explicit agent dispatch.
+  VOICE_AGENT_NAME: z.string().default("investprop-office-agent"),
   // Payment gateway (Paystack)
   PAYSTACK_SECRET_KEY: z.string().optional(),
   PAYSTACK_PUBLIC_KEY: z.string().optional(),

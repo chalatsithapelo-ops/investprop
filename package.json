@@ -47,6 +47,8 @@
     "google-auth-library": "^11.1.0",
     "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.2.1",
+    "livekit-client": "^2.23.0",
+    "livekit-server-sdk": "^2.19.2",
     "lucide-react": "^0.561.0",
     "markdown-to-jsx": "^9.5.5",
     "minio": "^8.0.5",

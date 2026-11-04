@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'config/theme.dart';
 import 'core/push/push_service.dart';
 import 'features/auth/application/auth_controller.dart';
+import 'features/office/presentation/voice_agent_overlay.dart';
 import 'routing/app_router.dart';
 
 class InvestPropApp extends ConsumerWidget {
@@ -29,6 +30,13 @@ class InvestPropApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       routerConfig: router,
+      // Mount the floating voice-agent button above every routed screen.
+      builder: (context, child) => Stack(
+        children: [
+          if (child != null) child,
+          const VoiceAgentOverlay(),
+        ],
+      ),
     );
   }
 }

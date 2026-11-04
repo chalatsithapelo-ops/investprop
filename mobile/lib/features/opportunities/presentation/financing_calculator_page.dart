@@ -442,11 +442,7 @@ class _FinancingCalculatorPageState extends State<FinancingCalculatorPage> {
                   ? AppColors.success
                   : AppColors.danger,
             ),
-            _resultRow(
-              'DSCR',
-              Fmt.fixed(r.dscr),
-              color: _tone(r.dscr, 1.2, 1),
-            ),
+            _resultRow('DSCR', Fmt.fixed(r.dscr), color: _tone(r.dscr, 1.2, 1)),
             _resultRow(
               'Debt yield',
               Fmt.percent(r.debtYield),

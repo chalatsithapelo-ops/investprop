@@ -28,14 +28,15 @@ class PlatformTrackRecordPage extends ConsumerWidget {
               const SizedBox(height: 16),
               _grid(r),
               const SizedBox(height: 16),
-              if (r.onTimePct != null || r.onBudgetPct != null)
-                _delivery(r),
+              if (r.onTimePct != null || r.onBudgetPct != null) _delivery(r),
               const SizedBox(height: 16),
               Text(
                 'Figures reflect all deals on the platform to date. Past '
                 'performance is not a guarantee of future results.',
                 style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary),
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -58,30 +59,34 @@ class PlatformTrackRecordPage extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Capital raised',
-              style: TextStyle(color: Colors.white70)),
+          const Text('Capital raised', style: TextStyle(color: Colors.white70)),
           const SizedBox(height: 4),
-          Text(Fmt.money(r.capitalRaised),
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800)),
+          Text(
+            Fmt.money(r.capitalRaised),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
-                child: _heroStat('Distributed to investors',
-                    Fmt.money(r.totalDistributed)),
+                child: _heroStat(
+                  'Distributed to investors',
+                  Fmt.money(r.totalDistributed),
+                ),
               ),
-              Expanded(
-                child: _heroStat('Investors', '${r.totalInvestors}'),
-              ),
+              Expanded(child: _heroStat('Investors', '${r.totalInvestors}')),
             ],
           ),
           if (r.since != null) ...[
             const SizedBox(height: 8),
-            Text('Since ${Fmt.date(r.since)}',
-                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            Text(
+              'Since ${Fmt.date(r.since)}',
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+            ),
           ],
         ],
       ),
@@ -92,13 +97,18 @@ class PlatformTrackRecordPage extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(value,
-            style: const TextStyle(
-                color: AppColors.gold,
-                fontWeight: FontWeight.w700,
-                fontSize: 16)),
-        Text(label,
-            style: const TextStyle(color: Colors.white70, fontSize: 11)),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.gold,
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white70, fontSize: 11),
+        ),
       ],
     );
   }
@@ -107,9 +117,10 @@ class PlatformTrackRecordPage extends ConsumerWidget {
     final tiles = [
       _StatTile(label: 'Total deals', value: '${r.totalDeals}'),
       _StatTile(
-          label: 'Completed',
-          value: '${r.completed}',
-          color: AppColors.success),
+        label: 'Completed',
+        value: '${r.completed}',
+        color: AppColors.success,
+      ),
       _StatTile(label: 'In progress', value: '${r.inProgress}'),
       _StatTile(label: 'Raising now', value: '${r.raising}'),
     ];
@@ -139,12 +150,17 @@ class PlatformTrackRecordPage extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Delivery reliability',
-                style: const TextStyle(
-                    fontWeight: FontWeight.w700, fontSize: 15)),
-            Text('${r.milestonesTracked} milestones tracked',
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 12)),
+            Text(
+              'Delivery reliability',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
+            Text(
+              '${r.milestonesTracked} milestones tracked',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
+            ),
             const SizedBox(height: 12),
             if (r.onTimePct != null)
               _bar('On-time completion', r.onTimePct!, AppColors.success),
@@ -166,8 +182,10 @@ class PlatformTrackRecordPage extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label, style: const TextStyle(fontSize: 13)),
-            Text('${pct.toStringAsFixed(0)}%',
-                style: TextStyle(fontWeight: FontWeight.w700, color: color)),
+            Text(
+              '${pct.toStringAsFixed(0)}%',
+              style: TextStyle(fontWeight: FontWeight.w700, color: color),
+            ),
           ],
         ),
         const SizedBox(height: 6),
@@ -205,14 +223,21 @@ class _StatTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(value,
-              style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: color ?? AppColors.textPrimary)),
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: color ?? AppColors.textPrimary,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
