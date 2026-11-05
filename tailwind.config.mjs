@@ -49,6 +49,15 @@ export default {
         sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
         display: ['"Inter"', 'system-ui', 'sans-serif'],
       },
+      keyframes: {
+        "voice-bar": {
+          "0%, 100%": { transform: "scaleY(0.4)" },
+          "50%": { transform: "scaleY(1)" },
+        },
+      },
+      animation: {
+        "voice-bar": "voice-bar 0.9s ease-in-out infinite",
+      },
     },
   },
 };

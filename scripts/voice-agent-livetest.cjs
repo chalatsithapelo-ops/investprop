@@ -55,6 +55,23 @@
   }
   try { const r = await bridge({ action: 'taxEstimate', taxYear: new Date().getUTCFullYear(), marginalRatePct: 31 }); mark('taxEstimate', readOk(r), 'status=' + r.status + (readOk(r) ? ' incomeTax=' + (r.body.result && r.body.result.estimatedAdditionalIncomeTaxRands) : (r.body && r.body.reason ? ' reason=' + r.body.reason : ''))); } catch (e) { mark('taxEstimate', false, e.message); }
 
+  // --- Browse ANY listing + full investment case (not portfolio-scoped) ---
+  let listingId = null;
+  try {
+    const r = await bridge({ action: 'browseListings' });
+    const ok = readOk(r) && r.body.result && Array.isArray(r.body.result.items);
+    if (ok && r.body.result.items.length) listingId = r.body.result.items[0].propertyId;
+    mark('browseListings', ok, 'status=' + r.status + (ok ? ' count=' + r.body.result.count : (r.body && r.body.reason ? ' reason=' + r.body.reason : '')));
+  } catch (e) { mark('browseListings', false, e.message); }
+  try {
+    if (listingId == null) { mark('listingDetail', true, 'skipped — no published listing to detail'); }
+    else {
+      const r = await bridge({ action: 'listingDetail', propertyId: listingId });
+      const ok = readOk(r) && r.body.result && r.body.result.found === true;
+      mark('listingDetail', ok, 'status=' + r.status + (ok ? ' id=' + r.body.result.propertyId + ' return=' + r.body.result.expectedReturnPct + '%' : (r.body && r.body.reason ? ' reason=' + r.body.reason : '')));
+    }
+  } catch (e) { mark('listingDetail', false, e.message); }
+
   // --- Cross-session memory round-trip ---
   try {
     const marker = 'livetestnote' + Math.random().toString(36).slice(2, 10);

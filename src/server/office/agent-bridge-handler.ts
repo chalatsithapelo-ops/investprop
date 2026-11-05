@@ -43,6 +43,8 @@ import {
   loadGovernanceItems,
   loadComplianceStatus,
   loadMarketplaceActivity,
+  browseListings,
+  loadListingDetail,
   buildAdvisorBriefing,
   estimateTax,
   loadMemory,
@@ -117,6 +119,15 @@ const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("governance") }),
   z.object({ action: z.literal("complianceStatus") }),
   z.object({ action: z.literal("marketplace") }),
+  z.object({
+    action: z.literal("browseListings"),
+    query: z.string().trim().min(1).max(120).optional(),
+    propertyType: z.enum(["flip", "rental", "development"]).optional(),
+    city: z.string().trim().min(1).max(120).optional(),
+    investmentStatus: z.enum(["PLANNING", "RAISING_FUNDS", "FUNDED", "PROJECT_STARTED", "COMPLETED"]).optional(),
+    limit: z.number().int().min(1).max(25).optional(),
+  }),
+  z.object({ action: z.literal("listingDetail"), propertyId: z.number().int().positive() }),
   z.object({ action: z.literal("briefing") }),
   z.object({
     action: z.literal("taxEstimate"),
@@ -252,6 +263,10 @@ export default defineEventHandler(async (event) => {
         return json({ ok: true, result: await loadComplianceStatus(user) }, 200);
       case "marketplace":
         return json({ ok: true, result: await loadMarketplaceActivity(user) }, 200);
+      case "browseListings":
+        return json({ ok: true, result: await browseListings(user, { query: input.query, type: input.propertyType, city: input.city, investmentStatus: input.investmentStatus, limit: input.limit }) }, 200);
+      case "listingDetail":
+        return json({ ok: true, result: await loadListingDetail(user, input.propertyId) }, 200);
       case "briefing":
         return json({ ok: true, result: await buildAdvisorBriefing(user) }, 200);
       case "taxEstimate":

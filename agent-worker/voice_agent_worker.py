@@ -83,6 +83,9 @@ How to work (be genuinely useful, like a great human adviser):
     get_briefing, get_portfolio_valuation, get_wallet, get_pending_items,
     get_opportunities, get_governance, get_compliance_status, get_marketplace,
     estimate_tax, accounting_exceptions, run_property_scenario, list_tax_sources.
+  - To discuss ANY property the member is considering (not only what they own),
+    use browse_listings to find it and get_listing_detail for its full investment
+    case. Never say you can only see their portfolio — you can see every listing.
   - Chain tools when a question needs it: e.g. value the portfolio, check
     concentration, then recommend a rebalance; or estimate tax, then suggest a
     provisional-tax reminder.
@@ -308,6 +311,47 @@ class OfficeAgent(Agent):
     async def get_marketplace(self, _context: RunContext) -> str:
         """List the member's open secondary-market share orders."""
         return _summarise(await self._bridge.execute({"action": "marketplace"}))
+
+    @function_tool
+    async def browse_listings(
+        self,
+        _context: RunContext,
+        query: str | None = None,
+        property_type: str | None = None,
+        city: str | None = None,
+        open_for_investment_only: bool = False,
+    ) -> str:
+        """Browse ANY published property listing on the platform — not just the
+        member's own holdings. Use this to discuss a property the member is
+        looking at or to find investments matching what they want.
+
+        Args:
+            query: Free-text search over title, description, city or address.
+            property_type: Optional filter: flip, rental or development.
+            city: Optional city to narrow to.
+            open_for_investment_only: If true, only listings currently raising funds.
+        """
+        payload: dict[str, Any] = {"action": "browseListings"}
+        if query:
+            payload["query"] = query
+        if property_type and property_type.strip().lower() in {"flip", "rental", "development"}:
+            payload["propertyType"] = property_type.strip().lower()
+        if city:
+            payload["city"] = city
+        if open_for_investment_only:
+            payload["investmentStatus"] = "RAISING_FUNDS"
+        return _summarise(await self._bridge.execute(payload))
+
+    @function_tool
+    async def get_listing_detail(self, _context: RunContext, property_id: int) -> str:
+        """Get the full investment case for one published listing: price, minimum,
+        funding progress, expected return, risk, AI confidence, share classes and
+        type-specific figures. Use this before advising on whether to invest.
+
+        Args:
+            property_id: The numeric id from browse_listings or get_opportunities.
+        """
+        return _summarise(await self._bridge.execute({"action": "listingDetail", "propertyId": property_id}))
 
     @function_tool
     async def estimate_tax(

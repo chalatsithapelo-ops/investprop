@@ -212,6 +212,175 @@ export async function loadOpenOpportunities(user: AdvisorUser, client: Client = 
   return { count: items.length, items };
 }
 
+type ListingFilter = {
+  query?: string;
+  type?: "flip" | "rental" | "development";
+  city?: string;
+  investmentStatus?: "PLANNING" | "RAISING_FUNDS" | "FUNDED" | "PROJECT_STARTED" | "COMPLETED";
+  limit?: number;
+};
+
+/** The funding goal for a property, preferring the sub-type goal like the public listing. */
+function listingFundingGoal(p: {
+  fundingGoal: number;
+  propertyFlip?: { fundingGoal: number } | null;
+  rentalBond?: { fundingGoal: number } | null;
+  propertyDevelopment?: { fundingGoal: number } | null;
+}): number {
+  const subGoal = p.propertyFlip?.fundingGoal ?? p.rentalBond?.fundingGoal ?? p.propertyDevelopment?.fundingGoal ?? 0;
+  return subGoal > 0 ? subGoal : p.fundingGoal;
+}
+
+/**
+ * Browse ANY published investment listing on the platform — not only the member's
+ * own holdings. This lets the agent discuss a property the member is looking at.
+ */
+export async function browseListings(user: AdvisorUser, opts: ListingFilter = {}, client: Client = db) {
+  const where: Prisma.PropertyWhereInput = { isPublished: true, deletedAt: null };
+  if (opts.type === "flip") where.propertyFlip = { isNot: null };
+  else if (opts.type === "rental") where.rentalBond = { isNot: null };
+  else if (opts.type === "development") where.propertyDevelopment = { isNot: null };
+  if (opts.investmentStatus) where.investmentStatus = opts.investmentStatus;
+  if (opts.city) where.city = { contains: opts.city, mode: "insensitive" };
+  if (opts.query) {
+    where.OR = [
+      { title: { contains: opts.query, mode: "insensitive" } },
+      { description: { contains: opts.query, mode: "insensitive" } },
+      { city: { contains: opts.query, mode: "insensitive" } },
+      { address: { contains: opts.query, mode: "insensitive" } },
+    ];
+  }
+  const limit = Math.min(Math.max(opts.limit ?? 12, 1), 25);
+  const rows = await client.property.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }],
+    take: limit,
+    select: {
+      id: true, title: true, city: true, state: true, riskRating: true, price: true, fundingGoal: true,
+      minimumInvestment: true, expectedReturns: true, aiConfidenceRating: true, investmentStatus: true,
+      propertyFlip: { select: { expectedROI: true, fundingGoal: true } },
+      rentalBond: true,
+      propertyDevelopment: { select: { expectedROI: true, expectedIRR: true, fundingGoal: true } },
+      investorContributions: { where: { paymentStatus: "PAID", deletedAt: null }, select: { contributionAmount: true } },
+    },
+  });
+  const items = rows.map((o) => {
+    const rentalCap = o.rentalBond
+      ? calculateRentalMetrics(buildRentalInput(o.rentalBond, o.price)).displayCapRate
+      : undefined;
+    const expectedReturnPct =
+      o.propertyFlip?.expectedROI ?? rentalCap ?? o.propertyDevelopment?.expectedIRR ??
+      o.propertyDevelopment?.expectedROI ?? o.expectedReturns ?? null;
+    const goal = listingFundingGoal(o);
+    const raised = o.investorContributions.reduce((s, c) => s + c.contributionAmount, 0);
+    return {
+      propertyId: o.id,
+      title: o.title,
+      city: o.city,
+      state: o.state,
+      type: propertyType(o),
+      risk: o.riskRating,
+      investmentStatus: o.investmentStatus,
+      openForInvestment: o.investmentStatus === "RAISING_FUNDS",
+      confidenceRating: o.aiConfidenceRating ?? null,
+      askingPriceRands: round2(o.price),
+      minimumInvestmentRands: round2(o.minimumInvestment),
+      fundingGoalRands: round2(goal),
+      fundingRaisedRands: round2(raised),
+      fundingProgressPct: goal > 0 ? round2(Math.min((raised / goal) * 100, 100)) : null,
+      expectedReturnPct: expectedReturnPct == null ? null : round2(expectedReturnPct),
+    };
+  });
+  return { count: items.length, items };
+}
+
+/** Full investment case for one published listing so the agent can advise on it. */
+export async function loadListingDetail(user: AdvisorUser, propertyId: number, client: Client = db) {
+  const p = await client.property.findFirst({
+    where: { id: propertyId, isPublished: true, deletedAt: null },
+    select: {
+      id: true, title: true, description: true, city: true, state: true, address: true,
+      price: true, fundingGoal: true, minimumInvestment: true, maxInvestors: true, expectedReturns: true,
+      preferredReturnRate: true, investorProfitShare: true, targetHoldMonths: true,
+      riskRating: true, aiConfidenceRating: true, aiConfidenceJustification: true, aiRiskScore: true,
+      investmentStatus: true, fundingClosingDate: true, bedrooms: true, bathrooms: true, squareMeters: true,
+      propertyFlip: { select: { expectedROI: true, fundingGoal: true, purchasePrice: true, renovationBudget: true, afterRepairValue: true, daysToComplete: true } },
+      rentalBond: true,
+      propertyDevelopment: { select: { expectedROI: true, expectedIRR: true, fundingGoal: true, totalBudget: true, totalExpectedRevenue: true, developmentTimelineMonths: true } },
+      spv: { select: { name: true, status: true, registrationNumber: true } },
+      shareClasses: { select: { name: true, totalShares: true, pricePerShare: true, navPerShare: true, minimumInvestmentAmount: true, holdings: { select: { sharesOwned: true } } } },
+      investorContributions: { where: { paymentStatus: "PAID", deletedAt: null }, select: { contributionAmount: true } },
+    },
+  });
+  if (!p) return { found: false as const, reason: "No published listing with that id is available to you." };
+
+  const rentalMetrics = p.rentalBond
+    ? calculateRentalMetrics(buildRentalInput(p.rentalBond, p.price))
+    : null;
+  const expectedReturnPct =
+    p.propertyFlip?.expectedROI ?? rentalMetrics?.displayCapRate ?? p.propertyDevelopment?.expectedIRR ??
+    p.propertyDevelopment?.expectedROI ?? p.expectedReturns ?? null;
+  const goal = listingFundingGoal(p);
+  const raised = p.investorContributions.reduce((s, c) => s + c.contributionAmount, 0);
+
+  const shareClasses = p.shareClasses.map((sc) => {
+    const allocated = sc.holdings.reduce((s, h) => s + h.sharesOwned, 0);
+    return {
+      name: sc.name,
+      pricePerShareRands: round2(sc.navPerShare && sc.navPerShare > 0 ? sc.navPerShare : sc.pricePerShare),
+      totalShares: sc.totalShares,
+      availableShares: Math.max(0, sc.totalShares - allocated),
+      minimumInvestmentRands: round2(sc.minimumInvestmentAmount),
+    };
+  });
+
+  const gaps: string[] = [];
+  if (p.investmentStatus !== "RAISING_FUNDS") gaps.push(`This listing is '${p.investmentStatus}', so it is not currently open for new investment.`);
+  if (expectedReturnPct == null) gaps.push("No expected-return figure is recorded for this listing.");
+  gaps.push("Figures come from the sponsor's listing and the platform's financial engine; they are indicative, not a guarantee. Review the full deal pack before investing.");
+
+  return {
+    found: true as const,
+    propertyId: p.id,
+    title: p.title,
+    description: p.description ? redactForModel(p.description).slice(0, 1200) : null,
+    location: [p.address, p.city, p.state].filter(Boolean).join(", "),
+    type: propertyType(p),
+    investmentStatus: p.investmentStatus,
+    openForInvestment: p.investmentStatus === "RAISING_FUNDS",
+    risk: p.riskRating,
+    confidenceRating: p.aiConfidenceRating ?? null,
+    confidenceJustification: p.aiConfidenceJustification ?? null,
+    platformRiskScore: p.aiRiskScore ?? null,
+    askingPriceRands: round2(p.price),
+    minimumInvestmentRands: round2(p.minimumInvestment),
+    maxInvestors: p.maxInvestors,
+    fundingGoalRands: round2(goal),
+    fundingRaisedRands: round2(raised),
+    fundingProgressPct: goal > 0 ? round2(Math.min((raised / goal) * 100, 100)) : null,
+    fundingClosingDate: p.fundingClosingDate ? p.fundingClosingDate.toISOString() : null,
+    expectedReturnPct: expectedReturnPct == null ? null : round2(expectedReturnPct),
+    preferredReturnRatePct: round2(p.preferredReturnRate),
+    investorProfitSharePct: round2(p.investorProfitShare),
+    targetHoldMonths: p.targetHoldMonths || null,
+    bedrooms: p.bedrooms ?? null,
+    bathrooms: p.bathrooms ?? null,
+    squareMeters: p.squareMeters ?? null,
+    rentalMetrics: rentalMetrics
+      ? { displayCapRatePct: round2(rentalMetrics.displayCapRate), monthlyRentRands: round2(p.rentalBond?.monthlyRent ?? 0) }
+      : null,
+    flip: p.propertyFlip
+      ? { expectedROIPct: p.propertyFlip.expectedROI == null ? null : round2(p.propertyFlip.expectedROI), purchasePriceRands: round2(p.propertyFlip.purchasePrice ?? 0), renovationBudgetRands: round2(p.propertyFlip.renovationBudget ?? 0), afterRepairValueRands: round2(p.propertyFlip.afterRepairValue ?? 0), daysToComplete: p.propertyFlip.daysToComplete || null }
+      : null,
+    development: p.propertyDevelopment
+      ? { expectedROIPct: p.propertyDevelopment.expectedROI == null ? null : round2(p.propertyDevelopment.expectedROI), expectedIRRPct: p.propertyDevelopment.expectedIRR == null ? null : round2(p.propertyDevelopment.expectedIRR), totalBudgetRands: round2(p.propertyDevelopment.totalBudget ?? 0), totalExpectedRevenueRands: round2(p.propertyDevelopment.totalExpectedRevenue ?? 0), developmentTimelineMonths: p.propertyDevelopment.developmentTimelineMonths || null }
+      : null,
+    spv: p.spv ? { name: p.spv.name, status: p.spv.status, registered: Boolean(p.spv.registrationNumber) } : null,
+    shareClasses,
+    gaps,
+  };
+}
+
 /** Open governance proposals on properties the member holds, with their vote. */
 export async function loadGovernanceItems(user: AdvisorUser, client: Client = db) {
   const held = await client.shareHolding.findMany({

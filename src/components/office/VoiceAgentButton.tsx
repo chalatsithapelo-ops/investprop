@@ -120,20 +120,38 @@ export function VoiceAgentButton() {
 
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
         {(live || connecting || state === "error") && (
-          <div className="w-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-semibold text-slate-900">AI Property Office</p>
-                <p className="text-xs text-slate-500">
-                  {connecting && "Connecting your voice session…"}
-                  {live && (agentSpeaking ? "Speaking…" : "Listening…")}
-                  {state === "error" && "Could not start voice"}
+          <div className="w-80 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl ring-1 ring-slate-900/5">
+            <div className="flex items-center gap-3 px-4 pb-3 pt-4">
+              <span
+                className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition ${
+                  live ? (agentSpeaking ? "bg-emerald-50 text-emerald-600" : "bg-gold-50 text-gold-600") : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-slate-900">AI Property Office</p>
+                <p className="truncate text-xs text-slate-500">
+                  {connecting && "Connecting…"}
+                  {live && (agentSpeaking ? "Speaking" : "Listening")}
+                  {state === "error" && "Couldn’t start voice"}
                 </p>
               </div>
+              {live && (
+                <div className="flex items-end gap-0.5" aria-hidden="true">
+                  {[0, 1, 2, 3].map((i) => (
+                    <span
+                      key={i}
+                      className={`w-1 rounded-full animate-voice-bar ${agentSpeaking ? "bg-emerald-500" : "bg-gold-500"}`}
+                      style={{ height: "0.75rem", animationDelay: `${i * 0.12}s` }}
+                    />
+                  ))}
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => void stop()}
-                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                 aria-label="Close voice panel"
               >
                 <X className="h-4 w-4" />
@@ -141,23 +159,19 @@ export function VoiceAgentButton() {
             </div>
 
             {live && (
-              <div className="mt-3 flex items-center gap-2">
-                <span className="relative flex h-3 w-3">
-                  <span
-                    className={`absolute inline-flex h-full w-full rounded-full ${agentSpeaking ? "animate-ping bg-emerald-400" : "bg-sky-400"} opacity-75`}
-                  />
-                  <span
-                    className={`relative inline-flex h-3 w-3 rounded-full ${agentSpeaking ? "bg-emerald-500" : "bg-sky-500"}`}
-                  />
-                </span>
-                <span className="text-xs text-slate-600">Speak naturally — I can answer and prepare tasks.</span>
+              <div className="border-t border-slate-100 px-4 py-2.5">
+                <p className="text-xs leading-relaxed text-slate-500">
+                  Speak naturally — ask about any listing, your portfolio, tax or payments.
+                </p>
               </div>
             )}
 
             {error && state === "error" && (
-              <p className="mt-2 text-xs text-rose-600" role="alert">
-                {error}
-              </p>
+              <div className="border-t border-slate-100 px-4 py-2.5">
+                <p className="text-xs text-rose-600" role="alert">
+                  {error}
+                </p>
+              </div>
             )}
           </div>
         )}
@@ -166,8 +180,10 @@ export function VoiceAgentButton() {
           type="button"
           onClick={() => (live ? void stop() : void start())}
           disabled={connecting}
-          className={`flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition focus:outline-none focus:ring-4 focus:ring-sky-300 disabled:opacity-70 ${
-            live ? "bg-rose-600 hover:bg-rose-700" : "bg-sky-600 hover:bg-sky-700"
+          className={`flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition focus:outline-none focus:ring-4 disabled:opacity-70 ${
+            live
+              ? "bg-rose-600 hover:bg-rose-700 focus:ring-rose-300/40"
+              : "bg-gold-500 hover:bg-gold-600 focus:ring-gold-300/50"
           }`}
           aria-label={live ? "End voice session" : "Talk to the AI Property Office"}
           title={live ? "End voice session" : "Talk to the AI Property Office"}
