@@ -8,7 +8,8 @@ plugins {
 
 android {
     namespace = "io.investprop.investprop_mobile"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_webrtc 1.3.0 (via livekit_client) requires compileSdk 36.
+    compileSdk = 36
     ndkVersion = "27.0.12077973"
 
     compileOptions {

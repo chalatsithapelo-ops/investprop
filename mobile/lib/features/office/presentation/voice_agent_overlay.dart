@@ -68,7 +68,9 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay> {
 
     try {
       final session = await ref.read(voiceAgentRepositoryProvider).startSession();
-      final room = Room();
+      final room = Room(
+        roomOptions: const RoomOptions(adaptiveStream: true, dynacast: true),
+      );
       _room = room;
       final listener = room.createListener();
       _listener = listener;
@@ -90,7 +92,6 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay> {
       await room.connect(
         session.url,
         session.token,
-        roomOptions: const RoomOptions(adaptiveStream: true, dynacast: true),
       );
       await room.localParticipant?.setMicrophoneEnabled(true);
       if (!mounted) return;
