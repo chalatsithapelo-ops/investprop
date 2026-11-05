@@ -34,6 +34,7 @@ import {
 import { loadOfficeContext, sourceMetadataSelect } from "~/server/office/context";
 import { chatOffice, ownConversation } from "~/server/office/chat";
 import { prepareOfficeTask, approveOfficeTask, cancelOfficeTask } from "~/server/office/tasks";
+import { listActionCatalog, runReadAction, prepareOfficeAction, confirmOfficeAction } from "~/server/office/actions";
 import { scenarioAssumptionsSchema, loadPropertyScenario, loadAccountingExceptions } from "~/server/office/scenarios";
 import {
   loadPortfolioValuation,
@@ -143,6 +144,23 @@ const actionSchema = z.discriminatedUnion("action", [
   }),
   z.object({ action: z.literal("getMemory") }),
   z.object({ action: z.literal("saveMemory"), text: z.string().trim().min(1).max(280) }),
+  // Generic capability registry — exposes every member-facing tRPC procedure.
+  z.object({ action: z.literal("listActions") }),
+  z.object({
+    action: z.literal("runRead"),
+    name: z.string().trim().min(1).max(80),
+    args: z.record(z.unknown()).optional(),
+  }),
+  z.object({
+    action: z.literal("prepareAction"),
+    name: z.string().trim().min(1).max(80),
+    args: z.record(z.unknown()).optional(),
+  }),
+  z.object({
+    action: z.literal("confirmAction"),
+    taskId: z.string().min(1).max(128),
+    approvalDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  }),
 ]);
 
 export default defineEventHandler(async (event) => {
@@ -283,6 +301,14 @@ export default defineEventHandler(async (event) => {
         return json({ ok: true, result: await loadMemory(user) }, 200);
       case "saveMemory":
         return json({ ok: true, result: await saveMemory(user, input.text) }, 200);
+      case "listActions":
+        return json({ ok: true, result: listActionCatalog() }, 200);
+      case "runRead":
+        return json({ ok: true, result: await runReadAction(user, authToken, input.name, input.args) }, 200);
+      case "prepareAction":
+        return json({ ok: true, result: await prepareOfficeAction(user, input.name, input.args) }, 200);
+      case "confirmAction":
+        return json({ ok: true, result: await confirmOfficeAction(user, authToken, input.taskId, input.approvalDigest) }, 200);
     }
   } catch (error) {
     if (error instanceof TRPCError) {

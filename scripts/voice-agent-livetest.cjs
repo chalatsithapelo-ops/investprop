@@ -164,6 +164,65 @@
     }
   } catch (e) { mark('sell order capability wired', false, e.message); mark('sell order prepare freezes order', false, e.message); }
 
+  // --- Full capability registry: catalog + reads + prepare/confirm ---
+  let catalogNames = [];
+  try {
+    const r = await bridge({ action: 'listActions' });
+    const cat = readOk(r) && Array.isArray(r.body.result) ? r.body.result : [];
+    catalogNames = cat.map((a) => a && a.name);
+    const hasReads = catalogNames.includes('myWallet') && catalogNames.includes('investorPortfolio');
+    const hasWrites = catalogNames.includes('castVote') && catalogNames.includes('placeShareOrder');
+    mark('listActions catalog', readOk(r) && cat.length >= 40 && hasReads && hasWrites, 'count=' + cat.length);
+  } catch (e) { mark('listActions catalog', false, e.message); }
+
+  // Generic READ passthrough (no args)
+  try { const r = await bridge({ action: 'runRead', name: 'me' }); mark('runRead(me)', readOk(r) && r.body.result && r.body.result.id === user.id, 'status=' + r.status + (r.body && r.body.reason ? ' reason=' + r.body.reason : '')); } catch (e) { mark('runRead(me)', false, e.message); }
+  // Generic READ passthrough (with args)
+  try { const r = await bridge({ action: 'runRead', name: 'proposals', args: { status: 'OPEN' } }); mark('runRead(proposals,OPEN)', readOk(r) && Array.isArray(r.body.result), 'status=' + r.status + (Array.isArray(r.body && r.body.result) ? ' count=' + r.body.result.length : ' reason=' + (r.body && r.body.reason))); } catch (e) { mark('runRead(proposals,OPEN)', false, e.message); }
+  // Wallet read via registry
+  try { const r = await bridge({ action: 'runRead', name: 'myWallet' }); mark('runRead(myWallet)', readOk(r), 'status=' + r.status + (r.body && r.body.reason ? ' reason=' + r.body.reason : '')); } catch (e) { mark('runRead(myWallet)', false, e.message); }
+  // Unknown read rejected
+  try { const r = await bridge({ action: 'runRead', name: 'noSuchAction' }); mark('runRead rejects unknown', r.status === 400 && r.body && r.body.ok === false, 'status=' + r.status); } catch (e) { mark('runRead rejects unknown', false, e.message); }
+  // A write name cannot be run as a read
+  try { const r = await bridge({ action: 'runRead', name: 'castVote' }); mark('runRead rejects write name', r.status === 400 && r.body && r.body.ok === false, 'status=' + r.status); } catch (e) { mark('runRead rejects write name', false, e.message); }
+  // A read name cannot be prepared as a write
+  try { const r = await bridge({ action: 'prepareAction', name: 'myWallet' }); mark('prepareAction rejects read name', r.status === 400 && r.body && r.body.ok === false, 'status=' + r.status); } catch (e) { mark('prepareAction rejects read name', false, e.message); }
+
+  // Full prepare -> confirm round-trip on a safe, reversible write.
+  try {
+    const p = await bridge({ action: 'prepareAction', name: 'markNotificationsRead' });
+    const task = p.body && p.body.result;
+    const prepared = readOk(p) && task && task.taskId && /^[a-f0-9]{64}$/.test(task.approvalDigest || '') && typeof task.summary === 'string';
+    mark('prepareAction(markNotificationsRead)', prepared, 'status=' + p.status + (prepared ? ' summary="' + String(task.summary).slice(0, 60) + '"' : ' reason=' + (p.body && p.body.reason)));
+    if (prepared) {
+      const c = await bridge({ action: 'confirmAction', taskId: task.taskId, approvalDigest: task.approvalDigest });
+      mark('confirmAction executes write', readOk(c) && c.body.result && c.body.result.ok === true, 'status=' + c.status + (c.body && c.body.reason ? ' reason=' + c.body.reason : ''));
+      // Replay protection: confirming the same task again must fail.
+      const c2 = await bridge({ action: 'confirmAction', taskId: task.taskId, approvalDigest: task.approvalDigest });
+      mark('confirmAction replay blocked', c2.status >= 400 && c2.body && c2.body.ok === false, 'status=' + c2.status);
+    } else {
+      mark('confirmAction executes write', false, 'skipped — prepare failed');
+      mark('confirmAction replay blocked', false, 'skipped — prepare failed');
+    }
+  } catch (e) { mark('prepareAction(markNotificationsRead)', false, e.message); }
+
+  // Guard rails execute at confirm: a bogus vote prepares but fails cleanly on confirm.
+  try {
+    const p = await bridge({ action: 'prepareAction', name: 'castVote', args: { proposalId: 999999999, voteChoice: 'YES' } });
+    const task = p.body && p.body.result;
+    const prepared = readOk(p) && task && task.taskId;
+    mark('prepareAction(castVote) freezes', prepared, 'status=' + p.status + (prepared ? '' : ' reason=' + (p.body && p.body.reason)));
+    if (prepared) {
+      const c = await bridge({ action: 'confirmAction', taskId: task.taskId, approvalDigest: task.approvalDigest });
+      mark('confirmAction enforces guard rails', c.status >= 400 && c.body && c.body.ok === false, 'status=' + c.status + ' reason=' + (c.body && c.body.reason));
+    } else {
+      mark('confirmAction enforces guard rails', false, 'skipped — prepare failed');
+    }
+  } catch (e) { mark('prepareAction(castVote) freezes', false, e.message); }
+
+  // Unknown write name rejected at prepare.
+  try { const r = await bridge({ action: 'prepareAction', name: 'noSuchWrite', args: {} }); mark('prepareAction rejects unknown', r.status === 400 && r.body && r.body.ok === false, 'status=' + r.status); } catch (e) { mark('prepareAction rejects unknown', false, e.message); }
+
   // --- LiveKit session mint + agent dispatch (tRPC) ---
   try {
     const res = await fetch(BASE + '/trpc/officeVoiceAgentSession', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ json: { authToken: token } }) });

@@ -118,6 +118,30 @@ Taking action (you can actually DO things, not just advise):
     OWNER_CHECKLIST ({"proposalId": int}) the same prepare -> read back -> approve
     way.
 
+Full capability toolkit (you can do almost anything the app can):
+  - list_capabilities() returns the complete catalog of actions you can run, each
+    with a name, whether it is a read or a write, and a description. Call it when
+    you are unsure whether something is possible — the answer is usually yes.
+  - get_data(name, args) runs any READ action and returns live data. Examples:
+    get_data("myWallet"), get_data("myContributions"), get_data("myOrders"),
+    get_data("investorPortfolio"), get_data("myHomeLoanApplications"),
+    get_data("marketplaceOverview"), get_data("proposals", {"status": "OPEN"}),
+    get_data("lookupInvestor", {"investorCode": "ABC123"}).
+  - prepare_action(name, args) freezes any WRITE action and returns a plain-English
+    summary plus a taskId and approvalDigest. Read the summary back, get a clear
+    verbal yes, then call confirm_action(task_id, approval_digest) to actually do
+    it. Examples of write actions: castVote, submitInvestmentProposal,
+    initiateInvestmentPayment, requestRefund, placeShareOrder, cancelShareOrder,
+    transferShares, initiateWalletDeposit, requestWithdrawal, expressResaleInterest,
+    requestReferralIntro, submitHomeLoanApplication, acceptHomeLoanOffer,
+    updateProfile, updateInvestorPreferences, setDistressedAlerts, setAiDigestOptOut,
+    submitAppropriateness, submitPrequalification, markNotificationsRead.
+  - For money-moving actions (invest, pay, deposit, withdraw, buy/sell/transfer
+    shares, vote, accept a loan offer) be extra careful: read the full summary —
+    including every amount and reference number — back slowly before confirming.
+    If the member changes any detail, prepare a fresh action; never reuse an old
+    taskId with new numbers.
+
 Memory (you get smarter over time):
   - At the start you are given the member's saved notes. Use them naturally.
   - When the member states a lasting preference or fact (risk appetite, goals,
@@ -128,7 +152,8 @@ Hard rules — never break these:
      it's unknown, say so and offer to find it.
   2. You may READ data and PREPARE tasks freely. Before you APPROVE a task you
      MUST read back its exact frozen scope and ask the member to confirm out loud.
-     Only call approve_task after a clear yes. If they hesitate, do not approve.
+     Only call approve_task (or confirm_action for a prepared action) after a clear
+     yes. If they hesitate, do not approve.
   3. Tax: any estimate must come from estimate_tax or figures the tools returned,
      and you must say it's an estimate with its assumptions. For anything
      consequential, recommend a registered tax practitioner.
@@ -539,6 +564,87 @@ class OfficeAgent(Agent):
             task_id: The id of the task to cancel.
         """
         return _summarise(await self._bridge.execute({"action": "cancelTask", "taskId": task_id}))
+
+    # --- Full capability registry (reads + guard-railed writes) ------------
+
+    @function_tool
+    async def list_capabilities(self, _context: RunContext) -> str:
+        """List every action you can run for the member — each with a name, whether
+        it is a read or a write, and a description. Use this to discover what is
+        possible; most app functionality is available here."""
+        return _summarise(await self._bridge.execute({"action": "listActions"}))
+
+    @function_tool
+    async def get_data(
+        self,
+        _context: RunContext,
+        name: str,
+        args: dict[str, Any] | None = None,
+    ) -> str:
+        """Run any READ action from the capability registry and return live data.
+
+        Args:
+            name: The action name from list_capabilities (e.g. "myWallet",
+                "myContributions", "myOrders", "investorPortfolio",
+                "marketplaceOverview", "proposals", "lookupInvestor").
+            args: Optional arguments for the action, e.g.
+                {"status": "OPEN"} for proposals, or
+                {"investorCode": "ABC123"} for lookupInvestor. Omit if none.
+        """
+        payload: dict[str, Any] = {"action": "runRead", "name": name.strip()}
+        if args:
+            payload["args"] = args
+        return _summarise(await self._bridge.execute(payload))
+
+    @function_tool
+    async def prepare_action(
+        self,
+        _context: RunContext,
+        name: str,
+        args: dict[str, Any] | None = None,
+    ) -> str:
+        """Prepare (but do NOT execute) any WRITE action. Returns a plain-English
+        summary, a taskId and an approvalDigest. You MUST read the summary back to
+        the member and get a clear verbal yes before calling confirm_action. For a
+        share SELL order prefer the dedicated prepare_sell_order tool.
+
+        Args:
+            name: The write action name from list_capabilities (e.g. "castVote",
+                "submitInvestmentProposal", "initiateInvestmentPayment",
+                "requestRefund", "placeShareOrder", "cancelShareOrder",
+                "transferShares", "initiateWalletDeposit", "requestWithdrawal",
+                "expressResaleInterest", "requestReferralIntro",
+                "submitHomeLoanApplication", "acceptHomeLoanOffer", "updateProfile",
+                "updateInvestorPreferences", "setDistressedAlerts",
+                "setAiDigestOptOut", "submitAppropriateness",
+                "submitPrequalification", "markNotificationsRead").
+            args: The action's arguments as a flat object. See the summary text if
+                you are unsure which fields are required.
+        """
+        payload: dict[str, Any] = {"action": "prepareAction", "name": name.strip()}
+        if args:
+            payload["args"] = args
+        return _summarise(await self._bridge.execute(payload))
+
+    @function_tool
+    async def confirm_action(
+        self,
+        _context: RunContext,
+        task_id: str,
+        approval_digest: str,
+    ) -> str:
+        """Execute a previously prepared WRITE action. ONLY call this after you have
+        read the prepared summary back to the member and they verbally confirmed.
+
+        Args:
+            task_id: The taskId returned by prepare_action.
+            approval_digest: The approvalDigest returned by prepare_action.
+        """
+        return _summarise(
+            await self._bridge.execute(
+                {"action": "confirmAction", "taskId": task_id, "approvalDigest": approval_digest}
+            )
+        )
 
 
 async def entrypoint(ctx: JobContext) -> None:
