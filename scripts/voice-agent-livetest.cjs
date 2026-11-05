@@ -65,12 +65,22 @@
     mark('memory save+recall round-trip', readOk(w) && readOk(r) && found, 'notes=' + notes.length);
   } catch (e) { mark('memory save+recall round-trip', false, e.message); }
 
-  // --- AI chat (exercises the model end-to-end) ---
+  // --- AI chat (exercises the model end-to-end) + conversation recall round-trip ---
+  let chatConversationId = null;
   try {
     const r = await bridge({ action: 'chat', persona: 'ACCOUNTANT', message: 'In one short sentence, what is my current portfolio status?' });
     const ok = r.status === 200 && r.body && r.body.ok === true;
-    mark('chat(ACCOUNTANT) AI reply', ok, 'status=' + r.status + (ok && r.body.result && r.body.result.reply ? ' reply="' + String(r.body.result.reply).slice(0, 80).replace(/\s+/g, ' ') + '..."' : (r.body && r.body.reason ? ' reason=' + r.body.reason : '')));
+    chatConversationId = ok && r.body.result ? r.body.result.conversationId : null;
+    mark('chat(ACCOUNTANT) AI reply', ok, 'status=' + r.status + (ok && r.body.result && r.body.result.message ? ' reply="' + String(r.body.result.message.content || '').slice(0, 80).replace(/\s+/g, ' ') + '..."' : (r.body && r.body.reason ? ' reason=' + r.body.reason : '')));
   } catch (e) { mark('chat(ACCOUNTANT) AI reply', false, e.message); }
+  try {
+    if (!chatConversationId) { mark('getConversation recall', false, 'no conversationId from chat'); }
+    else {
+      const r = await bridge({ action: 'getConversation', conversationId: chatConversationId });
+      const ok = readOk(r) && r.body.result && Array.isArray(r.body.result.messages) && r.body.result.messages.length > 0;
+      mark('getConversation recall', ok, 'status=' + r.status + (ok ? ' messages=' + r.body.result.messages.length : (r.body && r.body.reason ? ' reason=' + r.body.reason : '')));
+    }
+  } catch (e) { mark('getConversation recall', false, e.message); }
 
   // --- LiveKit session mint + agent dispatch (tRPC) ---
   try {

@@ -89,6 +89,7 @@ const actionSchema = z.discriminatedUnion("action", [
     conversationId: z.string().min(1).max(128).optional(),
   }),
   z.object({ action: z.literal("listConversations") }),
+  z.object({ action: z.literal("getConversation"), conversationId: z.string().min(1).max(128) }),
   z.object({ action: z.literal("listTasks") }),
   z.object({
     action: z.literal("prepareTask"),
@@ -183,6 +184,18 @@ export default defineEventHandler(async (event) => {
           take: HISTORY_LIMIT,
         });
         return json({ ok: true, result: rows }, 200);
+      }
+      case "getConversation": {
+        const conversation = await ownConversation(user.id, input.conversationId);
+        const rows = await db.officeMessage.findMany({
+          where: { conversationId: conversation.id, conversation: { userId: user.id } },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: HISTORY_LIMIT + 1,
+        });
+        return json(
+          { ok: true, result: { ...conversation, messages: rows.slice(0, HISTORY_LIMIT).reverse(), truncated: rows.length > HISTORY_LIMIT } },
+          200,
+        );
       }
       case "listTasks": {
         const rows = await db.officeTask.findMany({

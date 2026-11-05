@@ -90,7 +90,8 @@ How to work (be genuinely useful, like a great human adviser):
     then one line of reasoning, then the main risk or assumption. Don't hedge
     everything — the member wants a decisive adviser.
   - Use ask_specialist for nuanced written reasoning or tax-source research when
-    the direct tools aren't enough.
+    the direct tools aren't enough. Use list_conversations and recall_conversation
+    to continue or refer back to an earlier chat thread the member started.
 
 Memory (you get smarter over time):
   - At the start you are given the member's saved notes. Use them naturally.
@@ -181,18 +182,40 @@ class OfficeAgent(Agent):
         _context: RunContext,
         persona: str,
         message: str,
+        conversation_id: str | None = None,
     ) -> str:
         """Ask one of the office specialists a question.
 
         Args:
             persona: One of ACCOUNTANT, TAX, ASSET or ADMIN.
             message: The member's question in natural language.
+            conversation_id: Optional id of a prior conversation to continue so the
+                thread keeps its context. Omit to start a fresh thread.
         """
         persona = persona.strip().upper()
         if persona not in {"ACCOUNTANT", "TAX", "ASSET", "ADMIN"}:
             return json.dumps({"ok": False, "reason": "Persona must be ACCOUNTANT, TAX, ASSET or ADMIN."})
+        payload: dict[str, Any] = {"action": "chat", "persona": persona, "message": message}
+        if conversation_id:
+            payload["conversationId"] = conversation_id
+        return _summarise(await self._bridge.execute(payload))
+
+    @function_tool
+    async def list_conversations(self, _context: RunContext) -> str:
+        """List the member's recent AI Property Office chat conversations with their
+        titles and ids, so you can continue or refer back to an earlier thread."""
+        return _summarise(await self._bridge.execute({"action": "listConversations"}))
+
+    @function_tool
+    async def recall_conversation(self, _context: RunContext, conversation_id: str) -> str:
+        """Read back the messages of one of the member's earlier chat conversations
+        so you have its full context before continuing it by voice.
+
+        Args:
+            conversation_id: The id from list_conversations.
+        """
         return _summarise(
-            await self._bridge.execute({"action": "chat", "persona": persona, "message": message})
+            await self._bridge.execute({"action": "getConversation", "conversationId": conversation_id})
         )
 
     @function_tool
