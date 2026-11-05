@@ -175,7 +175,7 @@ export async function loadPendingItems(user: AdvisorUser, client: Client = db) {
 export async function loadOpenOpportunities(user: AdvisorUser, client: Client = db) {
   const opps = await client.property.findMany({
     where: { isPublished: true, investmentStatus: "RAISING_FUNDS", deletedAt: null },
-    orderBy: [{ updatedAt: "desc" }],
+    orderBy: [{ createdAt: "desc" }],
     take: 12,
     select: {
       id: true, title: true, city: true, state: true, riskRating: true, price: true,

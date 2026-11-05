@@ -57,7 +57,7 @@
 
   // --- Cross-session memory round-trip ---
   try {
-    const marker = 'livetest-note-' + Date.now();
+    const marker = 'livetestnote' + Math.random().toString(36).slice(2, 10);
     const w = await bridge({ action: 'saveMemory', text: marker });
     const r = await bridge({ action: 'getMemory' });
     const notes = readOk(r) && r.body.result && Array.isArray(r.body.result.notes) ? r.body.result.notes : [];
