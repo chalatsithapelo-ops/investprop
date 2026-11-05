@@ -22,15 +22,27 @@ class VoiceAgentOverlay extends ConsumerStatefulWidget {
   ConsumerState<VoiceAgentOverlay> createState() => _VoiceAgentOverlayState();
 }
 
-class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay> {
+class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
+    with SingleTickerProviderStateMixin {
   Room? _room;
   EventsListener<RoomEvent>? _listener;
   _VoiceState _state = _VoiceState.idle;
   String? _error;
   bool _agentSpeaking = false;
+  late final AnimationController _bars;
+
+  @override
+  void initState() {
+    super.initState();
+    _bars = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
+  }
 
   @override
   void dispose() {
+    _bars.dispose();
     unawaited(_teardown());
     super.dispose();
   }
@@ -117,7 +129,15 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay> {
 
     final live = _state == _VoiceState.live;
     final connecting = _state == _VoiceState.connecting;
+    final isError = _state == _VoiceState.error;
     final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    final accent = _agentSpeaking ? AppColors.success : AppColors.gold;
+    final statusText = connecting
+        ? 'Connecting…'
+        : live
+            ? (_agentSpeaking ? 'Speaking' : 'Listening')
+            : (_error ?? 'Could not start voice');
 
     return Positioned(
       right: 16,
@@ -126,19 +146,20 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay> {
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (live || connecting || _state == _VoiceState.error)
+          if (live || connecting || isError)
             Container(
-              width: 240,
+              width: 264,
               margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.border),
                 boxShadow: const [
                   BoxShadow(
-                    color: Color(0x33000000),
-                    blurRadius: 16,
-                    offset: Offset(0, 6),
+                    color: Color(0x1A0B2545),
+                    blurRadius: 24,
+                    offset: Offset(0, 10),
                   ),
                 ],
               ),
@@ -146,46 +167,63 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'AI Property Office',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    connecting
-                        ? 'Connecting your voice session…'
-                        : live
-                            ? (_agentSpeaking ? 'Speaking…' : 'Listening…')
-                            : (_error ?? 'Could not start voice'),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: _state == _VoiceState.error
-                          ? Colors.red.shade700
-                          : Colors.black54,
-                    ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: isError
+                              ? AppColors.danger.withValues(alpha: 0.10)
+                              : accent.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          isError ? Icons.error_outline : Icons.graphic_eq,
+                          size: 20,
+                          color: isError ? AppColors.danger : accent,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'AI Property Office',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              statusText,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: isError
+                                    ? AppColors.danger
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (live) _Equalizer(animation: _bars, color: accent),
+                    ],
                   ),
                   if (live) ...[
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _agentSpeaking
-                                ? Colors.green
-                                : AppColors.gold,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Speak naturally — I can answer and prepare tasks.',
-                            style: TextStyle(fontSize: 11, color: Colors.black54),
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Speak naturally — ask about any listing, your portfolio, tax or payments.',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        height: 1.35,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ],
@@ -193,7 +231,8 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay> {
             ),
           FloatingActionButton(
             heroTag: 'office-voice-agent',
-            backgroundColor: live ? Colors.red.shade600 : AppColors.navy,
+            backgroundColor: live ? AppColors.danger : AppColors.gold,
+            foregroundColor: Colors.white,
             onPressed: connecting ? null : (live ? _stop : _start),
             child: connecting
                 ? const SizedBox(
@@ -207,6 +246,44 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay> {
                 : Icon(live ? Icons.call_end : Icons.mic, color: Colors.white),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Four-bar audio equalizer that animates while the session is live.
+class _Equalizer extends StatelessWidget {
+  const _Equalizer({required this.animation, required this.color});
+
+  final Animation<double> animation;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    const phases = [0.0, 0.25, 0.5, 0.75];
+    return SizedBox(
+      width: 26,
+      height: 22,
+      child: AnimatedBuilder(
+        animation: animation,
+        builder: (context, _) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: phases.map((phase) {
+              final t = (animation.value + phase) % 1.0;
+              final scale = 0.35 + 0.65 * (0.5 - (t - 0.5).abs()) * 2;
+              return Container(
+                width: 4,
+                height: 20 * scale,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              );
+            }).toList(),
+          );
+        },
       ),
     );
   }

@@ -71,6 +71,15 @@
       mark('listingDetail', ok, 'status=' + r.status + (ok ? ' id=' + r.body.result.propertyId + ' return=' + r.body.result.expectedReturnPct + '%' : (r.body && r.body.reason ? ' reason=' + r.body.reason : '')));
     }
   } catch (e) { mark('listingDetail', false, e.message); }
+  try {
+    if (listingId == null) { mark('estimateOwnership', true, 'skipped — no published listing to estimate'); }
+    else {
+      const r = await bridge({ action: 'estimateOwnership', propertyId: listingId, amount: 2000000 });
+      const res = r.body && r.body.result;
+      const ok = readOk(r) && res && res.found === true && (typeof res.ownershipPct === 'number' || typeof res.reason === 'string');
+      mark('estimateOwnership', ok, 'status=' + r.status + (ok ? ' own=' + res.ownershipPct + '% carry=' + res.platformCarryPct + '% shares=' + res.numberOfShares : (r.body && r.body.reason ? ' reason=' + r.body.reason : '')));
+    }
+  } catch (e) { mark('estimateOwnership', false, e.message); }
 
   // --- Cross-session memory round-trip ---
   try {

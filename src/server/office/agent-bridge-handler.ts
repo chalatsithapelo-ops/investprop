@@ -45,6 +45,7 @@ import {
   loadMarketplaceActivity,
   browseListings,
   loadListingDetail,
+  estimateListingOwnership,
   buildAdvisorBriefing,
   estimateTax,
   loadMemory,
@@ -128,6 +129,11 @@ const actionSchema = z.discriminatedUnion("action", [
     limit: z.number().int().min(1).max(25).optional(),
   }),
   z.object({ action: z.literal("listingDetail"), propertyId: z.number().int().positive() }),
+  z.object({
+    action: z.literal("estimateOwnership"),
+    propertyId: z.number().int().positive(),
+    amount: z.number().positive().max(1_000_000_000),
+  }),
   z.object({ action: z.literal("briefing") }),
   z.object({
     action: z.literal("taxEstimate"),
@@ -267,6 +273,8 @@ export default defineEventHandler(async (event) => {
         return json({ ok: true, result: await browseListings(user, { query: input.query, type: input.propertyType, city: input.city, investmentStatus: input.investmentStatus, limit: input.limit }) }, 200);
       case "listingDetail":
         return json({ ok: true, result: await loadListingDetail(user, input.propertyId) }, 200);
+      case "estimateOwnership":
+        return json({ ok: true, result: await estimateListingOwnership(user, input.propertyId, input.amount) }, 200);
       case "briefing":
         return json({ ok: true, result: await buildAdvisorBriefing(user) }, 200);
       case "taxEstimate":

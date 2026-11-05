@@ -17,6 +17,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "~/server/db";
 import { calculateRentalMetrics, buildRentalInput } from "~/financial-calculations";
 import { centsToRands } from "~/wallet-calculations";
+import { calculateShareInfo, publicEquityFraction } from "~/server/trpc/procedures/share-certificates";
 import { OFFICE_LIMIT, redactForModel, taxYearRange } from "./policy";
 
 type AdvisorUser = { id: number; role: string };
@@ -258,6 +259,7 @@ export async function browseListings(user: AdvisorUser, opts: ListingFilter = {}
     select: {
       id: true, title: true, city: true, state: true, riskRating: true, price: true, fundingGoal: true,
       minimumInvestment: true, expectedReturns: true, aiConfidenceRating: true, investmentStatus: true,
+      platformCarryPct: true,
       propertyFlip: { select: { expectedROI: true, fundingGoal: true } },
       rentalBond: true,
       propertyDevelopment: { select: { expectedROI: true, expectedIRR: true, fundingGoal: true } },
@@ -289,9 +291,69 @@ export async function browseListings(user: AdvisorUser, opts: ListingFilter = {}
       fundingRaisedRands: round2(raised),
       fundingProgressPct: goal > 0 ? round2(Math.min((raised / goal) * 100, 100)) : null,
       expectedReturnPct: expectedReturnPct == null ? null : round2(expectedReturnPct),
+      platformCarryPct: round2(Math.min(99, Math.max(0, o.platformCarryPct ?? 0))),
+      publicEquityPct: round2(publicEquityFraction(o.platformCarryPct) * 100),
     };
   });
   return { count: items.length, items };
+}
+
+/**
+ * Estimate the ownership a member would receive for a given cash investment in a
+ * published listing. Uses the platform's canonical `calculateShareInfo`, so the
+ * figure already accounts for any platform carry and the listing's share class —
+ * the agent must call this instead of doing the arithmetic itself.
+ */
+export async function estimateListingOwnership(
+  user: AdvisorUser,
+  propertyId: number,
+  amount: number,
+) {
+  const p = await db.property.findFirst({
+    where: { id: propertyId, isPublished: true, deletedAt: null },
+    select: { id: true, title: true, fundingGoal: true, minimumInvestment: true, investmentStatus: true, platformCarryPct: true },
+  });
+  if (!p) return { found: false as const, reason: "No published listing with that id is available to you." };
+
+  const invest = round2(amount);
+  const carryPct = round2(Math.min(99, Math.max(0, p.platformCarryPct ?? 0)));
+  const info = await calculateShareInfo(propertyId, invest);
+  if (!info) {
+    return {
+      found: true as const,
+      propertyId: p.id,
+      title: p.title,
+      investmentRands: invest,
+      reason: "This listing has no funding goal or share class configured yet, so ownership cannot be estimated.",
+      platformCarryPct: carryPct,
+      publicEquityPct: round2(publicEquityFraction(p.platformCarryPct) * 100),
+    };
+  }
+
+  const notes: string[] = [];
+  if (carryPct > 0) {
+    notes.push(`This listing has a ${carryPct}% platform carry, so investors collectively own ${round2(publicEquityFraction(p.platformCarryPct) * 100)}% of the SPV at full funding — this percentage already reflects that carry.`);
+  }
+  if (p.investmentStatus !== "RAISING_FUNDS") notes.push(`This listing is '${p.investmentStatus}', so it is not currently open for new investment.`);
+  if (p.minimumInvestment > 0 && invest < p.minimumInvestment) notes.push(`The minimum investment for this listing is R${round2(p.minimumInvestment)}.`);
+  notes.push("Indicative only — final allocation is confirmed on the signed deal pack and payment.");
+
+  return {
+    found: true as const,
+    propertyId: p.id,
+    title: p.title,
+    investmentRands: invest,
+    ownershipPct: round2(info.ownershipPercentage),
+    numberOfShares: round2(info.numberOfShares),
+    sharePriceRands: round2(info.sharePrice),
+    shareClassName: info.shareClassName,
+    platformCarryPct: carryPct,
+    publicEquityPct: round2(publicEquityFraction(p.platformCarryPct) * 100),
+    fundingGoalRands: round2(p.fundingGoal),
+    minimumInvestmentRands: round2(p.minimumInvestment),
+    openForInvestment: p.investmentStatus === "RAISING_FUNDS",
+    notes,
+  };
 }
 
 /** Full investment case for one published listing so the agent can advise on it. */
@@ -301,6 +363,7 @@ export async function loadListingDetail(user: AdvisorUser, propertyId: number, c
     select: {
       id: true, title: true, description: true, city: true, state: true, address: true,
       price: true, fundingGoal: true, minimumInvestment: true, maxInvestors: true, expectedReturns: true,
+      platformCarryPct: true,
       preferredReturnRate: true, investorProfitShare: true, targetHoldMonths: true,
       riskRating: true, aiConfidenceRating: true, aiConfidenceJustification: true, aiRiskScore: true,
       investmentStatus: true, fundingClosingDate: true, bedrooms: true, bathrooms: true, squareMeters: true,
@@ -334,9 +397,11 @@ export async function loadListingDetail(user: AdvisorUser, propertyId: number, c
     };
   });
 
+  const carryPct = Math.min(99, Math.max(0, p.platformCarryPct ?? 0));
   const gaps: string[] = [];
   if (p.investmentStatus !== "RAISING_FUNDS") gaps.push(`This listing is '${p.investmentStatus}', so it is not currently open for new investment.`);
   if (expectedReturnPct == null) gaps.push("No expected-return figure is recorded for this listing.");
+  if (carryPct > 0) gaps.push(`This listing carries a ${round2(carryPct)}% platform carry: investors fund the whole goal but collectively own only ${round2(publicEquityFraction(p.platformCarryPct) * 100)}% of the SPV. To quote the shares a member would get for a specific amount, use the ownership-estimate tool — never divide the amount by the funding goal yourself.`);
   gaps.push("Figures come from the sponsor's listing and the platform's financial engine; they are indicative, not a guarantee. Review the full deal pack before investing.");
 
   return {
@@ -360,6 +425,8 @@ export async function loadListingDetail(user: AdvisorUser, propertyId: number, c
     fundingProgressPct: goal > 0 ? round2(Math.min((raised / goal) * 100, 100)) : null,
     fundingClosingDate: p.fundingClosingDate ? p.fundingClosingDate.toISOString() : null,
     expectedReturnPct: expectedReturnPct == null ? null : round2(expectedReturnPct),
+    platformCarryPct: round2(Math.min(99, Math.max(0, p.platformCarryPct ?? 0))),
+    publicEquityPct: round2(publicEquityFraction(p.platformCarryPct) * 100),
     preferredReturnRatePct: round2(p.preferredReturnRate),
     investorProfitSharePct: round2(p.investorProfitShare),
     targetHoldMonths: p.targetHoldMonths || null,

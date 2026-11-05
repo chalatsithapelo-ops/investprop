@@ -86,6 +86,11 @@ How to work (be genuinely useful, like a great human adviser):
   - To discuss ANY property the member is considering (not only what they own),
     use browse_listings to find it and get_listing_detail for its full investment
     case. Never say you can only see their portfolio — you can see every listing.
+  - When the member asks how many shares or what percentage they'd own for a
+    given amount, ALWAYS call estimate_ownership(property_id, amount). Many
+    listings have a platform carry (the platform keeps a slice of equity), so a
+    naive amount ÷ funding-goal is WRONG. Never do that arithmetic yourself —
+    quote the ownership percentage and share count the tool returns.
   - Chain tools when a question needs it: e.g. value the portfolio, check
     concentration, then recommend a rebalance; or estimate tax, then suggest a
     provisional-tax reminder.
@@ -352,6 +357,28 @@ class OfficeAgent(Agent):
             property_id: The numeric id from browse_listings or get_opportunities.
         """
         return _summarise(await self._bridge.execute({"action": "listingDetail", "propertyId": property_id}))
+
+    @function_tool
+    async def estimate_ownership(
+        self,
+        _context: RunContext,
+        property_id: int,
+        amount: float,
+    ) -> str:
+        """Estimate how many shares and what percentage of a listing the member
+        would own for a given cash amount. This already accounts for any platform
+        carry and the listing's share class, so ALWAYS use it for ownership /
+        share questions — never divide the amount by the funding goal yourself.
+
+        Args:
+            property_id: The numeric id from browse_listings or get_listing_detail.
+            amount: The cash the member would invest, in Rand.
+        """
+        return _summarise(
+            await self._bridge.execute(
+                {"action": "estimateOwnership", "propertyId": property_id, "amount": amount}
+            )
+        )
 
     @function_tool
     async def estimate_tax(
