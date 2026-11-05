@@ -140,10 +140,11 @@
     const positions = readOk(pv) && pv.body.result && Array.isArray(pv.body.result.positions) ? pv.body.result.positions : [];
     const held = positions.find((p) => p && p.propertyId && p.shares >= 1);
     if (!held) {
-      // No holdings: the capability must still be wired and reject cleanly.
+      // No holdings / no KYC: the capability must still be wired and reject
+      // cleanly through a guard-rail (400 holdings or 403 KYC/halt).
       const r = await bridge({ action: 'prepareTask', kind: 'SELL_SHARES', title: 'Livetest sell', parameters: { propertyId: 999999999, quantity: 1 } });
-      const wired = r.status === 400 && r.body && r.body.ok === false && typeof r.body.reason === 'string';
-      mark('sell order capability wired', wired, 'status=' + r.status + ' reason=' + (r.body && r.body.reason) + ' (no holdings to place a live order)');
+      const wired = (r.status === 400 || r.status === 403) && r.body && r.body.ok === false && typeof r.body.reason === 'string';
+      mark('sell order capability wired', wired, 'status=' + r.status + ' reason=' + (r.body && r.body.reason) + ' (guard-rail fired; no live order placed)');
       mark('sell order prepare freezes order', true, 'skipped — test user holds no shares');
     } else {
       const r = await bridge({ action: 'prepareTask', kind: 'SELL_SHARES', title: 'Livetest sell', parameters: { propertyId: held.propertyId, quantity: 1 } });
@@ -156,7 +157,7 @@
         mark('sell order prepare freezes order', ok, ok ? ('shareClassId=' + frozen.shareClassId + ' price=R' + frozen.pricePerShare + ' proceeds=R' + frozen.estimatedProceeds) : 'frozen=' + JSON.stringify(frozen).slice(0, 120));
         await bridge({ action: 'cancelTask', taskId: task.id }); // do NOT place a real order in the test
       } else {
-        const wired = r.status === 400 && r.body && r.body.ok === false && typeof r.body.reason === 'string';
+        const wired = (r.status === 400 || r.status === 403) && r.body && r.body.ok === false && typeof r.body.reason === 'string';
         mark('sell order capability wired', wired, 'status=' + r.status + ' reason=' + (r.body && r.body.reason));
         mark('sell order prepare freezes order', true, 'skipped — guard-rail rejection: ' + (r.body && r.body.reason));
       }
