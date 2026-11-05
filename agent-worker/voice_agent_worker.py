@@ -294,7 +294,7 @@ async def entrypoint(ctx: JobContext) -> None:
     bridge = OfficeBridge(auth_token)
     session = AgentSession(
         llm=openai.realtime.RealtimeModel(voice=REALTIME_VOICE),
-        vad=silero.VAD.load(),
+        vad=ctx.proc.userdata["vad"],
     )
 
     try:
@@ -311,10 +311,17 @@ async def entrypoint(ctx: JobContext) -> None:
         ctx.add_shutdown_callback(bridge.aclose)
 
 
+def prewarm(proc: agents.JobProcess) -> None:
+    # Load the Silero VAD once per worker process so it never blocks a call's
+    # event loop at session start.
+    proc.userdata["vad"] = silero.VAD.load()
+
+
 if __name__ == "__main__":
     agents.cli.run_app(
         agents.WorkerOptions(
             entrypoint_fnc=entrypoint,
+            prewarm_fnc=prewarm,
             agent_name=AGENT_NAME,
         )
     )
