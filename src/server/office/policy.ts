@@ -7,7 +7,7 @@ export type OfficeUser = Pick<User, "id" | "role" | "status">;
 export const OFFICE_LIMIT = 200;
 export const HISTORY_LIMIT = 40;
 export const APPROVAL_TTL_MS = 30 * 60 * 1000;
-export const taskKinds = z.enum(["REMINDER", "ACCOUNTANT_PACK", "OWNER_CHECKLIST"]);
+export const taskKinds = z.enum(["REMINDER", "ACCOUNTANT_PACK", "OWNER_CHECKLIST", "SELL_SHARES"]);
 export const personas = z.enum(["ACCOUNTANT", "TAX", "ASSET", "ADMIN"]);
 export const parametersSchema = z.object({
   dueAt: z.string().datetime({ offset: true }).optional(),
@@ -15,6 +15,10 @@ export const parametersSchema = z.object({
   // SA individual assessment year: 2027 = [2026-03-01, 2027-03-01) UTC.
   taxYear: z.number().int().min(2000).max(2200).optional(),
   proposalId: z.number().int().positive().optional(),
+  // SELL_SHARES: place a limit sell order for the member's own shares.
+  propertyId: z.number().int().positive().optional(),
+  quantity: z.number().int().min(1).max(100_000_000).optional(),
+  limitPricePerShare: z.number().positive().max(1_000_000).optional(),
 }).strict();
 export type TaskParameters = z.infer<typeof parametersSchema>;
 export type TaskKind = z.infer<typeof taskKinds>;
@@ -31,7 +35,21 @@ export function assertOwnerRole(user: OfficeUser): void {
   }
 }
 
+/** Fields each task kind may carry. `notes` is always permitted. */
+const ALLOWED_PARAMETERS: Record<TaskKind, readonly (keyof TaskParameters)[]> = {
+  REMINDER: ["dueAt", "notes"],
+  ACCOUNTANT_PACK: ["taxYear", "notes"],
+  OWNER_CHECKLIST: ["proposalId", "notes"],
+  SELL_SHARES: ["propertyId", "quantity", "limitPricePerShare", "notes"],
+};
+
 export function validateTaskParameters(kind: TaskKind, parameters: TaskParameters, now: Date): void {
+  const allowed = ALLOWED_PARAMETERS[kind];
+  for (const key of Object.keys(parameters) as (keyof TaskParameters)[]) {
+    if (parameters[key] !== undefined && !allowed.includes(key)) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: `${kind} does not accept the "${key}" parameter` });
+    }
+  }
   if (kind === "REMINDER") {
     if (!parameters.dueAt || new Date(parameters.dueAt).getTime() <= now.getTime()) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Reminder dueAt must be in the future" });
@@ -39,11 +57,14 @@ export function validateTaskParameters(kind: TaskKind, parameters: TaskParameter
     if (new Date(parameters.dueAt).getTime() - now.getTime() > 366 * 86400000) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Schedule reminders within the next year" });
     }
-    if (parameters.taxYear !== undefined || parameters.proposalId !== undefined) throw new TRPCError({ code: "BAD_REQUEST", message: "Reminder accepts dueAt and notes only" });
   } else if (kind === "ACCOUNTANT_PACK") {
-    if (!parameters.taxYear || parameters.dueAt !== undefined || parameters.proposalId !== undefined) throw new TRPCError({ code: "BAD_REQUEST", message: "Accountant pack requires taxYear and optional notes only" });
-  } else if (!parameters.proposalId || parameters.dueAt !== undefined || parameters.taxYear !== undefined) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "Owner checklist requires proposalId and optional notes only" });
+    if (!parameters.taxYear) throw new TRPCError({ code: "BAD_REQUEST", message: "Accountant pack requires taxYear" });
+  } else if (kind === "OWNER_CHECKLIST") {
+    if (!parameters.proposalId) throw new TRPCError({ code: "BAD_REQUEST", message: "Owner checklist requires proposalId" });
+  } else {
+    if (!parameters.propertyId || !parameters.quantity) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Sell order requires propertyId and quantity" });
+    }
   }
 }
 

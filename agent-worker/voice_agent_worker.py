@@ -31,6 +31,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -100,6 +101,22 @@ How to work (be genuinely useful, like a great human adviser):
   - Use ask_specialist for nuanced written reasoning or tax-source research when
     the direct tools aren't enough. Use list_conversations and recall_conversation
     to continue or refer back to an earlier chat thread the member started.
+
+Taking action (you can actually DO things, not just advise):
+  - You can place a real SELL order for the member's own shares. Use
+    prepare_sell_order(property_id, quantity, limit_price_per_share?) — it checks
+    their KYC, how many shares they can sell and the allowed price band, and
+    returns a frozen scope. Read that scope back (property, quantity, price,
+    estimated proceeds) and, only after a clear verbal yes, call approve_task
+    with the returned task id and approvalDigest to actually place it.
+  - You can set a REMINDER. You are told the current South African date and time
+    at the start of the session — use it to compute dueAt as a future ISO-8601
+    timestamp WITH the +02:00 offset (e.g. "2026-11-06T09:00:00+02:00"). Call
+    prepare_task(kind="REMINDER", title, {"dueAt": ..., "notes": ...}), read the
+    time back, then approve_task after a yes.
+  - You can prepare an ACCOUNTANT_PACK ({"taxYear": int}) or, for owners, an
+    OWNER_CHECKLIST ({"proposalId": int}) the same prepare -> read back -> approve
+    way.
 
 Memory (you get smarter over time):
   - At the start you are given the member's saved notes. Use them naturally.
@@ -381,6 +398,47 @@ class OfficeAgent(Agent):
         )
 
     @function_tool
+    async def prepare_sell_order(
+        self,
+        _context: RunContext,
+        property_id: int,
+        quantity: int,
+        limit_price_per_share: float | None = None,
+        notes: str = "",
+    ) -> str:
+        """Prepare (but do NOT place) a limit SELL order for the member's own shares
+        in a property on the secondary market. This is a REAL financial action, so
+        it returns a frozen scope and an approvalDigest — you MUST read the scope
+        back (property, quantity, price per share, estimated proceeds and the
+        allowed price band) and get an explicit verbal "yes" before calling
+        approve_task. Only then does the order actually get placed.
+
+        Args:
+            property_id: The numeric property id the member holds shares in (from
+                get_portfolio_valuation or get_marketplace).
+            quantity: How many shares to sell. Must not exceed what they can sell.
+            limit_price_per_share: Optional asking price per share in Rand. If
+                omitted, the current reference price is used. It must fall inside
+                the share class's price band, which the preview states.
+            notes: Optional short note to attach to the order.
+        """
+        parameters: dict[str, Any] = {"propertyId": property_id, "quantity": quantity}
+        if limit_price_per_share is not None:
+            parameters["limitPricePerShare"] = limit_price_per_share
+        if notes.strip():
+            parameters["notes"] = notes.strip()[:4000]
+        return _summarise(
+            await self._bridge.execute(
+                {
+                    "action": "prepareTask",
+                    "kind": "SELL_SHARES",
+                    "title": f"Sell {quantity} shares in property {property_id}",
+                    "parameters": parameters,
+                }
+            )
+        )
+
+    @function_tool
     async def estimate_tax(
         self,
         _context: RunContext,
@@ -435,12 +493,16 @@ class OfficeAgent(Agent):
         and an approvalDigest. You MUST read the scope back and get a verbal yes
         before calling approve_task.
 
+        For a SELL order, prefer the dedicated prepare_sell_order tool instead.
+
         Args:
-            kind: REMINDER, ACCOUNTANT_PACK or OWNER_CHECKLIST.
+            kind: REMINDER, ACCOUNTANT_PACK, OWNER_CHECKLIST or SELL_SHARES.
             title: A short human title for the task.
-            parameters: Task parameters, e.g. {"dueAt": ISO, "notes": str} for a
-                REMINDER, {"taxYear": int} for ACCOUNTANT_PACK, or
-                {"proposalId": int} for OWNER_CHECKLIST.
+            parameters: Task parameters. For a REMINDER use
+                {"dueAt": ISO-8601 with +02:00 offset in the future, "notes": str};
+                for ACCOUNTANT_PACK {"taxYear": int}; for OWNER_CHECKLIST
+                {"proposalId": int}; for SELL_SHARES {"propertyId": int,
+                "quantity": int, "limitPricePerShare": float (optional)}.
         """
         kind = kind.strip().upper()
         return _summarise(
@@ -506,10 +568,22 @@ async def entrypoint(ctx: JobContext) -> None:
     # slow or failed bridge call must never block the call from starting.
     member_context = ""
     greeting_hint = ""
+    # Give the model the real wall-clock in South African time so it can compute
+    # valid, future, timezone-aware dueAt values for reminders. Without this it
+    # guesses the date and the reminder is rejected as "not in the future".
+    sast = timezone(timedelta(hours=2))
+    now_sast = datetime.now(sast)
+    clock_block = (
+        f"Current date and time is {now_sast.strftime('%A, %d %B %Y, %H:%M')} "
+        f"South Africa Standard Time ({now_sast.isoformat(timespec='seconds')}, UTC+02:00). "
+        "When you schedule a REMINDER you MUST pass dueAt as a full ISO-8601 timestamp "
+        "WITH the +02:00 offset (e.g. "
+        f"{(now_sast + timedelta(days=1)).replace(microsecond=0).isoformat()}) and it must be in the future."
+    )
     try:
         briefing = await bridge.execute({"action": "briefing"})
         memory = await bridge.execute({"action": "getMemory"})
-        parts: list[str] = []
+        parts: list[str] = [clock_block]
         if isinstance(briefing, dict) and briefing.get("ok"):
             parts.append("Opening briefing for this member (use the exact figures, do not invent): " + json.dumps(briefing.get("result"), default=str)[:1500])
             result = briefing.get("result")
@@ -524,6 +598,7 @@ async def entrypoint(ctx: JobContext) -> None:
         member_context = "\n\n".join(parts)
     except Exception as exc:  # pragma: no cover - briefing is best-effort
         logger.warning("briefing/memory prefetch failed: %s", exc)
+        member_context = clock_block
 
     room_input_options = RoomInputOptions()
     if noise_cancellation is not None:

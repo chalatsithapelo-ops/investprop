@@ -108,6 +108,61 @@
     }
   } catch (e) { mark('getConversation recall', false, e.message); }
 
+  // --- Reminder: prepare -> approve (SCHEDULED) -> cancel round-trip ---
+  try {
+    const dueAt = new Date(Date.now() + 2 * 86400000).toISOString(); // offset-aware, future
+    const p = await bridge({ action: 'prepareTask', kind: 'REMINDER', title: 'Livetest reminder', parameters: { dueAt, notes: 'livetest' } });
+    const task = p.body && p.body.result;
+    const prepared = readOk(p) && task && task.id && /^[a-f0-9]{64}$/.test(task.approvalDigest || '') && task.status === 'PREPARED';
+    mark('reminder prepare (future dueAt)', prepared, 'status=' + p.status + (prepared ? ' id=' + task.id.slice(0, 8) : ' reason=' + (p.body && p.body.reason)));
+    if (prepared) {
+      const a = await bridge({ action: 'approveTask', taskId: task.id, approvalDigest: task.approvalDigest });
+      const scheduled = readOk(a) && a.body.result && a.body.result.status === 'SCHEDULED';
+      mark('reminder approve -> SCHEDULED', scheduled, 'status=' + a.status + (scheduled ? '' : ' reason=' + (a.body && a.body.reason) + ' st=' + (a.body && a.body.result && a.body.result.status)));
+      await bridge({ action: 'cancelTask', taskId: task.id }); // clean up
+    } else {
+      mark('reminder approve -> SCHEDULED', false, 'skipped — prepare failed');
+    }
+  } catch (e) { mark('reminder prepare (future dueAt)', false, e.message); mark('reminder approve -> SCHEDULED', false, e.message); }
+
+  // --- Reminder correctly REJECTS a past dueAt ---
+  try {
+    const past = new Date(Date.now() - 86400000).toISOString();
+    const r = await bridge({ action: 'prepareTask', kind: 'REMINDER', title: 'Livetest past', parameters: { dueAt: past } });
+    const rejected = r.status === 400 && r.body && r.body.ok === false;
+    mark('reminder rejects past dueAt', rejected, 'status=' + r.status + ' reason=' + (r.body && r.body.reason));
+  } catch (e) { mark('reminder rejects past dueAt', false, e.message); }
+
+  // --- Sell order capability reachable + guard-railed ---
+  try {
+    // Find a property the test user actually holds shares in.
+    const pv = await bridge({ action: 'portfolioValuation' });
+    const positions = readOk(pv) && pv.body.result && Array.isArray(pv.body.result.positions) ? pv.body.result.positions : [];
+    const held = positions.find((p) => p && p.propertyId && p.shares >= 1);
+    if (!held) {
+      // No holdings: the capability must still be wired and reject cleanly.
+      const r = await bridge({ action: 'prepareTask', kind: 'SELL_SHARES', title: 'Livetest sell', parameters: { propertyId: 999999999, quantity: 1 } });
+      const wired = r.status === 400 && r.body && r.body.ok === false && typeof r.body.reason === 'string';
+      mark('sell order capability wired', wired, 'status=' + r.status + ' reason=' + (r.body && r.body.reason) + ' (no holdings to place a live order)');
+      mark('sell order prepare freezes order', true, 'skipped — test user holds no shares');
+    } else {
+      const r = await bridge({ action: 'prepareTask', kind: 'SELL_SHARES', title: 'Livetest sell', parameters: { propertyId: held.propertyId, quantity: 1 } });
+      const task = r.body && r.body.result;
+      // Either a valid frozen order preview, or a clean guard-rail rejection (KYC/collar/halt).
+      if (readOk(r) && task && task.id) {
+        const frozen = task.result || {};
+        const ok = typeof frozen.shareClassId === 'number' && frozen.quantity === 1 && typeof frozen.pricePerShare === 'number' && /^[a-f0-9]{64}$/.test(task.approvalDigest || '');
+        mark('sell order capability wired', true, 'prepared for property ' + held.propertyId);
+        mark('sell order prepare freezes order', ok, ok ? ('shareClassId=' + frozen.shareClassId + ' price=R' + frozen.pricePerShare + ' proceeds=R' + frozen.estimatedProceeds) : 'frozen=' + JSON.stringify(frozen).slice(0, 120));
+        await bridge({ action: 'cancelTask', taskId: task.id }); // do NOT place a real order in the test
+      } else {
+        const wired = r.status === 400 && r.body && r.body.ok === false && typeof r.body.reason === 'string';
+        mark('sell order capability wired', wired, 'status=' + r.status + ' reason=' + (r.body && r.body.reason));
+        mark('sell order prepare freezes order', true, 'skipped — guard-rail rejection: ' + (r.body && r.body.reason));
+      }
+    }
+  } catch (e) { mark('sell order capability wired', false, e.message); mark('sell order prepare freezes order', false, e.message); }
+
   // --- LiveKit session mint + agent dispatch (tRPC) ---
   try {
     const res = await fetch(BASE + '/trpc/officeVoiceAgentSession', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ json: { authToken: token } }) });

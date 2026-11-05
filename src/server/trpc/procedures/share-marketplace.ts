@@ -21,7 +21,7 @@ import { creditWallet, debitWallet } from "~/server/wallet/wallet";
 const MARKET_ADMIN_ROLES = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"] as const;
 
 /** Share-class price anchor for the price collar: NAV if set, else last trade, else base price. */
-async function priceAnchor(shareClass: {
+export async function priceAnchor(shareClass: {
   id: number;
   pricePerShare: number;
   navPerShare?: number | null;
@@ -37,20 +37,25 @@ async function priceAnchor(shareClass: {
 
 // ─── Place Order (Buy or Sell) ─────────────────────────────────
 
-export const placeShareOrder = baseProcedure
-  .input(
-    z.object({
-      authToken: z.string(),
-      shareClassId: z.number(),
-      side: z.enum(["BUY", "SELL"]),
-      quantity: z.number().int().min(1),
-      pricePerShare: z.number().min(0.01),
-      expiresInDays: z.number().int().min(1).max(90).optional(),
-    })
-  )
-  .mutation(async ({ input }) => {
-    const user = await getAuthenticatedUser(input.authToken);
+export interface PlaceShareOrderInput {
+  shareClassId: number;
+  side: "BUY" | "SELL";
+  quantity: number;
+  pricePerShare: number;
+  expiresInDays?: number;
+}
 
+/**
+ * Core secondary-market order placement. Enforces the KYC gate, trading halt,
+ * price collar, holding / funding checks, creates the resting order, runs the
+ * matcher and auto-settles funded matches. Shared by the tRPC procedure and the
+ * guard-railed AI Property Office sell-order task so both paths obey the exact
+ * same financial rules.
+ */
+export async function placeShareOrderCore(
+  user: { id: number; name: string },
+  input: PlaceShareOrderInput,
+) {
     // KYC verification gate: Ensure investor has approved KYC documents
     const kycDocs = await db.kYCDocument.findMany({ where: { investorId: user.id } });
     const approvedTypes = kycDocs.filter((d) => d.status === "APPROVED").map((d) => d.documentType);
@@ -261,6 +266,28 @@ export const placeShareOrder = baseProcedure
       // Back-compat: the UI previously read tradesExecuted.
       tradesExecuted: settledCount,
     };
+}
+
+export const placeShareOrder = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      shareClassId: z.number(),
+      side: z.enum(["BUY", "SELL"]),
+      quantity: z.number().int().min(1),
+      pricePerShare: z.number().min(0.01),
+      expiresInDays: z.number().int().min(1).max(90).optional(),
+    })
+  )
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    return placeShareOrderCore(user, {
+      shareClassId: input.shareClassId,
+      side: input.side,
+      quantity: input.quantity,
+      pricePerShare: input.pricePerShare,
+      expiresInDays: input.expiresInDays,
+    });
   });
 
 // ─── Get Order Book ────────────────────────────────────────────
