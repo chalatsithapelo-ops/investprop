@@ -35,6 +35,19 @@ import { loadOfficeContext, sourceMetadataSelect } from "~/server/office/context
 import { chatOffice, ownConversation } from "~/server/office/chat";
 import { prepareOfficeTask, approveOfficeTask, cancelOfficeTask } from "~/server/office/tasks";
 import { scenarioAssumptionsSchema, loadPropertyScenario, loadAccountingExceptions } from "~/server/office/scenarios";
+import {
+  loadPortfolioValuation,
+  loadWalletSummary,
+  loadPendingItems,
+  loadOpenOpportunities,
+  loadGovernanceItems,
+  loadComplianceStatus,
+  loadMarketplaceActivity,
+  buildAdvisorBriefing,
+  estimateTax,
+  loadMemory,
+  saveMemory,
+} from "~/server/office/advisor";
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -96,6 +109,22 @@ const actionSchema = z.discriminatedUnion("action", [
   }),
   z.object({ action: z.literal("accountingExceptions") }),
   z.object({ action: z.literal("taxSources") }),
+  z.object({ action: z.literal("portfolioValuation") }),
+  z.object({ action: z.literal("wallet") }),
+  z.object({ action: z.literal("pendingItems") }),
+  z.object({ action: z.literal("opportunities") }),
+  z.object({ action: z.literal("governance") }),
+  z.object({ action: z.literal("complianceStatus") }),
+  z.object({ action: z.literal("marketplace") }),
+  z.object({ action: z.literal("briefing") }),
+  z.object({
+    action: z.literal("taxEstimate"),
+    taxYear: z.number().int().min(2000).max(2200),
+    marginalRatePct: z.number().min(0).max(45).optional(),
+    ageUnder65: z.boolean().optional(),
+  }),
+  z.object({ action: z.literal("getMemory") }),
+  z.object({ action: z.literal("saveMemory"), text: z.string().trim().min(1).max(280) }),
 ]);
 
 export default defineEventHandler(async (event) => {
@@ -196,6 +225,28 @@ export default defineEventHandler(async (event) => {
         });
         return json({ ok: true, result: rows }, 200);
       }
+      case "portfolioValuation":
+        return json({ ok: true, result: await loadPortfolioValuation(user) }, 200);
+      case "wallet":
+        return json({ ok: true, result: await loadWalletSummary(user) }, 200);
+      case "pendingItems":
+        return json({ ok: true, result: await loadPendingItems(user) }, 200);
+      case "opportunities":
+        return json({ ok: true, result: await loadOpenOpportunities(user) }, 200);
+      case "governance":
+        return json({ ok: true, result: await loadGovernanceItems(user) }, 200);
+      case "complianceStatus":
+        return json({ ok: true, result: await loadComplianceStatus(user) }, 200);
+      case "marketplace":
+        return json({ ok: true, result: await loadMarketplaceActivity(user) }, 200);
+      case "briefing":
+        return json({ ok: true, result: await buildAdvisorBriefing(user) }, 200);
+      case "taxEstimate":
+        return json({ ok: true, result: await estimateTax(user, { taxYear: input.taxYear, marginalRatePct: input.marginalRatePct, ageUnder65: input.ageUnder65 }) }, 200);
+      case "getMemory":
+        return json({ ok: true, result: await loadMemory(user) }, 200);
+      case "saveMemory":
+        return json({ ok: true, result: await saveMemory(user, input.text) }, 200);
     }
   } catch (error) {
     if (error instanceof TRPCError) {

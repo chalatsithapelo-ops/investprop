@@ -48,6 +48,23 @@
   try { const r = await bridge({ action: 'taxSources' }); mark('taxSources', r.status === 200 && r.body && r.body.ok === true, 'status=' + r.status + (Array.isArray(r.body && r.body.result) ? ' count=' + r.body.result.length : '')); } catch (e) { mark('taxSources', false, e.message); }
   try { const r = await bridge({ action: 'accountingExceptions' }); mark('accountingExceptions', r.status === 200 && r.body && r.body.ok === true, 'status=' + r.status); } catch (e) { mark('accountingExceptions', false, e.message); }
 
+  // --- New advisor read actions ---
+  const readOk = (r) => r.status === 200 && r.body && r.body.ok === true;
+  for (const action of ['portfolioValuation', 'wallet', 'pendingItems', 'opportunities', 'governance', 'complianceStatus', 'marketplace', 'briefing']) {
+    try { const r = await bridge({ action }); mark(action, readOk(r), 'status=' + r.status + (readOk(r) && r.body.result ? ' keys=' + Object.keys(r.body.result).join(',') : (r.body && r.body.reason ? ' reason=' + r.body.reason : ''))); } catch (e) { mark(action, false, e.message); }
+  }
+  try { const r = await bridge({ action: 'taxEstimate', taxYear: new Date().getUTCFullYear(), marginalRatePct: 31 }); mark('taxEstimate', readOk(r), 'status=' + r.status + (readOk(r) ? ' incomeTax=' + (r.body.result && r.body.result.estimatedAdditionalIncomeTaxRands) : (r.body && r.body.reason ? ' reason=' + r.body.reason : ''))); } catch (e) { mark('taxEstimate', false, e.message); }
+
+  // --- Cross-session memory round-trip ---
+  try {
+    const marker = 'livetest-note-' + Date.now();
+    const w = await bridge({ action: 'saveMemory', text: marker });
+    const r = await bridge({ action: 'getMemory' });
+    const notes = readOk(r) && r.body.result && Array.isArray(r.body.result.notes) ? r.body.result.notes : [];
+    const found = notes.some((n) => n && typeof n.text === 'string' && n.text.indexOf(marker) !== -1);
+    mark('memory save+recall round-trip', readOk(w) && readOk(r) && found, 'notes=' + notes.length);
+  } catch (e) { mark('memory save+recall round-trip', false, e.message); }
+
   // --- AI chat (exercises the model end-to-end) ---
   try {
     const r = await bridge({ action: 'chat', persona: 'ACCOUNTANT', message: 'In one short sentence, what is my current portfolio status?' });

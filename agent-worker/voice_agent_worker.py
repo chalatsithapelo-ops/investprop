@@ -45,49 +45,75 @@ from livekit.agents import (
 )
 from livekit.plugins import openai, silero
 
+try:  # Optional: LiveKit Cloud background-voice/noise cancellation. Degrade gracefully.
+    from livekit.plugins import noise_cancellation  # type: ignore
+except Exception:  # pragma: no cover - package may be absent in some images
+    noise_cancellation = None  # type: ignore
+
 logger = logging.getLogger("investprop-office-agent")
 logging.basicConfig(level=logging.INFO)
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8010").rstrip("/")
 AGENT_SHARED_SECRET = os.environ.get("AGENT_SHARED_SECRET", "")
 AGENT_NAME = os.environ.get("VOICE_AGENT_NAME", "investprop-office-agent")
-REALTIME_VOICE = os.environ.get("VOICE_AGENT_VOICE", "alloy")
+# Warmer, more natural default voice for a professional "office" feel. Override
+# with VOICE_AGENT_VOICE if a given realtime snapshot doesn't support it.
+REALTIME_VOICE = os.environ.get("VOICE_AGENT_VOICE", "coral")
 
 # How the agent presents itself and the guard rails it must honour. Mirrors the
 # office policy: research + preparation, with explicit verbal approval before any
 # task is executed, and no fabricated numbers.
 INSTRUCTIONS = """
-You are the Investprop AI Property Office voice assistant. You speak with a
-verified member of Investprop, a South African property co-investment platform.
-You are warm, concise and precise. Keep spoken replies short — a sentence or
-two — because this is a voice conversation.
+You are the Investprop AI Property Office — a spoken team of four specialists for
+a verified member of Investprop, a South African property co-investment platform.
+You act as the member's accountant, asset manager, administrator and tax adviser
+in one voice. You are warm, sharp and decisive. This is a phone-style conversation,
+so keep each spoken turn to one or two sentences and let the member interrupt you.
 
-You have four specialist lenses you can consult through the ask_specialist tool:
-  - ACCOUNTANT: payouts, distributions, ledger and accounting questions.
-  - TAX: South African tax questions, grounded only in reviewed tax sources.
-  - ASSET: property performance, rentals, holdings and scenarios.
-  - ADMIN: general platform and account questions.
+Your four lenses, each backed by real data tools:
+  - ACCOUNTANT: payouts, distributions, ledger, reconciliation, record-keeping.
+  - ASSET MANAGER: portfolio valuation, concentration, holdings, scenarios,
+    opportunities and buy / hold / sell / rebalance views.
+  - ADMINISTRATOR: pending payments, votes, compliance, paperwork and next steps.
+  - TAX ADVISER: South African property tax, grounded in reviewed sources and the
+    tax-estimate tool.
 
-Capabilities you can perform for the member:
-  - get_overview: a snapshot of their portfolio and office context.
-  - ask_specialist: ask one of the four specialists a question in words.
-  - run_property_scenario: a one-year rental stress scenario for a property.
-  - list_tasks / list_tax_sources / accounting_exceptions: read their records.
-  - prepare_task then approve_task: schedule a reminder, build an accountant
-    pack, or build an owner document checklist.
+How to work (be genuinely useful, like a great human adviser):
+  - ALWAYS ground answers in the tools. Pull the real numbers before you speak —
+    get_briefing, get_portfolio_valuation, get_wallet, get_pending_items,
+    get_opportunities, get_governance, get_compliance_status, get_marketplace,
+    estimate_tax, accounting_exceptions, run_property_scenario, list_tax_sources.
+  - Chain tools when a question needs it: e.g. value the portfolio, check
+    concentration, then recommend a rebalance; or estimate tax, then suggest a
+    provisional-tax reminder.
+  - GIVE DIRECT RECOMMENDATIONS. Lead with your recommendation in plain words,
+    then one line of reasoning, then the main risk or assumption. Don't hedge
+    everything — the member wants a decisive adviser.
+  - Use ask_specialist for nuanced written reasoning or tax-source research when
+    the direct tools aren't enough.
+
+Memory (you get smarter over time):
+  - At the start you are given the member's saved notes. Use them naturally.
+  - When the member states a lasting preference or fact (risk appetite, goals,
+    entity type, tax rate, cities they like), call remember to save a short note.
 
 Hard rules — never break these:
-  1. Never invent figures. If a number is unknown, say it is not available.
+  1. Never invent figures. Every number you say must come from a tool result. If
+     it's unknown, say so and offer to find it.
   2. You may READ data and PREPARE tasks freely. Before you APPROVE a task you
-     MUST read back the task's exact frozen scope and the specific details, then
-     ask the member to confirm out loud. Only call approve_task after they
-     clearly say yes. If they hesitate or say no, do not approve.
-  3. Tax answers come only from reviewed tax sources returned by the tools. Never
-     give tax advice from your own knowledge — recommend a professional.
-  4. You are not a financial, legal or tax adviser. Encourage professional review
-     for anything consequential.
-  5. Read evidence tags like [evidence:...] silently; never speak them aloud.
-Greet the member briefly by name when the session starts and ask how you can help.
+     MUST read back its exact frozen scope and ask the member to confirm out loud.
+     Only call approve_task after a clear yes. If they hesitate, do not approve.
+  3. Tax: any estimate must come from estimate_tax or figures the tools returned,
+     and you must say it's an estimate with its assumptions. For anything
+     consequential, recommend a registered tax practitioner.
+  4. You give practical recommendations, but you are not a licensed/registered
+     accountant, tax practitioner or financial services provider — flag material
+     decisions for professional confirmation.
+  5. Read evidence tags like [evidence:...] silently; never speak them aloud, and
+     never read account numbers or tokens aloud.
+
+Start by greeting the member by name and proactively mentioning the one or two
+most useful items from their briefing, then ask how you can help.
 """.strip()
 
 
@@ -136,9 +162,10 @@ def _summarise(data: dict[str, Any]) -> str:
 
 
 class OfficeAgent(Agent):
-    def __init__(self, bridge: OfficeBridge, member_name: str | None) -> None:
+    def __init__(self, bridge: OfficeBridge, member_name: str | None, member_context: str | None = None) -> None:
         greeting_name = member_name or "there"
-        super().__init__(instructions=f"{INSTRUCTIONS}\n\nThe member's name is {greeting_name}.")
+        context_block = f"\n\n{member_context}" if member_context else ""
+        super().__init__(instructions=f"{INSTRUCTIONS}\n\nThe member's name is {greeting_name}.{context_block}")
         self._bridge = bridge
 
     # --- Read capabilities -------------------------------------------------
@@ -216,6 +243,89 @@ class OfficeAgent(Agent):
     async def list_tax_sources(self, _context: RunContext) -> str:
         """List the reviewed South African tax sources available to the member."""
         return _summarise(await self._bridge.execute({"action": "taxSources"}))
+
+    @function_tool
+    async def get_briefing(self, _context: RunContext) -> str:
+        """Get a proactive briefing: portfolio value, wallet, pending payments,
+        open votes, open opportunities and whether FICA needs attention."""
+        return _summarise(await self._bridge.execute({"action": "briefing"}))
+
+    @function_tool
+    async def get_portfolio_valuation(self, _context: RunContext) -> str:
+        """Get the live portfolio valuation: current reference value, cost basis,
+        unrealised gain and concentration by city, type and risk."""
+        return _summarise(await self._bridge.execute({"action": "portfolioValuation"}))
+
+    @function_tool
+    async def get_wallet(self, _context: RunContext) -> str:
+        """Get the member's wallet balance and most recent transactions (ZAR)."""
+        return _summarise(await self._bridge.execute({"action": "wallet"}))
+
+    @function_tool
+    async def get_pending_items(self, _context: RunContext) -> str:
+        """List the member's contributions that are awaiting payment or review."""
+        return _summarise(await self._bridge.execute({"action": "pendingItems"}))
+
+    @function_tool
+    async def get_opportunities(self, _context: RunContext) -> str:
+        """List open investment opportunities with their live expected returns."""
+        return _summarise(await self._bridge.execute({"action": "opportunities"}))
+
+    @function_tool
+    async def get_governance(self, _context: RunContext) -> str:
+        """List open shareholder proposals on the member's properties and how they voted."""
+        return _summarise(await self._bridge.execute({"action": "governance"}))
+
+    @function_tool
+    async def get_compliance_status(self, _context: RunContext) -> str:
+        """Get the member's FICA / KYC compliance status and any action needed."""
+        return _summarise(await self._bridge.execute({"action": "complianceStatus"}))
+
+    @function_tool
+    async def get_marketplace(self, _context: RunContext) -> str:
+        """List the member's open secondary-market share orders."""
+        return _summarise(await self._bridge.execute({"action": "marketplace"}))
+
+    @function_tool
+    async def estimate_tax(
+        self,
+        _context: RunContext,
+        tax_year: int,
+        marginal_rate_pct: float | None = None,
+        age_under_65: bool | None = None,
+    ) -> str:
+        """Estimate the member's South African tax from their platform distribution
+        records for a tax year. Always present the result as an estimate with its
+        assumptions, never as a filing.
+
+        Args:
+            tax_year: SA assessment year, e.g. 2027 covers 1 Mar 2026 to 28 Feb 2027.
+            marginal_rate_pct: The member's marginal income-tax rate (0-45). Ask
+                for it if unknown; otherwise a default is assumed and stated.
+            age_under_65: Whether the member is under 65 (affects interest exemption).
+        """
+        payload: dict[str, Any] = {"action": "taxEstimate", "taxYear": tax_year}
+        if marginal_rate_pct is not None:
+            payload["marginalRatePct"] = marginal_rate_pct
+        if age_under_65 is not None:
+            payload["ageUnder65"] = age_under_65
+        return _summarise(await self._bridge.execute(payload))
+
+    @function_tool
+    async def recall_memory(self, _context: RunContext) -> str:
+        """Recall the member's saved cross-session notes and preferences."""
+        return _summarise(await self._bridge.execute({"action": "getMemory"}))
+
+    @function_tool
+    async def remember(self, _context: RunContext, note: str) -> str:
+        """Save a short, lasting note about the member for future sessions, e.g. a
+        stated preference, goal, entity type or tax rate. Keep it under 280
+        characters and only save things the member actually told you.
+
+        Args:
+            note: The fact or preference to remember, in the member's own terms.
+        """
+        return _summarise(await self._bridge.execute({"action": "saveMemory", "text": note}))
 
     # --- Prepare / approve (guard-railed) ----------------------------------
 
@@ -297,15 +407,50 @@ async def entrypoint(ctx: JobContext) -> None:
         vad=ctx.proc.userdata["vad"],
     )
 
+    # Proactively pull the member's briefing + saved memory so the agent opens
+    # with something useful and remembers them across sessions. Best-effort: a
+    # slow or failed bridge call must never block the call from starting.
+    member_context = ""
+    greeting_hint = ""
+    try:
+        briefing = await bridge.execute({"action": "briefing"})
+        memory = await bridge.execute({"action": "getMemory"})
+        parts: list[str] = []
+        if isinstance(briefing, dict) and briefing.get("ok"):
+            parts.append("Opening briefing for this member (use the exact figures, do not invent): " + json.dumps(briefing.get("result"), default=str)[:1500])
+            result = briefing.get("result")
+            if isinstance(result, dict):
+                highlights = result.get("highlights")
+                if isinstance(highlights, list) and highlights:
+                    greeting_hint = " ".join(str(h) for h in highlights[:2])
+        if isinstance(memory, dict) and memory.get("ok"):
+            notes = (memory.get("result") or {}).get("notes") if isinstance(memory.get("result"), dict) else None
+            if isinstance(notes, list) and notes:
+                parts.append("Saved notes about this member from previous sessions: " + json.dumps(notes, default=str)[:1200])
+        member_context = "\n\n".join(parts)
+    except Exception as exc:  # pragma: no cover - briefing is best-effort
+        logger.warning("briefing/memory prefetch failed: %s", exc)
+
+    room_input_options = RoomInputOptions()
+    if noise_cancellation is not None:
+        try:
+            room_input_options = RoomInputOptions(noise_cancellation=noise_cancellation.BVC())
+        except Exception as exc:  # pragma: no cover - cloud feature may be unavailable
+            logger.info("noise cancellation unavailable: %s", exc)
+
     try:
         await session.start(
             room=ctx.room,
-            agent=OfficeAgent(bridge, member_name),
-            room_input_options=RoomInputOptions(),
+            agent=OfficeAgent(bridge, member_name, member_context or None),
+            room_input_options=room_input_options,
         )
-        await session.generate_reply(
-            instructions="Greet the member briefly by name and ask how you can help with their property office today."
+        greeting = (
+            "Greet the member by name and, if there is anything useful, proactively "
+            "mention it, then ask how you can help with their property office today."
         )
+        if greeting_hint:
+            greeting += f" The most useful items right now are: {greeting_hint}"
+        await session.generate_reply(instructions=greeting)
     finally:
         # Session lifetime is tied to the room; close the HTTP client on teardown.
         ctx.add_shutdown_callback(bridge.aclose)
