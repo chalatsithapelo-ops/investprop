@@ -142,10 +142,12 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
     return Positioned(
       right: 16,
       bottom: 96 + bottomInset,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
           if (live || connecting || isError)
             Container(
               width: 264,
@@ -245,7 +247,8 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
                   )
                 : Icon(live ? Icons.call_end : Icons.mic, color: Colors.white),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
