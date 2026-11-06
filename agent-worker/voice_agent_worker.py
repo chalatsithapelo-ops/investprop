@@ -408,6 +408,7 @@ class OfficeAgent(Agent):
         if id is not None:
             payload["id"] = id
         delivered = await self._publish_ui(payload)
+        logger.info("navigate page=%s id=%s delivered=%s", canonical, id, delivered)
         if not delivered:
             return json.dumps({
                 "ok": False,

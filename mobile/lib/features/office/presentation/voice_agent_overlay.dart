@@ -3,11 +3,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../config/theme.dart';
+import '../../../routing/app_router.dart';
 import '../data/voice_agent_repository.dart';
 
 enum _VoiceState { idle, connecting, live, error }
@@ -227,7 +227,10 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
           : (rawId is num ? rawId.toInt() : int.tryParse('${rawId ?? ''}'));
       final path = _navPath(page, id);
       if (path == null) return;
-      GoRouter.of(context).go(path);
+      // Use the router instance directly: this overlay is mounted in
+      // MaterialApp.router's builder (above the router scope), so
+      // GoRouter.of(context) is not reliably available here.
+      ref.read(routerProvider).go(path);
     } catch (_) {
       /* ignore malformed packets */
     }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../config/build_info.dart';
 import '../../../config/env.dart';
 import '../../../config/theme.dart';
 import '../../../core/format.dart';
@@ -319,10 +320,10 @@ class ProfilePage extends ConsumerWidget {
             label: const Text('Sign out'),
           ),
           const SizedBox(height: 16),
-          const Center(
+          Center(
             child: Text(
-              'InvestProp · v1.0.0',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              'InvestProp · v1.0.0 · build $kBuildId',
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
           ),
         ],

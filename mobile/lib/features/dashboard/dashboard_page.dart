@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../config/build_info.dart';
 import '../../config/theme.dart';
 import '../../core/format.dart';
 import '../auth/application/auth_controller.dart';
@@ -39,6 +40,7 @@ class DashboardPage extends ConsumerWidget {
               pinned: true,
               backgroundColor: AppColors.navy,
               title: Text('Hi, ${_firstName(user?.name)}'),
+              actions: const [_BuildBadge()],
             ),
             SliverToBoxAdapter(
               child: Padding(
@@ -156,6 +158,7 @@ class _OwnerDashboard extends ConsumerWidget {
               pinned: true,
               backgroundColor: AppColors.navy,
               title: Text('Hi, ${_first(user?.name)}'),
+              actions: const [_BuildBadge()],
             ),
             SliverToBoxAdapter(
               child: Padding(
@@ -334,6 +337,38 @@ class _OwnerDashboard extends ConsumerWidget {
     return name.trim().split(RegExp(r'\s+')).first;
   }
 }
+
+/// Small build-ID chip in the dashboard app bar so you can confirm at a glance
+/// which APK build is installed. The value is stamped by build-mobile.ps1.
+class _BuildBadge extends StatelessWidget {
+  const _BuildBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(right: 14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            kBuildId,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 class _OwnerDealTile extends StatelessWidget {
   const _OwnerDealTile({required this.proposal});
