@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { Mic, PhoneOff, Loader2, X } from "lucide-react";
 import {
   Room,
@@ -15,6 +16,50 @@ import { officeApi, errorMessage } from "~/components/office/api";
 type SessionState = "idle" | "connecting" | "live" | "error";
 
 /**
+ * Maps the agent's canonical page names (see NAV_PAGES in the worker) to the
+ * web app's routes. Entries returning params carry a numeric property/listing
+ * id. Names the web app has no screen for are simply omitted (the packet is
+ * ignored). Keep in sync with the Flutter overlay's navigation map.
+ */
+const WEB_NAV: Record<string, (id?: number) => { to: string; params?: Record<string, string> }> = {
+  dashboard: () => ({ to: "/dashboard" }),
+  opportunities: () => ({ to: "/investments/opportunities" }),
+  property: (id) => ({ to: "/investments/opportunities/$opportunityId", params: { opportunityId: String(id ?? "") } }),
+  invest: (id) => ({ to: "/investments/opportunities/$opportunityId", params: { opportunityId: String(id ?? "") } }),
+  portfolio: () => ({ to: "/portfolio" }),
+  wallet: () => ({ to: "/wallet" }),
+  deposit: () => ({ to: "/wallet" }),
+  withdraw: () => ({ to: "/wallet" }),
+  transactions: () => ({ to: "/wallet" }),
+  distributions: () => ({ to: "/distributions" }),
+  contributions: () => ({ to: "/investments/my-contributions" }),
+  payments: () => ({ to: "/investments/payments" }),
+  marketplace: () => ({ to: "/share-marketplace" }),
+  ledger: () => ({ to: "/share-ledger" }),
+  shareIntegrity: () => ({ to: "/share-integrity" }),
+  metrics: () => ({ to: "/metrics" }),
+  documents: () => ({ to: "/my-documents" }),
+  taxCertificates: () => ({ to: "/tax-certificates" }),
+  certificates: () => ({ to: "/investments/certificates" }),
+  statements: () => ({ to: "/statements" }),
+  trackRecord: () => ({ to: "/track-record" }),
+  kyc: () => ({ to: "/kyc-compliance" }),
+  distressedDeals: () => ({ to: "/distressed-deals" }),
+  distressedAlerts: () => ({ to: "/distressed-alerts" }),
+  distressedFinder: () => ({ to: "/distressed-finder" }),
+  landPartnership: () => ({ to: "/land-partnership" }),
+  resaleMarket: () => ({ to: "/resale-market" }),
+  saleProposals: () => ({ to: "/sale-proposals" }),
+  subscription: () => ({ to: "/billing" }),
+  pricing: () => ({ to: "/pricing" }),
+  preferences: () => ({ to: "/investments/preferences" }),
+  prequalify: () => ({ to: "/finance/prequalify" }),
+  homeLoan: () => ({ to: "/finance/home-loan" }),
+  aiOffice: () => ({ to: "/ai-office" }),
+};
+
+
+/**
  * Floating realtime voice-agent button. Appears for signed-in, office-eligible
  * members when the agent is configured on the server. Pressing it opens a live
  * LiveKit room, dispatches the office agent, streams the member's mic, and plays
@@ -25,6 +70,7 @@ export function VoiceAgentButton() {
   const authToken = useAuthStore((state) => state.accessToken);
   const user = useAuthStore((state) => state.user);
   const hydrated = useAuthStore((state) => state._hasHydrated);
+  const navigate = useNavigate();
 
   const roomRef = React.useRef<Room | null>(null);
   const audioContainerRef = React.useRef<HTMLDivElement | null>(null);
@@ -88,6 +134,23 @@ export function VoiceAgentButton() {
           // Anyone speaking who is not the local participant is the agent.
           setAgentSpeaking(speakers.some((speaker) => speaker.identity !== session.identity));
         })
+        .on(RoomEvent.DataReceived, (payload: Uint8Array, _p, _kind, topic?: string) => {
+          // The agent drives the member's screen by sending UI-control packets.
+          if (topic && topic !== "office-agent-ui") return;
+          try {
+            const message = JSON.parse(new TextDecoder().decode(payload)) as {
+              type?: string;
+              page?: string;
+              id?: number;
+            };
+            if (message.type !== "navigate" || !message.page) return;
+            const entry = WEB_NAV[message.page];
+            if (!entry) return;
+            void navigate(entry(message.id) as never);
+          } catch {
+            /* ignore malformed packets */
+          }
+        })
         .on(RoomEvent.Disconnected, () => {
           setState("idle");
           void teardown();
@@ -101,7 +164,8 @@ export function VoiceAgentButton() {
       setState("error");
       await teardown();
     }
-  }, [authToken, teardown]);
+  }, [authToken, teardown, navigate]);
+
 
   const stop = React.useCallback(async () => {
     setState("idle");

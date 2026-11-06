@@ -118,6 +118,25 @@ Taking action (you can actually DO things, not just advise):
     OWNER_CHECKLIST ({"proposalId": int}) the same prepare -> read back -> approve
     way.
 
+Driving the app screen (open pages / press buttons for the member):
+  - You control the member's live app screen. When they ask to open, show, go to,
+    take me to or pull up a page or screen, call navigate(page, id?) with the
+    matching page name below. The screen changes instantly on their device.
+  - Confirm briefly after you navigate ("Opening your wallet now."). If a page
+    needs a specific property or listing, pass its numeric id.
+  - "Pressing a button" that performs a real action (invest, pay, vote, buy/sell,
+    withdraw, deposit, apply) is done through the guard-railed prepare -> confirm
+    tools, NOT by navigate — navigate only opens the relevant screen. If the
+    member says e.g. "press invest on property 12", open it with
+    navigate("invest", 12) so they see the form, and offer to complete it.
+  - Valid page names: dashboard, opportunities, property (needs id), invest
+    (needs id), portfolio, wallet, deposit, withdraw, transactions, distributions,
+    contributions, payments, marketplace, ledger, shareIntegrity, metrics,
+    documents, taxCertificates, certificates, statements, trackRecord, kyc,
+    distressedDeals, distressedAlerts, distressedFinder, landPartnership,
+    resaleMarket, saleProposals, subscription, pricing, preferences, prequalify,
+    homeLoan, services, notifications, profile, aiOffice.
+
 Full capability toolkit (you can do almost anything the app can):
   - list_capabilities() returns the complete catalog of actions you can run, each
     with a name, whether it is a read or a write, and a description. Call it when
@@ -150,17 +169,21 @@ Memory (you get smarter over time):
 Hard rules — never break these:
   1. Never invent figures. Every number you say must come from a tool result. If
      it's unknown, say so and offer to find it.
-  2. You may READ data and PREPARE tasks freely. Before you APPROVE a task you
+  2. CURRENCY: every amount in this app is in South African Rand (ZAR). Always
+     speak amounts as rand — e.g. "R1 250" is "one thousand two hundred and fifty
+     rand", "R2.5m" is "two and a half million rand". NEVER say "dollars",
+     "US dollars" or "$"; the "R" prefix and ZAR both mean rand. Cents are cents.
+  3. You may READ data and PREPARE tasks freely. Before you APPROVE a task you
      MUST read back its exact frozen scope and ask the member to confirm out loud.
      Only call approve_task (or confirm_action for a prepared action) after a clear
      yes. If they hesitate, do not approve.
-  3. Tax: any estimate must come from estimate_tax or figures the tools returned,
+  4. Tax: any estimate must come from estimate_tax or figures the tools returned,
      and you must say it's an estimate with its assumptions. For anything
      consequential, recommend a registered tax practitioner.
-  4. You give practical recommendations, but you are not a licensed/registered
+  5. You give practical recommendations, but you are not a licensed/registered
      accountant, tax practitioner or financial services provider — flag material
      decisions for professional confirmation.
-  5. Read evidence tags like [evidence:...] silently; never speak them aloud, and
+  6. Read evidence tags like [evidence:...] silently; never speak them aloud, and
      never read account numbers or tokens aloud.
 
 Start by greeting the member by name and proactively mentioning the one or two
@@ -212,14 +235,188 @@ def _summarise(data: dict[str, Any]) -> str:
     return json.dumps({"ok": True, "result": data.get("result")}, default=str)[:6000]
 
 
+# Canonical page names the agent may open on the member's live screen. The web
+# and Flutter clients each map these names to their own route. Pages marked with
+# True require a numeric id (property / listing).
+NAV_PAGES: dict[str, bool] = {
+    "dashboard": False,
+    "opportunities": False,
+    "property": True,
+    "invest": True,
+    "portfolio": False,
+    "wallet": False,
+    "deposit": False,
+    "withdraw": False,
+    "transactions": False,
+    "distributions": False,
+    "contributions": False,
+    "payments": False,
+    "marketplace": False,
+    "ledger": False,
+    "shareIntegrity": False,
+    "metrics": False,
+    "documents": False,
+    "taxCertificates": False,
+    "certificates": False,
+    "statements": False,
+    "trackRecord": False,
+    "kyc": False,
+    "distressedDeals": False,
+    "distressedAlerts": False,
+    "distressedFinder": False,
+    "landPartnership": False,
+    "resaleMarket": False,
+    "saleProposals": False,
+    "subscription": False,
+    "pricing": False,
+    "preferences": False,
+    "prequalify": False,
+    "homeLoan": False,
+    "services": False,
+    "notifications": False,
+    "profile": False,
+    "aiOffice": False,
+}
+# Common synonyms the model (or member) might use, mapped to a canonical name.
+NAV_ALIASES: dict[str, str] = {
+    "home": "dashboard",
+    "overview": "dashboard",
+    "invest-page": "invest",
+    "deals": "opportunities",
+    "listings": "opportunities",
+    "opportunity": "property",
+    "market": "marketplace",
+    "shares": "marketplace",
+    "share-marketplace": "marketplace",
+    "sharemarketplace": "marketplace",
+    "voting": "distributions",
+    "votes": "distributions",
+    "distribution": "distributions",
+    "my-documents": "documents",
+    "document-vault": "documents",
+    "documentvault": "documents",
+    "tax-certificates": "taxCertificates",
+    "tax": "taxCertificates",
+    "share-ledger": "ledger",
+    "share-integrity": "shareIntegrity",
+    "track-record": "trackRecord",
+    "distressed": "distressedDeals",
+    "distressed-deals": "distressedDeals",
+    "deal-alerts": "distressedAlerts",
+    "dealalerts": "distressedAlerts",
+    "land": "landPartnership",
+    "land-partnership": "landPartnership",
+    "resale": "resaleMarket",
+    "resale-market": "resaleMarket",
+    "sale-proposals": "saleProposals",
+    "billing": "subscription",
+    "plan": "subscription",
+    "plans": "pricing",
+    "home-loan": "homeLoan",
+    "homeloan": "homeLoan",
+    "bond": "homeLoan",
+    "referrals": "services",
+    "referral": "services",
+    "notification": "notifications",
+    "account": "profile",
+    "settings": "profile",
+    "ai-office": "aiOffice",
+    "office": "aiOffice",
+    "contribution": "contributions",
+    "my-contributions": "contributions",
+}
+
+
+def _canonical_page(name: str) -> str | None:
+    key = (name or "").strip()
+    if key in NAV_PAGES:
+        return key
+    lowered = key.lower()
+    if lowered in NAV_ALIASES:
+        return NAV_ALIASES[lowered]
+    # Try case-insensitive match against canonical names.
+    for canonical in NAV_PAGES:
+        if canonical.lower() == lowered:
+            return canonical
+    return None
+
+
+
 class OfficeAgent(Agent):
     def __init__(self, bridge: OfficeBridge, member_name: str | None, member_context: str | None = None) -> None:
         greeting_name = member_name or "there"
         context_block = f"\n\n{member_context}" if member_context else ""
         super().__init__(instructions=f"{INSTRUCTIONS}\n\nThe member's name is {greeting_name}.{context_block}")
         self._bridge = bridge
+        self._room: rtc.Room | None = None
+
+    def set_room(self, room: rtc.Room) -> None:
+        """Attach the live LiveKit room so UI-control tools can push data packets
+        to the member's client (web or Flutter)."""
+        self._room = room
+
+    async def _publish_ui(self, payload: dict[str, Any]) -> bool:
+        """Send a UI-control packet to the member's app over the room data channel."""
+        room = self._room
+        participant = getattr(room, "local_participant", None) if room is not None else None
+        if participant is None:
+            return False
+        try:
+            await participant.publish_data(
+                json.dumps(payload).encode("utf-8"),
+                reliable=True,
+                topic="office-agent-ui",
+            )
+            return True
+        except Exception as exc:  # pragma: no cover - transport best-effort
+            logger.warning("publish_ui failed: %s", exc)
+            return False
+
+    # --- Screen control (open pages on the member's device) ----------------
+
+    @function_tool
+    async def navigate(
+        self,
+        _context: RunContext,
+        page: str,
+        id: int | None = None,
+    ) -> str:
+        """Open a page on the member's live app screen (web or mobile). Use this
+        whenever the member asks to open, show, go to or pull up a screen.
+
+        Args:
+            page: A page name, e.g. "wallet", "portfolio", "opportunities",
+                "distributions", "marketplace", "kyc", "taxCertificates",
+                "homeLoan", "property" (needs id), "invest" (needs id). Call
+                list_capabilities-style wording loosely; synonyms are accepted.
+            id: The numeric property or listing id, required only for pages like
+                "property", "invest" and other id-scoped screens.
+        """
+        canonical = _canonical_page(page)
+        if canonical is None:
+            return json.dumps({
+                "ok": False,
+                "reason": f"'{page}' is not a page I can open.",
+                "validPages": sorted(NAV_PAGES.keys()),
+            })
+        if NAV_PAGES[canonical] and id is None:
+            return json.dumps({
+                "ok": False,
+                "reason": f"The '{canonical}' page needs a property or listing id. Ask the member which one.",
+            })
+        payload: dict[str, Any] = {"v": 1, "type": "navigate", "page": canonical}
+        if id is not None:
+            payload["id"] = id
+        delivered = await self._publish_ui(payload)
+        if not delivered:
+            return json.dumps({
+                "ok": False,
+                "reason": "I couldn't reach the app screen just now — the member can open it from the menu.",
+            })
+        return json.dumps({"ok": True, "opened": canonical, "id": id})
 
     # --- Read capabilities -------------------------------------------------
+
 
     @function_tool
     async def get_overview(self, _context: RunContext) -> str:
@@ -714,9 +911,11 @@ async def entrypoint(ctx: JobContext) -> None:
             logger.info("noise cancellation unavailable: %s", exc)
 
     try:
+        agent = OfficeAgent(bridge, member_name, member_context or None)
+        agent.set_room(ctx.room)
         await session.start(
             room=ctx.room,
-            agent=OfficeAgent(bridge, member_name, member_context or None),
+            agent=agent,
             room_input_options=room_input_options,
         )
         greeting = (

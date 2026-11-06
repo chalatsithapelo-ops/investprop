@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -9,6 +11,88 @@ import '../../../config/theme.dart';
 import '../data/voice_agent_repository.dart';
 
 enum _VoiceState { idle, connecting, live, error }
+
+/// Maps the agent's canonical page names (see NAV_PAGES in the worker) to the
+/// mobile app's go_router paths. `$id` is substituted for id-scoped screens.
+/// Keep in sync with the web overlay's WEB_NAV map.
+String? _navPath(String page, int? id) {
+  final i = id?.toString() ?? '';
+  switch (page) {
+    case 'dashboard':
+      return '/';
+    case 'opportunities':
+      return '/opportunities';
+    case 'property':
+      return id == null ? null : '/opportunities/$i';
+    case 'invest':
+      return id == null ? null : '/opportunities/$i/invest';
+    case 'portfolio':
+      return '/portfolio';
+    case 'wallet':
+    case 'deposit':
+    case 'transactions':
+      return '/portfolio/wallet';
+    case 'withdraw':
+      return '/portfolio/wallet/withdraw';
+    case 'distributions':
+      return '/portfolio/distributions';
+    case 'contributions':
+      return '/portfolio/contributions';
+    case 'payments':
+      return '/portfolio/payments';
+    case 'marketplace':
+      return '/portfolio/marketplace';
+    case 'ledger':
+      return '/portfolio/ledger';
+    case 'shareIntegrity':
+      return '/portfolio/share-integrity';
+    case 'metrics':
+      return '/portfolio/metrics';
+    case 'documents':
+      return '/profile/documents';
+    case 'taxCertificates':
+      return '/profile/tax-certificates';
+    case 'certificates':
+      return '/profile/certificates';
+    case 'statements':
+      return '/profile/statement';
+    case 'trackRecord':
+      return '/profile/track-record';
+    case 'kyc':
+      return '/profile/kyc';
+    case 'distressedDeals':
+    case 'distressedFinder':
+      return '/profile/distressed';
+    case 'distressedAlerts':
+      return '/profile/deal-alerts';
+    case 'landPartnership':
+      return '/land-partnership';
+    case 'resaleMarket':
+      return '/resale-market';
+    case 'saleProposals':
+      return '/portfolio';
+    case 'subscription':
+    case 'pricing':
+      return '/profile/subscription';
+    case 'preferences':
+      return '/profile/preferences';
+    case 'prequalify':
+      return '/profile/prequalify';
+    case 'homeLoan':
+      return '/profile/home-loan';
+    case 'services':
+      return '/profile/services';
+    case 'notifications':
+      return '/notifications';
+    case 'profile':
+      return '/profile';
+    case 'aiOffice':
+      return '/ai-office';
+    default:
+      return null;
+  }
+}
+
 
 /// Floating realtime voice-agent button, mounted app-wide. It appears for
 /// signed-in, office-eligible members when the agent is configured on the
@@ -95,6 +179,9 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
                 .any((speaker) => speaker.identity != session.identity);
           });
         })
+        ..on<DataReceivedEvent>((event) {
+          _handleData(event);
+        })
         ..on<RoomDisconnectedEvent>((_) {
           if (!mounted) return;
           setState(() => _state = _VoiceState.idle);
@@ -120,6 +207,30 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
   Future<void> _stop() async {
     setState(() => _state = _VoiceState.idle);
     await _teardown();
+  }
+
+  /// The agent drives the member's screen by sending UI-control packets over
+  /// the room data channel. Parse a navigate packet and route to the page.
+  void _handleData(DataReceivedEvent event) {
+    if (!mounted) return;
+    final topic = event.topic;
+    if (topic != null && topic.isNotEmpty && topic != 'office-agent-ui') return;
+    try {
+      final decoded = jsonDecode(utf8.decode(event.data));
+      if (decoded is! Map) return;
+      if (decoded['type'] != 'navigate') return;
+      final page = decoded['page'];
+      if (page is! String) return;
+      final rawId = decoded['id'];
+      final id = rawId is int
+          ? rawId
+          : (rawId is num ? rawId.toInt() : int.tryParse('${rawId ?? ''}'));
+      final path = _navPath(page, id);
+      if (path == null) return;
+      GoRouter.of(context).go(path);
+    } catch (_) {
+      /* ignore malformed packets */
+    }
   }
 
   @override

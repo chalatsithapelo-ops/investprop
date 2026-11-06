@@ -60,7 +60,7 @@ if ($Verify) {
   $atU16 = Find-Bytes $bytes $Verify ([Text.Encoding]::Unicode)
   $atAsc = Find-Bytes $bytes $Verify ([Text.Encoding]::ASCII)
   if ($atU16 -lt 0 -and $atAsc -lt 0) {
-    throw "VERIFY FAILED: '$Verify' not found in libapp.so — APK is STALE. Aborting install."
+    throw "VERIFY FAILED: '$Verify' not found in libapp.so - APK is STALE. Aborting install."
   }
   Write-Host "VERIFY OK: '$Verify' found in APK (u16@$atU16 asc@$atAsc)"
 }
