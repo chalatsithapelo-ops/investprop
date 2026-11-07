@@ -72,7 +72,11 @@ REALTIME_VOICE = os.environ.get("VOICE_AGENT_VOICE", "coral")
 # Gemini Live uses a different voice name set than OpenAI (e.g. Puck, Charon,
 # Kore, Fenrir, Aoede). Override with GEMINI_VOICE.
 GEMINI_VOICE = os.environ.get("GEMINI_VOICE", "Puck")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-live-001")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
+# The Gemini Live (bidi) endpoint only exists under v1alpha/v1beta; google-genai
+# otherwise defaults to the stable v1 path and the websocket 404s. The plugin
+# only forces v1alpha for affective-dialog/proactivity, so we set it ourselves.
+GEMINI_API_VERSION = os.environ.get("GEMINI_API_VERSION", "v1alpha")
 
 
 def _build_realtime_llm():
@@ -87,8 +91,10 @@ def _build_realtime_llm():
         elif not os.environ.get("GOOGLE_API_KEY"):
             logger.warning("VOICE_AGENT_PROVIDER=gemini but GOOGLE_API_KEY is not set; using OpenAI.")
         else:
-            logger.info("realtime provider=gemini model=%s voice=%s", GEMINI_MODEL, GEMINI_VOICE)
-            return google.beta.realtime.RealtimeModel(model=GEMINI_MODEL, voice=GEMINI_VOICE)
+            logger.info("realtime provider=gemini model=%s voice=%s api_version=%s", GEMINI_MODEL, GEMINI_VOICE, GEMINI_API_VERSION)
+            return google.beta.realtime.RealtimeModel(
+                model=GEMINI_MODEL, voice=GEMINI_VOICE, api_version=GEMINI_API_VERSION
+            )
     logger.info("realtime provider=openai voice=%s", REALTIME_VOICE)
     return openai.realtime.RealtimeModel(voice=REALTIME_VOICE)
 
