@@ -89,6 +89,12 @@ services:
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
       # OpenAI Realtime model (reuses the voice OPENAI_API_KEY).
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Gemini Live model (free tier at https://aistudio.google.com/apikey).
+      # Set VOICE_AGENT_PROVIDER=gemini to use it instead of OpenAI.
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      VOICE_AGENT_PROVIDER: ${VOICE_AGENT_PROVIDER:-openai}
+      GEMINI_VOICE: ${GEMINI_VOICE:-Puck}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash-live-001}
       # Calls the authenticated office action bridge over the internal network.
       BACKEND_URL: ${AGENT_BACKEND_URL:-http://app:8010}
       AGENT_SHARED_SECRET: ${AGENT_SHARED_SECRET:-}

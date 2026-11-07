@@ -46,6 +46,11 @@ from livekit.agents import (
 )
 from livekit.plugins import openai, silero
 
+try:  # Optional: Google Gemini Live realtime plugin. Absent images fall back to OpenAI.
+    from livekit.plugins import google  # type: ignore
+except Exception:  # pragma: no cover - package may be absent in some images
+    google = None  # type: ignore
+
 try:  # Optional: LiveKit Cloud background-voice/noise cancellation. Degrade gracefully.
     from livekit.plugins import noise_cancellation  # type: ignore
 except Exception:  # pragma: no cover - package may be absent in some images
@@ -57,9 +62,35 @@ logging.basicConfig(level=logging.INFO)
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8010").rstrip("/")
 AGENT_SHARED_SECRET = os.environ.get("AGENT_SHARED_SECRET", "")
 AGENT_NAME = os.environ.get("VOICE_AGENT_NAME", "investprop-office-agent")
+# Which realtime speech-to-speech provider to use: "openai" (default) or
+# "gemini". OpenAI needs OPENAI_API_KEY + credits; Gemini needs GOOGLE_API_KEY
+# (free tier available at https://aistudio.google.com/apikey).
+VOICE_AGENT_PROVIDER = os.environ.get("VOICE_AGENT_PROVIDER", "openai").strip().lower()
 # Warmer, more natural default voice for a professional "office" feel. Override
 # with VOICE_AGENT_VOICE if a given realtime snapshot doesn't support it.
 REALTIME_VOICE = os.environ.get("VOICE_AGENT_VOICE", "coral")
+# Gemini Live uses a different voice name set than OpenAI (e.g. Puck, Charon,
+# Kore, Fenrir, Aoede). Override with GEMINI_VOICE.
+GEMINI_VOICE = os.environ.get("GEMINI_VOICE", "Puck")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-live-001")
+
+
+def _build_realtime_llm():
+    """Return the realtime model for the configured provider.
+
+    Falls back to OpenAI if Gemini is requested but its plugin/key is missing so
+    a misconfiguration never leaves the office without a voice.
+    """
+    if VOICE_AGENT_PROVIDER == "gemini":
+        if google is None:
+            logger.warning("VOICE_AGENT_PROVIDER=gemini but livekit google plugin is not installed; using OpenAI.")
+        elif not os.environ.get("GOOGLE_API_KEY"):
+            logger.warning("VOICE_AGENT_PROVIDER=gemini but GOOGLE_API_KEY is not set; using OpenAI.")
+        else:
+            logger.info("realtime provider=gemini model=%s voice=%s", GEMINI_MODEL, GEMINI_VOICE)
+            return google.beta.realtime.RealtimeModel(model=GEMINI_MODEL, voice=GEMINI_VOICE)
+    logger.info("realtime provider=openai voice=%s", REALTIME_VOICE)
+    return openai.realtime.RealtimeModel(voice=REALTIME_VOICE)
 
 # How the agent presents itself and the guard rails it must honour. Mirrors the
 # office policy: research + preparation, with explicit verbal approval before any
@@ -863,7 +894,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     bridge = OfficeBridge(auth_token)
     session = AgentSession(
-        llm=openai.realtime.RealtimeModel(voice=REALTIME_VOICE),
+        llm=_build_realtime_llm(),
         vad=ctx.proc.userdata["vad"],
     )
 
