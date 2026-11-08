@@ -72,7 +72,10 @@ REALTIME_VOICE = os.environ.get("VOICE_AGENT_VOICE", "coral")
 # Gemini Live uses a different voice name set than OpenAI (e.g. Puck, Charon,
 # Kore, Fenrir, Aoede). Override with GEMINI_VOICE.
 GEMINI_VOICE = os.environ.get("GEMINI_VOICE", "Puck")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
+# Use a half-cascade Live model, NOT the native-audio preview: the native-audio
+# model dies mid-call with 1007 "session context exhausted / CONTENT_TYPE_AUDIO
+# not supported", so the agent speaks for a while then goes silent.
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-live-preview")
 # The Gemini Live (bidi) endpoint only exists under v1alpha/v1beta; google-genai
 # otherwise defaults to the stable v1 path and the websocket 404s. The plugin
 # only forces v1alpha for affective-dialog/proactivity, so we set it ourselves.
