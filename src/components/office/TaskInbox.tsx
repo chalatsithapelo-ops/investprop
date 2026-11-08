@@ -37,7 +37,12 @@ export function TaskInbox({ authToken, accountId, proposalIds }: {
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [dueAt, setDueAt] = useState("");
-  const [taxYear, setTaxYear] = useState("");
+  // SA tax year N ends in February of year N; default to the most recently
+  // completed one so an accountant pack prepares without an extra prompt.
+  const [taxYear, setTaxYear] = useState(() => {
+    const now = new Date();
+    return String(now.getMonth() >= 2 ? now.getFullYear() : now.getFullYear() - 1);
+  });
   const [proposalId, setProposalId] = useState("");
   const [preview, setPreview] = useState<OfficeTask | null>(null);
   const [accepted, setAccepted] = useState(false);
@@ -65,12 +70,16 @@ export function TaskInbox({ authToken, accountId, proposalIds }: {
         if (!dueAt || !Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) throw new Error("Choose a future reminder date and time.");
         parameters.dueAt = date.toISOString();
       }
-      if (kind === "ACCOUNTANT_PACK" && taxYear) {
+      if (kind === "ACCOUNTANT_PACK") {
         const year = Number(taxYear);
-        if (!Number.isInteger(year) || year < 2000 || year > 2100) throw new Error("Tax year must be a whole year between 2000 and 2100.");
+        if (!Number.isInteger(year) || year < 2000 || year > 2100) throw new Error("Enter a tax year between 2000 and 2100.");
         parameters.taxYear = year;
       }
-      if (kind === "OWNER_CHECKLIST" && proposalId) parameters.proposalId = Number(proposalId);
+      if (kind === "OWNER_CHECKLIST") {
+        const id = Number(proposalId);
+        if (!Number.isInteger(id) || id <= 0) throw new Error("Choose a proposal for the owner checklist.");
+        parameters.proposalId = id;
+      }
       const task = await prepare.mutateAsync({ authToken, kind: taskKindSchema.parse(kind), title: title.trim(), parameters });
       updateTask(task); setPreview(task); setAccepted(false); setTitle("");
       setNotice("Task prepared, not approved. Review the server's exact preview and digest below.");
@@ -110,8 +119,8 @@ export function TaskInbox({ authToken, accountId, proposalIds }: {
         </select></label>
         <label className="text-sm font-medium text-slate-700">Title<input required maxLength={160} value={title} onChange={(event) => setTitle(event.target.value)} className={field} placeholder="e.g. Review property records" disabled={busy} /></label>
         {kind === "REMINDER" && <label className="text-sm font-medium text-slate-700">Due date & time (your local time)<input type="datetime-local" required value={dueAt} onChange={(event) => setDueAt(event.target.value)} className={field} disabled={busy} /></label>}
-        {kind === "ACCOUNTANT_PACK" && <label className="text-sm font-medium text-slate-700">Tax year (optional)<input type="number" min={2000} max={2100} step={1} value={taxYear} onChange={(event) => setTaxYear(event.target.value)} className={field} disabled={busy} /></label>}
-        {kind === "OWNER_CHECKLIST" && <label className="text-sm font-medium text-slate-700">Proposal (optional)<select value={proposalId} onChange={(event) => setProposalId(event.target.value)} className={field} disabled={busy}><option value="">General owner checklist</option>{proposalIds.map((proposal) => <option key={proposal.id} value={proposal.id}>{proposal.title}</option>)}</select></label>}
+        {kind === "ACCOUNTANT_PACK" && <label className="text-sm font-medium text-slate-700">Tax year<input type="number" required min={2000} max={2100} step={1} value={taxYear} onChange={(event) => setTaxYear(event.target.value)} className={field} disabled={busy} /></label>}
+        {kind === "OWNER_CHECKLIST" && <label className="text-sm font-medium text-slate-700">Proposal<select required value={proposalId} onChange={(event) => setProposalId(event.target.value)} className={field} disabled={busy}><option value="" disabled>Select a proposal…</option>{proposalIds.map((proposal) => <option key={proposal.id} value={proposal.id}>{proposal.title}</option>)}</select></label>}
         <label className="text-sm font-medium text-slate-700 sm:col-span-2">Notes (optional)<textarea rows={2} maxLength={2000} value={notes} onChange={(event) => setNotes(event.target.value)} className={field} disabled={busy} /></label>
         <div className="sm:col-span-2"><button type="submit" disabled={busy || !title.trim()} className={button}>{prepare.isPending ? "Preparing…" : "Prepare for review"}</button></div>
       </form>

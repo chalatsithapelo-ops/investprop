@@ -28,6 +28,15 @@ class _OfficeTasksTabState extends ConsumerState<OfficeTasksTab> {
   String? _notice;
 
   @override
+  void initState() {
+    super.initState();
+    // SA tax year N ends in February of year N. Default to the most recently
+    // completed one so an accountant pack prepares without an extra prompt.
+    final now = DateTime.now();
+    _taxYear.text = (now.month >= 3 ? now.year : now.year - 1).toString();
+  }
+
+  @override
   void dispose() {
     _title.dispose();
     _notes.dispose();
@@ -206,8 +215,8 @@ class _OfficeTasksTabState extends ConsumerState<OfficeTasksTab> {
     }
   }
 
-  String? _optionalPositiveInt(String? value) {
-    if (value == null || value.trim().isEmpty) return null;
+  String? _requiredPositiveInt(String? value) {
+    if (value == null || value.trim().isEmpty) return 'Required.';
     final number = int.tryParse(value.trim());
     return number == null || number <= 0
         ? 'Enter a positive whole number.'
@@ -293,10 +302,10 @@ class _OfficeTasksTabState extends ConsumerState<OfficeTasksTab> {
                       enabled: !_busy,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                        labelText: 'Tax year (optional)',
-                        helperText: 'Use the year expected by your records.',
+                        labelText: 'Tax year',
+                        helperText: 'SA tax year ending February of that year.',
                       ),
-                      validator: _optionalPositiveInt,
+                      validator: _requiredPositiveInt,
                     ),
                   ],
                   if (_kind == OfficeTaskKind.ownerChecklist) ...[
@@ -306,10 +315,10 @@ class _OfficeTasksTabState extends ConsumerState<OfficeTasksTab> {
                       enabled: !_busy,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                        labelText: 'Proposal ID (optional)',
+                        labelText: 'Proposal ID',
                         helperText: 'Numeric owner proposal ID from Overview.',
                       ),
-                      validator: _optionalPositiveInt,
+                      validator: _requiredPositiveInt,
                     ),
                   ],
                   const SizedBox(height: 16),
