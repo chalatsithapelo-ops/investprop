@@ -15,6 +15,13 @@ import { officeApi, errorMessage } from "~/components/office/api";
 
 type SessionState = "idle" | "connecting" | "live" | "error";
 
+interface TranscriptLine {
+  id: number;
+  role: "user" | "assistant";
+  text: string;
+  final: boolean;
+}
+
 /**
  * Maps the agent's canonical page names (see NAV_PAGES in the worker) to the
  * web app's routes. Entries returning params carry a numeric property/listing
@@ -74,11 +81,35 @@ export function VoiceAgentButton() {
 
   const roomRef = React.useRef<Room | null>(null);
   const audioContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const transcriptEndRef = React.useRef<HTMLDivElement | null>(null);
+  const transcriptSeq = React.useRef(0);
   const [state, setState] = React.useState<SessionState>("idle");
   const [error, setError] = React.useState<string | null>(null);
   const [agentSpeaking, setAgentSpeaking] = React.useState(false);
+  const [transcript, setTranscript] = React.useState<TranscriptLine[]>([]);
+  const [showTranscript, setShowTranscript] = React.useState(true);
 
   const enabled = Boolean(hydrated && user && authToken);
+
+  // Keep the newest transcript line in view.
+  React.useEffect(() => {
+    if (showTranscript) transcriptEndRef.current?.scrollIntoView({ block: "nearest" });
+  }, [transcript, showTranscript]);
+
+  // Merge an incoming transcript packet. Non-final lines are "live" and get
+  // replaced in place until their final version lands, so the member sees text
+  // stream in without the panel flickering duplicate rows.
+  const appendTranscript = React.useCallback((role: "user" | "assistant", text: string, final: boolean) => {
+    setTranscript((prev) => {
+      const last = prev[prev.length - 1];
+      if (last && last.role === role && !last.final) {
+        const updated = prev.slice(0, -1);
+        updated.push({ ...last, text, final });
+        return updated.slice(-50);
+      }
+      return [...prev, { id: transcriptSeq.current++, role, text, final }].slice(-50);
+    });
+  }, []);
 
   // Only reveal the button when the agent is actually configured + permitted.
   const status = useQuery({
@@ -102,7 +133,6 @@ export function VoiceAgentButton() {
     if (audioContainerRef.current) audioContainerRef.current.replaceChildren();
     setAgentSpeaking(false);
   }, []);
-
   React.useEffect(() => {
     // Ensure we never leak a live mic/room if the component unmounts.
     return () => {
@@ -113,6 +143,7 @@ export function VoiceAgentButton() {
   const start = React.useCallback(async () => {
     if (!authToken) return;
     setError(null);
+    setTranscript([]);
     setState("connecting");
     try {
       const session = await officeApi.voiceAgentSession({ authToken });
@@ -135,14 +166,24 @@ export function VoiceAgentButton() {
           setAgentSpeaking(speakers.some((speaker) => speaker.identity !== session.identity));
         })
         .on(RoomEvent.DataReceived, (payload: Uint8Array, _p, _kind, topic?: string) => {
-          // The agent drives the member's screen by sending UI-control packets.
-          if (topic && topic !== "office-agent-ui") return;
+          // The agent drives the member's screen (office-agent-ui) and streams a
+          // live transcript (office-agent-transcript) over the data channel.
           try {
             const message = JSON.parse(new TextDecoder().decode(payload)) as {
               type?: string;
               page?: string;
               id?: number;
+              role?: string;
+              text?: string;
+              final?: boolean;
             };
+            if (topic === "office-agent-transcript" || message.type === "transcript") {
+              if (typeof message.text !== "string" || !message.text.trim()) return;
+              const role = message.role === "assistant" ? "assistant" : "user";
+              appendTranscript(role, message.text, message.final !== false);
+              return;
+            }
+            if (topic && topic !== "office-agent-ui") return;
             if (message.type !== "navigate" || !message.page) return;
             const entry = WEB_NAV[message.page];
             if (!entry) return;
@@ -164,7 +205,7 @@ export function VoiceAgentButton() {
       setState("error");
       await teardown();
     }
-  }, [authToken, teardown, navigate]);
+  }, [authToken, teardown, navigate, appendTranscript]);
 
 
   const stop = React.useCallback(async () => {
@@ -224,9 +265,43 @@ export function VoiceAgentButton() {
 
             {live && (
               <div className="border-t border-slate-100 px-4 py-2.5">
-                <p className="text-xs leading-relaxed text-slate-500">
-                  Speak naturally — ask about any listing, your portfolio, tax or payments.
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Transcript</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowTranscript((v) => !v)}
+                    className="text-[11px] font-medium text-gold-600 hover:text-gold-700"
+                  >
+                    {showTranscript ? "Hide" : "Show"}
+                  </button>
+                </div>
+                {showTranscript && (
+                  <div className="mt-1.5 max-h-48 space-y-1.5 overflow-y-auto pr-1">
+                    {transcript.length === 0 ? (
+                      <p className="text-xs leading-relaxed text-slate-500">
+                        Speak naturally — ask about any listing, your portfolio, tax or payments. Your conversation appears here.
+                      </p>
+                    ) : (
+                      transcript.map((line) => (
+                        <div
+                          key={line.id}
+                          className={line.role === "assistant" ? "text-left" : "text-right"}
+                        >
+                          <span
+                            className={`inline-block max-w-[90%] rounded-2xl px-2.5 py-1.5 text-xs leading-snug ${
+                              line.role === "assistant"
+                                ? "bg-slate-100 text-slate-700"
+                                : "bg-gold-500/90 text-white"
+                            } ${line.final ? "" : "opacity-70"}`}
+                          >
+                            {line.text}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                    <div ref={transcriptEndRef} />
+                  </div>
+                )}
               </div>
             )}
 

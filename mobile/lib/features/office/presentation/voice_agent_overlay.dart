@@ -12,6 +12,16 @@ import '../data/voice_agent_repository.dart';
 
 enum _VoiceState { idle, connecting, live, error }
 
+/// One line of the live conversation transcript streamed from the worker over
+/// the room data channel ("office-agent-transcript"). Non-final lines are
+/// replaced in place as the member's speech is transcribed.
+class _TranscriptLine {
+  _TranscriptLine({required this.role, required this.text, required this.isFinal});
+  final String role; // 'user' | 'assistant'
+  String text;
+  bool isFinal;
+}
+
 /// Maps the agent's canonical page names (see NAV_PAGES in the worker) to the
 /// mobile app's go_router paths. `$id` is substituted for id-scoped screens.
 /// Keep in sync with the web overlay's WEB_NAV map.
@@ -113,6 +123,9 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
   _VoiceState _state = _VoiceState.idle;
   String? _error;
   bool _agentSpeaking = false;
+  final List<_TranscriptLine> _transcript = [];
+  bool _showTranscript = true;
+  final ScrollController _transcriptScroll = ScrollController();
   late final AnimationController _bars;
 
   @override
@@ -127,6 +140,7 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
   @override
   void dispose() {
     _bars.dispose();
+    _transcriptScroll.dispose();
     unawaited(_teardown());
     super.dispose();
   }
@@ -151,6 +165,7 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
     setState(() {
       _error = null;
       _state = _VoiceState.connecting;
+      _transcript.clear();
     });
 
     final status = await Permission.microphone.request();
@@ -214,10 +229,19 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
   void _handleData(DataReceivedEvent event) {
     if (!mounted) return;
     final topic = event.topic;
-    if (topic != null && topic.isNotEmpty && topic != 'office-agent-ui') return;
     try {
       final decoded = jsonDecode(utf8.decode(event.data));
       if (decoded is! Map) return;
+      // Live transcript stream (distinct topic) — render, don't navigate.
+      if (topic == 'office-agent-transcript' || decoded['type'] == 'transcript') {
+        final text = decoded['text'];
+        if (text is! String || text.trim().isEmpty) return;
+        final role = decoded['role'] == 'assistant' ? 'assistant' : 'user';
+        final isFinal = decoded['final'] != false;
+        _appendTranscript(role, text, isFinal);
+        return;
+      }
+      if (topic != null && topic.isNotEmpty && topic != 'office-agent-ui') return;
       if (decoded['type'] != 'navigate') return;
       final page = decoded['page'];
       if (page is! String) return;
@@ -234,6 +258,27 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
     } catch (_) {
       /* ignore malformed packets */
     }
+  }
+
+  /// Merge an incoming transcript line. A non-final line of the same role is
+  /// replaced in place so streamed speech updates one row instead of stacking.
+  void _appendTranscript(String role, String text, bool isFinal) {
+    if (!mounted) return;
+    setState(() {
+      final last = _transcript.isNotEmpty ? _transcript.last : null;
+      if (last != null && last.role == role && !last.isFinal) {
+        last.text = text;
+        last.isFinal = isFinal;
+      } else {
+        _transcript.add(_TranscriptLine(role: role, text: text, isFinal: isFinal));
+        if (_transcript.length > 50) _transcript.removeAt(0);
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_transcriptScroll.hasClients) {
+        _transcriptScroll.jumpTo(_transcriptScroll.position.maxScrollExtent);
+      }
+    });
   }
 
   @override
@@ -332,15 +377,92 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
                     ],
                   ),
                   if (live) ...[
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Speak naturally — ask about any listing, your portfolio, tax or payments.',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        height: 1.35,
-                        color: AppColors.textSecondary,
-                      ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'TRANSCRIPT',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => setState(() => _showTranscript = !_showTranscript),
+                          child: Text(
+                            _showTranscript ? 'Hide' : 'Show',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.gold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                    if (_showTranscript) ...[
+                      const SizedBox(height: 6),
+                      if (_transcript.isEmpty)
+                        const Text(
+                          'Speak naturally — ask about any listing, your portfolio, tax or payments. Your conversation appears here.',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            height: 1.35,
+                            color: AppColors.textSecondary,
+                          ),
+                        )
+                      else
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 180),
+                          child: ListView.builder(
+                            controller: _transcriptScroll,
+                            shrinkWrap: true,
+                            padding: EdgeInsets.zero,
+                            itemCount: _transcript.length,
+                            itemBuilder: (_, i) {
+                              final line = _transcript[i];
+                              final isAgent = line.role == 'assistant';
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 5),
+                                child: Align(
+                                  alignment: isAgent
+                                      ? Alignment.centerLeft
+                                      : Alignment.centerRight,
+                                  child: Container(
+                                    constraints: const BoxConstraints(maxWidth: 210),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isAgent
+                                          ? AppColors.border.withValues(alpha: 0.35)
+                                          : AppColors.gold.withValues(alpha: 0.90),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Opacity(
+                                      opacity: line.isFinal ? 1 : 0.7,
+                                      child: Text(
+                                        line.text,
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          height: 1.3,
+                                          color: isAgent
+                                              ? AppColors.textPrimary
+                                              : Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
                   ],
                 ],
               ),

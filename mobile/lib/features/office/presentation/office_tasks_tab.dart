@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:printing/printing.dart';
 
 import '../../../core/format.dart';
 import '../data/office_repository.dart';
 import '../domain/office_models.dart';
 import 'office_page.dart';
+import 'office_pack_pdf.dart';
 
 class OfficeTasksTab extends ConsumerStatefulWidget {
   const OfficeTasksTab({super.key});
@@ -212,6 +214,26 @@ class _OfficeTasksTabState extends ConsumerState<OfficeTasksTab> {
         });
         ref.invalidate(officeTasksProvider);
       }
+    }
+  }
+
+  Future<void> _downloadPack(OfficeTask task) async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _notice = null;
+    });
+    try {
+      final doc = await buildOfficePackPdf(task);
+      final bytes = await doc.save();
+      final safe = task.id.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+      await Printing.sharePdf(bytes: bytes, filename: 'office-pack-$safe.pdf');
+    } catch (error) {
+      if (mounted) {
+        setState(() => _notice = 'Could not generate the pack PDF. $error');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -451,8 +473,14 @@ class _OfficeTasksTabState extends ConsumerState<OfficeTasksTab> {
                               if (task.status == 'COMPLETED' &&
                                   task.result != null)
                                 OutlinedButton.icon(
-                                  onPressed: () async {
-                                    await Clipboard.setData(
+                                  onPressed: _busy
+                                      ? null
+                                      : () => _downloadPack(task),
+                                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                                  label: const Text('Download pack (PDF)'),
+                                ),
+                              if (task.status == 'COMPLETED' &&
+                                  task.result != null)
                                       ClipboardData(
                                         text: officeJson({
                                           'taskId': task.id,

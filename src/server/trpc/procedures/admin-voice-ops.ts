@@ -19,6 +19,9 @@ type Metadata = {
   toolCalls?: unknown;
   toolErrors?: unknown;
   sessionErrors?: unknown;
+  userTurns?: unknown;
+  agentTurns?: unknown;
+  qualityScore?: unknown;
   usdPerMinute?: unknown;
 };
 
@@ -55,6 +58,9 @@ export const getVoiceAgentOps = adminOnly
     let totalToolCalls = 0;
     let totalToolErrors = 0;
     let errorSessions = 0;
+    let qualitySum = 0;
+    let qualityCount = 0;
+    let lowQualitySessions = 0;
 
     const byProvider = new Map<string, { sessions: number; durationSeconds: number; costUsd: number; errorSessions: number }>();
     const byDay = new Map<string, { sessions: number; durationSeconds: number; costUsd: number }>();
@@ -75,6 +81,12 @@ export const getVoiceAgentOps = adminOnly
       totalToolCalls += toolCalls;
       totalToolErrors += toolErrors;
       if (errored) errorSessions += 1;
+
+      if (typeof meta.qualityScore === "number" && Number.isFinite(meta.qualityScore)) {
+        qualitySum += meta.qualityScore;
+        qualityCount += 1;
+        if (meta.qualityScore < 60) lowQualitySessions += 1;
+      }
 
       const p = byProvider.get(provider) ?? { sessions: 0, durationSeconds: 0, costUsd: 0, errorSessions: 0 };
       p.sessions += 1;
@@ -122,6 +134,9 @@ export const getVoiceAgentOps = adminOnly
         toolCalls: num(meta.toolCalls),
         toolErrors: num(meta.toolErrors),
         sessionErrors: num(meta.sessionErrors),
+        userTurns: num(meta.userTurns),
+        agentTurns: num(meta.agentTurns),
+        qualityScore: typeof meta.qualityScore === "number" ? Math.round(meta.qualityScore) : null,
         costUsd: round4(num(row.costUsd)),
         status: row.status,
       };
@@ -140,6 +155,9 @@ export const getVoiceAgentOps = adminOnly
         toolErrors: totalToolErrors,
         errorSessions,
         errorRatePct: totalSessions ? round2((errorSessions / totalSessions) * 100) : 0,
+        avgQualityScore: qualityCount ? Math.round(qualitySum / qualityCount) : null,
+        qualityScored: qualityCount,
+        lowQualitySessions,
       },
       byProvider: [...byProvider.entries()]
         .map(([provider, v]) => ({

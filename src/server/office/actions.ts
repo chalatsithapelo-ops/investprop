@@ -99,6 +99,76 @@ const preferencesSchema = z.object({
 });
 
 /**
+ * Rank open opportunities against the member's saved mandate so the agent can
+ * proactively source deals that fit them. Deliberately tolerant of unknown
+ * field shapes: every lookup is optional-chained and the raw listing is still
+ * returned, so a schema drift can only weaken ranking, never throw.
+ */
+function rankListingsByMandate(
+  prefsRaw: unknown,
+  listings: unknown,
+  limit: number,
+): { mandate: unknown; matches: Array<Record<string, unknown>>; note: string } {
+  const prefs = (prefsRaw && typeof prefsRaw === "object"
+    ? ((prefsRaw as Record<string, unknown>).preferences ?? prefsRaw)
+    : null) as Record<string, unknown> | null;
+  const items = Array.isArray(listings) ? (listings as Array<Record<string, unknown>>) : [];
+
+  const norm = (v: unknown) => String(v ?? "").trim().toLowerCase();
+  const types = Array.isArray(prefs?.preferredPropertyTypes)
+    ? (prefs!.preferredPropertyTypes as unknown[]).map(norm).filter(Boolean)
+    : [];
+  const locations = Array.isArray(prefs?.preferredLocations)
+    ? (prefs!.preferredLocations as unknown[]).map(norm).filter(Boolean)
+    : [];
+  const targetReturn = typeof prefs?.preferredReturnRate === "number" ? (prefs!.preferredReturnRate as number) : null;
+
+  const scored = items.map((opp) => {
+    const type = norm(opp.propertyType ?? opp.type);
+    const city = norm(opp.city);
+    const province = norm(opp.province);
+    const title = norm(opp.title);
+    const expected = typeof opp.expectedReturns === "number" ? (opp.expectedReturns as number) : null;
+
+    let score = 0;
+    const reasons: string[] = [];
+    if (types.length && type && types.some((t) => type.includes(t) || t.includes(type))) {
+      score += 3;
+      reasons.push(`matches your preferred ${type} type`);
+    }
+    if (locations.length) {
+      const hit = locations.find((l) => (city && (city.includes(l) || l.includes(city))) || (province && (province.includes(l) || l.includes(province))) || (title && title.includes(l)));
+      if (hit) {
+        score += 3;
+        reasons.push(`in your preferred area (${hit})`);
+      }
+    }
+    if (targetReturn != null && expected != null && expected >= targetReturn) {
+      score += 2;
+      reasons.push(`expected return ${expected}% meets your ${targetReturn}% target`);
+    } else if (expected != null) {
+      score += Math.min(1, expected / 100);
+    }
+    return { opp, score, reasons };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const matches = scored.slice(0, limit).map((s) => ({
+    ...s.opp,
+    whyMatch: s.reasons.length ? s.reasons.join("; ") : "Open opportunity currently raising funds",
+    mandateScore: Number(s.score.toFixed(2)),
+  }));
+
+  return {
+    mandate: prefs ?? { note: "No saved preferences — ask the member for their mandate (cities, property type, ticket size, target return) and save it with remember/updateInvestorPreferences." },
+    matches,
+    note: prefs
+      ? "Ranked against the member's saved mandate. Lead with whyMatch, then the real numbers."
+      : "No mandate on record — these are open opportunities only. Ask one or two short questions to build their mandate.",
+  };
+}
+
+/**
  * The full capability catalog. Keys are stable action names the agent calls.
  */
 export const ACTION_REGISTRY: Record<string, AnyEntry> = {
@@ -168,6 +238,16 @@ export const ACTION_REGISTRY: Record<string, AnyEntry> = {
     empty, (c, t) => c.getMyDistributions({ authToken: t })),
   investorPreferences: read("The member's saved investment preferences.",
     empty, (c, t) => c.getInvestorPreferences({ authToken: t })),
+  recommendedListings: read(
+    "Open opportunities ranked against the member's saved mandate (preferred property types, locations, ticket size, target return). Use this to proactively source deals that fit them; each result carries a whyMatch explanation.",
+    z.object({ limit: z.number().int().min(1).max(10).optional() }),
+    async (c, t, a) => {
+      const [prefs, opps] = await Promise.all([
+        c.getInvestorPreferences({ authToken: t }).catch(() => null),
+        c.getInvestmentOpportunities({ authToken: t }).catch(() => [] as unknown),
+      ]);
+      return rankListingsByMandate(prefs, opps, a.limit ?? 5);
+    }),
   aiDigestPrefs: read("Whether the member is opted in to the weekly AI digest email.",
     empty, (c, t) => c.getAiDigestPrefs({ authToken: t })),
   shareProvenance: read("Provenance / conservation audit of the member's shares.",

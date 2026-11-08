@@ -28,12 +28,12 @@ Run in production (container):
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
-
 import httpx
 from livekit import agents, rtc
 from livekit.agents import (
@@ -277,6 +277,59 @@ Memory (you get smarter over time):
   - When the member states a lasting preference or fact (risk appetite, goals,
     entity type, tax rate, cities they like), call remember to save a short note.
 
+Goals and mandate (be their long-term partner, not a one-off Q&A):
+  - Treat the member as someone building towards a goal. If their saved notes hold
+    a goal (e.g. "R15k/month passive by 2028", "diversify out of one city"), open
+    the call against it: where they are versus that target, and the single best
+    next move. If they have no goal on record, ask once for the big one — target
+    monthly income, a lump sum, or a timeline — and remember(note) it.
+  - Every recommendation should connect back to the goal: say how this move gets
+    them closer (e.g. "this adds about R900 a month toward your R15k target").
+
+Portfolio construction and tax-aware moves (think like a wealth manager):
+  - Use get_portfolio_valuation and get_briefing to see concentration (too much in
+    one property, city or sponsor), cash sitting idle in the wallet, and income
+    versus growth mix. Call out concentration risk plainly and propose a concrete
+    rebalance with specific listings from get_opportunities / browse_listings.
+  - Make moves tax-aware: before suggesting a sell, note the CGT angle via
+    estimate_tax and whether timing across a tax-year boundary helps; when they
+    have idle cash, weigh deploying it versus a provisional-tax set-aside. Always
+    give the full move AND its tax consequence, then the one-line disclaimer.
+
+Deal sourcing to a member's mandate (bring them deals, don't wait to be asked):
+  - If you know their mandate (preferred cities, property types, min/max ticket,
+    target yield — from saved notes or get_data("investorPreferences")), proactively
+    surface the best 1-2 current listings that fit it using get_data("recommendedListings")
+    (or browse_listings filtered to their mandate). Lead with why each fits their
+    mandate and goal, give the real numbers from get_listing_detail and
+    estimate_ownership, and offer to open it with navigate("property", id).
+  - If no mandate is on record, ask one or two short questions (cities, ticket
+    size, income vs growth), remember it, then source against it.
+
+First call / onboarding (get a new member to their first real step):
+  - If the briefing shows they are new, unverified, or have no holdings, be a warm
+    guide: explain in one or two sentences how Investprop works, then walk them to
+    the single most important next step. If KYC/FICA is incomplete, offer to open
+    it with navigate("kyc") and talk them through it. If they are verified but
+    haven't invested, source one well-fitting opportunity and offer to open the
+    invest screen. One step at a time — never dump a checklist.
+
+Accessibility and voice-first members:
+  - Some members rely on you because reading dense screens is hard for them. Make
+    the voice channel self-sufficient: read the key numbers and the decision out
+    loud clearly, offer to open the matching screen but never REQUIRE them to look
+    at it, and pace yourself. If they ask you to slow down, repeat, or spell
+    something, do it plainly and patiently.
+
+When a human should step in (offer a handoff, don't pretend):
+  - For things outside your remit — a dispute, a suspected error in their account,
+    a complaint, a legal/contractual decision, or anything they explicitly want a
+    person for — say so honestly and offer to have the Investprop team follow up.
+    If they say yes, call request_handoff(reason, summary) to log it for the team
+    (it does NOT move money or change anything), confirm you've flagged it, and
+    tell them roughly when to expect contact. Keep helping with what you CAN do in
+    the meantime.
+
 Hard rules — never break these:
   1. Never invent figures. Every number you say must come from a tool result. If
      it's unknown, say so and offer to find it.
@@ -498,6 +551,39 @@ class OfficeAgent(Agent):
         except Exception as exc:  # pragma: no cover - transport best-effort
             logger.warning("publish_ui failed: %s", exc)
             return False
+
+    async def publish_transcript(self, role: str, text: str, final: bool = True) -> None:
+        """Stream a transcript line to the member's app over the room data channel.
+
+        Published on a distinct topic ("office-agent-transcript") so the web and
+        Flutter clients can render a live, cited transcript without interfering
+        with the UI-control ("office-agent-ui") packets. Best-effort only — a
+        failure here must never disturb the conversation.
+        """
+        room = self._room
+        participant = getattr(room, "local_participant", None) if room is not None else None
+        if participant is None:
+            return
+        cleaned = (text or "").strip()
+        if not cleaned:
+            return
+        try:
+            await participant.publish_data(
+                json.dumps(
+                    {
+                        "v": 1,
+                        "type": "transcript",
+                        "role": "assistant" if role in ("assistant", "agent") else "user",
+                        "text": cleaned,
+                        "final": bool(final),
+                        "ts": datetime.now(timezone.utc).isoformat(),
+                    }
+                ).encode("utf-8"),
+                reliable=True,
+                topic="office-agent-transcript",
+            )
+        except Exception as exc:  # pragma: no cover - transport best-effort
+            logger.debug("publish_transcript failed: %s", exc)
 
     # --- Screen control (open pages on the member's device) ----------------
 
@@ -829,6 +915,37 @@ class OfficeAgent(Agent):
         """
         return _summarise(await self._bridge.execute({"action": "saveMemory", "text": note}))
 
+    @function_tool
+    async def request_handoff(
+        self,
+        _context: RunContext,
+        reason: str,
+        summary: str,
+    ) -> str:
+        """Flag that a human from the Investprop team should follow up with the
+        member. Use this for disputes, suspected account errors, complaints,
+        legal/contractual decisions, or anything the member explicitly wants a
+        person for. This only LOGS a follow-up request for the team — it never
+        moves money or changes the member's account. Tell the member you've
+        flagged it and roughly when to expect contact.
+
+        Args:
+            reason: A short category/reason, e.g. "account dispute",
+                "suspected error", "complaint", "legal question",
+                "requested a person".
+            summary: One or two sentences capturing what the member needs, in
+                plain language, so the team can act without re-asking.
+        """
+        return _summarise(
+            await self._bridge.execute(
+                {
+                    "action": "requestHandoff",
+                    "reason": (reason or "").strip()[:120],
+                    "summary": (summary or "").strip()[:1500],
+                }
+            )
+        )
+
     # --- Prepare / approve (guard-railed) ----------------------------------
 
     @function_tool
@@ -1008,6 +1125,8 @@ async def entrypoint(ctx: JobContext) -> None:
     # shutdown; errors are accumulated from the realtime session + bridge.
     session_started = datetime.now(timezone.utc)
     session_errors = {"count": 0}
+    # Turn counters feed a lightweight call-quality score in the admin ops view.
+    turns = {"user": 0, "assistant": 0}
 
     def _count_session_error(ev: Any) -> None:
         session_errors["count"] += 1
@@ -1079,6 +1198,60 @@ async def entrypoint(ctx: JobContext) -> None:
     try:
         agent = OfficeAgent(bridge, member_name, member_context or None)
         agent.set_room(ctx.room)
+
+        # Live cited transcript: stream each side's text to the member's app over
+        # the room data channel. User text comes from transcription events; the
+        # agent's own text from finalized conversation items. Every handler is
+        # defensively wrapped so an unknown event name or shape never aborts the
+        # call, and publishing is scheduled as a background task (the handlers are
+        # synchronous callbacks).
+        def _emit(role: str, text: str, final: bool) -> None:
+            try:
+                asyncio.create_task(agent.publish_transcript(role, text, final))
+            except Exception as exc:  # pragma: no cover - best-effort
+                logger.debug("transcript emit failed: %s", exc)
+
+        def _on_user_transcript(ev: Any) -> None:
+            try:
+                text = getattr(ev, "transcript", None) or getattr(ev, "text", None) or ""
+                is_final = bool(getattr(ev, "is_final", True))
+                if not str(text).strip():
+                    return
+                if is_final:
+                    turns["user"] += 1
+                _emit("user", str(text), is_final)
+            except Exception as exc:  # pragma: no cover - best-effort
+                logger.debug("user transcript handler failed: %s", exc)
+
+        def _on_item_added(ev: Any) -> None:
+            try:
+                item = getattr(ev, "item", ev)
+                role = getattr(item, "role", None)
+                if role != "assistant":
+                    return
+                text = getattr(item, "text_content", None)
+                if not text:
+                    content = getattr(item, "content", None)
+                    if isinstance(content, (list, tuple)):
+                        text = " ".join(str(c) for c in content if isinstance(c, str))
+                    elif isinstance(content, str):
+                        text = content
+                if not str(text or "").strip():
+                    return
+                turns["assistant"] += 1
+                _emit("assistant", str(text), True)
+            except Exception as exc:  # pragma: no cover - best-effort
+                logger.debug("item-added transcript handler failed: %s", exc)
+
+        for _event_name, _handler in (
+            ("user_input_transcribed", _on_user_transcript),
+            ("conversation_item_added", _on_item_added),
+        ):
+            try:
+                session.on(_event_name, _handler)
+            except Exception as exc:  # pragma: no cover - event may not exist
+                logger.info("transcript hook '%s' unavailable: %s", _event_name, exc)
+
         await session.start(
             room=ctx.room,
             agent=agent,
@@ -1106,6 +1279,8 @@ async def entrypoint(ctx: JobContext) -> None:
                     "toolCalls": int(bridge.calls),
                     "toolErrors": int(bridge.errors),
                     "sessionErrors": int(session_errors["count"]),
+                    "userTurns": int(turns["user"]),
+                    "agentTurns": int(turns["assistant"]),
                 })
             except Exception as exc:  # pragma: no cover - metric is best-effort
                 logger.warning("voice session metric post failed: %s", exc)

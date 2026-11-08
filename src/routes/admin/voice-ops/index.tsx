@@ -10,6 +10,7 @@ import {
   Wrench,
   RefreshCw,
   Mic,
+  Gauge,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC } from "~/trpc/react";
@@ -67,6 +68,12 @@ function VoiceOpsPage() {
     { label: "Est. cost", value: totals ? USD(totals.estCostUsd) : "—", icon: DollarSign, color: "text-emerald-600" },
     { label: "Tool calls", value: totals ? NUM(totals.toolCalls) : "—", icon: Wrench, color: "text-amber-600" },
     { label: "Error rate", value: totals ? `${totals.errorRatePct}%` : "—", icon: AlertTriangle, color: "text-rose-600" },
+    {
+      label: "Avg call quality",
+      value: totals?.avgQualityScore != null ? `${totals.avgQualityScore}/100` : "—",
+      icon: Gauge,
+      color: "text-violet-600",
+    },
   ];
 
   return (
@@ -181,6 +188,7 @@ function VoiceOpsPage() {
                       <th className="py-2 pr-4">Provider / model</th>
                       <th className="py-2 pr-4">Duration</th>
                       <th className="py-2 pr-4">Tools</th>
+                      <th className="py-2 pr-4">Quality</th>
                       <th className="py-2 pr-4">Errors</th>
                       <th className="py-2 pr-4">Est. cost</th>
                     </tr>
@@ -188,7 +196,7 @@ function VoiceOpsPage() {
                   <tbody>
                     {(data.recent ?? []).length === 0 && (
                       <tr>
-                        <td colSpan={7} className="py-6 text-center text-gray-500">No recent calls.</td>
+                        <td colSpan={8} className="py-6 text-center text-gray-500">No recent calls.</td>
                       </tr>
                     )}
                     {(data.recent ?? []).map((r: any) => (
@@ -198,6 +206,23 @@ function VoiceOpsPage() {
                         <td className="py-2 pr-4 text-gray-700">{r.model}</td>
                         <td className="py-2 pr-4 text-gray-700">{Math.round(r.durationSeconds / 6) / 10} min</td>
                         <td className="py-2 pr-4 text-gray-700">{NUM(r.toolCalls)}</td>
+                        <td className="py-2 pr-4">
+                          {r.qualityScore == null ? (
+                            <span className="text-gray-400">—</span>
+                          ) : (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                r.qualityScore >= 80
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : r.qualityScore >= 60
+                                    ? "bg-amber-100 text-amber-700"
+                                    : "bg-rose-100 text-rose-700"
+                              }`}
+                            >
+                              {r.qualityScore}
+                            </span>
+                          )}
+                        </td>
                         <td className="py-2 pr-4">
                           {r.toolErrors + r.sessionErrors > 0 ? (
                             <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700">

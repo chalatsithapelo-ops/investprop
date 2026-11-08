@@ -36,6 +36,7 @@ import { chatOffice, ownConversation } from "~/server/office/chat";
 import { prepareOfficeTask, approveOfficeTask, cancelOfficeTask } from "~/server/office/tasks";
 import { listActionCatalog, runReadAction, prepareOfficeAction, confirmOfficeAction } from "~/server/office/actions";
 import { recordVoiceSession } from "~/server/office/voice-telemetry";
+import { requestHandoff } from "~/server/office/handoff";
 import { scenarioAssumptionsSchema, loadPropertyScenario, loadAccountingExceptions } from "~/server/office/scenarios";import {
   loadPortfolioValuation,
   loadWalletSummary,
@@ -153,6 +154,14 @@ const actionSchema = z.discriminatedUnion("action", [
     toolCalls: z.number().int().min(0).max(100_000),
     toolErrors: z.number().int().min(0).max(100_000),
     sessionErrors: z.number().int().min(0).max(100_000),
+    userTurns: z.number().int().min(0).max(100_000).optional(),
+    agentTurns: z.number().int().min(0).max(100_000).optional(),
+  }),
+  // Log a human-handoff request for the team (non-mutating; notifies admins).
+  z.object({
+    action: z.literal("requestHandoff"),
+    reason: z.string().trim().min(1).max(120),
+    summary: z.string().trim().min(1).max(1500),
   }),
   // Generic capability registry — exposes every member-facing tRPC procedure.
   z.object({ action: z.literal("listActions") }),
@@ -319,8 +328,12 @@ export default defineEventHandler(async (event) => {
           toolCalls: input.toolCalls,
           toolErrors: input.toolErrors,
           sessionErrors: input.sessionErrors,
+          userTurns: input.userTurns,
+          agentTurns: input.agentTurns,
         });
         return json({ ok: true, result: { recorded: true } }, 200);
+      case "requestHandoff":
+        return json({ ok: true, result: await requestHandoff(user, { reason: input.reason, summary: input.summary }) }, 200);
       case "listActions":
         return json({ ok: true, result: listActionCatalog() }, 200);
       case "runRead":

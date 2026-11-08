@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCheck, Download, Inbox, X } from "lucide-react";
+import { CheckCheck, Download, FileText, Inbox, Sheet, X } from "lucide-react";
 import {
   errorMessage, formatDate, jsonPreview, officeApi, taskKindSchema,
   type OfficeTask, type TaskParameters,
@@ -27,6 +27,90 @@ function downloadTask(task: OfficeTask) {
   link.download = `office-pack-${task.id.replace(/[^a-zA-Z0-9_-]/g, "_")}.json`;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const DISCLAIMER =
+  "Research-only office output. Not a certified statement, tax return or legal document. Have a registered professional review before you rely on it.";
+
+/** Flatten arbitrary nested JSON into dot-path field/value rows. */
+function flattenPack(value: unknown, prefix: string, out: [string, string][]): void {
+  if (value === null || value === undefined) {
+    out.push([prefix || "value", value === null ? "null" : ""]);
+    return;
+  }
+  if (typeof value !== "object") {
+    out.push([prefix || "value", String(value)]);
+    return;
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) out.push([prefix || "value", "(empty)"]);
+    value.forEach((item, i) => flattenPack(item, `${prefix}[${i}]`, out));
+    return;
+  }
+  const entries = Object.entries(value as Record<string, unknown>);
+  if (entries.length === 0) out.push([prefix || "value", "(empty)"]);
+  for (const [k, v] of entries) flattenPack(v, prefix ? `${prefix}.${k}` : k, out);
+}
+
+function csvEscape(s: string): string {
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function downloadTaskCsv(task: OfficeTask) {
+  const rows: [string, string][] = [];
+  flattenPack(task.result ?? {}, "", rows);
+  const meta: [string, string][] = [
+    ["taskId", task.id],
+    ["title", task.title],
+    ["kind", task.kind],
+    ["status", task.status],
+    ["createdAt", task.createdAt ? new Date(task.createdAt).toISOString() : ""],
+    ["disclaimer", DISCLAIMER],
+  ];
+  const csv = ["field,value", ...[...meta, ...rows].map(([k, v]) => `${csvEscape(k)},${csvEscape(v)}`)].join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `office-pack-${task.id.replace(/[^a-zA-Z0-9_-]/g, "_")}.csv`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function htmlEscape(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c));
+}
+
+/** Open a print-ready pack in a new window (member can "Save as PDF"). */
+function printTaskPack(task: OfficeTask) {
+  const win = window.open("", "_blank", "width=820,height=1000");
+  if (!win) throw new Error("Pop-up blocked — allow pop-ups for this site to export the pack as PDF.");
+  const rows: [string, string][] = [];
+  flattenPack(task.result ?? {}, "", rows);
+  const generated = new Date().toLocaleString("en-ZA", { dateStyle: "long", timeStyle: "short" });
+  const tableRows = rows
+    .map(([k, v]) => `<tr><td class="k">${htmlEscape(k)}</td><td class="v">${htmlEscape(v)}</td></tr>`)
+    .join("");
+  win.document.write(
+    `<!doctype html><html><head><meta charset="utf-8"><title>${htmlEscape(task.title)} — Investprop office pack</title>` +
+      `<style>` +
+      `*{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a;margin:40px;font-size:13px}` +
+      `h1{font-size:20px;margin:0 0 4px}.sub{color:#64748b;font-size:12px;margin:0 0 2px}` +
+      `.badge{display:inline-block;background:#f1f5f9;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;margin-top:8px}` +
+      `table{width:100%;border-collapse:collapse;margin-top:18px}td{border-bottom:1px solid #e2e8f0;padding:6px 8px;vertical-align:top}` +
+      `td.k{color:#475569;width:42%;font-weight:600;word-break:break-word}td.v{word-break:break-word}` +
+      `.disc{margin-top:22px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;color:#9a3412;font-size:11px}` +
+      `@media print{body{margin:14mm}}` +
+      `</style></head><body>` +
+      `<h1>${htmlEscape(task.title)}</h1>` +
+      `<p class="sub">${htmlEscape(task.kind.replaceAll("_", " "))} • Investprop AI Property Office</p>` +
+      `<p class="sub">Generated ${htmlEscape(generated)} • Task ${htmlEscape(task.id)}</p>` +
+      `<span class="badge">${htmlEscape(task.status)}</span>` +
+      `<table><tbody>${tableRows || '<tr><td class="v">No pack output available.</td></tr>'}</tbody></table>` +
+      `<p class="disc">${htmlEscape(DISCLAIMER)}</p>` +
+      `<script>window.onload=function(){setTimeout(function(){window.print();},150);};</script>` +
+      `</body></html>`,
+  );
+  win.document.close();
 }
 
 export function TaskInbox({ authToken, accountId, proposalIds }: {
@@ -143,7 +227,7 @@ export function TaskInbox({ authToken, accountId, proposalIds }: {
         <p className="mt-2 text-xs text-slate-500">Approval expires: {formatDate(task.expiresAt)}</p>
         <div className="mt-3 flex flex-wrap gap-3">
           {task.status === "PREPARED" && <><button type="button" disabled={busy} onClick={() => { setPreview(task); setAccepted(false); }} className="text-sm font-semibold text-amber-800">Review preview & digest</button><button type="button" disabled={busy} onClick={() => { void cancelTask(task); }} className="text-sm font-semibold text-red-700">Cancel task</button></>}
-          {task.status === "COMPLETED" && task.result != null && <button type="button" onClick={() => { try { downloadTask(task); } catch (err) { setError(errorMessage(err)); } }} className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-800"><Download size={15} />Download research output (JSON)</button>}
+          {task.status === "COMPLETED" && task.result != null && <><button type="button" onClick={() => { try { printTaskPack(task); } catch (err) { setError(errorMessage(err)); } }} className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-800"><FileText size={15} />Download pack (PDF)</button><button type="button" onClick={() => { try { downloadTaskCsv(task); } catch (err) { setError(errorMessage(err)); } }} className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-800"><Sheet size={15} />Export CSV</button><button type="button" onClick={() => { try { downloadTask(task); } catch (err) { setError(errorMessage(err)); } }} className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500"><Download size={15} />JSON</button></>}
         </div>
         {task.result != null && <details className="mt-3 text-xs text-slate-600"><summary className="cursor-pointer font-medium">View server result</summary><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-50 p-3">{jsonPreview(task.result)}</pre></details>}
       </li>)}</ul>
