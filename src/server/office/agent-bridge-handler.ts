@@ -35,8 +35,8 @@ import { loadOfficeContext, sourceMetadataSelect } from "~/server/office/context
 import { chatOffice, ownConversation } from "~/server/office/chat";
 import { prepareOfficeTask, approveOfficeTask, cancelOfficeTask } from "~/server/office/tasks";
 import { listActionCatalog, runReadAction, prepareOfficeAction, confirmOfficeAction } from "~/server/office/actions";
-import { scenarioAssumptionsSchema, loadPropertyScenario, loadAccountingExceptions } from "~/server/office/scenarios";
-import {
+import { recordVoiceSession } from "~/server/office/voice-telemetry";
+import { scenarioAssumptionsSchema, loadPropertyScenario, loadAccountingExceptions } from "~/server/office/scenarios";import {
   loadPortfolioValuation,
   loadWalletSummary,
   loadPendingItems,
@@ -144,6 +144,16 @@ const actionSchema = z.discriminatedUnion("action", [
   }),
   z.object({ action: z.literal("getMemory") }),
   z.object({ action: z.literal("saveMemory"), text: z.string().trim().min(1).max(280) }),
+  // Per-call cost & ops telemetry posted by the worker on teardown (admin-only view).
+  z.object({
+    action: z.literal("logVoiceSession"),
+    provider: z.string().trim().min(1).max(40),
+    model: z.string().trim().min(1).max(120),
+    durationSeconds: z.number().int().min(0).max(36_000),
+    toolCalls: z.number().int().min(0).max(100_000),
+    toolErrors: z.number().int().min(0).max(100_000),
+    sessionErrors: z.number().int().min(0).max(100_000),
+  }),
   // Generic capability registry — exposes every member-facing tRPC procedure.
   z.object({ action: z.literal("listActions") }),
   z.object({
@@ -301,6 +311,16 @@ export default defineEventHandler(async (event) => {
         return json({ ok: true, result: await loadMemory(user) }, 200);
       case "saveMemory":
         return json({ ok: true, result: await saveMemory(user, input.text) }, 200);
+      case "logVoiceSession":
+        await recordVoiceSession(user, {
+          provider: input.provider,
+          model: input.model,
+          durationSeconds: input.durationSeconds,
+          toolCalls: input.toolCalls,
+          toolErrors: input.toolErrors,
+          sessionErrors: input.sessionErrors,
+        });
+        return json({ ok: true, result: { recorded: true } }, 200);
       case "listActions":
         return json({ ok: true, result: listActionCatalog() }, 200);
       case "runRead":

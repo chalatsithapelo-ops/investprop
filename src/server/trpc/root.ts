@@ -212,6 +212,7 @@ import {
 import { officeVoiceTurn } from "~/server/trpc/procedures/office-voice";
 import { officeVoiceAgentStatus, officeVoiceAgentSession } from "~/server/trpc/procedures/office-voice-session";
 import { officePropertyScenario, officeAccountingExceptions } from "~/server/trpc/procedures/office-scenarios";
+import { getVoiceAgentOps } from "~/server/trpc/procedures/admin-voice-ops";
 export const appRouter = createTRPCRouter({
   officeOverview, officeConversations, officeConversation, officeChat,
   officeTasks, officePrepareTask, officeApproveTask, officeCancelTask,
@@ -219,6 +220,7 @@ export const appRouter = createTRPCRouter({
   officeVoiceTurn,
   officeVoiceAgentStatus, officeVoiceAgentSession,
   officePropertyScenario, officeAccountingExceptions,
+  getVoiceAgentOps,
   register,
   login,
   logout,

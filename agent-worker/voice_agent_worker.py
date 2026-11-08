@@ -84,10 +84,15 @@ GEMINI_API_VERSION = os.environ.get("GEMINI_API_VERSION", "v1alpha")
 # Higher = the agent is not cut off by echo/brief noise (default 0.5 is too
 # twitchy for speakerphone use). Override with MIN_INTERRUPTION_DURATION.
 MIN_INTERRUPTION_DURATION = float(os.environ.get("MIN_INTERRUPTION_DURATION", "1.0"))
+# Resilience: if the agent's own speech is cut by a *false* interruption (echo,
+# a cough, background noise) resume the unfinished turn instead of going silent.
+# This is the single biggest cause of "it spoke then went quiet forever".
+RESUME_FALSE_INTERRUPTION = os.environ.get("RESUME_FALSE_INTERRUPTION", "true").strip().lower() != "false"
+FALSE_INTERRUPTION_TIMEOUT = float(os.environ.get("FALSE_INTERRUPTION_TIMEOUT", "2.0"))
 
 
 def _build_realtime_llm():
-    """Return the realtime model for the configured provider.
+    """Return ``(model, provider_label, model_label)`` for the configured provider.
 
     Falls back to OpenAI if Gemini is requested but its plugin/key is missing so
     a misconfiguration never leaves the office without a voice.
@@ -99,11 +104,15 @@ def _build_realtime_llm():
             logger.warning("VOICE_AGENT_PROVIDER=gemini but GOOGLE_API_KEY is not set; using OpenAI.")
         else:
             logger.info("realtime provider=gemini model=%s voice=%s api_version=%s", GEMINI_MODEL, GEMINI_VOICE, GEMINI_API_VERSION)
-            return google.beta.realtime.RealtimeModel(
-                model=GEMINI_MODEL, voice=GEMINI_VOICE, api_version=GEMINI_API_VERSION
+            return (
+                google.beta.realtime.RealtimeModel(
+                    model=GEMINI_MODEL, voice=GEMINI_VOICE, api_version=GEMINI_API_VERSION
+                ),
+                "gemini",
+                GEMINI_MODEL,
             )
     logger.info("realtime provider=openai voice=%s", REALTIME_VOICE)
-    return openai.realtime.RealtimeModel(voice=REALTIME_VOICE)
+    return openai.realtime.RealtimeModel(voice=REALTIME_VOICE), "openai", "gpt-realtime"
 
 # How the agent presents itself and the guard rails it must honour. Mirrors the
 # office policy: research + preparation, with explicit verbal approval before any
@@ -155,6 +164,46 @@ How to work (be genuinely useful, like a great human adviser):
   - Use ask_specialist for nuanced written reasoning or tax-source research when
     the direct tools aren't enough. Use list_conversations and recall_conversation
     to continue or refer back to an earlier chat thread the member started.
+
+Never leave dead air (critical — the member must never hear silence):
+  - Before you call ANY tool that might take a moment (data pulls, packs, scenario
+    or tax calculations, placing or preparing an action), FIRST say a short filler
+    out loud so the line is never silent — e.g. "Let me pull that up.", "One
+    second, checking that now.", "Give me a moment to work that out." THEN call
+    the tool. When the result lands, continue speaking.
+  - If a tool is slow or fails, say so and offer the next step; never just stop.
+  - Keep talking in short beats. If you need to think, say a brief bridging phrase
+    rather than pausing.
+
+Show it on screen (pair every answer with the matching screen when it helps):
+  - After you give figures or findings that have a screen (portfolio, wallet,
+    distributions, an opportunity, the marketplace, a tax certificate), proactively
+    offer to open it — "Want me to put your portfolio on screen?" — and if they say
+    yes, call navigate while you summarise the numbers out loud. Summarise verbally
+    AS the screen lands; don't wait in silence for it.
+  - Right after you successfully prepare an ACCOUNTANT_PACK, OWNER_CHECKLIST or any
+    task, open the office task inbox for them with navigate("aiOffice") so they can
+    see and download the draft, and tell them it's waiting there.
+
+Remember the member (build a lasting relationship across calls):
+  - When the member tells you a durable fact about themselves — their entity type
+    (personal / company / trust), marginal tax rate, investment goals, risk
+    appetite, target monthly income, preferred cities or property types, or a
+    deadline — call remember(note) to save a SHORT structured fact (e.g.
+    "Entity: personal; marginal rate ~41%; goal: R15k/month passive by 2028; risk:
+    moderate"). Save facts, not whole sentences. Never save secrets, ID, bank or
+    token numbers.
+  - At the start of a call you are given their saved notes and recent threads —
+    use them: greet them in context and pick up where you left off instead of
+    starting cold.
+
+Say the disclaimer once, not every turn:
+  - Give ONE brief spoken disclaimer early in the call (within your first couple of
+    turns) that you are an information and research assistant, not a registered
+    accountant, tax practitioner or financial services provider, and that material
+    decisions should be confirmed with a registered professional. After you've said
+    it once, do NOT repeat it every answer — a short "as I mentioned, confirm the big
+    ones with your practitioner" is enough when it genuinely matters.
 
 Taking action (you can actually DO things, not just advise):
   - You can place a real SELL order for the member's own shares. Use
@@ -264,10 +313,16 @@ class OfficeBridge:
     def __init__(self, auth_token: str) -> None:
         self._auth_token = auth_token
         self._client = httpx.AsyncClient(timeout=httpx.Timeout(45.0))
+        # Lightweight per-session telemetry counters (read at shutdown).
+        self.calls = 0
+        self.errors = 0
 
     async def execute(self, payload: dict[str, Any]) -> dict[str, Any]:
         if not AGENT_SHARED_SECRET:
             return {"ok": False, "reason": "Agent bridge secret is not configured."}
+        # Don't count the metrics post itself as a tool call.
+        if payload.get("action") != "logVoiceSession":
+            self.calls += 1
         try:
             response = await self._client.post(
                 f"{BACKEND_URL}/api/office-agent/execute",
@@ -280,15 +335,20 @@ class OfficeBridge:
             )
         except httpx.HTTPError as exc:  # network / timeout
             logger.warning("bridge request failed: %s", exc)
+            self.errors += 1
             return {"ok": False, "reason": "The office service is unreachable right now."}
 
         try:
             data = response.json()
         except ValueError:
+            self.errors += 1
             return {"ok": False, "reason": f"Unexpected response ({response.status_code})."}
 
         if not isinstance(data, dict):
+            self.errors += 1
             return {"ok": False, "reason": "Unexpected response from the office service."}
+        if not data.get("ok", False) and payload.get("action") != "logVoiceSession":
+            self.errors += 1
         return data
 
     async def aclose(self) -> None:
@@ -933,11 +993,31 @@ async def entrypoint(ctx: JobContext) -> None:
     # Without this, echo of the agent's own voice or a brief noise trips the VAD
     # and cuts the answer off mid-sentence (realtime models drop the rest of the
     # turn when interrupted), so it "stops talking and never continues".
+    # resume_false_interruption makes the agent pick its unfinished turn back up
+    # if it was cut by a false interruption instead of going silent forever.
+    llm, provider_label, model_label = _build_realtime_llm()
     session = AgentSession(
-        llm=_build_realtime_llm(),
+        llm=llm,
         vad=ctx.proc.userdata["vad"],
         min_interruption_duration=MIN_INTERRUPTION_DURATION,
+        resume_false_interruption=RESUME_FALSE_INTERRUPTION,
+        false_interruption_timeout=FALSE_INTERRUPTION_TIMEOUT,
     )
+
+    # Per-session telemetry (admin-only ops view). Duration is measured at
+    # shutdown; errors are accumulated from the realtime session + bridge.
+    session_started = datetime.now(timezone.utc)
+    session_errors = {"count": 0}
+
+    def _count_session_error(ev: Any) -> None:
+        session_errors["count"] += 1
+        logger.warning("realtime session error: %s", getattr(ev, "error", ev))
+
+    try:  # Defensive: never let an unknown event name abort the call.
+        session.on("error", _count_session_error)
+    except Exception as exc:  # pragma: no cover - event may not exist in this build
+        logger.info("session error hook unavailable: %s", exc)
+
 
     # Proactively pull the member's briefing + saved memory so the agent opens
     # with something useful and remembers them across sessions. Best-effort: a
@@ -959,6 +1039,7 @@ async def entrypoint(ctx: JobContext) -> None:
     try:
         briefing = await bridge.execute({"action": "briefing"})
         memory = await bridge.execute({"action": "getMemory"})
+        conversations = await bridge.execute({"action": "listConversations"})
         parts: list[str] = [clock_block]
         if isinstance(briefing, dict) and briefing.get("ok"):
             parts.append("Opening briefing for this member (use the exact figures, do not invent): " + json.dumps(briefing.get("result"), default=str)[:1500])
@@ -971,6 +1052,18 @@ async def entrypoint(ctx: JobContext) -> None:
             notes = (memory.get("result") or {}).get("notes") if isinstance(memory.get("result"), dict) else None
             if isinstance(notes, list) and notes:
                 parts.append("Saved notes about this member from previous sessions: " + json.dumps(notes, default=str)[:1200])
+        if isinstance(conversations, dict) and conversations.get("ok"):
+            threads = conversations.get("result")
+            if isinstance(threads, list) and threads:
+                recent = [
+                    {"id": t.get("id"), "title": t.get("title"), "updatedAt": t.get("updatedAt")}
+                    for t in threads[:5] if isinstance(t, dict)
+                ]
+                parts.append(
+                    "Recent conversation threads with this member (use recall_conversation(id) to "
+                    "continue one; pick up where you left off instead of starting cold): "
+                    + json.dumps(recent, default=str)[:900]
+                )
         member_context = "\n\n".join(parts)
     except Exception as exc:  # pragma: no cover - briefing is best-effort
         logger.warning("briefing/memory prefetch failed: %s", exc)
@@ -999,8 +1092,27 @@ async def entrypoint(ctx: JobContext) -> None:
             greeting += f" The most useful items right now are: {greeting_hint}"
         await session.generate_reply(instructions=greeting)
     finally:
-        # Session lifetime is tied to the room; close the HTTP client on teardown.
-        ctx.add_shutdown_callback(bridge.aclose)
+        # On teardown, post a compact per-session usage/ops metric for the
+        # admin-only cost & ops view, then close the HTTP client. Best-effort:
+        # a failed metric post must never surface to the member.
+        async def _on_shutdown() -> None:
+            try:
+                duration = (datetime.now(timezone.utc) - session_started).total_seconds()
+                await bridge.execute({
+                    "action": "logVoiceSession",
+                    "provider": provider_label,
+                    "model": model_label,
+                    "durationSeconds": max(0, int(round(duration))),
+                    "toolCalls": int(bridge.calls),
+                    "toolErrors": int(bridge.errors),
+                    "sessionErrors": int(session_errors["count"]),
+                })
+            except Exception as exc:  # pragma: no cover - metric is best-effort
+                logger.warning("voice session metric post failed: %s", exc)
+            finally:
+                await bridge.aclose()
+
+        ctx.add_shutdown_callback(_on_shutdown)
 
 
 def prewarm(proc: agents.JobProcess) -> None:

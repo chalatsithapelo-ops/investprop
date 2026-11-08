@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   Shield, Users, Building, Activity, Settings, X, AlertTriangle, Pencil, KeyRound, Trash2,
   CreditCard, DollarSign, BadgeDollarSign, Scale, Receipt, Inbox, GitBranch, Award,
-  ShieldCheck, Send, Server, Database, ChevronRight, BellRing, BookOpen, HardHat,
+  ShieldCheck, Send, Server, Database, ChevronRight, BellRing, BookOpen, HardHat, Mic,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
@@ -70,6 +70,7 @@ function AdminPage() {
     { label: "Announcements", to: "/admin/announcements", icon: Send, desc: "Broadcast to investors & owners", adminOnly: false },
     { label: "Audit Log", to: "/admin/audit-log", icon: ShieldCheck, desc: "Full privileged-action trail", adminOnly: false },
     { label: "System Health", to: "/admin/system-health", icon: Server, desc: "Live metrics, queues & activity", adminOnly: true },
+    { label: "Voice Agent Ops", to: "/admin/voice-ops", icon: Mic, desc: "Realtime voice-agent cost, usage & error rates", adminOnly: true },
     { label: "Bulk Operations", to: "/admin/bulk-ops", icon: Users, desc: "Approve/suspend many users at once", adminOnly: true },
     { label: "POPIA Subject Access", to: "/admin/popia-sar", icon: Database, desc: "Export a user's full data record", adminOnly: true },
   ];
