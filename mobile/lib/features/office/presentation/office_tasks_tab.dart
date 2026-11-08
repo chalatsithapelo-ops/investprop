@@ -481,30 +481,37 @@ class _OfficeTasksTabState extends ConsumerState<OfficeTasksTab> {
                                 ),
                               if (task.status == 'COMPLETED' &&
                                   task.result != null)
-                                      ClipboardData(
-                                        text: officeJson({
-                                          'taskId': task.id,
-                                          'title': task.title,
-                                          'kind': task.kind,
-                                          'status': task.status,
-                                          'parameters': task.parameters,
-                                          'result': task.result,
-                                          'createdAt': task.createdAt
-                                              ?.toIso8601String(),
-                                          'notice':
-                                              'Research output only. Not a certified PDF or professional advice.',
-                                        }),
-                                      ),
-                                    );
-                                    if (!context.mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Research JSON copied. It may contain private data; share only with a trusted recipient.',
-                                        ),
-                                      ),
-                                    );
-                                  },
+                                OutlinedButton.icon(
+                                  onPressed: _busy
+                                      ? null
+                                      : () async {
+                                          await Clipboard.setData(
+                                            ClipboardData(
+                                              text: officeJson({
+                                                'taskId': task.id,
+                                                'title': task.title,
+                                                'kind': task.kind,
+                                                'status': task.status,
+                                                'parameters': task.parameters,
+                                                'result': task.result,
+                                                'createdAt': task.createdAt
+                                                    ?.toIso8601String(),
+                                                'notice':
+                                                    'Research output only. Not a certified PDF or professional advice.',
+                                              }),
+                                            ),
+                                          );
+                                          if (!context.mounted) return;
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Research JSON copied. It may contain private data; share only with a trusted recipient.',
+                                              ),
+                                            ),
+                                          );
+                                        },
                                   icon: const Icon(Icons.copy_outlined),
                                   label: const Text(
                                     'Copy research output (JSON)',
