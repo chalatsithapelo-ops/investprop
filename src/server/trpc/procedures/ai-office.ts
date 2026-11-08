@@ -7,6 +7,7 @@ import { assertOfficeUser, HISTORY_LIMIT, OFFICE_LIMIT, personas, taskKinds, par
 import { chatOffice, ownConversation } from "~/server/office/chat";
 import { prepareOfficeTask, approveOfficeTask, cancelOfficeTask } from "~/server/office/tasks";
 import { createOfficeTaxSource, publishOfficeTaxSource, taxSourceDraftSchema } from "~/server/office/sources";
+import { analyzeOfficeDocument, documentAnalysisInput } from "~/server/office/documents";
 
 const auth = z.object({ authToken: z.string().min(1).max(8192) }).strict();
 const id = z.string().min(1).max(128);
@@ -50,6 +51,9 @@ export const officeApproveTask = baseProcedure.input(auth.extend({ taskId: id, a
 
 export const officeCancelTask = baseProcedure.input(auth.extend({ taskId: id }))
   .mutation(async ({ input }) => cancelOfficeTask(await userFor(input.authToken), input.taskId));
+
+export const officeAnalyzeDocument = baseProcedure.input(auth.merge(documentAnalysisInput).strict())
+  .mutation(async ({ input: { authToken, ...doc } }) => analyzeOfficeDocument(await userFor(authToken), doc));
 
 export const officeTaxSources = baseProcedure.input(auth).query(async ({ input }) => {
   const user = await userFor(input.authToken);

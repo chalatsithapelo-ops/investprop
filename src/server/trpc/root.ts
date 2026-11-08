@@ -208,6 +208,7 @@ import {
   officeOverview, officeConversations, officeConversation, officeChat,
   officeTasks, officePrepareTask, officeApproveTask, officeCancelTask,
   officeTaxSources, officeCreateTaxSource, officePublishTaxSource,
+  officeAnalyzeDocument,
 } from "~/server/trpc/procedures/ai-office";
 import { officeVoiceTurn } from "~/server/trpc/procedures/office-voice";
 import { officeVoiceAgentStatus, officeVoiceAgentSession } from "~/server/trpc/procedures/office-voice-session";
@@ -217,6 +218,7 @@ export const appRouter = createTRPCRouter({
   officeOverview, officeConversations, officeConversation, officeChat,
   officeTasks, officePrepareTask, officeApproveTask, officeCancelTask,
   officeTaxSources, officeCreateTaxSource, officePublishTaxSource,
+  officeAnalyzeDocument,
   officeVoiceTurn,
   officeVoiceAgentStatus, officeVoiceAgentSession,
   officePropertyScenario, officeAccountingExceptions,

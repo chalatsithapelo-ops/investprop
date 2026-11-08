@@ -37,6 +37,7 @@ import { prepareOfficeTask, approveOfficeTask, cancelOfficeTask } from "~/server
 import { listActionCatalog, runReadAction, prepareOfficeAction, confirmOfficeAction } from "~/server/office/actions";
 import { recordVoiceSession } from "~/server/office/voice-telemetry";
 import { requestHandoff } from "~/server/office/handoff";
+import { analyzeOfficeDocument } from "~/server/office/documents";
 import { scenarioAssumptionsSchema, loadPropertyScenario, loadAccountingExceptions } from "~/server/office/scenarios";import {
   loadPortfolioValuation,
   loadWalletSummary,
@@ -162,6 +163,13 @@ const actionSchema = z.discriminatedUnion("action", [
     action: z.literal("requestHandoff"),
     reason: z.string().trim().min(1).max(120),
     summary: z.string().trim().min(1).max(1500),
+  }),
+  // Plain-language analysis of member-supplied document text (persists a task).
+  z.object({
+    action: z.literal("analyzeDocument"),
+    title: z.string().trim().min(1).max(160),
+    kind: z.string().trim().min(1).max(60).optional(),
+    text: z.string().trim().min(40).max(40000),
   }),
   // Generic capability registry — exposes every member-facing tRPC procedure.
   z.object({ action: z.literal("listActions") }),
@@ -334,6 +342,8 @@ export default defineEventHandler(async (event) => {
         return json({ ok: true, result: { recorded: true } }, 200);
       case "requestHandoff":
         return json({ ok: true, result: await requestHandoff(user, { reason: input.reason, summary: input.summary }) }, 200);
+      case "analyzeDocument":
+        return json({ ok: true, result: await analyzeOfficeDocument(user, { title: input.title, kind: input.kind, text: input.text }) }, 200);
       case "listActions":
         return json({ ok: true, result: listActionCatalog() }, 200);
       case "runRead":

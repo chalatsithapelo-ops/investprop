@@ -330,6 +330,15 @@ When a human should step in (offer a handoff, don't pretend):
     tell them roughly when to expect contact. Keep helping with what you CAN do in
     the meantime.
 
+Reading documents for members:
+  - If a member reads out or pastes the contents of a document (an offer to
+    purchase, lease, levy or bond statement, mandate, SPV resolution), call
+    analyze_document(title, text, kind) to give them a plain-language summary,
+    the key clauses, a jargon glossary and any genuine risk flags. Read back the
+    few things that matter most and the overall risk level. Always frame it as
+    research only, never legal or tax advice, and suggest they confirm with an
+    attorney before signing. It is saved to their task inbox to download as a PDF.
+
 Hard rules — never break these:
   1. Never invent figures. Every number you say must come from a tool result. If
      it's unknown, say so and offer to find it.
@@ -945,6 +954,39 @@ class OfficeAgent(Agent):
                 }
             )
         )
+
+    @function_tool
+    async def analyze_document(
+        self,
+        _context: RunContext,
+        title: str,
+        text: str,
+        kind: str | None = None,
+    ) -> str:
+        """Give the member a plain-language reading of a property document they
+        read or paste to you — an offer to purchase, lease, levy or bond
+        statement, mandate, SPV resolution, etc. Returns a short summary, the key
+        clauses, a jargon glossary and genuine risk flags, and saves it to their
+        task inbox so they can download it as a PDF. Always present it as research
+        only, never as legal or tax advice, and suggest they confirm with an
+        attorney before signing. Use this whenever the member describes or reads
+        out the contents of a document and wants it explained or checked.
+
+        Args:
+            title: A short name for the document, e.g. "OTP 12 Main Rd" or
+                "Levy statement March".
+            text: The document text the member supplied (40-40000 characters).
+            kind: Optional document type label, e.g. "offer to purchase",
+                "lease", "levy statement", "mandate".
+        """
+        payload: dict[str, Any] = {
+            "action": "analyzeDocument",
+            "title": (title or "").strip()[:160],
+            "text": (text or "").strip()[:40000],
+        }
+        if kind:
+            payload["kind"] = kind.strip()[:60]
+        return _summarise(await self._bridge.execute(payload))
 
     # --- Prepare / approve (guard-railed) ----------------------------------
 
