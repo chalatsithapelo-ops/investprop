@@ -77,6 +77,10 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-native-audio-pre
 # otherwise defaults to the stable v1 path and the websocket 404s. The plugin
 # only forces v1alpha for affective-dialog/proactivity, so we set it ourselves.
 GEMINI_API_VERSION = os.environ.get("GEMINI_API_VERSION", "v1alpha")
+# Seconds of continuous member speech required before we interrupt the agent.
+# Higher = the agent is not cut off by echo/brief noise (default 0.5 is too
+# twitchy for speakerphone use). Override with MIN_INTERRUPTION_DURATION.
+MIN_INTERRUPTION_DURATION = float(os.environ.get("MIN_INTERRUPTION_DURATION", "1.0"))
 
 
 def _build_realtime_llm():
@@ -135,6 +139,13 @@ How to work (be genuinely useful, like a great human adviser):
   - GIVE DIRECT RECOMMENDATIONS. Lead with your recommendation in plain words,
     then one line of reasoning, then the main risk or assumption. Don't hedge
     everything — the member wants a decisive adviser.
+  - NEVER REFUSE OR DEFLECT. The member wants complete, specific answers. Always
+    give the full information, strategy, numbers and step-by-step plan they ask
+    for — including tax strategies, structuring ideas and optimisation moves
+    based on their actual holdings. Do NOT say "I can't help with that, consult a
+    professional" and stop. If a topic needs professional sign-off, give the
+    FULL answer first and add a one-line disclaimer at the end (or start). The
+    disclaimer supplements your answer; it must never replace or shorten it.
   - Use ask_specialist for nuanced written reasoning or tax-source research when
     the direct tools aren't enough. Use list_conversations and recall_conversation
     to continue or refer back to an earlier chat thread the member started.
@@ -214,12 +225,17 @@ Hard rules — never break these:
      MUST read back its exact frozen scope and ask the member to confirm out loud.
      Only call approve_task (or confirm_action for a prepared action) after a clear
      yes. If they hesitate, do not approve.
-  4. Tax: any estimate must come from estimate_tax or figures the tools returned,
-     and you must say it's an estimate with its assumptions. For anything
-     consequential, recommend a registered tax practitioner.
-  5. You give practical recommendations, but you are not a licensed/registered
-     accountant, tax practitioner or financial services provider — flag material
-     decisions for professional confirmation.
+  4. Tax: give the member the COMPLETE tax strategy or answer they ask for,
+     specific to their holdings — steps, structures, allowances, timing and
+     optimisation moves. Ground any figure in estimate_tax or tool results and
+     call it an estimate with its assumptions. Then add a brief spoken
+     disclaimer that this is general information and a registered tax
+     practitioner should confirm it before they act. NEVER refuse to give a tax
+     strategy or send them away to a consultant instead of answering.
+  5. You give full, specific recommendations and strategies. You are not a
+     licensed/registered accountant, tax practitioner or financial services
+     provider, so add a short disclaimer for material decisions — but always
+     provide the complete information first; never withhold or water it down.
   6. Read evidence tags like [evidence:...] silently; never speak them aloud, and
      never read account numbers or tokens aloud.
 
@@ -899,9 +915,14 @@ async def entrypoint(ctx: JobContext) -> None:
         return
 
     bridge = OfficeBridge(auth_token)
+    # Require a sustained stretch of member speech before interrupting the agent.
+    # Without this, echo of the agent's own voice or a brief noise trips the VAD
+    # and cuts the answer off mid-sentence (realtime models drop the rest of the
+    # turn when interrupted), so it "stops talking and never continues".
     session = AgentSession(
         llm=_build_realtime_llm(),
         vad=ctx.proc.userdata["vad"],
+        min_interruption_duration=MIN_INTERRUPTION_DURATION,
     )
 
     # Proactively pull the member's briefing + saved memory so the agent opens
