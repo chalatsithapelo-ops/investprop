@@ -177,7 +177,13 @@ export const officeApi = {
         voice: z.boolean(),
         regulatedActions: z.literal(false),
       }),
+      language: z.enum(["en", "zu", "st"]).default("en"),
+      languages: z.array(z.enum(["en", "zu", "st"])).default(["en", "zu", "st"]),
     }).parse(await trpcClient.officeVoiceAgentStatus.query(input)),
+  setVoiceLanguage: async (input: Auth & { language: "en" | "zu" | "st" }) =>
+    z.object({ language: z.enum(["en", "zu", "st"]) }).parse(
+      await trpcClient.officeSetVoiceLanguage.mutate(input),
+    ),
   voiceAgentSession: async (input: Auth) =>
     z.object({
       url: z.string().url(),

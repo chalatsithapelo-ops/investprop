@@ -43,6 +43,18 @@ class VoiceAgentRepository {
     return data is Map && data['available'] == true;
   }
 
+  /// The member's saved spoken-language preference ("en" | "zu" | "st").
+  Future<String> language() async {
+    final data = await _client.query('officeVoiceAgentStatus');
+    if (data is Map && data['language'] is String) return data['language'] as String;
+    return 'en';
+  }
+
+  /// Persist the member's preferred spoken language for the voice agent.
+  Future<void> setLanguage(String code) async {
+    await _client.mutation('officeSetVoiceLanguage', input: {'language': code});
+  }
+
   /// Start a session: mint a room token and dispatch the office agent.
   Future<VoiceAgentSession> startSession() async {
     final data = await _client.mutation('officeVoiceAgentSession');

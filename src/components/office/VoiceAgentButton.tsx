@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Mic, PhoneOff, Loader2, X } from "lucide-react";
+import { Mic, PhoneOff, Loader2, X, Languages, Check } from "lucide-react";
 import {
   Room,
   RoomEvent,
@@ -14,6 +14,17 @@ import { useAuthStore } from "~/stores/authStore";
 import { officeApi, errorMessage } from "~/components/office/api";
 
 type SessionState = "idle" | "connecting" | "live" | "error";
+
+type VoiceLanguage = "en" | "zu" | "st";
+
+// The member picks which language the agent leads in. The agent still
+// understands code-switched (mixed-language) speech regardless, and the member
+// can switch back to English by voice at any time.
+const LANGUAGE_OPTIONS: { code: VoiceLanguage; label: string }[] = [
+  { code: "en", label: "English" },
+  { code: "zu", label: "isiZulu" },
+  { code: "st", label: "Sesotho" },
+];
 
 interface TranscriptLine {
   id: number;
@@ -88,6 +99,8 @@ export function VoiceAgentButton() {
   const [agentSpeaking, setAgentSpeaking] = React.useState(false);
   const [transcript, setTranscript] = React.useState<TranscriptLine[]>([]);
   const [showTranscript, setShowTranscript] = React.useState(true);
+  const [language, setLanguage] = React.useState<VoiceLanguage>("en");
+  const [langMenuOpen, setLangMenuOpen] = React.useState(false);
 
   const enabled = Boolean(hydrated && user && authToken);
 
@@ -119,6 +132,27 @@ export function VoiceAgentButton() {
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
+
+  // Adopt the member's saved language once status loads.
+  React.useEffect(() => {
+    if (status.data?.language) setLanguage(status.data.language);
+  }, [status.data?.language]);
+
+  // Persist the member's language choice. Optimistic: the UI updates instantly
+  // and the next session (or a mid-call voice switch) picks it up.
+  const changeLanguage = React.useCallback(
+    async (code: VoiceLanguage) => {
+      setLanguage(code);
+      setLangMenuOpen(false);
+      if (!authToken) return;
+      try {
+        await officeApi.setVoiceLanguage({ authToken, language: code });
+      } catch {
+        /* best-effort; the choice still applies to this session attempt */
+      }
+    },
+    [authToken],
+  );
 
   const teardown = React.useCallback(async () => {
     const room = roomRef.current;
@@ -314,6 +348,41 @@ export function VoiceAgentButton() {
             )}
           </div>
         )}
+
+        {/* Language selector — the member chooses which language the agent leads
+            in. Shown whenever the agent is available so they can set it before
+            calling; they can also switch back to English by voice mid-call. */}
+        <div className="relative flex flex-col items-end">
+          {langMenuOpen && (
+            <div className="absolute bottom-full right-0 mb-2 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-xl ring-1 ring-slate-900/5">
+              {LANGUAGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.code}
+                  type="button"
+                  onClick={() => void changeLanguage(opt.code)}
+                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
+                    language === opt.code
+                      ? "bg-gold-50 font-semibold text-gold-700"
+                      : "text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {opt.label}
+                  {language === opt.code && <Check className="h-3.5 w-3.5" />}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setLangMenuOpen((v) => !v)}
+            className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-md transition hover:bg-slate-50"
+            aria-label="Choose voice language"
+            aria-expanded={langMenuOpen}
+          >
+            <Languages className="h-3.5 w-3.5" />
+            {LANGUAGE_OPTIONS.find((o) => o.code === language)?.label ?? "English"}
+          </button>
+        </div>
 
         <button
           type="button"

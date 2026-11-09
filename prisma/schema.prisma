@@ -686,6 +686,8 @@ model User {
   appropriatenessAssessment  Json? // {experience, income, netWorth, tolerance, ack flags, completedAt}
   // AI Property Office — cross-session voice/chat memory: { notes: [{ text, at }] }
   officeAgentMemory          Json?
+  // AI Property Office — preferred spoken language for the realtime voice agent ("en" | "zu" | "st")
+  voiceLanguage              String?
   // AI insights — proactive weekly deal digest (in-app + email)
   aiDigestOptOut             Boolean                  @default(false)
   aiDigestLastSentAt         DateTime?

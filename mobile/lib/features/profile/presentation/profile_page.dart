@@ -323,7 +323,10 @@ class ProfilePage extends ConsumerWidget {
           Center(
             child: Text(
               'InvestProp · v1.0.0 · build $kBuildId',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
             ),
           ),
         ],

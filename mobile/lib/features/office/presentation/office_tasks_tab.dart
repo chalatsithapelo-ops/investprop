@@ -476,7 +476,9 @@ class _OfficeTasksTabState extends ConsumerState<OfficeTasksTab> {
                                   onPressed: _busy
                                       ? null
                                       : () => _downloadPack(task),
-                                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                                  icon: const Icon(
+                                    Icons.picture_as_pdf_outlined,
+                                  ),
                                   label: const Text('Download pack (PDF)'),
                                 ),
                               if (task.status == 'COMPLETED' &&

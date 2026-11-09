@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { baseProcedure } from "~/server/trpc/main";
+import { db } from "~/server/db";
 import { getAuthenticatedUser } from "~/server/trpc/auth-helpers";
 import { requireFeature } from "~/server/subscriptions/subscription-service";
 import { assertOfficeUser } from "~/server/office/policy";
 import { officeCapabilities } from "~/server/office/context";
 import { voiceAgentConfigured, createVoiceAgentSession } from "~/server/office/voice-agent";
+import { VOICE_LANGUAGES, normalizeVoiceLanguage } from "~/server/office/voice-language";
 
 const auth = z.object({ authToken: z.string().min(1).max(8192) }).strict();
 
@@ -18,8 +20,24 @@ export const officeVoiceAgentStatus = baseProcedure.input(auth).query(async ({ i
   return {
     available: voiceAgentConfigured(),
     capabilities: officeCapabilities(),
+    language: normalizeVoiceLanguage((user as { voiceLanguage?: string | null }).voiceLanguage),
+    languages: VOICE_LANGUAGES,
   };
 });
+
+/**
+ * Persist the member's preferred spoken language for the voice agent. The next
+ * session opens in this language; the member can still switch mid-call by voice.
+ */
+export const officeSetVoiceLanguage = baseProcedure
+  .input(auth.extend({ language: z.enum(VOICE_LANGUAGES) }))
+  .mutation(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    assertOfficeUser(user);
+    const language = normalizeVoiceLanguage(input.language);
+    await db.user.update({ where: { id: user.id }, data: { voiceLanguage: language } });
+    return { language };
+  });
 
 /**
  * Mint a short-lived LiveKit room token for the caller and dispatch the office

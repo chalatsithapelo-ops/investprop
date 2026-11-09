@@ -12,11 +12,24 @@ import '../data/voice_agent_repository.dart';
 
 enum _VoiceState { idle, connecting, live, error }
 
+/// Spoken languages the member can choose for the voice agent. The agent still
+/// understands code-switched (mixed-language) speech and can switch back to
+/// English by voice; this only sets which language it leads in.
+const Map<String, String> _kVoiceLanguages = {
+  'en': 'English',
+  'zu': 'isiZulu',
+  'st': 'Sesotho',
+};
+
 /// One line of the live conversation transcript streamed from the worker over
 /// the room data channel ("office-agent-transcript"). Non-final lines are
 /// replaced in place as the member's speech is transcribed.
 class _TranscriptLine {
-  _TranscriptLine({required this.role, required this.text, required this.isFinal});
+  _TranscriptLine({
+    required this.role,
+    required this.text,
+    required this.isFinal,
+  });
   final String role; // 'user' | 'assistant'
   String text;
   bool isFinal;
@@ -103,7 +116,6 @@ String? _navPath(String page, int? id) {
   }
 }
 
-
 /// Floating realtime voice-agent button, mounted app-wide. It appears for
 /// signed-in, office-eligible members when the agent is configured on the
 /// server. Pressing it opens a live LiveKit room, streams the member's mic and
@@ -125,6 +137,7 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
   bool _agentSpeaking = false;
   final List<_TranscriptLine> _transcript = [];
   bool _showTranscript = true;
+  String _language = 'en';
   final ScrollController _transcriptScroll = ScrollController();
   late final AnimationController _bars;
 
@@ -135,6 +148,28 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat();
+    unawaited(_loadLanguage());
+  }
+
+  Future<void> _loadLanguage() async {
+    try {
+      final code = await ref.read(voiceAgentRepositoryProvider).language();
+      if (mounted && _kVoiceLanguages.containsKey(code)) {
+        setState(() => _language = code);
+      }
+    } catch (_) {
+      /* best-effort; default English */
+    }
+  }
+
+  Future<void> _changeLanguage(String code) async {
+    if (!_kVoiceLanguages.containsKey(code)) return;
+    setState(() => _language = code);
+    try {
+      await ref.read(voiceAgentRepositoryProvider).setLanguage(code);
+    } catch (_) {
+      /* best-effort; the choice still applies to the next session attempt */
+    }
   }
 
   @override
@@ -178,7 +213,9 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
     }
 
     try {
-      final session = await ref.read(voiceAgentRepositoryProvider).startSession();
+      final session = await ref
+          .read(voiceAgentRepositoryProvider)
+          .startSession();
       final room = Room(
         roomOptions: const RoomOptions(adaptiveStream: true, dynacast: true),
       );
@@ -190,8 +227,9 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
         ..on<ActiveSpeakersChangedEvent>((event) {
           if (!mounted) return;
           setState(() {
-            _agentSpeaking = event.speakers
-                .any((speaker) => speaker.identity != session.identity);
+            _agentSpeaking = event.speakers.any(
+              (speaker) => speaker.identity != session.identity,
+            );
           });
         })
         ..on<DataReceivedEvent>((event) {
@@ -203,10 +241,7 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
           unawaited(_teardown());
         });
 
-      await room.connect(
-        session.url,
-        session.token,
-      );
+      await room.connect(session.url, session.token);
       await room.localParticipant?.setMicrophoneEnabled(true);
       if (!mounted) return;
       setState(() => _state = _VoiceState.live);
@@ -233,7 +268,8 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
       final decoded = jsonDecode(utf8.decode(event.data));
       if (decoded is! Map) return;
       // Live transcript stream (distinct topic) — render, don't navigate.
-      if (topic == 'office-agent-transcript' || decoded['type'] == 'transcript') {
+      if (topic == 'office-agent-transcript' ||
+          decoded['type'] == 'transcript') {
         final text = decoded['text'];
         if (text is! String || text.trim().isEmpty) return;
         final role = decoded['role'] == 'assistant' ? 'assistant' : 'user';
@@ -241,7 +277,8 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
         _appendTranscript(role, text, isFinal);
         return;
       }
-      if (topic != null && topic.isNotEmpty && topic != 'office-agent-ui') return;
+      if (topic != null && topic.isNotEmpty && topic != 'office-agent-ui')
+        return;
       if (decoded['type'] != 'navigate') return;
       final page = decoded['page'];
       if (page is! String) return;
@@ -270,7 +307,9 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
         last.text = text;
         last.isFinal = isFinal;
       } else {
-        _transcript.add(_TranscriptLine(role: role, text: text, isFinal: isFinal));
+        _transcript.add(
+          _TranscriptLine(role: role, text: text, isFinal: isFinal),
+        );
         if (_transcript.length > 50) _transcript.removeAt(0);
       }
     });
@@ -295,8 +334,8 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
     final statusText = connecting
         ? 'Connecting…'
         : live
-            ? (_agentSpeaking ? 'Speaking' : 'Listening')
-            : (_error ?? 'Could not start voice');
+        ? (_agentSpeaking ? 'Speaking' : 'Listening')
+        : (_error ?? 'Could not start voice');
 
     return Positioned(
       right: 16,
@@ -307,182 +346,257 @@ class _VoiceAgentOverlayState extends ConsumerState<VoiceAgentOverlay>
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-          if (live || connecting || isError)
-            Container(
-              width: 264,
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.border),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x1A0B2545),
-                    blurRadius: 24,
-                    offset: Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: isError
-                              ? AppColors.danger.withValues(alpha: 0.10)
-                              : accent.withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          isError ? Icons.error_outline : Icons.graphic_eq,
-                          size: 20,
-                          color: isError ? AppColors.danger : accent,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'AI Property Office',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 1),
-                            Text(
-                              statusText,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: isError
-                                    ? AppColors.danger
-                                    : AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (live) _Equalizer(animation: _bars, color: accent),
-                    ],
-                  ),
-                  if (live) ...[
-                    const SizedBox(height: 10),
+            if (live || connecting || isError)
+              Container(
+                width: 264,
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x1A0B2545),
+                      blurRadius: 24,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'TRANSCRIPT',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6,
-                            color: AppColors.textSecondary,
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: isError
+                                ? AppColors.danger.withValues(alpha: 0.10)
+                                : accent.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            isError ? Icons.error_outline : Icons.graphic_eq,
+                            size: 20,
+                            color: isError ? AppColors.danger : accent,
                           ),
                         ),
-                        GestureDetector(
-                          onTap: () => setState(() => _showTranscript = !_showTranscript),
-                          child: Text(
-                            _showTranscript ? 'Hide' : 'Show',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.gold,
-                            ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'AI Property Office',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 1),
+                              Text(
+                                statusText,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: isError
+                                      ? AppColors.danger
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        if (live) _Equalizer(animation: _bars, color: accent),
                       ],
                     ),
-                    if (_showTranscript) ...[
-                      const SizedBox(height: 6),
-                      if (_transcript.isEmpty)
-                        const Text(
-                          'Speak naturally — ask about any listing, your portfolio, tax or payments. Your conversation appears here.',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            height: 1.35,
-                            color: AppColors.textSecondary,
+                    if (live) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'TRANSCRIPT',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.6,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
-                        )
-                      else
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 180),
-                          child: ListView.builder(
-                            controller: _transcriptScroll,
-                            shrinkWrap: true,
-                            padding: EdgeInsets.zero,
-                            itemCount: _transcript.length,
-                            itemBuilder: (_, i) {
-                              final line = _transcript[i];
-                              final isAgent = line.role == 'assistant';
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 5),
-                                child: Align(
-                                  alignment: isAgent
-                                      ? Alignment.centerLeft
-                                      : Alignment.centerRight,
-                                  child: Container(
-                                    constraints: const BoxConstraints(maxWidth: 210),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isAgent
-                                          ? AppColors.border.withValues(alpha: 0.35)
-                                          : AppColors.gold.withValues(alpha: 0.90),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Opacity(
-                                      opacity: line.isFinal ? 1 : 0.7,
-                                      child: Text(
-                                        line.text,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          height: 1.3,
-                                          color: isAgent
-                                              ? AppColors.textPrimary
-                                              : Colors.white,
+                          GestureDetector(
+                            onTap: () => setState(
+                              () => _showTranscript = !_showTranscript,
+                            ),
+                            child: Text(
+                              _showTranscript ? 'Hide' : 'Show',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.gold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_showTranscript) ...[
+                        const SizedBox(height: 6),
+                        if (_transcript.isEmpty)
+                          const Text(
+                            'Speak naturally — ask about any listing, your portfolio, tax or payments. Your conversation appears here.',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              height: 1.35,
+                              color: AppColors.textSecondary,
+                            ),
+                          )
+                        else
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxHeight: 180),
+                            child: ListView.builder(
+                              controller: _transcriptScroll,
+                              shrinkWrap: true,
+                              padding: EdgeInsets.zero,
+                              itemCount: _transcript.length,
+                              itemBuilder: (_, i) {
+                                final line = _transcript[i];
+                                final isAgent = line.role == 'assistant';
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 5),
+                                  child: Align(
+                                    alignment: isAgent
+                                        ? Alignment.centerLeft
+                                        : Alignment.centerRight,
+                                    child: Container(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 210,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isAgent
+                                            ? AppColors.border.withValues(
+                                                alpha: 0.35,
+                                              )
+                                            : AppColors.gold.withValues(
+                                                alpha: 0.90,
+                                              ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Opacity(
+                                        opacity: line.isFinal ? 1 : 0.7,
+                                        child: Text(
+                                          line.text,
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            height: 1.3,
+                                            color: isAgent
+                                                ? AppColors.textPrimary
+                                                : Colors.white,
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              );
-                            },
+                                );
+                              },
+                            ),
                           ),
-                        ),
+                      ],
                     ],
                   ],
-                ],
+                ),
               ),
-            ),
-          FloatingActionButton(
-            heroTag: 'office-voice-agent',
-            backgroundColor: live ? AppColors.danger : AppColors.gold,
-            foregroundColor: Colors.white,
-            onPressed: connecting ? null : (live ? _stop : _start),
-            child: connecting
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.4,
-                      valueColor: AlwaysStoppedAnimation(Colors.white),
+            PopupMenuButton<String>(
+              tooltip: 'Choose voice language',
+              onSelected: _changeLanguage,
+              itemBuilder: (_) => _kVoiceLanguages.entries
+                  .map(
+                    (e) => PopupMenuItem<String>(
+                      value: e.key,
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            child: e.key == _language
+                                ? const Icon(
+                                    Icons.check,
+                                    size: 16,
+                                    color: AppColors.gold,
+                                  )
+                                : null,
+                          ),
+                          Text(e.value),
+                        ],
+                      ),
                     ),
                   )
-                : Icon(live ? Icons.call_end : Icons.mic, color: Colors.white),
-          ),
+                  .toList(),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x140B2545),
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.language,
+                      size: 15,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _kVoiceLanguages[_language] ?? 'English',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            FloatingActionButton(
+              heroTag: 'office-voice-agent',
+              backgroundColor: live ? AppColors.danger : AppColors.gold,
+              foregroundColor: Colors.white,
+              onPressed: connecting ? null : (live ? _stop : _start),
+              child: connecting
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        valueColor: AlwaysStoppedAnimation(Colors.white),
+                      ),
+                    )
+                  : Icon(
+                      live ? Icons.call_end : Icons.mic,
+                      color: Colors.white,
+                    ),
+            ),
           ],
         ),
       ),

@@ -38,6 +38,7 @@ import { listActionCatalog, runReadAction, prepareOfficeAction, confirmOfficeAct
 import { recordVoiceSession } from "~/server/office/voice-telemetry";
 import { requestHandoff } from "~/server/office/handoff";
 import { analyzeOfficeDocument } from "~/server/office/documents";
+import { VOICE_LANGUAGES, normalizeVoiceLanguage } from "~/server/office/voice-language";
 import { scenarioAssumptionsSchema, loadPropertyScenario, loadAccountingExceptions } from "~/server/office/scenarios";import {
   loadPortfolioValuation,
   loadWalletSummary,
@@ -170,6 +171,11 @@ const actionSchema = z.discriminatedUnion("action", [
     title: z.string().trim().min(1).max(160),
     kind: z.string().trim().min(1).max(60).optional(),
     text: z.string().trim().min(40).max(40000),
+  }),
+  // Remember the member's preferred spoken language for the voice agent.
+  z.object({
+    action: z.literal("setVoiceLanguage"),
+    language: z.string().trim().min(1).max(40),
   }),
   // Generic capability registry — exposes every member-facing tRPC procedure.
   z.object({ action: z.literal("listActions") }),
@@ -344,6 +350,11 @@ export default defineEventHandler(async (event) => {
         return json({ ok: true, result: await requestHandoff(user, { reason: input.reason, summary: input.summary }) }, 200);
       case "analyzeDocument":
         return json({ ok: true, result: await analyzeOfficeDocument(user, { title: input.title, kind: input.kind, text: input.text }) }, 200);
+      case "setVoiceLanguage": {
+        const language = normalizeVoiceLanguage(input.language);
+        await db.user.update({ where: { id: user.id }, data: { voiceLanguage: language } });
+        return json({ ok: true, result: { language, supported: VOICE_LANGUAGES } }, 200);
+      }
       case "listActions":
         return json({ ok: true, result: listActionCatalog() }, 200);
       case "runRead":

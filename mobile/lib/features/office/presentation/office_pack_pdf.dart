@@ -63,26 +63,37 @@ Future<pw.Document> buildOfficePackPdf(OfficeTask task) async {
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Text('INVESTPROP',
-                  style: pw.TextStyle(
-                      color: navy,
-                      fontSize: 18,
-                      fontWeight: pw.FontWeight.bold,
-                      letterSpacing: 2)),
+              pw.Text(
+                'INVESTPROP',
+                style: pw.TextStyle(
+                  color: navy,
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              ),
               pw.SizedBox(height: 2),
-              pw.Text('AI PROPERTY OFFICE — ${task.kind.replaceAll('_', ' ')}',
-                  style: pw.TextStyle(
-                      color: gold,
-                      fontSize: 10,
-                      fontWeight: pw.FontWeight.bold,
-                      letterSpacing: 2)),
+              pw.Text(
+                'AI PROPERTY OFFICE — ${task.kind.replaceAll('_', ' ')}',
+                style: pw.TextStyle(
+                  color: gold,
+                  fontSize: 10,
+                  fontWeight: pw.FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              ),
             ],
           ),
         ),
         pw.SizedBox(height: 12),
-        pw.Text(task.title,
-            style: pw.TextStyle(
-                color: navy, fontSize: 15, fontWeight: pw.FontWeight.bold)),
+        pw.Text(
+          task.title,
+          style: pw.TextStyle(
+            color: navy,
+            fontSize: 15,
+            fontWeight: pw.FontWeight.bold,
+          ),
+        ),
         pw.SizedBox(height: 2),
         pw.Text(
           'Generated $generated  •  Task ${task.id}  •  ${task.status}',
@@ -90,8 +101,10 @@ Future<pw.Document> buildOfficePackPdf(OfficeTask task) async {
         ),
         pw.SizedBox(height: 14),
         if (rows.isEmpty)
-          pw.Text('No pack output available.',
-              style: const pw.TextStyle(fontSize: 10))
+          pw.Text(
+            'No pack output available.',
+            style: const pw.TextStyle(fontSize: 10),
+          )
         else
           pw.Table(
             border: pw.TableBorder(
@@ -108,18 +121,27 @@ Future<pw.Document> buildOfficePackPdf(OfficeTask task) async {
                   children: [
                     pw.Padding(
                       padding: const pw.EdgeInsets.symmetric(
-                          vertical: 4, horizontal: 4),
-                      child: pw.Text(r[0],
-                          style: pw.TextStyle(
-                              color: PdfColors.grey700,
-                              fontSize: 9,
-                              fontWeight: pw.FontWeight.bold)),
+                        vertical: 4,
+                        horizontal: 4,
+                      ),
+                      child: pw.Text(
+                        r[0],
+                        style: pw.TextStyle(
+                          color: PdfColors.grey700,
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
                     ),
                     pw.Padding(
                       padding: const pw.EdgeInsets.symmetric(
-                          vertical: 4, horizontal: 4),
-                      child: pw.Text(r[1],
-                          style: const pw.TextStyle(fontSize: 9)),
+                        vertical: 4,
+                        horizontal: 4,
+                      ),
+                      child: pw.Text(
+                        r[1],
+                        style: const pw.TextStyle(fontSize: 9),
+                      ),
                     ),
                   ],
                 ),
@@ -133,9 +155,13 @@ Future<pw.Document> buildOfficePackPdf(OfficeTask task) async {
             border: pw.Border.all(color: const PdfColor.fromInt(0xFFFED7AA)),
             borderRadius: pw.BorderRadius.circular(6),
           ),
-          child: pw.Text(_disclaimer,
-              style: const pw.TextStyle(
-                  color: PdfColor.fromInt(0xFF9A3412), fontSize: 9)),
+          child: pw.Text(
+            _disclaimer,
+            style: const pw.TextStyle(
+              color: PdfColor.fromInt(0xFF9A3412),
+              fontSize: 9,
+            ),
+          ),
         ),
       ],
     ),

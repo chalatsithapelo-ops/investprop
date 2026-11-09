@@ -369,6 +369,66 @@ most useful items from their briefing, then ask how you can help.
 """.strip()
 
 
+# --- Spoken language -------------------------------------------------------
+# The realtime model is multilingual and handles code-switching natively, so
+# these only decide which language the agent LEADS in. isiZulu and Sesotho are
+# the first South African languages; English stays the default and the member
+# can switch back at any time (by voice via set_language, or in the app).
+LANGUAGE_LABELS = {"en": "English", "zu": "isiZulu", "st": "Sesotho"}
+_LANGUAGE_ALIASES = {
+    "en": "en", "eng": "en", "english": "en",
+    "zu": "zu", "zul": "zu", "zulu": "zu", "isizulu": "zu", "isi-zulu": "zu",
+    "st": "st", "sot": "st", "sotho": "st", "sesotho": "st",
+    "southern sotho": "st", "southernsotho": "st",
+}
+
+# How the agent should behave for each non-English language. English needs no
+# directive. Each block is PREPENDED to the agent instructions so it dominates.
+_CODE_SWITCH_RULE = (
+    "- South Africans naturally code-switch: the member will often mix {label} and "
+    "English in a single sentence (e.g. \"{example}\"). Understand BOTH languages "
+    "seamlessly within one utterance and never ask them to repeat just because they "
+    "mixed languages.\n"
+    "- Keep well-established financial, legal and app terms in English rather than "
+    "inventing a word nobody uses (e.g. portfolio, capital gains tax, share class, "
+    "dividend, KYC, FICA, SPV, provisional tax, wallet, deposit, withdrawal). Briefly "
+    "explain such a term in {label} the first time it comes up. This is how people "
+    "actually speak.\n"
+    "- Currency is always South African rand. Say amounts naturally in {label}; never "
+    "say dollars.\n"
+    "- If the member asks to switch to English or any other language, switch "
+    "IMMEDIATELY and call set_language with the new language so it is remembered.\n"
+)
+LANGUAGE_DIRECTIVES = {
+    "en": "",
+    "zu": (
+        "LANGUAGE — speak isiZulu with this member:\n"
+        "- Lead the conversation in isiZulu. Be warm, clear and natural.\n"
+        + _CODE_SWITCH_RULE.format(
+            label="isiZulu",
+            example="ngifuna ukwazi i-portfolio yami nama-returns ami",
+        )
+        + "- Give your one-line compliance disclaimer in isiZulu too.\n"
+    ),
+    "st": (
+        "LANGUAGE — speak Sesotho with this member:\n"
+        "- Lead the conversation in Sesotho. Be warm, clear and natural.\n"
+        + _CODE_SWITCH_RULE.format(
+            label="Sesotho",
+            example="ke batla ho tseba portfolio ya ka le di-returns tsa ka",
+        )
+        + "- Fana ka tlhaiso-leseling ya hao ka Sesotho le yona.\n"
+    ),
+}
+
+
+def _normalise_language(value: Any) -> str:
+    """Map a code / spelling the client or model might send to a canonical code."""
+    if not value:
+        return "en"
+    return _LANGUAGE_ALIASES.get(str(value).strip().lower(), "en")
+
+
 class OfficeBridge:
     """Thin authenticated relay to the backend office action bridge."""
 
@@ -532,12 +592,19 @@ def _canonical_page(name: str) -> str | None:
 
 
 class OfficeAgent(Agent):
-    def __init__(self, bridge: OfficeBridge, member_name: str | None, member_context: str | None = None) -> None:
+    def __init__(self, bridge: OfficeBridge, member_name: str | None, member_context: str | None = None, language: str = "en") -> None:
         greeting_name = member_name or "there"
         context_block = f"\n\n{member_context}" if member_context else ""
-        super().__init__(instructions=f"{INSTRUCTIONS}\n\nThe member's name is {greeting_name}.{context_block}")
+        self._language = language if language in LANGUAGE_DIRECTIVES else "en"
+        self._core_instructions = f"{INSTRUCTIONS}\n\nThe member's name is {greeting_name}.{context_block}"
+        super().__init__(instructions=self._compose_instructions())
         self._bridge = bridge
         self._room: rtc.Room | None = None
+
+    def _compose_instructions(self) -> str:
+        """Prepend the active-language directive so it dominates the prompt."""
+        directive = LANGUAGE_DIRECTIVES.get(self._language, "")
+        return f"{directive}\n\n{self._core_instructions}" if directive else self._core_instructions
 
     def set_room(self, room: rtc.Room) -> None:
         """Attach the live LiveKit room so UI-control tools can push data packets
@@ -956,6 +1023,33 @@ class OfficeAgent(Agent):
         )
 
     @function_tool
+    async def set_language(self, _context: RunContext, language: str) -> str:
+        """Switch the spoken language of this conversation and remember the choice.
+
+        Call this whenever the member asks to speak in a different language, e.g.
+        "let's talk in English", "ake sikhulume ngesiZulu", "a re bue Sesotho". The
+        realtime model understands mixed-language (code-switched) speech regardless,
+        but this makes you LEAD in the chosen language and remembers it for next time.
+
+        Args:
+            language: One of "english", "isizulu" (isiZulu/Zulu) or "sesotho" (Sotho).
+        """
+        code = _normalise_language(language)
+        self._language = code
+        # Best-effort: update the live system prompt so the model leads in the
+        # new language. The member's own speech already steers it either way.
+        try:
+            await self.update_instructions(self._compose_instructions())
+        except Exception as exc:  # pragma: no cover - older builds may lack this
+            logger.info("update_instructions after language switch failed: %s", exc)
+        # Persist so the member's next session opens in the same language.
+        try:
+            await self._bridge.execute({"action": "setVoiceLanguage", "language": code})
+        except Exception as exc:  # pragma: no cover - persistence is best-effort
+            logger.info("persist language preference failed: %s", exc)
+        return _summarise({"ok": True, "result": {"language": code, "label": LANGUAGE_LABELS[code]}})
+
+    @function_tool
     async def analyze_document(
         self,
         _context: RunContext,
@@ -1143,6 +1237,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     auth_token = metadata.get("authToken")
     member_name = metadata.get("name")
+    language = _normalise_language(metadata.get("language"))
     if not auth_token:
         logger.error("No authToken in job metadata; refusing to start office session.")
         return
@@ -1238,7 +1333,7 @@ async def entrypoint(ctx: JobContext) -> None:
             logger.info("noise cancellation unavailable: %s", exc)
 
     try:
-        agent = OfficeAgent(bridge, member_name, member_context or None)
+        agent = OfficeAgent(bridge, member_name, member_context or None, language)
         agent.set_room(ctx.room)
 
         # Live cited transcript: stream each side's text to the member's app over
@@ -1303,6 +1398,11 @@ async def entrypoint(ctx: JobContext) -> None:
             "Greet the member by name and, if there is anything useful, proactively "
             "mention it, then ask how you can help with their property office today."
         )
+        if language != "en":
+            greeting += (
+                f" Speak to the member in {LANGUAGE_LABELS[language]} (they may mix in "
+                "English mid-sentence, which is fine). If they ask to switch language, do so."
+            )
         if greeting_hint:
             greeting += f" The most useful items right now are: {greeting_hint}"
         await session.generate_reply(instructions=greeting)

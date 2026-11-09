@@ -18,9 +18,11 @@ import { AccessToken, AgentDispatchClient } from "livekit-server-sdk";
 import { TRPCError } from "@trpc/server";
 import { env } from "~/server/env";
 import type { OfficeUser } from "~/server/office/policy";
+import { normalizeVoiceLanguage } from "~/server/office/voice-language";
 
-// The session helper needs the display name too, which OfficeUser omits.
-type VoiceAgentUser = OfficeUser & { name?: string | null };
+// The session helper needs the display name and language preference too, which
+// OfficeUser omits.
+type VoiceAgentUser = OfficeUser & { name?: string | null; voiceLanguage?: string | null };
 
 // Rooms live only as long as a session; identities are stable per user so the
 // worker can address UI data packets back to the right participant.
@@ -83,6 +85,7 @@ export async function createVoiceAgentSession(
 
   const roomName = `office-${user.id}-${randomUUID()}`;
   const identity = `user-${user.id}`;
+  const language = normalizeVoiceLanguage(user.voiceLanguage);
 
   // Participant token: the human client. Can publish mic audio and subscribe to
   // the agent's audio + data. Never carries the office JWT.
@@ -115,6 +118,7 @@ export async function createVoiceAgentSession(
         userId: user.id,
         role: user.role,
         name: user.name ?? null,
+        language,
         issuedAt: new Date().toISOString(),
       }),
     });
