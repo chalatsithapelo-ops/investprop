@@ -55,7 +55,7 @@ function SponsorTrackRecordPage() {
     <div className="min-h-screen bg-navy-950">
       <Navbar />
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-        <button onClick={() => navigate({ to: "/admin/team" })} className="mb-4 inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200">
+        <button onClick={() => navigate({ to: "/admin/team" })} className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
           <ArrowLeft size={16} /> Back to team performance
         </button>
 
@@ -64,15 +64,15 @@ function SponsorTrackRecordPage() {
         ) : q.isError || !stats ? (
           <div className="rounded-xl border border-navy-800/50 bg-navy-900/50 p-10 text-center">
             <ShieldAlert className="mx-auto mb-3 text-gray-500" size={40} />
-            <p className="text-gray-300">Sponsor track record is unavailable.</p>
+            <p className="text-gray-700">Sponsor track record is unavailable.</p>
           </div>
         ) : (
           <>
             <div className="mb-6 flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold-500 text-navy-950"><Award size={24} /></div>
               <div>
-                <h1 className="text-2xl font-bold text-white">{stats.sponsorName}</h1>
-                <p className="text-sm text-gray-400">
+                <h1 className="text-2xl font-bold text-gray-900">{stats.sponsorName}</h1>
+                <p className="text-sm text-gray-500">
                   Sponsor on Investprop{stats.memberSince ? ` since ${new Date(stats.memberSince).getFullYear()}` : ""}
                 </p>
               </div>
@@ -143,8 +143,8 @@ function StatCard({ icon: Icon, label, value, tone }: { icon: any; label: string
   return (
     <div className="rounded-xl border border-navy-800/50 bg-navy-900/50 p-4">
       <Icon size={18} className={`mb-2 ${cls}`} />
-      <p className="text-2xl font-bold text-white">{value}</p>
-      <p className="text-xs text-gray-400">{label}</p>
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className="text-xs text-gray-500">{label}</p>
     </div>
   );
 }

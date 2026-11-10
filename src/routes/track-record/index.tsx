@@ -51,7 +51,7 @@ function PlatformTrackRecordPage() {
     <div className="min-h-screen bg-navy-950">
       <Navbar />
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-        <button onClick={() => { void navigate({ to: "/investments" }); }} className="mb-4 inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200">
+        <button onClick={() => { void navigate({ to: "/investments" }); }} className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
           <ArrowLeft size={16} /> Back to opportunities
         </button>
 
@@ -60,8 +60,8 @@ function PlatformTrackRecordPage() {
             <Award size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Investprop track record</h1>
-            <p className="text-sm text-gray-400">
+            <h1 className="text-2xl font-bold text-gray-900">Investprop track record</h1>
+            <p className="text-sm text-gray-500">
               How every deal on our platform has performed
               {s?.since ? ` since ${new Date(s.since).getFullYear()}` : ""}.
             </p>
@@ -71,7 +71,7 @@ function PlatformTrackRecordPage() {
         {q.isLoading ? (
           <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin text-gold-500" /></div>
         ) : !s ? (
-          <div className="rounded-xl border border-navy-800/50 bg-navy-900/50 p-10 text-center text-gray-300">
+          <div className="rounded-xl border border-navy-800/50 bg-navy-900/50 p-10 text-center text-gray-700">
             Track record is unavailable right now.
           </div>
         ) : (
@@ -118,8 +118,8 @@ function PlatformTrackRecordPage() {
 
             {s.capitalRaised > 0 && (
               <div className="mb-6 rounded-xl border border-navy-800/50 bg-navy-900/50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Total capital deployed by investors</p>
-                <p className="mt-1 text-2xl font-bold text-white">{rand(s.capitalRaised)}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total capital deployed by investors</p>
+                <p className="mt-1 text-2xl font-bold text-gray-900">{rand(s.capitalRaised)}</p>
               </div>
             )}
 
@@ -152,8 +152,8 @@ function StatCard({
   return (
     <div className="rounded-xl border border-navy-800/50 bg-navy-900/50 p-4">
       <Icon size={18} className={`mb-2 ${cls}`} />
-      <p className={`font-bold text-white ${wide ? "text-2xl" : "text-2xl"}`}>{value}</p>
-      <p className="text-xs text-gray-400">{label}</p>
+      <p className={`font-bold text-gray-900 ${wide ? "text-2xl" : "text-2xl"}`}>{value}</p>
+      <p className="text-xs text-gray-500">{label}</p>
     </div>
   );
 }

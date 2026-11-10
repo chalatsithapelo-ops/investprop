@@ -404,14 +404,14 @@ function DistressedFinderPage() {
                 <button
                   type="button"
                   onClick={() => setView('list')}
-                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${view === 'list' ? 'bg-gold-500 text-navy-950' : 'text-gray-400 hover:text-gray-100'}`}
+                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${view === 'list' ? 'bg-gold-500 text-navy-950' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   List
                 </button>
                 <button
                   type="button"
                   onClick={() => setView('map')}
-                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${view === 'map' ? 'bg-gold-500 text-navy-950' : 'text-gray-400 hover:text-gray-100'}`}
+                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${view === 'map' ? 'bg-gold-500 text-navy-950' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   Map
                 </button>
@@ -1257,7 +1257,7 @@ function DistressedMapView({ listings }: { listings: any[] }) {
             return (
               <div key={province} className="rounded-lg border border-navy-700 bg-navy-800/40 p-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-gray-100">{province}</p>
+                  <p className="text-sm font-semibold text-gray-900">{province}</p>
                   <span className="rounded-full bg-gold-500/20 px-2 py-0.5 text-xs font-bold text-gold-300">
                     {stats.count}
                   </span>

@@ -55,7 +55,7 @@ function ContractorPortalPage() {
   if (!user || !authToken || user.role !== "CONTRACTOR") return null;
 
   return (
-    <div className="min-h-screen bg-navy-950 text-white pb-20 lg:pb-0">
+    <div className="min-h-screen bg-navy-950 text-gray-900 pb-20 lg:pb-0">
       <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
@@ -101,7 +101,7 @@ function ContractorPortalPage() {
               className={`flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
                 activeTab === tab.key
                   ? "bg-gold-500/20 text-gold-400"
-                  : "text-gray-400 hover:text-gold-300"
+                  : "text-gray-500 hover:text-gold-300"
               }`}
               aria-label={tab.label}
             >
@@ -192,7 +192,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
               <HardHat className="h-7 w-7" />
             </div>
             <div className="flex-1">
-              <h2 className="text-xl font-bold text-white">{profile.companyName}</h2>
+              <h2 className="text-xl font-bold text-gray-900">{profile.companyName}</h2>
               {profile.tradingAs && <p className="text-sm text-black">t/a {profile.tradingAs}</p>}
               <div className="mt-2 flex flex-wrap gap-3 text-xs text-black">
                 <span className="flex items-center gap-1"><Star className="h-3 w-3 text-gold-400" /> {profile.specialty}</span>
@@ -237,7 +237,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
             </div>
             <div className="flex items-center justify-between rounded-lg bg-navy-800/50 px-3 py-2">
               <span className="text-xs text-black">Total Contract Value</span>
-              <span className="text-sm font-semibold text-white">R {stats.totalWorkValue.toLocaleString()}</span>
+              <span className="text-sm font-semibold text-gray-900">R {stats.totalWorkValue.toLocaleString()}</span>
             </div>
           </div>
         </div>
@@ -251,7 +251,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
               <ClipboardList className="h-5 w-5 text-blue-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats.activeOrders}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.activeOrders}</p>
               <p className="text-xs text-black">Active Orders</p>
             </div>
           </div>
@@ -262,7 +262,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
               <CheckCircle className="h-5 w-5 text-emerald-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats.completedOrders}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.completedOrders}</p>
               <p className="text-xs text-black">Completed</p>
             </div>
           </div>
@@ -273,7 +273,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
               <FileText className="h-5 w-5 text-gold-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats.openRFQs}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.openRFQs}</p>
               <p className="text-xs text-black">Open RFQs</p>
             </div>
           </div>
@@ -284,7 +284,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
               <Building className="h-5 w-5 text-purple-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats.propertiesWorkedOn}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.propertiesWorkedOn}</p>
               <p className="text-xs text-black">Properties</p>
             </div>
           </div>
@@ -295,7 +295,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
               <Send className="h-5 w-5 text-cyan-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats.quotationsSubmitted}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.quotationsSubmitted}</p>
               <p className="text-xs text-black">Quotes Sent</p>
             </div>
           </div>
@@ -306,7 +306,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
               <Receipt className="h-5 w-5 text-rose-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats.totalInvoices}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalInvoices}</p>
               <p className="text-xs text-black">Invoices</p>
             </div>
           </div>
@@ -347,7 +347,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
             <div className="rounded-lg bg-navy-800/50 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-black">Average Invoice Value</span>
-                <span className="text-lg font-bold text-white">R {Math.round(financials.avgInvoiceValue).toLocaleString()}</span>
+                <span className="text-lg font-bold text-gray-900">R {Math.round(financials.avgInvoiceValue).toLocaleString()}</span>
               </div>
             </div>
             <div className="rounded-lg bg-navy-800/50 p-4">
@@ -395,7 +395,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
             {pendingAcceptance.map((wo: any) => (
               <div key={wo.id} className="flex items-center justify-between rounded-lg bg-navy-900/60 p-3">
                 <div>
-                  <p className="font-medium text-white">{wo.title}</p>
+                  <p className="font-medium text-gray-900">{wo.title}</p>
                   <p className="text-xs text-black">{wo.property?.title} • R {wo.agreedAmount.toLocaleString()}</p>
                 </div>
                 <button onClick={() => onNavigate("work-orders")} className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700">
@@ -425,7 +425,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
                       <Timer className={`h-5 w-5 ${isUrgent ? "text-red-400" : "text-black"}`} />
                     </div>
                     <div>
-                      <p className="font-medium text-white">{wo.title}</p>
+                      <p className="font-medium text-gray-900">{wo.title}</p>
                       <p className="text-xs text-black">{wo.property?.title} • R {wo.agreedAmount.toLocaleString()}</p>
                     </div>
                   </div>
@@ -459,7 +459,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
                 .map((wo: any) => (
                   <div key={wo.id} className="flex items-center justify-between rounded-lg bg-navy-800/50 p-3">
                     <div>
-                      <p className="text-sm font-medium text-white">{wo.title}</p>
+                      <p className="text-sm font-medium text-gray-900">{wo.title}</p>
                       <p className="text-xs text-black">{wo.property?.title} • R {wo.agreedAmount.toLocaleString()}</p>
                     </div>
                     <StatusBadge status={wo.status} />
@@ -484,7 +484,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
               {data.recentInvoices.slice(0, 5).map((inv: any) => (
                 <div key={inv.id} className="flex items-center justify-between rounded-lg bg-navy-800/50 p-3">
                   <div>
-                    <p className="text-sm font-medium text-white">{inv.invoiceNumber}</p>
+                    <p className="text-sm font-medium text-gray-900">{inv.invoiceNumber}</p>
                     <p className="text-xs text-black">{inv.workOrder?.property?.title ?? inv.workOrder?.title ?? ""} • R {inv.totalAmount.toLocaleString()}</p>
                   </div>
                   <StatusBadge status={inv.status} />
@@ -508,7 +508,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
             <button onClick={() => onNavigate("rfqs")} className="flex items-start gap-3 rounded-lg border border-navy-700 bg-navy-800/30 p-4 text-left hover:border-gold-500/30 transition-colors">
               <FileText className="mt-0.5 h-5 w-5 flex-shrink-0 text-gold-400" />
               <div>
-                <p className="text-sm font-medium text-white">New Quotation Opportunities</p>
+                <p className="text-sm font-medium text-gray-900">New Quotation Opportunities</p>
                 <p className="mt-0.5 text-xs text-black">{stats.openRFQs} open RFQ{stats.openRFQs !== 1 ? "s" : ""} available — submit your quotes to win new work.</p>
               </div>
             </button>
@@ -517,7 +517,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
             <button onClick={() => onNavigate("progress")} className="flex items-start gap-3 rounded-lg border border-navy-700 bg-navy-800/30 p-4 text-left hover:border-gold-500/30 transition-colors">
               <Camera className="mt-0.5 h-5 w-5 flex-shrink-0 text-purple-400" />
               <div>
-                <p className="text-sm font-medium text-white">Submit Progress Reports</p>
+                <p className="text-sm font-medium text-gray-900">Submit Progress Reports</p>
                 <p className="mt-0.5 text-xs text-black">Keep your project managers updated with progress photos and descriptions.</p>
               </div>
             </button>
@@ -526,7 +526,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
             <button onClick={() => onNavigate("profile")} className="flex items-start gap-3 rounded-lg border border-navy-700 bg-navy-800/30 p-4 text-left hover:border-gold-500/30 transition-colors">
               <Shield className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-400" />
               <div>
-                <p className="text-sm font-medium text-white">Complete Your Profile</p>
+                <p className="text-sm font-medium text-gray-900">Complete Your Profile</p>
                 <p className="mt-0.5 text-xs text-black">Add your VAT number and banking details for faster invoice processing.</p>
               </div>
             </button>
@@ -535,7 +535,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
             <button onClick={() => onNavigate("profile")} className="flex items-start gap-3 rounded-lg border border-navy-700 bg-navy-800/30 p-4 text-left hover:border-gold-500/30 transition-colors">
               <Wallet className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-400" />
               <div>
-                <p className="text-sm font-medium text-white">Add Banking Details</p>
+                <p className="text-sm font-medium text-gray-900">Add Banking Details</p>
                 <p className="mt-0.5 text-xs text-black">Ensure your banking information is up to date for timely payments.</p>
               </div>
             </button>
@@ -544,7 +544,7 @@ function DashboardTab({ authToken, onNavigate }: { authToken: string; onNavigate
             <button onClick={() => onNavigate("rfqs")} className="flex items-start gap-3 rounded-lg border border-navy-700 bg-navy-800/30 p-4 text-left hover:border-gold-500/30 transition-colors">
               <Briefcase className="mt-0.5 h-5 w-5 flex-shrink-0 text-gold-400" />
               <div>
-                <p className="text-sm font-medium text-white">Find New Work</p>
+                <p className="text-sm font-medium text-gray-900">Find New Work</p>
                 <p className="mt-0.5 text-xs text-black">You have no active orders. Check RFQs for new project opportunities.</p>
               </div>
             </button>
@@ -710,11 +710,11 @@ function WorkOrdersTab({ authToken }: { authToken: string }) {
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !accepting && setAcceptSignWO(null)}>
             <div className="w-full max-w-md rounded-xl border border-navy-700 bg-navy-900 p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-lg font-semibold text-white">Accept &amp; Sign Work Order</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Accept &amp; Sign Work Order</h3>
               <p className="mt-1 text-sm text-black">{wo.title}</p>
               <div className="mt-4 space-y-1 rounded-lg bg-navy-800/60 p-4 text-sm text-black">
                 <div className="flex justify-between"><span>Agreed amount</span><span className="font-medium text-gold-400">R {wo.agreedAmount.toLocaleString()}</span></div>
-                <div className="flex justify-between"><span>Retention ({retentionPct}%)</span><span className="font-medium text-white">R {retentionAmount.toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>Retention ({retentionPct}%)</span><span className="font-medium text-gray-900">R {retentionAmount.toLocaleString()}</span></div>
                 <div className="flex justify-between"><span>Due</span><span>{new Date(wo.expectedEndDate).toLocaleDateString("en-ZA")}</span></div>
               </div>
               <p className="mt-4 text-xs text-black">
@@ -1161,7 +1161,7 @@ function RFQsTab({ authToken }: { authToken: string }) {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex-1">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-medium text-white">{rfq.title}</h3>
+                  <h3 className="text-lg font-medium text-gray-900">{rfq.title}</h3>
                   <StatusBadge status={rfq.status} />
                 </div>
                 <p className="mt-1 text-sm text-black">{rfq.property?.title} — {rfq.property?.city}</p>
@@ -1431,7 +1431,7 @@ function InvoicesTab({ authToken }: { authToken: string }) {
             <tbody className="divide-y divide-navy-800">
               {invoices.map((inv: any) => (
                 <tr key={inv.id} className="hover:bg-navy-800/30">
-                  <td className="px-4 py-3 font-medium text-white">{inv.invoiceNumber}</td>
+                  <td className="px-4 py-3 font-medium text-gray-900">{inv.invoiceNumber}</td>
                   <td className="px-4 py-3 text-black">{inv.workOrder?.property?.title}</td>
                   <td className="px-4 py-3 text-black">R {inv.amount.toLocaleString()}</td>
                   <td className="px-4 py-3 text-black">R {inv.taxAmount.toLocaleString()}</td>
@@ -1693,7 +1693,7 @@ function ProgressTab({ authToken }: { authToken: string }) {
             <div key={s.id} className="rounded-xl border border-navy-800 bg-navy-900/50 p-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-white">{s.description}</p>
+                  <p className="text-sm text-gray-900">{s.description}</p>
                   <p className="mt-1 text-xs text-black">
                     {s.milestone?.name && <span className="mr-3">Milestone: {s.milestone.name}</span>}
                     {new Date(s.createdAt).toLocaleDateString()}
@@ -1960,7 +1960,7 @@ function ProfileTab({ authToken }: { authToken: string }) {
               <HardHat className="h-8 w-8" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">{profile.companyName}</h2>
+              <h2 className="text-xl font-bold text-gray-900">{profile.companyName}</h2>
               {profile.tradingAs && <p className="text-sm text-black">t/a {profile.tradingAs}</p>}
               <div className="mt-1 flex items-center gap-2 text-xs text-black">
                 <Mail className="h-3 w-3" /> {profile.user?.email}
@@ -2027,7 +2027,7 @@ function ProfileTab({ authToken }: { authToken: string }) {
                       />
                     )
                   ) : (
-                    <p className="rounded-lg bg-navy-800/50 px-3 py-2 text-sm text-white">
+                    <p className="rounded-lg bg-navy-800/50 px-3 py-2 text-sm text-gray-900">
                       {form[f.key] || <span className="text-black italic">Not provided</span>}
                     </p>
                   )}
@@ -2086,7 +2086,7 @@ function ProfileTab({ authToken }: { authToken: string }) {
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-gold-400" />
                     <div>
-                      <p className="text-sm text-white">{doc.documentName}</p>
+                      <p className="text-sm text-gray-900">{doc.documentName}</p>
                       <p className="text-xs text-black">{DOCUMENT_TYPES.find((d) => d.value === doc.documentType)?.label}</p>
                     </div>
                   </div>
@@ -2107,7 +2107,7 @@ function ProfileTab({ authToken }: { authToken: string }) {
                 <div className="flex items-center gap-3">
                   <FileText className="h-4 w-4 text-gold-400" />
                   <div>
-                    <p className="text-sm text-white">{doc.documentName}</p>
+                    <p className="text-sm text-gray-900">{doc.documentName}</p>
                     <p className="text-xs text-black">{DOCUMENT_TYPES.find((d) => d.value === doc.documentType)?.label ?? doc.documentType} • {new Date(doc.createdAt).toLocaleDateString("en-ZA")}</p>
                   </div>
                 </div>

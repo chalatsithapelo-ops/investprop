@@ -152,11 +152,11 @@ function ReadinessPage() {
   const Gate = ({ pass, label }: { pass: boolean; label: string }) => (
     <div className="flex items-center gap-2 rounded-lg border border-navy-800 bg-navy-950/40 px-3 py-2">
       {pass ? (
-        <CheckCircle2 className="h-5 w-5 text-green-400" />
+        <CheckCircle2 className="h-5 w-5 text-green-600" />
       ) : (
-        <XCircle className="h-5 w-5 text-red-400" />
+        <XCircle className="h-5 w-5 text-red-600" />
       )}
-      <span className="text-sm text-gray-200">{label}</span>
+      <span className="text-sm text-gray-700">{label}</span>
     </div>
   );
 
@@ -167,8 +167,8 @@ function ReadinessPage() {
         <div className="mb-6 flex items-center gap-3">
           <HardHat className="h-7 w-7 text-gold-400" />
           <div>
-            <h1 className="text-2xl font-bold text-white">Project Readiness</h1>
-            <p className="text-sm text-gray-400">
+            <h1 className="text-2xl font-bold text-gray-900">Project Readiness</h1>
+            <p className="text-sm text-gray-500">
               Economics, professional team, statutory approvals and funding adequacy — all four gates
               must pass before construction.
             </p>
@@ -176,7 +176,7 @@ function ReadinessPage() {
         </div>
 
         {!isManager && (
-          <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-red-300">
+          <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-red-700">
             Restricted to development managers and administrators.
           </div>
         )}
@@ -184,11 +184,11 @@ function ReadinessPage() {
         {isManager && (
           <>
             <div className="mb-6 flex items-center gap-3">
-              <label className="text-sm font-medium text-gray-300">Project</label>
+              <label className="text-sm font-medium text-gray-700">Project</label>
               <select
                 value={propertyId ?? ""}
                 onChange={(e) => setPropertyId(Number(e.target.value))}
-                className="rounded-lg border border-navy-700 bg-navy-900 px-3 py-2 text-sm text-white"
+                className="rounded-lg border border-navy-700 bg-navy-900 px-3 py-2 text-sm text-gray-900"
               >
                 {properties.length === 0 && <option value="">No development projects</option>}
                 {properties.map((p) => (
@@ -197,7 +197,7 @@ function ReadinessPage() {
                   </option>
                 ))}
               </select>
-              {loading && <span className="text-sm text-gray-400">Loading…</span>}
+              {loading && <span className="text-sm text-gray-500">Loading…</span>}
             </div>
 
             {readiness && (
@@ -205,14 +205,14 @@ function ReadinessPage() {
                 <section className="mb-8 rounded-xl border border-navy-800 bg-navy-900/60 p-5">
                   <div className="mb-4 flex items-center gap-2">
                     <Gauge className="h-5 w-5 text-gold-400" />
-                    <h2 className="text-lg font-semibold text-white">
+                    <h2 className="text-lg font-semibold text-gray-900">
                       Readiness Score: {readiness.readiness.readinessScore}/100
                     </h2>
                     <span
                       className={`ml-auto rounded-full px-3 py-1 text-xs font-medium ${
                         readiness.readiness.constructionReady
-                          ? "bg-green-500/20 text-green-300"
-                          : "bg-amber-500/20 text-amber-300"
+                          ? "bg-green-500/20 text-green-700"
+                          : "bg-amber-500/20 text-amber-700"
                       }`}
                     >
                       {readiness.readiness.constructionReady
@@ -229,27 +229,27 @@ function ReadinessPage() {
                   <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-5">
                     <div>
                       <p className="text-gray-500">GDV</p>
-                      <p className="font-semibold text-white">{ZAR(readiness.grossDevelopmentValue)}</p>
+                      <p className="font-semibold text-gray-900">{ZAR(readiness.grossDevelopmentValue)}</p>
                     </div>
                     <div>
                       <p className="text-gray-500">Profit</p>
-                      <p className="font-semibold text-white">{ZAR(readiness.profit)}</p>
+                      <p className="font-semibold text-gray-900">{ZAR(readiness.profit)}</p>
                     </div>
                     <div>
                       <p className="text-gray-500">Profit on cost</p>
-                      <p className="font-semibold text-white">{readiness.profitOnCost.toFixed(1)}%</p>
+                      <p className="font-semibold text-gray-900">{readiness.profitOnCost.toFixed(1)}%</p>
                     </div>
                     <div>
                       <p className="text-gray-500">Committed funding</p>
-                      <p className="font-semibold text-white">{ZAR(readiness.committedFunding)}</p>
+                      <p className="font-semibold text-gray-900">{ZAR(readiness.committedFunding)}</p>
                     </div>
                     <div>
                       <p className="text-gray-500">Peak funding</p>
-                      <p className="font-semibold text-white">{ZAR(readiness.peakFunding)}</p>
+                      <p className="font-semibold text-gray-900">{ZAR(readiness.peakFunding)}</p>
                     </div>
                   </div>
                   {readiness.readiness.reasons.length > 0 && (
-                    <ul className="mt-4 space-y-1 rounded-lg bg-amber-500/5 p-3 text-xs text-amber-200">
+                    <ul className="mt-4 space-y-1 rounded-lg bg-amber-500/5 p-3 text-xs text-amber-700">
                       {readiness.readiness.reasons.map((r, i) => (
                         <li key={i}>• {r}</li>
                       ))}
@@ -259,9 +259,9 @@ function ReadinessPage() {
 
                 <section className="rounded-xl border border-navy-800 bg-navy-900/60 p-5">
                   <div className="mb-4 flex items-center gap-2">
-                    <h2 className="text-lg font-semibold text-white">Professional Team</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">Professional Team</h2>
                     {teamSummary && (
-                      <span className="ml-auto text-sm text-gray-400">
+                      <span className="ml-auto text-sm text-gray-500">
                         {teamSummary.appointed}/{teamSummary.required} appointed · fees{" "}
                         {ZAR(teamSummary.totalFees)}
                       </span>
@@ -272,7 +272,7 @@ function ReadinessPage() {
                     <select
                       value={newRole}
                       onChange={(e) => setNewRole(e.target.value)}
-                      className="rounded-lg border border-navy-700 bg-navy-900 px-3 py-2 text-sm text-white"
+                      className="rounded-lg border border-navy-700 bg-navy-900 px-3 py-2 text-sm text-gray-900"
                     >
                       {PROFESSIONAL_ROLES.map((r) => (
                         <option key={r} value={r}>
@@ -284,7 +284,7 @@ function ReadinessPage() {
                       value={newFirm}
                       onChange={(e) => setNewFirm(e.target.value)}
                       placeholder="Firm name (optional)"
-                      className="rounded-lg border border-navy-700 bg-navy-900 px-3 py-2 text-sm text-white"
+                      className="rounded-lg border border-navy-700 bg-navy-900 px-3 py-2 text-sm text-gray-900"
                     />
                     <button
                       onClick={addProfessional}
@@ -297,7 +297,7 @@ function ReadinessPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-navy-700 text-left text-gray-400">
+                        <tr className="border-b border-navy-700 text-left text-gray-500">
                           <th className="py-2 pr-4">Role</th>
                           <th className="py-2 pr-4">Firm</th>
                           <th className="py-2 pr-4">Required</th>
@@ -308,7 +308,7 @@ function ReadinessPage() {
                       <tbody>
                         {professionals.length ? (
                           professionals.map((p) => (
-                            <tr key={p.id} className="border-b border-navy-800/60 text-gray-200">
+                            <tr key={p.id} className="border-b border-navy-800/60 text-gray-700">
                               <td className="py-2 pr-4">{p.role.replace(/_/g, " ")}</td>
                               <td className="py-2 pr-4">{p.firmName ?? "—"}</td>
                               <td className="py-2 pr-4">{p.isRequired ? "Yes" : "No"}</td>
@@ -317,7 +317,7 @@ function ReadinessPage() {
                                 <select
                                   value={p.status}
                                   onChange={(e) => updateStatus(p, e.target.value)}
-                                  className="rounded border border-navy-700 bg-navy-950 px-2 py-1 text-xs text-white"
+                                  className="rounded border border-navy-700 bg-navy-950 px-2 py-1 text-xs text-gray-900"
                                 >
                                   {APPOINTMENT_STATUSES.map((s) => (
                                     <option key={s} value={s}>
@@ -343,7 +343,7 @@ function ReadinessPage() {
             )}
 
             {!readiness && !loading && propertyId !== null && (
-              <div className="rounded-lg border border-navy-800 bg-navy-900/60 p-6 text-center text-gray-400">
+              <div className="rounded-lg border border-navy-800 bg-navy-900/60 p-6 text-center text-gray-500">
                 This project has no development appraisal yet.
               </div>
             )}

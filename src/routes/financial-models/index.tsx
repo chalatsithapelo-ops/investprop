@@ -128,13 +128,13 @@ function NumberField({
 }) {
   return (
     <label className="block">
-      <span className="text-xs font-medium text-gray-400">{label}</span>
+      <span className="text-xs font-medium text-gray-500">{label}</span>
       <div className="mt-1 flex items-center rounded-lg border border-navy-700 bg-navy-900/70 focus-within:border-gold-500">
         <input
           type="number"
           value={Number.isFinite(value) ? value : 0}
           onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-          className="w-full bg-transparent px-3 py-2 text-sm text-gray-100 outline-none"
+          className="w-full bg-transparent px-3 py-2 text-sm text-gray-900 outline-none"
         />
         {suffix && <span className="pr-3 text-xs text-gray-500">{suffix}</span>}
       </div>
@@ -155,7 +155,7 @@ function Metric({
   tone?: "good" | "bad" | "neutral";
 }) {
   const toneClass =
-    tone === "good" ? "text-emerald-400" : tone === "bad" ? "text-red-400" : "text-gray-100";
+    tone === "good" ? "text-emerald-600" : tone === "bad" ? "text-red-600" : "text-gray-900";
   return (
     <div className="rounded-lg border border-navy-800/70 bg-navy-900/60 p-4">
       <p className="text-xs text-gray-500">{label}</p>
@@ -217,8 +217,8 @@ function FinancialModelsPage() {
             <Calculator className="text-gold-600" size={28} />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-100">Development Financial Models</h1>
-            <p className="mt-1 text-gray-400">
+            <h1 className="text-3xl font-bold text-gray-900">Development Financial Models</h1>
+            <p className="mt-1 text-gray-500">
               Quick pre-acquisition what-if model for greenfield developments. Figures update live as you type.
             </p>
           </div>
@@ -232,7 +232,7 @@ function FinancialModelsPage() {
           >
             <HardHat className="mt-0.5 shrink-0 text-gold-500" size={18} />
             <div>
-              <p className="text-sm font-semibold text-gray-200">
+              <p className="text-sm font-semibold text-gray-800">
                 Running a real project? Open Project Readiness →
               </p>
               <p className="mt-0.5 text-xs text-gray-500">
@@ -258,10 +258,10 @@ function FinancialModelsPage() {
                 }`}
               >
                 <div className={`rounded-lg p-2 ${selected ? "bg-gold-500/20" : "bg-navy-800"}`}>
-                  <m.icon className={selected ? "text-gold-500" : "text-gray-400"} size={20} />
+                  <m.icon className={selected ? "text-gold-500" : "text-gray-500"} size={20} />
                 </div>
                 <div>
-                  <p className={`text-sm font-bold ${selected ? "text-gold-400" : "text-gray-200"}`}>
+                  <p className={`text-sm font-bold ${selected ? "text-gold-400" : "text-gray-700"}`}>
                     {m.label}
                   </p>
                   <p className="mt-0.5 text-[11px] leading-snug text-gray-500">{m.blurb}</p>
@@ -275,7 +275,7 @@ function FinancialModelsPage() {
           {/* Inputs */}
           <div className="lg:col-span-3">
             <div className="rounded-xl border border-navy-800/70 bg-navy-900/40 p-5">
-              <h2 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-gray-400">
+              <h2 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-gray-500">
                 <active.icon size={16} /> {active.label} — Inputs
               </h2>
 
@@ -377,7 +377,7 @@ function FinancialModelsPage() {
               </div>
 
               {result.rentWithinBand === false && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300">
+                <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700">
                   <AlertTriangle size={16} className="mt-0.5 shrink-0" />
                   <span>Pricing exceeds the affordability band — subsidy / FLISP eligibility is at risk.</span>
                 </div>
@@ -385,12 +385,12 @@ function FinancialModelsPage() {
 
               {result.notes.length > 0 && (
                 <div className="rounded-lg border border-navy-800/70 bg-navy-900/40 p-4">
-                  <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-400">
+                  <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-500">
                     <Info size={14} /> Analyst notes
                   </p>
                   <ul className="space-y-2">
                     {result.notes.map((n, i) => (
-                      <li key={i} className="text-xs leading-snug text-gray-400">
+                      <li key={i} className="text-xs leading-snug text-gray-600">
                         • {n}
                       </li>
                     ))}

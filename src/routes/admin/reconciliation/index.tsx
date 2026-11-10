@@ -109,15 +109,15 @@ function ReconciliationPage() {
     <div className="min-h-screen bg-navy-950 text-gray-900">
       <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <h1 className="mb-2 text-2xl font-bold text-white">Payout Reconciliation</h1>
-        <p className="mb-6 text-sm text-gray-400">
+        <h1 className="mb-2 text-2xl font-bold text-gray-900">Payout Reconciliation</h1>
+        <p className="mb-6 text-sm text-gray-500">
           Paste a CSV exported from Paystack / your bank. Format:{" "}
           <code className="rounded bg-navy-900 px-1 text-gold-400">reference,amount,paidAt</code>{" "}
           (paidAt optional, ISO 8601). Header row is auto-detected.
         </p>
 
         {!isAdmin && (
-          <div className="mb-6 rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-red-300">
+          <div className="mb-6 rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-red-700">
             Reconciliation is restricted to administrators.
           </div>
         )}
@@ -129,7 +129,7 @@ function ReconciliationPage() {
               onChange={(e) => setCsv(e.target.value)}
               rows={10}
               placeholder={`reference,amount,paidAt\nPAYREF-001,1250.00,2026-06-01\nPAYREF-002,840.50,2026-06-01`}
-              className="w-full rounded-xl border border-navy-700 bg-navy-900 p-3 font-mono text-sm text-white placeholder-gray-500 focus:border-gold-500 focus:outline-none"
+              className="w-full rounded-xl border border-navy-700 bg-navy-900 p-3 font-mono text-sm text-gray-900 placeholder-gray-500 focus:border-gold-500 focus:outline-none"
             />
             <div className="mt-3 flex gap-3">
               <button
@@ -141,7 +141,7 @@ function ReconciliationPage() {
               </button>
               <button
                 onClick={() => { setCsv(""); setMatched([]); setUnmatched([]); }}
-                className="rounded-lg border border-navy-700 px-4 py-2 text-sm text-gray-300 hover:bg-navy-800"
+                className="rounded-lg border border-navy-700 px-4 py-2 text-sm text-gray-700 hover:bg-navy-800"
               >
                 Clear
               </button>
@@ -149,10 +149,10 @@ function ReconciliationPage() {
 
             {matched.length > 0 && (
               <div className="mt-8">
-                <h2 className="mb-3 text-lg font-semibold text-white">Matched ({matched.length})</h2>
+                <h2 className="mb-3 text-lg font-semibold text-gray-900">Matched ({matched.length})</h2>
                 <div className="overflow-x-auto rounded-xl border border-navy-800/50">
                   <table className="w-full text-sm">
-                    <thead className="bg-navy-900/80 text-xs uppercase text-gray-400">
+                    <thead className="bg-navy-900/80 text-xs uppercase text-gray-500">
                       <tr>
                         <th className="px-3 py-2 text-left">Reference</th>
                         <th className="px-3 py-2 text-left">Investor</th>
@@ -168,22 +168,22 @@ function ReconciliationPage() {
                       {matched.map((r) => {
                         const mismatch = Math.abs(r.delta) > 0.01;
                         return (
-                          <tr key={r.payoutId} className="bg-navy-900/30 text-white">
+                          <tr key={r.payoutId} className="bg-navy-900/30 text-gray-900">
                             <td className="px-3 py-2 font-mono text-xs">{r.reference}</td>
                             <td className="px-3 py-2">{r.investorName ?? "—"}</td>
                             <td className="px-3 py-2 text-right">R{r.csvAmount.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</td>
                             <td className="px-3 py-2 text-right">R{r.payoutNet.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}</td>
-                            <td className={`px-3 py-2 text-right font-semibold ${mismatch ? "text-red-400" : "text-emerald-400"}`}>
+                            <td className={`px-3 py-2 text-right font-semibold ${mismatch ? "text-red-600" : "text-emerald-600"}`}>
                               {mismatch ? <span className="inline-flex items-center gap-1"><AlertTriangle size={12} /> {r.delta.toFixed(2)}</span> : <span className="inline-flex items-center gap-1"><CheckCircle2 size={12} /> match</span>}
                             </td>
-                            <td className="px-3 py-2 text-xs text-gray-400">{r.currentStatus}</td>
+                            <td className="px-3 py-2 text-xs text-gray-500">{r.currentStatus}</td>
                             <td className="px-3 py-2">
                               {mismatch && (
                                 <input
                                   value={notesByPayout[r.payoutId] ?? ""}
                                   onChange={(e) => setNotesByPayout({ ...notesByPayout, [r.payoutId]: e.target.value })}
                                   placeholder="Reason for override"
-                                  className="w-full rounded border border-red-500/50 bg-navy-900 px-2 py-1 text-xs text-white"
+                                  className="w-full rounded border border-red-500/50 bg-navy-900 px-2 py-1 text-xs text-gray-900"
                                 />
                               )}
                             </td>
@@ -207,12 +207,12 @@ function ReconciliationPage() {
 
             {unmatched.length > 0 && (
               <div className="mt-8">
-                <h2 className="mb-3 text-lg font-semibold text-white">Unmatched ({unmatched.length})</h2>
+                <h2 className="mb-3 text-lg font-semibold text-gray-900">Unmatched ({unmatched.length})</h2>
                 <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3">
-                  <p className="mb-3 flex items-center gap-2 text-sm text-red-300">
+                  <p className="mb-3 flex items-center gap-2 text-sm text-red-700">
                     <XCircle size={14} /> These CSV references do not correspond to any DistributionPayout.paymentRef in the database.
                   </p>
-                  <ul className="space-y-1 text-xs font-mono text-gray-300">
+                  <ul className="space-y-1 text-xs font-mono text-gray-700">
                     {unmatched.map((u, i) => (
                       <li key={i}>{u.reference} — R{u.amount.toFixed(2)} {u.paidAt ? `(${u.paidAt})` : ""}</li>
                     ))}

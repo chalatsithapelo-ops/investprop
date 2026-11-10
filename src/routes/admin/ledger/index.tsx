@@ -148,8 +148,8 @@ function LedgerPage() {
         <div className="mb-6 flex items-center gap-3">
           <BookOpen className="h-7 w-7 text-gold-400" />
           <div>
-            <h1 className="text-2xl font-bold text-white">General Ledger</h1>
-            <p className="text-sm text-gray-400">
+            <h1 className="text-2xl font-bold text-gray-900">General Ledger</h1>
+            <p className="text-sm text-gray-500">
               Immutable double-entry ledger — IFRS 15 revenue, VAT, investor capital accounts and
               provisions per development project.
             </p>
@@ -157,7 +157,7 @@ function LedgerPage() {
         </div>
 
         {!isManager && (
-          <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-red-300">
+          <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-red-700">
             The general ledger is restricted to development managers and administrators.
           </div>
         )}
@@ -165,11 +165,11 @@ function LedgerPage() {
         {isManager && (
           <>
             <div className="mb-6 flex items-center gap-3">
-              <label className="text-sm font-medium text-gray-300">Project</label>
+              <label className="text-sm font-medium text-gray-700">Project</label>
               <select
                 value={propertyId ?? ""}
                 onChange={(e) => setPropertyId(Number(e.target.value))}
-                className="rounded-lg border border-navy-700 bg-navy-900 px-3 py-2 text-sm text-white"
+                className="rounded-lg border border-navy-700 bg-navy-900 px-3 py-2 text-sm text-gray-900"
               >
                 {properties.length === 0 && <option value="">No development projects</option>}
                 {properties.map((p) => (
@@ -178,20 +178,20 @@ function LedgerPage() {
                   </option>
                 ))}
               </select>
-              {loading && <span className="text-sm text-gray-400">Loading…</span>}
+              {loading && <span className="text-sm text-gray-500">Loading…</span>}
             </div>
 
             {/* Trial balance */}
             <section className="mb-8 rounded-xl border border-navy-800 bg-navy-900/60 p-5">
               <div className="mb-4 flex items-center gap-2">
                 <Scale className="h-5 w-5 text-gold-400" />
-                <h2 className="text-lg font-semibold text-white">Trial Balance</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Trial Balance</h2>
                 {trialBalance && (
                   <span
                     className={`ml-auto rounded-full px-3 py-1 text-xs font-medium ${
                       trialBalance.balanced
-                        ? "bg-green-500/20 text-green-300"
-                        : "bg-red-500/20 text-red-300"
+                        ? "bg-green-500/20 text-green-700"
+                        : "bg-red-500/20 text-red-700"
                     }`}
                   >
                     {trialBalance.balanced ? "Balanced" : "OUT OF BALANCE"}
@@ -201,7 +201,7 @@ function LedgerPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-navy-700 text-left text-gray-400">
+                    <tr className="border-b border-navy-700 text-left text-gray-500">
                       <th className="py-2 pr-4">Code</th>
                       <th className="py-2 pr-4">Account</th>
                       <th className="py-2 pr-4">Type</th>
@@ -212,10 +212,10 @@ function LedgerPage() {
                   <tbody>
                     {trialBalance?.rows.length ? (
                       trialBalance.rows.map((r) => (
-                        <tr key={r.code} className="border-b border-navy-800/60 text-gray-200">
+                        <tr key={r.code} className="border-b border-navy-800/60 text-gray-700">
                           <td className="py-2 pr-4 font-mono text-gold-400">{r.code}</td>
                           <td className="py-2 pr-4">{r.name}</td>
-                          <td className="py-2 pr-4 text-xs text-gray-400">{r.type}</td>
+                          <td className="py-2 pr-4 text-xs text-gray-500">{r.type}</td>
                           <td className="py-2 pr-4 text-right">{r.debit ? ZAR(r.debit) : "—"}</td>
                           <td className="py-2 pr-4 text-right">{r.credit ? ZAR(r.credit) : "—"}</td>
                         </tr>
@@ -230,7 +230,7 @@ function LedgerPage() {
                   </tbody>
                   {trialBalance && trialBalance.rows.length > 0 && (
                     <tfoot>
-                      <tr className="border-t-2 border-navy-600 font-semibold text-white">
+                      <tr className="border-t-2 border-navy-600 font-semibold text-gray-900">
                         <td className="py-2 pr-4" colSpan={3}>
                           Total
                         </td>
@@ -247,12 +247,12 @@ function LedgerPage() {
             <section className="mb-8 rounded-xl border border-navy-800 bg-navy-900/60 p-5">
               <div className="mb-4 flex items-center gap-2">
                 <Users className="h-5 w-5 text-gold-400" />
-                <h2 className="text-lg font-semibold text-white">Investor Capital Accounts</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Investor Capital Accounts</h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-navy-700 text-left text-gray-400">
+                    <tr className="border-b border-navy-700 text-left text-gray-500">
                       <th className="py-2 pr-4">Investor</th>
                       <th className="py-2 pr-4 text-right">Contributed</th>
                       <th className="py-2 pr-4 text-right">Returned</th>
@@ -262,11 +262,11 @@ function LedgerPage() {
                   <tbody>
                     {capital.length ? (
                       capital.map((c) => (
-                        <tr key={c.investorId} className="border-b border-navy-800/60 text-gray-200">
+                        <tr key={c.investorId} className="border-b border-navy-800/60 text-gray-700">
                           <td className="py-2 pr-4">{c.investorName}</td>
                           <td className="py-2 pr-4 text-right">{ZAR(c.contributed)}</td>
                           <td className="py-2 pr-4 text-right">{ZAR(c.returned)}</td>
-                          <td className="py-2 pr-4 text-right font-semibold text-white">
+                          <td className="py-2 pr-4 text-right font-semibold text-gray-900">
                             {ZAR(c.balance)}
                           </td>
                         </tr>
@@ -285,7 +285,7 @@ function LedgerPage() {
 
             {/* Journal entries */}
             <section className="rounded-xl border border-navy-800 bg-navy-900/60 p-5">
-              <h2 className="mb-4 text-lg font-semibold text-white">Journal Entries</h2>
+              <h2 className="mb-4 text-lg font-semibold text-gray-900">Journal Entries</h2>
               <div className="space-y-4">
                 {entries.length ? (
                   entries.map((e) => (
@@ -302,14 +302,14 @@ function LedgerPage() {
                         <span className="rounded bg-navy-800 px-2 py-0.5 text-xs text-gold-400">
                           {e.kind}
                         </span>
-                        <span className="text-sm font-medium text-white">{e.description}</span>
+                        <span className="text-sm font-medium text-gray-900">{e.description}</span>
                         {e.status === "REVERSED" && (
-                          <span className="rounded bg-red-500/20 px-2 py-0.5 text-xs text-red-300">
+                          <span className="rounded bg-red-500/20 px-2 py-0.5 text-xs text-red-700">
                             REVERSED → #{e.reversedByEntryId}
                           </span>
                         )}
                         {e.kind === "REVERSAL" && e.reversesEntryId && (
-                          <span className="rounded bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">
+                          <span className="rounded bg-amber-500/20 px-2 py-0.5 text-xs text-amber-700">
                             reverses #{e.reversesEntryId}
                           </span>
                         )}
@@ -320,7 +320,7 @@ function LedgerPage() {
                         {e.status === "POSTED" && e.kind !== "REVERSAL" && (
                           <button
                             onClick={() => handleReverse(e)}
-                            className="inline-flex items-center gap-1 rounded bg-red-500/10 px-2 py-1 text-xs text-red-300 hover:bg-red-500/20"
+                            className="inline-flex items-center gap-1 rounded bg-red-500/10 px-2 py-1 text-xs text-red-700 hover:bg-red-500/20"
                           >
                             <RotateCcw className="h-3 w-3" /> Reverse
                           </button>
@@ -329,7 +329,7 @@ function LedgerPage() {
                       <table className="w-full text-xs">
                         <tbody>
                           {e.lines.map((l) => (
-                            <tr key={l.id} className="text-gray-300">
+                            <tr key={l.id} className="text-gray-700">
                               <td className="py-1 pr-2 font-mono text-gold-400">{l.accountCode}</td>
                               <td className="py-1 pr-2">{l.accountName}</td>
                               <td className="py-1 pr-2 text-gray-500">{l.memo}</td>

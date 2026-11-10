@@ -140,7 +140,7 @@ function StatementsPage() {
             id="period"
             value={periodIdx}
             onChange={(e) => setPeriodIdx(Number(e.target.value))}
-            className="rounded-md border border-navy-700 bg-navy-800 px-3 py-2 text-sm text-gray-100 focus:border-gold-500 focus:outline-none"
+            className="rounded-md border border-navy-700 bg-navy-800 px-3 py-2 text-sm text-gray-900 focus:border-gold-500 focus:outline-none"
           >
             {periods.map((p, i) => (
               <option key={i} value={i}>

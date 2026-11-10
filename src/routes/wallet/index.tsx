@@ -660,7 +660,7 @@ function WalletPage() {
                               setReviewingId(null);
                               setReviewNotes("");
                             }}
-                            className="rounded-lg border border-gray-200/10 px-4 py-2 text-sm text-gray-400 hover:text-gray-200"
+                            className="rounded-lg border border-gray-200/10 px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
                           >
                             Cancel
                           </button>

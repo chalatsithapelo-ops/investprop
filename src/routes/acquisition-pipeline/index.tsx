@@ -208,7 +208,7 @@ function AcquisitionPipelinePage() {
             className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
               viewMode === "kanban"
                 ? "border-gold-500 bg-gold-50 text-gold-700"
-                : "border-navy-700 bg-navy-900/30 text-gray-400 hover:text-gray-200"
+                : "border-navy-700 bg-navy-900/30 text-gray-500 hover:text-gray-700"
             }`}
           >
             <Columns3 size={14} /> Kanban
@@ -219,7 +219,7 @@ function AcquisitionPipelinePage() {
             className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
               viewMode === "cards"
                 ? "border-gold-500 bg-gold-50 text-gold-700"
-                : "border-navy-700 bg-navy-900/30 text-gray-400 hover:text-gray-200"
+                : "border-navy-700 bg-navy-900/30 text-gray-500 hover:text-gray-700"
             }`}
           >
             <LayoutGrid size={14} /> Cards

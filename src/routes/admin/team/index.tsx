@@ -76,8 +76,8 @@ function AdminTeamPage() {
             <Users size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Team performance</h1>
-            <p className="text-sm text-gray-400">
+            <h1 className="text-2xl font-bold text-gray-900">Team performance</h1>
+            <p className="text-sm text-gray-500">
               Per-manager delivery scorecards. Internal oversight only — investors see the platform-wide track record.
             </p>
           </div>
@@ -89,9 +89,9 @@ function AdminTeamPage() {
           </div>
         ) : team.length === 0 ? (
           <div className="rounded-xl border border-navy-800/50 bg-navy-900/50 p-12 text-center">
-            <Award className="mx-auto mb-3 text-gray-500" size={40} />
-            <p className="text-lg font-medium text-white">No deal managers yet</p>
-            <p className="mt-1 text-sm text-gray-400">
+            <Award className="mx-auto mb-3 text-gray-400" size={40} />
+            <p className="text-lg font-medium text-gray-900">No deal managers yet</p>
+            <p className="mt-1 text-sm text-gray-500">
               Development managers, project managers and property owners who run deals will appear here.
             </p>
           </div>
@@ -109,13 +109,13 @@ function AdminTeamPage() {
                     <Building2 size={18} />
                   </div>
                   <div>
-                    <p className="font-semibold text-white">{u.name || u.email}</p>
-                    <p className="text-xs text-gray-400">{ROLE_LABEL[u.role] ?? u.role}</p>
+                    <p className="font-semibold text-gray-900">{u.name || u.email}</p>
+                    <p className="text-xs text-gray-500">{ROLE_LABEL[u.role] ?? u.role}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <p className="text-lg font-bold text-white">{u._count?.properties ?? 0}</p>
+                    <p className="text-lg font-bold text-gray-900">{u._count?.properties ?? 0}</p>
                     <p className="text-[10px] uppercase tracking-wide text-gray-500">deals</p>
                   </div>
                   <ArrowRight size={18} className="text-gray-500" />

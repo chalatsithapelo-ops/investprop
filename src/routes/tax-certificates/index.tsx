@@ -101,7 +101,7 @@ function TaxCertificatesPage() {
             id="taxYear"
             value={taxYear}
             onChange={(e) => setTaxYear(Number(e.target.value))}
-            className="rounded-md border border-navy-700 bg-navy-800 px-3 py-2 text-sm text-gray-100 focus:border-gold-500 focus:outline-none"
+            className="rounded-md border border-navy-700 bg-navy-800 px-3 py-2 text-sm text-gray-900 focus:border-gold-500 focus:outline-none"
           >
             {years.map((y) => (
               <option key={y} value={y}>
@@ -129,13 +129,13 @@ function TaxCertificatesPage() {
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-gold-500 border-r-transparent" />
           </div>
         ) : certQuery.isError ? (
-          <div className="rounded-lg border border-red-800/50 bg-red-950/30 p-6 text-sm text-red-300">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-700">
             {(certQuery.error as any)?.message ?? "Failed to load tax summary"}
           </div>
         ) : !hasIncome ? (
           <div className="rounded-lg border border-navy-800/50 bg-navy-900/50 p-10 text-center">
             <Receipt className="mx-auto mb-3 text-gray-600" size={40} />
-            <p className="text-gray-400">
+            <p className="text-gray-500">
               No distribution income was paid to you in the {taxYear} tax year.
             </p>
           </div>
@@ -147,7 +147,7 @@ function TaxCertificatesPage() {
                 <p className="text-xs uppercase tracking-wide text-gray-500">
                   Gross income
                 </p>
-                <p className="mt-1 text-2xl font-bold text-gray-100">
+                <p className="mt-1 text-2xl font-bold text-gray-900">
                   {money(data.totalGross)}
                 </p>
               </div>
@@ -155,7 +155,7 @@ function TaxCertificatesPage() {
                 <p className="text-xs uppercase tracking-wide text-gray-500">
                   Tax withheld
                 </p>
-                <p className="mt-1 text-2xl font-bold text-amber-400">
+                <p className="mt-1 text-2xl font-bold text-amber-600">
                   {money(data.totalTaxWithheld)}
                 </p>
               </div>
@@ -163,7 +163,7 @@ function TaxCertificatesPage() {
                 <p className="text-xs uppercase tracking-wide text-gray-500">
                   Net received
                 </p>
-                <p className="mt-1 text-2xl font-bold text-emerald-400">
+                <p className="mt-1 text-2xl font-bold text-emerald-600">
                   {money(data.totalNet)}
                 </p>
               </div>
@@ -172,7 +172,7 @@ function TaxCertificatesPage() {
             {/* Breakdown table */}
             <div className="overflow-hidden rounded-lg border border-navy-800/50 bg-navy-900/50">
               <table className="w-full text-sm">
-                <thead className="bg-navy-800/60 text-left text-xs uppercase tracking-wide text-gray-400">
+                <thead className="bg-navy-800/60 text-left text-xs uppercase tracking-wide text-gray-500">
                   <tr>
                     <th className="px-4 py-3">Classification</th>
                     <th className="px-4 py-3 text-right">Payouts</th>
@@ -185,20 +185,20 @@ function TaxCertificatesPage() {
                   {classes.map((cls) => {
                     const row = data.summary[cls];
                     return (
-                      <tr key={cls} className="text-gray-200">
+                      <tr key={cls} className="text-gray-700">
                         <td className="px-4 py-3 font-medium">
                           {CLASSIFICATION_LABELS[cls] ?? cls}
                         </td>
-                        <td className="px-4 py-3 text-right text-gray-400">
+                        <td className="px-4 py-3 text-right text-gray-500">
                           {row.count}
                         </td>
                         <td className="px-4 py-3 text-right">
                           {money(row.gross)}
                         </td>
-                        <td className="px-4 py-3 text-right text-amber-400">
+                        <td className="px-4 py-3 text-right text-amber-600">
                           {money(row.taxWithheld)}
                         </td>
-                        <td className="px-4 py-3 text-right text-emerald-400">
+                        <td className="px-4 py-3 text-right text-emerald-600">
                           {money(row.net)}
                         </td>
                       </tr>
@@ -209,7 +209,7 @@ function TaxCertificatesPage() {
             </div>
 
             {/* Disclaimer */}
-            <div className="flex gap-3 rounded-lg border border-gold-700/40 bg-gold-950/20 p-4 text-xs text-gray-400">
+            <div className="flex gap-3 rounded-lg border border-gold-700/40 bg-gold-950/20 p-4 text-xs text-gray-600">
               <Info size={16} className="mt-0.5 shrink-0 text-gold-500" />
               <p>{data.disclaimer}</p>
             </div>

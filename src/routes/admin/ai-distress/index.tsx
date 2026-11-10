@@ -75,8 +75,8 @@ function AdminDistressPage() {
             <Activity size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Predictive distress watchlist</h1>
-            <p className="text-sm text-gray-400">Deals the AI early-warning engine has flagged as elevated or high risk.</p>
+            <h1 className="text-2xl font-bold text-gray-900">Predictive distress watchlist</h1>
+            <p className="text-sm text-gray-500">Deals the AI early-warning engine has flagged as elevated or high risk.</p>
           </div>
         </div>
 
@@ -87,8 +87,8 @@ function AdminDistressPage() {
         ) : rows.length === 0 ? (
           <div className="rounded-xl border border-navy-800/50 bg-navy-900/50 p-12 text-center">
             <TrendingDown className="mx-auto mb-3 text-emerald-500" size={40} />
-            <p className="text-lg font-medium text-white">No elevated-risk deals</p>
-            <p className="mt-1 text-sm text-gray-400">
+            <p className="text-lg font-medium text-gray-900">No elevated-risk deals</p>
+            <p className="mt-1 text-sm text-gray-500">
               Run the distress engine from a property's timeline to populate this list. Nothing is currently flagged.
             </p>
           </div>
