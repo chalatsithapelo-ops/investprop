@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { calculateDevelopmentMetrics, type PropertyDevelopmentInput } from "../financial-calculations";
 
-type FormData = {
+export type DevelopmentFormData = {
   siteAcquisitionCost: number;
   constructionCostPerUnit: number;
   numberOfUnits: number;
@@ -31,15 +31,15 @@ type FormData = {
 };
 
 type DevelopmentFormSectionProps = {
-  data: FormData;
-  onChange: (field: keyof FormData, value: number) => void;
+  data: DevelopmentFormData;
+  onChange: (field: keyof DevelopmentFormData, value: number) => void;
 };
 
 const INPUT_CLASS =
   "w-full rounded-md border border-navy-700 bg-navy-800/50 px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500";
 const LABEL_CLASS = "block text-sm font-medium text-gray-600 mb-1";
 
-const fields: { key: keyof FormData; label: string }[] = [
+const fields: { key: keyof DevelopmentFormData; label: string }[] = [
   { key: "siteAcquisitionCost", label: "Site Acquisition Cost" },
   { key: "constructionCostPerUnit", label: "Construction Cost per Unit" },
   { key: "numberOfUnits", label: "Number of Units" },
@@ -69,7 +69,7 @@ const fields: { key: keyof FormData; label: string }[] = [
 
 // Group the 25 inputs into logical accordion sections so the form is
 // scannable instead of one long wall of fields.
-const fieldGroups: { title: string; keys: (keyof FormData)[] }[] = [
+const fieldGroups: { title: string; keys: (keyof DevelopmentFormData)[] }[] = [
   {
     title: "Land & Site",
     keys: [
@@ -122,15 +122,15 @@ const fieldGroups: { title: string; keys: (keyof FormData)[] }[] = [
   },
 ];
 
-const fieldLabels: Record<keyof FormData, string> = fields.reduce(
+const fieldLabels: Record<keyof DevelopmentFormData, string> = fields.reduce(
   (acc, f) => {
     acc[f.key] = f.label;
     return acc;
   },
-  {} as Record<keyof FormData, string>,
+  {} as Record<keyof DevelopmentFormData, string>,
 );
 
-function useDevelopmentCalculations(data: FormData) {
+function useDevelopmentCalculations(data: DevelopmentFormData) {
   return useMemo(() => {
     const gdv = data.sellingPricePerUnit * data.numberOfUnits;
     const salesCommission = gdv * (data.salesCommissionRate / 100);

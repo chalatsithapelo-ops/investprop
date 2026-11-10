@@ -3,6 +3,102 @@ import { Building, DollarSign, MapPin, Home, Plus, Trash2, Upload, X, Image as I
 import { useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 import toast from "react-hot-toast";
+import { DevelopmentFormSection, type DevelopmentFormData } from "~/components/DevelopmentFormSection";
+
+const emptyDevelopmentForm: DevelopmentFormData = {
+  siteAcquisitionCost: 0,
+  constructionCostPerUnit: 0,
+  numberOfUnits: 0,
+  sellingPricePerUnit: 0,
+  architectFees: 0,
+  engineerFees: 0,
+  projectManagementFees: 0,
+  legalAndPermitCosts: 0,
+  marketingCosts: 0,
+  contingencyPercentage: 10,
+  financingCosts: 0,
+  landClearingCost: 0,
+  infrastructureCost: 0,
+  landscapingCost: 0,
+  constructionDurationMonths: 12,
+  holdingCostsPerMonth: 0,
+  salesCommissionRate: 0,
+  transferDutyCost: 0,
+  municipalContributions: 0,
+  environmentalImpactCost: 0,
+  constructionInsurance: 0,
+  performanceGuarantee: 0,
+  developmentLevies: 0,
+  bulkServicesCost: 0,
+  buildingPlanApproval: 0,
+};
+
+// Seed the detailed development form from an existing property (edit mode).
+// The backend stores aggregated cost buckets, so granular line items that
+// cannot be reconstructed are folded into a single representative field.
+function developmentFormFromDefaults(defaults: any): DevelopmentFormData {
+  const dev = defaults?.development ?? defaults ?? {};
+  const numberOfUnits = Number(dev.numberOfUnits ?? defaults?.totalUnits ?? 0) || 0;
+  const hardCosts = Number(dev.hardCosts ?? 0) || 0;
+  return {
+    ...emptyDevelopmentForm,
+    numberOfUnits,
+    siteAcquisitionCost: Number(dev.landAcquisitionCost ?? 0) || 0,
+    constructionCostPerUnit: numberOfUnits > 0 ? hardCosts / numberOfUnits : hardCosts,
+    projectManagementFees: Number(dev.softCosts ?? 0) || 0,
+    financingCosts: Number(dev.financingCosts ?? 0) || 0,
+    sellingPricePerUnit: Number(dev.expectedSalePricePerUnit ?? 0) || 0,
+    contingencyPercentage: Number(dev.contingencyPercent ?? 10) || 10,
+    constructionDurationMonths: Number(dev.developmentTimelineMonths ?? 12) || 12,
+  };
+}
+
+// Map the detailed development form onto the backend createProperty/updateProperty
+// schema. Mirrors the bucketing used in DevelopmentFormSection's live calculations
+// so stored metrics match what the manager sees on screen.
+function developmentPayloadFromForm(d: DevelopmentFormData) {
+  const gdv = d.sellingPricePerUnit * d.numberOfUnits;
+  const salesCommission = gdv * (d.salesCommissionRate / 100);
+
+  const landAcquisitionCost =
+    d.siteAcquisitionCost +
+    d.landClearingCost +
+    d.infrastructureCost +
+    d.landscapingCost +
+    d.bulkServicesCost;
+
+  const hardCosts =
+    d.constructionCostPerUnit * d.numberOfUnits +
+    d.constructionInsurance +
+    d.holdingCostsPerMonth * d.constructionDurationMonths;
+
+  const softCosts =
+    d.architectFees +
+    d.engineerFees +
+    d.projectManagementFees +
+    d.legalAndPermitCosts +
+    d.marketingCosts +
+    d.transferDutyCost +
+    d.municipalContributions +
+    d.environmentalImpactCost +
+    d.performanceGuarantee +
+    d.developmentLevies +
+    d.buildingPlanApproval +
+    salesCommission;
+
+  return {
+    developmentType: "AFFORDABLE_RESALE" as const,
+    numberOfUnits: d.numberOfUnits,
+    landAcquisitionCost,
+    hardCosts,
+    softCosts,
+    financingCosts: d.financingCosts,
+    contingencyPercent: d.contingencyPercentage,
+    expectedSalePricePerUnit: d.sellingPricePerUnit,
+    totalExpectedRevenue: gdv,
+    developmentTimelineMonths: d.constructionDurationMonths,
+  };
+}
 
 type BudgetItem = { category: string; amount: number; notes?: string };
 
@@ -93,6 +189,14 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
     platformCarryPct: defaults?.platformCarryPct ?? (defaults as any)?.platformCarryPct ?? 0,
     budgetItems: defaults?.budgetItems ?? [],
   });
+
+  const [devForm, setDevForm] = useState<DevelopmentFormData>(() =>
+    defaults ? developmentFormFromDefaults(defaults) : emptyDevelopmentForm,
+  );
+
+  function updateDevField(field: keyof DevelopmentFormData, value: number) {
+    setDevForm((prev) => ({ ...prev, [field]: value }));
+  }
 
   function updateField<K extends keyof PropertyFormData>(key: K, value: PropertyFormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -200,6 +304,14 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (form.propertyType === "development") {
+      onSubmit({
+        ...form,
+        ...developmentPayloadFromForm(devForm),
+        developmentFundingGoal: form.fundingGoal,
+      } as any);
+      return;
+    }
     onSubmit(form);
   }
 
@@ -562,44 +674,10 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
       {form.propertyType === "development" && (
         <div className={sectionClass}>
           <div className="mb-5 flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-gold-600" />
+            <Building className="h-5 w-5 text-gold-600" />
             <h2 className="text-lg font-semibold text-gray-900">Development Details</h2>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div>
-              <label className={labelClass}>Total Budget (R)</label>
-              <input
-                type="number"
-                className={inputClass}
-                placeholder="0"
-                value={form.totalBudget ?? ""}
-                onChange={(e) => updateField("totalBudget", Number(e.target.value))}
-                min={0}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Total Units</label>
-              <input
-                type="number"
-                className={inputClass}
-                placeholder="0"
-                value={form.totalUnits ?? ""}
-                onChange={(e) => updateField("totalUnits", Number(e.target.value))}
-                min={0}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Gross Development Value (R)</label>
-              <input
-                type="number"
-                className={inputClass}
-                placeholder="0"
-                value={form.gdv ?? ""}
-                onChange={(e) => updateField("gdv", Number(e.target.value))}
-                min={0}
-              />
-            </div>
-          </div>
+          <DevelopmentFormSection data={devForm} onChange={updateDevField} />
         </div>
       )}
 
