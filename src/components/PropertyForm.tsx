@@ -3,34 +3,57 @@ import { Building, DollarSign, MapPin, Home, Plus, Trash2, Upload, X, Image as I
 import { useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 import toast from "react-hot-toast";
-import { DevelopmentFormSection, type DevelopmentFormData } from "~/components/DevelopmentFormSection";
+import {
+  DevelopmentFormSection,
+  buildDevelopmentEngineInput,
+  type DevelopmentFormData,
+} from "~/components/DevelopmentFormSection";
 
 const emptyDevelopmentForm: DevelopmentFormData = {
+  developmentType: "AFFORDABLE_RESALE",
   siteAcquisitionCost: 0,
-  constructionCostPerUnit: 0,
-  numberOfUnits: 0,
-  sellingPricePerUnit: 0,
-  architectFees: 0,
-  engineerFees: 0,
-  projectManagementFees: 0,
-  legalAndPermitCosts: 0,
-  marketingCosts: 0,
-  contingencyPercentage: 10,
-  financingCosts: 0,
   landClearingCost: 0,
   infrastructureCost: 0,
   landscapingCost: 0,
-  constructionDurationMonths: 12,
-  holdingCostsPerMonth: 0,
-  salesCommissionRate: 0,
-  transferDutyCost: 0,
-  municipalContributions: 0,
-  environmentalImpactCost: 0,
-  constructionInsurance: 0,
-  performanceGuarantee: 0,
-  developmentLevies: 0,
   bulkServicesCost: 0,
+  numberOfUnits: 0,
+  avgUnitSizeSqm: 0,
+  constructionCostPerUnit: 0,
+  grossLettableAreaSqm: 0,
+  constructionCostPerSqm: 0,
+  constructionDurationMonths: 12,
+  constructionInsurance: 0,
+  architectFees: 0,
+  engineerFees: 0,
+  townPlanningFees: 0,
+  projectManagementFees: 0,
+  legalAndPermitCosts: 0,
   buildingPlanApproval: 0,
+  municipalContributions: 0,
+  developmentLevies: 0,
+  environmentalImpactCost: 0,
+  nhbrcEnrolment: 0,
+  performanceGuarantee: 0,
+  transferDutyCost: 0,
+  equityAmount: 0,
+  seniorDebtAmount: 0,
+  seniorDebtRate: 0,
+  financingCosts: 0,
+  holdingCostsPerMonth: 0,
+  contingencyPercentage: 10,
+  vatApplicable: false,
+  sellingPricePerUnit: 0,
+  preSaleUnits: 0,
+  preSaleThresholdPercent: 0,
+  salesCommissionRate: 0,
+  marketingCosts: 0,
+  monthlyRentPerUnit: 0,
+  vacancyRatePct: 0,
+  annualOperatingExpenses: 0,
+  exitCapRatePct: 0,
+  rentPerSqmPerMonth: 0,
+  operatingCostPerSqmPerMonth: 0,
+  recoveryRatePct: 0,
 };
 
 // Seed the detailed development form from an existing property (edit mode).
@@ -40,14 +63,30 @@ function developmentFormFromDefaults(defaults: any): DevelopmentFormData {
   const dev = defaults?.development ?? defaults ?? {};
   const numberOfUnits = Number(dev.numberOfUnits ?? defaults?.totalUnits ?? 0) || 0;
   const hardCosts = Number(dev.hardCosts ?? 0) || 0;
+  const devType = (dev.developmentType ?? "AFFORDABLE_RESALE") as DevelopmentFormData["developmentType"];
+  const totalSqm = Number(dev.totalSquareMeters ?? 0) || 0;
+  const isCommercial = devType === "COMMERCIAL_RENTAL";
   return {
     ...emptyDevelopmentForm,
+    developmentType: devType,
     numberOfUnits,
+    avgUnitSizeSqm: !isCommercial && numberOfUnits > 0 ? totalSqm / numberOfUnits : 0,
     siteAcquisitionCost: Number(dev.landAcquisitionCost ?? 0) || 0,
-    constructionCostPerUnit: numberOfUnits > 0 ? hardCosts / numberOfUnits : hardCosts,
+    constructionCostPerUnit: !isCommercial && numberOfUnits > 0 ? hardCosts / numberOfUnits : 0,
+    grossLettableAreaSqm: isCommercial ? totalSqm : 0,
+    constructionCostPerSqm: isCommercial && totalSqm > 0 ? hardCosts / totalSqm : 0,
     projectManagementFees: Number(dev.softCosts ?? 0) || 0,
     financingCosts: Number(dev.financingCosts ?? 0) || 0,
     sellingPricePerUnit: Number(dev.expectedSalePricePerUnit ?? 0) || 0,
+    monthlyRentPerUnit: Number(dev.expectedMonthlyRentPerUnit ?? 0) || 0,
+    annualOperatingExpenses: Number(dev.annualOperatingExpenses ?? 0) || 0,
+    exitCapRatePct: Number(dev.stabilizedCapRate ?? 0) || 0,
+    equityAmount: Number(dev.equityAmount ?? 0) || 0,
+    seniorDebtAmount: Number(dev.seniorDebtAmount ?? 0) || 0,
+    seniorDebtRate: Number(dev.seniorDebtRate ?? 0) || 0,
+    vatApplicable: Boolean(dev.vatApplicable ?? false),
+    preSaleUnits: Number(dev.preSaleUnits ?? 0) || 0,
+    preSaleThresholdPercent: Number(dev.preSaleThresholdPercent ?? 0) || 0,
     contingencyPercentage: Number(dev.contingencyPercent ?? 10) || 10,
     constructionDurationMonths: Number(dev.developmentTimelineMonths ?? 12) || 12,
   };
@@ -57,46 +96,33 @@ function developmentFormFromDefaults(defaults: any): DevelopmentFormData {
 // schema. Mirrors the bucketing used in DevelopmentFormSection's live calculations
 // so stored metrics match what the manager sees on screen.
 function developmentPayloadFromForm(d: DevelopmentFormData) {
-  const gdv = d.sellingPricePerUnit * d.numberOfUnits;
-  const salesCommission = gdv * (d.salesCommissionRate / 100);
-
-  const landAcquisitionCost =
-    d.siteAcquisitionCost +
-    d.landClearingCost +
-    d.infrastructureCost +
-    d.landscapingCost +
-    d.bulkServicesCost;
-
-  const hardCosts =
-    d.constructionCostPerUnit * d.numberOfUnits +
-    d.constructionInsurance +
-    d.holdingCostsPerMonth * d.constructionDurationMonths;
-
-  const softCosts =
-    d.architectFees +
-    d.engineerFees +
-    d.projectManagementFees +
-    d.legalAndPermitCosts +
-    d.marketingCosts +
-    d.transferDutyCost +
-    d.municipalContributions +
-    d.environmentalImpactCost +
-    d.performanceGuarantee +
-    d.developmentLevies +
-    d.buildingPlanApproval +
-    salesCommission;
-
+  // Derive the backend cost buckets + income fields exactly as the live
+  // projection does, so what the manager sees equals what is stored.
+  const input = buildDevelopmentEngineInput(d);
   return {
-    developmentType: "AFFORDABLE_RESALE" as const,
-    numberOfUnits: d.numberOfUnits,
-    landAcquisitionCost,
-    hardCosts,
-    softCosts,
-    financingCosts: d.financingCosts,
-    contingencyPercent: d.contingencyPercentage,
-    expectedSalePricePerUnit: d.sellingPricePerUnit,
-    totalExpectedRevenue: gdv,
-    developmentTimelineMonths: d.constructionDurationMonths,
+    developmentType: d.developmentType,
+    numberOfUnits: input.numberOfUnits,
+    landAcquisitionCost: input.landAcquisitionCost,
+    hardCosts: input.hardCosts,
+    softCosts: input.softCosts,
+    financingCosts: input.financingCosts,
+    contingencyPercent: input.contingencyPercent,
+    developmentTimelineMonths: input.developmentTimelineMonths,
+    totalSquareMeters: input.totalSquareMeters,
+    // Sale-focused
+    expectedSalePricePerUnit: input.expectedSalePricePerUnit,
+    totalExpectedRevenue: input.totalExpectedRevenue,
+    preSaleUnits: input.preSaleUnits,
+    preSaleThresholdPercent: d.preSaleThresholdPercent,
+    // Rental / commercial-focused
+    expectedMonthlyRentPerUnit: input.expectedMonthlyRentPerUnit,
+    annualOperatingExpenses: input.annualOperatingExpenses,
+    stabilizedCapRate: input.stabilizedCapRate,
+    // Capital stack & VAT
+    equityAmount: d.equityAmount,
+    seniorDebtAmount: d.seniorDebtAmount,
+    seniorDebtRate: d.seniorDebtRate,
+    vatApplicable: d.vatApplicable,
   };
 }
 
@@ -113,7 +139,7 @@ type PropertyFormData = {
   zipCode: string;
   bedrooms: number;
   bathrooms: number;
-  squareFootage: number;
+  squareMeters: number;
   imageUrl?: string;
   images?: string[];
   purchasePrice?: number;
@@ -167,7 +193,7 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
     zipCode: defaults?.zipCode ?? "",
     bedrooms: defaults?.bedrooms ?? 0,
     bathrooms: defaults?.bathrooms ?? 0,
-    squareFootage: defaults?.squareFootage ?? 0,
+    squareMeters: defaults?.squareMeters ?? (defaults as any)?.squareFootage ?? 0,
     imageUrl: defaults?.imageUrl ?? "",
     images: defaults?.images ?? [],
     purchasePrice: defaults?.purchasePrice,
@@ -194,7 +220,7 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
     defaults ? developmentFormFromDefaults(defaults) : emptyDevelopmentForm,
   );
 
-  function updateDevField(field: keyof DevelopmentFormData, value: number) {
+  function updateDevField(field: keyof DevelopmentFormData, value: number | string | boolean) {
     setDevForm((prev) => ({ ...prev, [field]: value }));
   }
 
@@ -534,13 +560,13 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
             />
           </div>
           <div>
-            <label className={labelClass}>Square Footage</label>
+            <label className={labelClass}>Floor Area (m²)</label>
             <input
               type="number"
               className={inputClass}
               placeholder="0"
-              value={form.squareFootage || ""}
-              onChange={(e) => updateField("squareFootage", Number(e.target.value))}
+              value={form.squareMeters || ""}
+              onChange={(e) => updateField("squareMeters", Number(e.target.value))}
               min={0}
             />
           </div>

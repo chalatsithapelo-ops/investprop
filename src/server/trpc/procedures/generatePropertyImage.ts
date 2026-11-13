@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { experimental_generateImage as generateImage } from "ai";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { createOpenAI } from "@ai-sdk/openai";
 import { minioClient, minioPublicBaseUrl } from "~/server/minio";
 import { baseProcedure } from "~/server/trpc/main";
 import { env } from "~/server/env";
@@ -19,30 +19,24 @@ export const generatePropertyImage = baseProcedure
     // Verify authentication
     await getAuthenticatedUser(input.authToken);
 
-    // Check if OpenRouter API key is available
-    if (!env.OPENROUTER_API_KEY) {
+    // Image generation goes through OpenAI's image API (DALL·E 3). The
+    // OpenRouter provider does not expose the AI SDK image interface, so a
+    // dedicated OPENAI_API_KEY is required.
+    if (!env.OPENAI_API_KEY) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
-        message: "AI image generation is not configured. Please upload an image manually.",
+        message: "AI image generation is not configured (OPENAI_API_KEY missing). Please upload an image manually.",
       });
     }
 
     try {
-      // Create OpenRouter provider
-      const openrouter = createOpenRouter({
-        apiKey: env.OPENROUTER_API_KEY,
-      });
+      const openai = createOpenAI({ apiKey: env.OPENAI_API_KEY });
 
       // Generate image using AI
       const prompt = `A professional, high-quality real estate photograph of: ${input.title}. ${input.description}. The image should be photorealistic, well-lit, and suitable for a property listing.`;
 
-      // The OpenRouter provider's image API surface differs between SDK
-      // versions — cast through `any` to keep the call resilient until the
-      // provider's typings stabilise.
-      const imageModel = (openrouter as unknown as { image: (id: string) => unknown }).image("openai/dall-e-3");
-
       const { image } = await generateImage({
-        model: imageModel as Parameters<typeof generateImage>[0]["model"],
+        model: openai.image("dall-e-3"),
         prompt,
         size: "1024x1024",
       });
@@ -91,6 +85,7 @@ export const generatePropertyImage = baseProcedure
       };
     } catch (error) {
       console.error("Error generating property image:", error);
+      if (error instanceof TRPCError) throw error;
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "Failed to generate image. Please upload an image manually.",

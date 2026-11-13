@@ -437,7 +437,7 @@ export const updateProperty = baseProcedure
           expectedProfit: property.propertyDevelopment.expectedProfit,
           expectedMonthlyRentPerUnit: input.expectedMonthlyRentPerUnit !== undefined ? input.expectedMonthlyRentPerUnit : property.propertyDevelopment.expectedMonthlyRentPerUnit,
           annualOperatingExpenses: input.annualOperatingExpenses !== undefined ? input.annualOperatingExpenses : property.propertyDevelopment.annualOperatingExpenses,
-          stabilizedCapRate: property.propertyDevelopment.stabilizedCapRate,
+          stabilizedCapRate: input.stabilizedCapRate !== undefined ? input.stabilizedCapRate : property.propertyDevelopment.stabilizedCapRate,
           expectedGrossYield: property.propertyDevelopment.expectedGrossYield,
           expectedNetYield: property.propertyDevelopment.expectedNetYield,
           expectedROI: property.propertyDevelopment.expectedROI,
@@ -464,14 +464,17 @@ export const updateProperty = baseProcedure
 
         // Recompute the time-phased feasibility so computed IRR / profit / peak
         // funding stay the single source of truth after any cost or price edit.
+        // Rental / commercial is valued on the market / exit cap rate.
+        const stabilisedValue =
+          devInput.stabilizedCapRate && devInput.stabilizedCapRate > 0
+            ? (calculations.noi || 0) / (devInput.stabilizedCapRate / 100)
+            : 0;
         const gdvForCashflow =
           developmentType === "AFFORDABLE_RESALE"
             ? (devInput.totalExpectedRevenue > 0
                 ? devInput.totalExpectedRevenue
                 : devInput.expectedSalePricePerUnit * devInput.numberOfUnits)
-            : (calculations.calculatedCapRate && calculations.calculatedCapRate > 0
-                ? (calculations.noi || 0) / (calculations.calculatedCapRate / 100)
-                : 0);
+            : stabilisedValue;
         const cashflow = buildDevelopmentCashflow({
           landCost: devInput.landAcquisitionCost,
           hardCosts: devInput.hardCosts,
@@ -512,14 +515,19 @@ export const updateProperty = baseProcedure
           devUpdateData.expectedROI = expectedROI;
           if (input.preSaleUnits !== undefined) devUpdateData.preSaleUnits = input.preSaleUnits;
         } else {
-          // Rental-focused development calculations
+          // Rental-focused development calculations — value on the exit cap rate.
           if (input.expectedMonthlyRentPerUnit !== undefined) devUpdateData.expectedMonthlyRentPerUnit = input.expectedMonthlyRentPerUnit;
           if (input.annualOperatingExpenses !== undefined) devUpdateData.annualOperatingExpenses = input.annualOperatingExpenses;
 
-          devUpdateData.stabilizedCapRate = calculations.calculatedCapRate || 0;
-          devUpdateData.expectedGrossYield = calculations.calculatedGrossYield || 0;
+          const developmentProfit = stabilisedValue - calculations.totalCosts;
+          devUpdateData.stabilizedCapRate = devInput.stabilizedCapRate; // market / exit cap
+          devUpdateData.expectedGrossYield = calculations.calculatedGrossYield || 0; // yield on cost
           devUpdateData.expectedNetYield = calculations.calculatedNetYield || 0;
-          devUpdateData.expectedROI = calculations.calculatedCapRate || 0; // For rental, ROI is based on cap rate
+          devUpdateData.expectedROI = calculations.totalCosts > 0
+            ? (developmentProfit / calculations.totalCosts) * 100
+            : 0; // development profit on cost
+          devUpdateData.totalExpectedRevenue = stabilisedValue; // stabilised GDV
+          devUpdateData.expectedProfit = developmentProfit;
         }
 
         if (Object.keys(devUpdateData).length > 0) {

@@ -356,14 +356,19 @@ export const createProperty = baseProcedure
 
       // Time-phased feasibility: compute GDV then run the monthly cash-flow engine
       // so IRR, peak funding, rolled-up interest and VAT are DERIVED, not typed.
+      // For rental / commercial, the stabilised asset is valued by capitalising
+      // NOI on the MARKET / EXIT cap rate (not the yield-on-cost), so the
+      // development creates real value above total cost.
+      const stabilisedValue =
+        devInput.stabilizedCapRate && devInput.stabilizedCapRate > 0
+          ? (calculations.noi || 0) / (devInput.stabilizedCapRate / 100)
+          : 0;
       const gdvForCashflow =
         developmentType === "AFFORDABLE_RESALE"
           ? (devInput.totalExpectedRevenue > 0
               ? devInput.totalExpectedRevenue
               : devInput.expectedSalePricePerUnit * devInput.numberOfUnits)
-          : (calculations.calculatedCapRate && calculations.calculatedCapRate > 0
-              ? (calculations.noi || 0) / (calculations.calculatedCapRate / 100)
-              : 0);
+          : stabilisedValue;
 
       const cashflow = buildDevelopmentCashflow({
         landCost: devInput.landAcquisitionCost,
@@ -441,17 +446,21 @@ export const createProperty = baseProcedure
         developmentData.expectedGrossYield = 0;
         developmentData.expectedNetYield = 0;
       } else {
-        // Rental-focused development (AFFORDABLE_RENTAL or COMMERCIAL_RENTAL)
+        // Rental-focused development (AFFORDABLE_RENTAL or COMMERCIAL_RENTAL).
+        // Value the stabilised asset on the market/exit cap rate so development
+        // profit = stabilised value − total cost (not an artificial zero).
+        const developmentProfit = stabilisedValue - calculations.totalCosts;
         developmentData.expectedMonthlyRentPerUnit = devInput.expectedMonthlyRentPerUnit;
         developmentData.annualOperatingExpenses = devInput.annualOperatingExpenses;
-        developmentData.stabilizedCapRate = calculations.calculatedCapRate || 0;
-        developmentData.expectedGrossYield = calculations.calculatedGrossYield || 0;
+        developmentData.stabilizedCapRate = devInput.stabilizedCapRate; // market / exit cap
+        developmentData.expectedGrossYield = calculations.calculatedGrossYield || 0; // yield on cost
         developmentData.expectedNetYield = calculations.calculatedNetYield || 0;
-        developmentData.expectedROI = calculations.calculatedCapRate || 0; // For rental, ROI is based on cap rate
-        // Set sale fields to 0 for rental-focused developments
+        developmentData.expectedROI = calculations.totalCosts > 0
+          ? (developmentProfit / calculations.totalCosts) * 100
+          : 0; // development profit on cost
         developmentData.expectedSalePricePerUnit = 0;
-        developmentData.totalExpectedRevenue = 0;
-        developmentData.expectedProfit = 0;
+        developmentData.totalExpectedRevenue = stabilisedValue; // stabilised GDV
+        developmentData.expectedProfit = developmentProfit;
       }
 
       await db.propertyDevelopment.create({

@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { Building, Hammer, DollarSign, Plus, ArrowRight } from "lucide-react";
+import { Building, Hammer, DollarSign, Plus, ArrowRight, ClipboardCheck } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
@@ -145,11 +145,14 @@ function DevelopmentsPage() {
               const gdv = Number(property.grossDevelopmentValue || property.gdv) || 0;
 
               return (
-                <Link
+                <div
                   key={property.id}
+                  className="group flex flex-col rounded-xl border border-navy-800/50 bg-navy-900/50 transition hover:border-gold-300"
+                >
+                <Link
                   to="/properties/$propertyId"
                   params={{ propertyId: String(property.id) }}
-                  className="group rounded-xl border border-navy-800/50 bg-navy-900/50 transition hover:border-gold-300"
+                  className="flex-1"
                 >
                   {/* Image */}
                   {property.imageUrl && (
@@ -228,6 +231,16 @@ function DevelopmentsPage() {
                     </div>
                   </div>
                 </Link>
+                {isManager && (
+                  <Link
+                    to="/developments/$propertyId/manage"
+                    params={{ propertyId: String(property.id) }}
+                    className="flex items-center justify-center gap-1.5 border-t border-navy-800 px-5 py-3 text-sm font-medium text-gray-300 hover:bg-navy-800/40 hover:text-gold-400"
+                  >
+                    <ClipboardCheck size={15} /> Manage approvals & DD pack
+                  </Link>
+                )}
+                </div>
               );
             })}
           </div>
