@@ -2052,6 +2052,15 @@ model OwnerSaleProposal {
   conditionRating    PropertyCondition  @default(GOOD)
   estimatedRenoCost  Float?
   coOwners           String? // Free-text list of additional registered owners
+  // ─── Engagement-specific deal terms (per EngagementType) ───
+  desiredEquityPct    Float? // JOINT_VENTURE — % equity the owner wants to retain in the SPV
+  desiredRentback     Float? // LEASE_BACK — monthly rent the owner is willing to pay post-sale
+  desiredLeaseMonths  Int? //  LEASE_BACK — desired lease-back term in months
+  profitSharePct      Float? // DEVELOPMENT_PARTNERSHIP — % of development profit the owner expects
+  developmentVision   String?            @db.Text // DEVELOPMENT_PARTNERSHIP — intended development / improvement
+  // ─── Engagement terms & agreement acceptance ───
+  agreementAccepted   Boolean            @default(false)
+  agreementAcceptedAt DateTime?
   popiaConsent       Boolean            @default(false)
   counterOfferAmount Float?
   counterOfferTerms  String?            @db.Text

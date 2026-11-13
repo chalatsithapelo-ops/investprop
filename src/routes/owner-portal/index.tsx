@@ -18,6 +18,7 @@ import {
   Loader2,
   Ban,
   Sparkles,
+  X,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
@@ -613,6 +614,65 @@ function OwnerPortalPage() {
   );
 }
 
+/* ─── Engagement-specific terms the seller must read & accept ─── */
+const ENGAGEMENT_TERMS: Record<
+  "OUTRIGHT_SALE" | "JOINT_VENTURE" | "LEASE_BACK" | "DEVELOPMENT_PARTNERSHIP",
+  { title: string; intro: string; points: string[] }
+> = {
+  OUTRIGHT_SALE: {
+    title: "Outright Sale — Terms & Agreement",
+    intro:
+      "You are offering to sell the property to Investprop (or its nominated entity) for an agreed lump sum. By submitting this proposal you confirm and agree that:",
+    points: [
+      "This submission is an invitation to treat and does not create a binding sale until a written Offer to Purchase / Deed of Sale is signed by both parties.",
+      "You are the registered owner (or duly authorised to act for all registered owners) and are legally entitled to sell the property.",
+      "All information, valuations, bond, rates and tenancy disclosures provided are true and complete to the best of your knowledge.",
+      "The final purchase price is subject to Investprop's due diligence, inspection and valuation, and may differ from your asking price.",
+      "Transfer will be handled by a conveyancer; costs are allocated as set out in the signed Deed of Sale.",
+      "You consent to Investprop verifying title, bond, rates and compliance certificates with the relevant authorities.",
+    ],
+  },
+  JOINT_VENTURE: {
+    title: "Joint Venture — Terms & Agreement",
+    intro:
+      "You are offering to contribute the property as equity into a jointly-owned special-purpose vehicle (SPV) with Investprop. By submitting this proposal you confirm and agree that:",
+    points: [
+      "The property will be transferred into an SPV in exchange for shares/equity, in a proportion to be agreed and recorded in a signed Shareholders / Joint Venture Agreement.",
+      "The equity percentage you indicate is an expectation only and is subject to independent valuation, negotiation and due diligence.",
+      "Returns are not guaranteed; as an equity holder you share in both the upside and the risks of the venture, including the possibility of loss.",
+      "Governance, profit distribution, exit rights, dilution and decision-making will be governed by the signed Joint Venture Agreement, not by this submission.",
+      "You are the registered owner (or authorised for all owners) and the property may be encumbered only as disclosed.",
+      "No binding partnership exists until the Joint Venture / Shareholders Agreement is signed by both parties.",
+    ],
+  },
+  LEASE_BACK: {
+    title: "Sale & Lease-Back — Terms & Agreement",
+    intro:
+      "You are offering to sell the property to Investprop and then remain in occupation as a tenant under a lease. By submitting this proposal you confirm and agree that:",
+    points: [
+      "The sale and the lease-back are two linked agreements: a Deed of Sale transferring ownership to Investprop, and a Lease Agreement under which you occupy as tenant.",
+      "The rent and lease term you indicate are proposals only and are subject to negotiation, affordability assessment and the signed Lease Agreement.",
+      "As a tenant you will be responsible for rent and the obligations set out in the Lease Agreement, and ownership of the property passes to Investprop on transfer.",
+      "The purchase price is subject to Investprop's due diligence, inspection and valuation.",
+      "Failure to pay rent under the lease may result in eviction in accordance with applicable law, notwithstanding your former ownership.",
+      "No binding arrangement exists until both the Deed of Sale and the Lease Agreement are signed.",
+    ],
+  },
+  DEVELOPMENT_PARTNERSHIP: {
+    title: "Development Partnership — Terms & Agreement",
+    intro:
+      "You are offering to partner with Investprop to develop or improve the property and share in the returns. By submitting this proposal you confirm and agree that:",
+    points: [
+      "The development partnership will be governed by a signed Development / Partnership Agreement that sets out contributions, profit share, timelines and responsibilities.",
+      "The profit share you indicate is an expectation only and is subject to feasibility, valuation, funding structure and negotiation.",
+      "Development carries risk; returns are not guaranteed and may be affected by cost overruns, approvals, market conditions and delays.",
+      "Planning, zoning, environmental and building approvals are required before any development may proceed, and are subject to the relevant authorities.",
+      "You are the registered owner (or authorised for all owners) and will make the property available for the agreed development.",
+      "No binding partnership exists until the Development / Partnership Agreement is signed by both parties.",
+    ],
+  },
+};
+
 /* ─── Sale Proposal Form ─── */
 function SaleProposalForm({
   authToken,
@@ -632,6 +692,9 @@ function SaleProposalForm({
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [docs, setDocs] = useState<Array<{ kind: string; url: string; name: string }>>([]);
   const [popiaConsent, setPopiaConsent] = useState(false);
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [termsViewed, setTermsViewed] = useState(false);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -662,6 +725,11 @@ function SaleProposalForm({
     conditionRating: "GOOD" as "EXCELLENT" | "GOOD" | "FAIR" | "NEEDS_RENOVATION" | "DISTRESSED",
     estimatedRenoCost: "",
     coOwners: "",
+    desiredEquityPct: "",
+    desiredRentback: "",
+    desiredLeaseMonths: "",
+    profitSharePct: "",
+    developmentVision: "",
     contactPhone: "",
     contactEmail: "",
   });
@@ -716,6 +784,10 @@ function SaleProposalForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!agreementAccepted) {
+      toast.error("Please read and accept the engagement terms before submitting");
+      return;
+    }
     if (!popiaConsent) {
       toast.error("Please accept the POPIA consent before submitting");
       return;
@@ -753,6 +825,17 @@ function SaleProposalForm({
         conditionRating: form.conditionRating,
         estimatedRenoCost: form.estimatedRenoCost ? Number(form.estimatedRenoCost) : undefined,
         coOwners: form.coOwners || undefined,
+        desiredEquityPct:
+          form.engagementType === "JOINT_VENTURE" && form.desiredEquityPct ? Number(form.desiredEquityPct) : undefined,
+        desiredRentback:
+          form.engagementType === "LEASE_BACK" && form.desiredRentback ? Number(form.desiredRentback) : undefined,
+        desiredLeaseMonths:
+          form.engagementType === "LEASE_BACK" && form.desiredLeaseMonths ? Number(form.desiredLeaseMonths) : undefined,
+        profitSharePct:
+          form.engagementType === "DEVELOPMENT_PARTNERSHIP" && form.profitSharePct ? Number(form.profitSharePct) : undefined,
+        developmentVision:
+          form.engagementType === "DEVELOPMENT_PARTNERSHIP" && form.developmentVision ? form.developmentVision : undefined,
+        agreementAccepted: true,
         popiaConsent: true,
         imageUrls,
         documentUrls: docs,
@@ -772,6 +855,19 @@ function SaleProposalForm({
   const inputClass =
     "w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-gold-500 focus:outline-none focus:ring-2 focus:ring-gold-500/20";
   const labelClass = "mb-1 block text-sm font-medium text-gray-700";
+
+  const priceLabel =
+    form.engagementType === "JOINT_VENTURE"
+      ? "Property / Equity Value you're contributing (R)"
+      : form.engagementType === "LEASE_BACK"
+        ? "Sale Price (R)"
+        : form.engagementType === "DEVELOPMENT_PARTNERSHIP"
+          ? "Property / Land Value (R)"
+          : "Asking Price (R)";
+  const reasonLabel =
+    form.engagementType === "OUTRIGHT_SALE" ? "Reason for Selling" : "Your objective / what you want to achieve";
+
+  const terms = ENGAGEMENT_TERMS[form.engagementType];
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -793,7 +889,11 @@ function SaleProposalForm({
               <button
                 key={opt.v}
                 type="button"
-                onClick={() => setForm((p) => ({ ...p, engagementType: opt.v as any }))}
+                onClick={() => {
+                  setForm((p) => ({ ...p, engagementType: opt.v as any }));
+                  setAgreementAccepted(false);
+                  setTermsViewed(false);
+                }}
                 className={`rounded-lg border p-3 text-left text-sm transition ${form.engagementType === opt.v ? "border-gold-500 bg-white shadow" : "border-gray-200 bg-white hover:border-gold-300"}`}
               >
                 <div className="font-semibold text-gray-900">{opt.t}</div>
@@ -803,12 +903,23 @@ function SaleProposalForm({
           </div>
         </div>
 
-        {/* Sale Details */}
+        {/* Engagement Details — adapts to the chosen engagement type */}
         <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-4">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">
-            Sale Details
+          <h3 className="mb-1 text-sm font-semibold uppercase tracking-wider text-gray-500">
+            {form.engagementType === "OUTRIGHT_SALE" && "Sale Details"}
+            {form.engagementType === "JOINT_VENTURE" && "Joint Venture Details"}
+            {form.engagementType === "LEASE_BACK" && "Sale & Lease-Back Details"}
+            {form.engagementType === "DEVELOPMENT_PARTNERSHIP" && "Development Partnership Details"}
           </h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <p className="mb-4 text-xs text-gray-500">
+            {form.engagementType === "OUTRIGHT_SALE" && "Tell us your price and timeline for a straightforward sale."}
+            {form.engagementType === "JOINT_VENTURE" && "Contribute your property as equity into a jointly-owned SPV and share in the upside."}
+            {form.engagementType === "LEASE_BACK" && "Sell to us for liquidity today, then stay on as a tenant under a lease you help define."}
+            {form.engagementType === "DEVELOPMENT_PARTNERSHIP" && "Partner with us to develop or improve the property and share the returns."}
+          </p>
+
+          {/* Row 1: urgency + headline value (label adapts) */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className={labelClass}>
                 Urgency Level <span className="text-red-400">*</span>
@@ -819,12 +930,30 @@ function SaleProposalForm({
                 onChange={handleChange}
                 className={inputClass}
               >
-                <option value="URGENT">🚨 Urgent — Immediate sale needed</option>
+                <option value="URGENT">🚨 Urgent — Immediate action needed</option>
                 <option value="HIGH">⚡ High — Within 1-2 months</option>
                 <option value="STANDARD">Standard — Normal timeline</option>
               </select>
             </div>
             <div>
+              <label className={labelClass}>
+                {priceLabel} <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="number"
+                name="askingPrice"
+                value={form.askingPrice}
+                onChange={handleChange}
+                placeholder="500000"
+                required
+                className={inputClass}
+              />
+            </div>
+          </div>
+
+          {/* OUTRIGHT_SALE — sale type */}
+          {form.engagementType === "OUTRIGHT_SALE" && (
+            <div className="mt-4 sm:max-w-xs">
               <label className={labelClass}>
                 Sale Type <span className="text-red-400">*</span>
               </label>
@@ -839,21 +968,89 @@ function SaleProposalForm({
                 <option value="INSTALLMENT">Installment Sale</option>
               </select>
             </div>
-            <div>
-              <label className={labelClass}>
-                Asking Price (R) <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="number"
-                name="askingPrice"
-                value={form.askingPrice}
-                onChange={handleChange}
-                placeholder="500000"
-                required
-                className={inputClass}
-              />
+          )}
+
+          {/* JOINT_VENTURE — desired equity */}
+          {form.engagementType === "JOINT_VENTURE" && (
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>Equity you want to retain in the SPV (%)</label>
+                <input
+                  type="number"
+                  name="desiredEquityPct"
+                  value={form.desiredEquityPct}
+                  onChange={handleChange}
+                  placeholder="e.g. 40"
+                  min={0}
+                  max={100}
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-gray-400">The share of the jointly-owned company you'd like to keep in exchange for the property.</p>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* LEASE_BACK — rent-back + term */}
+          {form.engagementType === "LEASE_BACK" && (
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>Monthly rent you'd pay as tenant (R)</label>
+                <input
+                  type="number"
+                  name="desiredRentback"
+                  value={form.desiredRentback}
+                  onChange={handleChange}
+                  placeholder="e.g. 12000"
+                  min={0}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Desired lease term (months)</label>
+                <input
+                  type="number"
+                  name="desiredLeaseMonths"
+                  value={form.desiredLeaseMonths}
+                  onChange={handleChange}
+                  placeholder="e.g. 24"
+                  min={0}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* DEVELOPMENT_PARTNERSHIP — vision + profit share */}
+          {form.engagementType === "DEVELOPMENT_PARTNERSHIP" && (
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className={labelClass}>Your development vision</label>
+                <textarea
+                  name="developmentVision"
+                  value={form.developmentVision}
+                  onChange={handleChange}
+                  rows={3}
+                  placeholder="e.g. Subdivide the erf and build 6 townhouses; or convert the house into student accommodation"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Profit share you expect (%)</label>
+                <input
+                  type="number"
+                  name="profitSharePct"
+                  value={form.profitSharePct}
+                  onChange={handleChange}
+                  placeholder="e.g. 30"
+                  min={0}
+                  max={100}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Shared: market value + reason/objective */}
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className={labelClass}>Market Value (R)</label>
@@ -867,13 +1064,17 @@ function SaleProposalForm({
               />
             </div>
             <div>
-              <label className={labelClass}>Reason for Selling</label>
+              <label className={labelClass}>{reasonLabel}</label>
               <input
                 type="text"
                 name="reason"
                 value={form.reason}
                 onChange={handleChange}
-                placeholder="e.g. Distressed, relocation, downsizing"
+                placeholder={
+                  form.engagementType === "OUTRIGHT_SALE"
+                    ? "e.g. Distressed, relocation, downsizing"
+                    : "e.g. Unlock capital, reduce risk, grow the asset with a partner"
+                }
                 className={inputClass}
               />
             </div>
@@ -1233,6 +1434,44 @@ function SaleProposalForm({
           )}
         </div>
 
+        {/* Engagement Terms & Agreement */}
+        <div className="rounded-lg border border-gold-200 bg-gold-50/40 p-4">
+          <h3 className="mb-1 text-sm font-semibold uppercase tracking-wider text-gold-700">
+            {terms.title}
+          </h3>
+          <p className="mb-3 text-xs text-gray-600">{terms.intro}</p>
+          <ul className="mb-3 list-disc space-y-1 pl-5 text-xs text-gray-600">
+            {terms.points.slice(0, 3).map((pt, i) => (
+              <li key={i}>{pt}</li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={() => {
+              setShowTerms(true);
+              setTermsViewed(true);
+            }}
+            className="mb-3 text-xs font-semibold text-gold-700 underline hover:text-gold-800"
+          >
+            Read the full {terms.title.replace(" — Terms & Agreement", "")} terms
+          </button>
+          <label className="flex items-start gap-3 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={agreementAccepted}
+              disabled={!termsViewed}
+              onChange={(e) => setAgreementAccepted(e.target.checked)}
+              className="mt-1 h-4 w-4 disabled:cursor-not-allowed"
+            />
+            <span>
+              <strong>I have read and agree</strong> to the {terms.title.replace(" — Terms & Agreement", "")} terms set out above. I understand this submission is not binding until a formal written agreement is signed by both parties.
+              {!termsViewed && (
+                <span className="ml-1 text-xs text-gold-700">(Please open and read the full terms first.)</span>
+              )}
+            </span>
+          </label>
+        </div>
+
         {/* POPIA Consent */}
         <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-4">
           <label className="flex items-start gap-3 text-sm text-gray-700">
@@ -1254,7 +1493,7 @@ function SaleProposalForm({
           </button>
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !popiaConsent || !agreementAccepted}
             className="flex items-center gap-2 rounded-lg bg-gold-500 px-6 py-2.5 text-sm font-semibold text-white shadow hover:bg-gold-600 disabled:opacity-50"
           >
             {submitting ? (
@@ -1266,6 +1505,61 @@ function SaleProposalForm({
           </button>
         </div>
       </form>
+
+      {/* Full engagement terms modal */}
+      {showTerms && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowTerms(false)}
+        >
+          <div
+            className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <h3 className="text-lg font-bold text-gray-900">{terms.title}</h3>
+              <button
+                type="button"
+                onClick={() => setShowTerms(false)}
+                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="overflow-y-auto px-6 py-4">
+              <p className="mb-4 text-sm text-gray-600">{terms.intro}</p>
+              <ul className="list-disc space-y-2 pl-5 text-sm text-gray-700">
+                {terms.points.map((pt, i) => (
+                  <li key={i}>{pt}</li>
+                ))}
+              </ul>
+              <p className="mt-4 text-xs text-gray-400">
+                These terms summarise the intended arrangement and do not replace the formal written agreement, which will govern the final transaction. Nothing here constitutes legal or financial advice.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setShowTerms(false)}
+                className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAgreementAccepted(true);
+                  setShowTerms(false);
+                }}
+                className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-gold-600"
+              >
+                I Agree
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
