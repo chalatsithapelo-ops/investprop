@@ -103,7 +103,7 @@ function PropertyDetailPage() {
   const amountRaised = Number(property.fundingRaised ?? property.amountRaised ?? property.totalRaised ?? 0);
   const fundingProgress = fundingGoal > 0 ? Math.min((amountRaised / fundingGoal) * 100, 100) : 0;
 
-  const isManager = ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER"].includes(user?.role ?? "");
+  const isManager = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"].includes(user?.role ?? "");
 
   const tabs = [
     { key: "overview" as const, label: "Overview", icon: Building },
@@ -390,13 +390,16 @@ function PropertyDetailPage() {
                   <div className="mt-4 flex gap-3">
                     <button
                       onClick={async () => {
-                        if (!budgetForm.category || !budgetForm.description || !budgetForm.amount) { toast.error("Please fill all fields"); return; }
+                        if (!budgetForm.category) { toast.error("Please select a category"); return; }
+                        if (!budgetForm.description.trim()) { toast.error("Please enter a description"); return; }
+                        const amount = Number(budgetForm.amount);
+                        if (!amount || amount <= 0) { toast.error("Please enter a valid amount"); return; }
                         try {
-                          await trpcClient.createBudgetEntry.mutate({ authToken: authToken!, propertyId: Number(propertyId), category: budgetForm.category, description: budgetForm.description, amount: Number(budgetForm.amount) });
-                          toast.success("Budget entry added");
+                          await trpcClient.createBudgetEntry.mutate({ authToken: authToken!, propertyId: Number(propertyId), category: budgetForm.category, description: budgetForm.description.trim(), amount });
+                          toast.success("Budget entry added — pending approval");
                           setBudgetForm({ category: "", description: "", amount: "" });
                           setShowBudgetForm(false);
-                          queryClient.invalidateQueries({ queryKey: trpc.getPropertyById.queryKey() });
+                          await queryClient.invalidateQueries({ queryKey: trpc.getPropertyById.queryKey() });
                         } catch (e: any) { toast.error(e.message || "Failed to add budget entry"); }
                       }}
                       className="rounded-lg bg-gold-500 px-6 py-2 text-sm font-medium text-white hover:bg-gold-600"
@@ -414,6 +417,7 @@ function PropertyDetailPage() {
                         <th className="pb-3 text-left text-sm font-medium text-gray-500">Category</th>
                         <th className="pb-3 text-left text-sm font-medium text-gray-500">Description</th>
                         <th className="pb-3 text-left text-sm font-medium text-gray-500">Recorded By</th>
+                        <th className="pb-3 text-left text-sm font-medium text-gray-500">Status</th>
                         <th className="pb-3 text-left text-sm font-medium text-gray-500">Date</th>
                         <th className="pb-3 text-right text-sm font-medium text-gray-500">Amount</th>
                       </tr>
@@ -433,6 +437,14 @@ function PropertyDetailPage() {
                             )}
                           </td>
                           <td className="py-3 text-sm text-gray-500">{entry.recordedBy?.name || "—"}</td>
+                          <td className="py-3 text-sm">
+                            {(() => {
+                              const status = entry.approvalStatus || "PENDING";
+                              const cls = status === "APPROVED" ? "bg-green-50 text-green-700" : status === "REJECTED" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700";
+                              const label = status.charAt(0) + status.slice(1).toLowerCase();
+                              return <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
+                            })()}
+                          </td>
                           <td className="py-3 text-sm text-gray-500">
                             {entry.dateRecorded ? new Date(entry.dateRecorded).toLocaleDateString("en-ZA") : "—"}
                           </td>
@@ -444,7 +456,7 @@ function PropertyDetailPage() {
                     </tbody>
                     <tfoot>
                       <tr className="border-t border-navy-700">
-                        <td colSpan={4} className="pt-3 text-sm font-semibold text-gray-600">Total</td>
+                        <td colSpan={5} className="pt-3 text-sm font-semibold text-gray-600">Total</td>
                         <td className="pt-3 text-right text-sm font-bold text-gold-600">
                           R{budgetEntries.reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0).toLocaleString()}
                         </td>

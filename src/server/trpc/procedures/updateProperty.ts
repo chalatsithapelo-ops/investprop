@@ -167,7 +167,13 @@ export const updateProperty = baseProcedure
       });
     }
 
-    if (property.userId !== user.id) {
+    // Owners may edit their own property; ADMIN / DEVELOPMENT_MANAGER /
+    // PROJECT_MANAGER may edit and republish any property.
+    const isManager =
+      user.role === "ADMIN" ||
+      user.role === "DEVELOPMENT_MANAGER" ||
+      user.role === "PROJECT_MANAGER";
+    if (property.userId !== user.id && !isManager) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: "You do not have permission to update this property",

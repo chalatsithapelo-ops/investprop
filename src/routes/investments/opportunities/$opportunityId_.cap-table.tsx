@@ -7,7 +7,7 @@ import { QueryState } from "~/components/QueryState";
 import { useTRPC } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 
-export const Route = createFileRoute("/investments/opportunities/$opportunityId/cap-table")({
+export const Route = createFileRoute("/investments/opportunities/$opportunityId_/cap-table")({
   component: CapTablePage,
 });
 

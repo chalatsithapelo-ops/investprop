@@ -23,12 +23,12 @@ export const publishPropertyForFunding = baseProcedure
     })
   )
   .mutation(async ({ input }) => {
-    // Verify authentication and ensure user is a development manager
+    // Verify authentication and ensure user is a manager or the owner
     const user = await getAuthenticatedUser(input.authToken);
     requireRole(
       user,
-      ["DEVELOPMENT_MANAGER", "PROPERTY_OWNER"],
-      "Only development managers can publish properties for funding"
+      ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER"],
+      "Only managers or property owners can publish properties for funding"
     );
 
     // Verify property exists and belongs to user
@@ -49,7 +49,13 @@ export const publishPropertyForFunding = baseProcedure
       });
     }
 
-    if (property.userId !== user.id) {
+    // Owners may publish their own property; ADMIN / DEVELOPMENT_MANAGER /
+    // PROJECT_MANAGER may publish or republish any property.
+    const isManager =
+      user.role === "ADMIN" ||
+      user.role === "DEVELOPMENT_MANAGER" ||
+      user.role === "PROJECT_MANAGER";
+    if (property.userId !== user.id && !isManager) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: "You can only publish your own properties",
