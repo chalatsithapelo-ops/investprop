@@ -187,6 +187,9 @@ import {
   getDevelopmentProfessionals,
   getProjectReadiness,
   getDevelopmentDueDiligence,
+  getDocumentsPack,
+  addDocumentToPack,
+  removeDocumentFromPack,
 } from "~/server/trpc/procedures/development-management";
 import {
   getChartOfAccounts,
@@ -275,6 +278,9 @@ export const appRouter = createTRPCRouter({
   getDevelopmentProfessionals,
   getProjectReadiness,
   getDevelopmentDueDiligence,
+  getDocumentsPack,
+  addDocumentToPack,
+  removeDocumentFromPack,
   getChartOfAccounts,
   getTrialBalance,
   getCapitalAccounts,

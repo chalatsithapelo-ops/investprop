@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Building, DollarSign, MapPin, Home, Plus, Trash2, Upload, X, Image as ImageIcon } from "lucide-react";
 import { useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import { InfoTooltip } from "~/components/InfoTooltip";
 import toast from "react-hot-toast";
 import {
   DevelopmentFormSection,
@@ -607,7 +608,7 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Purchase Price (R)</label>
+              <label className={labelClass}>Purchase Price (R)<InfoTooltip term="inPurchasePrice" /></label>
               <input
                 type="number"
                 className={inputClass}
@@ -618,7 +619,7 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
               />
             </div>
             <div>
-              <label className={labelClass}>After Repair Value (R)</label>
+              <label className={labelClass}>After Repair Value (R)<InfoTooltip term="arv" /></label>
               <input
                 type="number"
                 className={inputClass}
@@ -629,7 +630,7 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
               />
             </div>
             <div>
-              <label className={labelClass}>Renovation Cost (R)</label>
+              <label className={labelClass}>Renovation Cost (R)<InfoTooltip term="inRenovationCost" /></label>
               <input
                 type="number"
                 className={inputClass}
@@ -640,7 +641,7 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
               />
             </div>
             <div>
-              <label className={labelClass}>Holding Costs (R)</label>
+              <label className={labelClass}>Holding Costs (R)<InfoTooltip term="inHoldingCosts" /></label>
               <input
                 type="number"
                 className={inputClass}
@@ -651,7 +652,7 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
               />
             </div>
             <div>
-              <label className={labelClass}>Closing Costs (R)</label>
+              <label className={labelClass}>Closing Costs (R)<InfoTooltip term="inClosingCosts" /></label>
               <input
                 type="number"
                 className={inputClass}
@@ -673,7 +674,7 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Monthly Rent (R)</label>
+              <label className={labelClass}>Monthly Rent (R)<InfoTooltip term="inMonthlyRent" /></label>
               <input
                 type="number"
                 className={inputClass}
@@ -684,7 +685,7 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
               />
             </div>
             <div>
-              <label className={labelClass}>Operating Expenses (R)</label>
+              <label className={labelClass}>Operating Expenses (R)<InfoTooltip term="inOperatingExpenses" /></label>
               <input
                 type="number"
                 className={inputClass}
@@ -695,7 +696,7 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
               />
             </div>
             <div>
-              <label className={labelClass}>Vacancy Rate (%)</label>
+              <label className={labelClass}>Vacancy Rate (%)<InfoTooltip term="inVacancyRate" /></label>
               <input
                 type="number"
                 className={inputClass}
@@ -707,7 +708,7 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
               />
             </div>
             <div>
-              <label className={labelClass}>Management Fee (%)</label>
+              <label className={labelClass}>Management Fee (%)<InfoTooltip term="managementFee" /></label>
               <input
                 type="number"
                 className={inputClass}
@@ -740,7 +741,7 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className={labelClass}>Funding Goal (R)</label>
+            <label className={labelClass}>Funding Goal (R)<InfoTooltip term="inFundingGoal" /></label>
             <input
               type="number"
               className={inputClass}
@@ -784,7 +785,7 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
             />
           </div>
           <div>
-            <label className={labelClass}>Platform Carry (% of equity)</label>
+            <label className={labelClass}>Platform Carry (% of equity)<InfoTooltip term="inPlatformCarry" /></label>
             <input
               type="number"
               className={inputClass}

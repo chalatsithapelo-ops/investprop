@@ -62,19 +62,16 @@ export const publishPropertyForFunding = baseProcedure
       });
     }
 
-    // Require SPV assignment before publishing for investment
-    if (!property.spvId || !property.spv) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Property must be assigned to an SPV before it can be published for funding. Go to SPV Management to assign this property to an SPV.",
-      });
-    }
-
-    if (property.spv.status !== "ACTIVE" && property.spv.status !== "REGISTERED") {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: `SPV "${property.spv.name}" must be in ACTIVE or REGISTERED status before publishing. Current status: ${property.spv.status}.`,
-      });
+    // SPV is OPTIONAL at publish time. A property may raise funds first and be
+    // assigned to an SPV later (e.g. once commitments are in / money is raised).
+    // Only validate the SPV status when one is already assigned.
+    if (property.spvId && property.spv) {
+      if (property.spv.status !== "ACTIVE" && property.spv.status !== "REGISTERED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `SPV "${property.spv.name}" must be in ACTIVE or REGISTERED status before publishing. Current status: ${property.spv.status}.`,
+        });
+      }
     }
 
     // Validate that funding breakdown amounts sum to funding goal

@@ -32,6 +32,8 @@ import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 import { calculateFlipMetrics, calculateRentalMetrics, calculateDevelopmentMetrics } from "~/financial-calculations";
 import type { PropertyFlipInput, RentalPropertyInput, PropertyDevelopmentInput } from "~/financial-calculations";
+import { ProjectedStatementsView } from "~/components/ProjectedStatements";
+import { buildStatementsForProperty } from "~/projected-statements";
 
 export const Route = createFileRoute(
   "/investments/opportunities/$opportunityId",
@@ -691,6 +693,12 @@ function OpportunityDetailPage() {
 
             {/* In-Depth Financial Analysis */}
             <InvestorFinancialDetails property={property} preferredReturn={expectedReturns} />
+
+            {/* Projected Financial Statements (IS / CF / BS) */}
+            {(() => {
+              const statements = buildStatementsForProperty(property);
+              return statements ? <ProjectedStatementsView data={statements} /> : null;
+            })()}
 
             {/* Development Due-Diligence Pack */}
             {dd && <DevelopmentDueDiligence dd={dd} />}
@@ -1731,6 +1739,30 @@ function DevelopmentDueDiligence({ dd }: { dd: any }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Supporting documents pack */}
+      {Array.isArray(dd.documentsPack) && dd.documentsPack.length > 0 && (
+        <>
+          <h3 className="mb-3 mt-6 flex items-center gap-2 text-sm font-semibold text-gray-700">
+            <FileText size={15} className="text-gold-500" /> Supporting Documents
+          </h3>
+          <ul className="divide-y divide-navy-800/50 rounded-lg border border-navy-800/50 bg-navy-900/30">
+            {dd.documentsPack.map((d: any, i: number) => (
+              <li key={i} className="flex items-center justify-between gap-3 p-3 text-sm">
+                <p className="truncate font-medium text-gray-900">{d.label}</p>
+                <a
+                  href={d.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shrink-0 rounded-lg border border-gold-500 px-2 py-1 text-[11px] font-medium text-gold-600 hover:bg-gold-50"
+                >
+                  View
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   );

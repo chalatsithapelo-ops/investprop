@@ -966,7 +966,7 @@ export const getDevelopmentDueDiligence = baseProcedure
 
     const property = await db.property.findUnique({
       where: { id: input.propertyId },
-      select: { id: true, isPublished: true, propertyDevelopment: true },
+      select: { id: true, isPublished: true, documentsPackUrls: true, propertyDevelopment: true },
     });
     if (!property) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Property not found" });
@@ -1167,5 +1167,95 @@ export const getDevelopmentDueDiligence = baseProcedure
         approved: requiredApprovals.filter((a) => a.status === "APPROVED").length,
         outstanding: requiredApprovals.filter((a) => a.status !== "APPROVED").length,
       },
+      documentsPack: normalisePack(property.documentsPackUrls),
     };
+  });
+
+// ============================================================================
+// Standalone due-diligence pack — labelled documents stored on the property
+// (MOI, valuation, SPV certificate, sale agreement, title deed, etc.) that are
+// NOT tied to a specific statutory approval. Managers upload/remove; any
+// authenticated user may read the labelled list.
+// ============================================================================
+
+type PackDoc = { label: string; url: string; uploadedAt: string };
+
+function normalisePack(raw: unknown): PackDoc[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((d): d is Record<string, unknown> => !!d && typeof d === "object")
+    .map((d) => ({
+      label: typeof d.label === "string" ? d.label : "Document",
+      url: typeof d.url === "string" ? d.url : "",
+      uploadedAt: typeof d.uploadedAt === "string" ? d.uploadedAt : new Date().toISOString(),
+    }))
+    .filter((d) => d.url.length > 0);
+}
+
+export const getDocumentsPack = baseProcedure
+  .input(z.object({ authToken: z.string(), propertyId: z.number() }))
+  .query(async ({ input }) => {
+    await getAuthenticatedUser(input.authToken);
+    const property = await db.property.findUnique({
+      where: { id: input.propertyId },
+      select: { documentsPackUrls: true },
+    });
+    if (!property) throw new TRPCError({ code: "NOT_FOUND", message: "Property not found" });
+    return { documents: normalisePack(property.documentsPackUrls) };
+  });
+
+export const addDocumentToPack = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      propertyId: z.number(),
+      label: z.string().min(1),
+      url: z.string().min(1),
+    })
+  )
+  .mutation(async ({ input }) => {
+    await requireAuthenticatedUser(
+      input.authToken,
+      [...MANAGER_ROLES],
+      "Only managers can update the due-diligence pack"
+    );
+    const property = await db.property.findUnique({
+      where: { id: input.propertyId },
+      select: { documentsPackUrls: true },
+    });
+    if (!property) throw new TRPCError({ code: "NOT_FOUND", message: "Property not found" });
+    const docs = normalisePack(property.documentsPackUrls);
+    docs.push({ label: input.label, url: input.url, uploadedAt: new Date().toISOString() });
+    await db.property.update({
+      where: { id: input.propertyId },
+      data: { documentsPackUrls: docs as unknown as object },
+    });
+    return { success: true, documents: docs };
+  });
+
+export const removeDocumentFromPack = baseProcedure
+  .input(
+    z.object({
+      authToken: z.string(),
+      propertyId: z.number(),
+      url: z.string().min(1),
+    })
+  )
+  .mutation(async ({ input }) => {
+    await requireAuthenticatedUser(
+      input.authToken,
+      [...MANAGER_ROLES],
+      "Only managers can update the due-diligence pack"
+    );
+    const property = await db.property.findUnique({
+      where: { id: input.propertyId },
+      select: { documentsPackUrls: true },
+    });
+    if (!property) throw new TRPCError({ code: "NOT_FOUND", message: "Property not found" });
+    const docs = normalisePack(property.documentsPackUrls).filter((d) => d.url !== input.url);
+    await db.property.update({
+      where: { id: input.propertyId },
+      data: { documentsPackUrls: docs as unknown as object },
+    });
+    return { success: true, documents: docs };
   });

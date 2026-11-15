@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate, Outlet, useMatchRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Building, MapPin, DollarSign, Users, BarChart3, Calendar, Edit, ArrowLeft, ChevronLeft, ChevronRight, TrendingUp, AlertTriangle, Clock, Wallet, PiggyBank, Home, Percent, Plus, Trash2 } from "lucide-react";
+import { Building, MapPin, DollarSign, Users, BarChart3, Calendar, Edit, ArrowLeft, ChevronLeft, ChevronRight, TrendingUp, AlertTriangle, Clock, Wallet, PiggyBank, Home, Percent, Plus, Trash2, ClipboardCheck } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPCClient, useTRPC } from "~/trpc/react";
 import toast from "react-hot-toast";
@@ -12,6 +12,8 @@ import { AIPhotoCheck } from "~/components/AIPhotoCheck";
 import { useAuthStore } from "~/stores/authStore";
 import { calculateFlipMetrics, calculateRentalMetrics, calculateDevelopmentMetrics } from "~/financial-calculations";
 import type { PropertyFlipInput, RentalPropertyInput, PropertyDevelopmentInput } from "~/financial-calculations";
+import { ProjectedStatementsView } from "~/components/ProjectedStatements";
+import { buildStatementsForProperty } from "~/projected-statements";
 
 export const Route = createFileRoute("/properties/$propertyId")({
   component: PropertyLayoutPage,
@@ -141,6 +143,15 @@ function PropertyDetailPage() {
           </Link>
           {isManager && (
             <div className="flex items-center gap-2">
+              {property.propertyDevelopment && (
+                <Link
+                  to="/developments/$propertyId/manage"
+                  params={{ propertyId }}
+                  className="flex items-center gap-2 rounded-lg border border-gold-400 bg-white px-4 py-2 text-sm font-medium text-gold-700 hover:bg-gold-50"
+                >
+                  <ClipboardCheck size={16} /> Manage Development
+                </Link>
+              )}
               <Link
                 to="/properties/$propertyId/edit"
                 params={{ propertyId }}
@@ -292,7 +303,13 @@ function PropertyDetailPage() {
           )}
 
           {activeTab === "financials" && (
-            <FinancialsTab property={property} propertyId={propertyId} />
+            <div className="space-y-6">
+              <FinancialsTab property={property} propertyId={propertyId} />
+              {(() => {
+                const statements = buildStatementsForProperty(property);
+                return statements ? <ProjectedStatementsView data={statements} /> : null;
+              })()}
+            </div>
           )}
 
           {activeTab === "investors" && (

@@ -23,6 +23,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
+import { InfoTooltip } from "~/components/InfoTooltip";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
 import toast from "react-hot-toast";
@@ -55,6 +56,7 @@ function FundingCampaignsPage() {
   const [selectedProposal, setSelectedProposal] = useState<any>(null);
   const [publishForm, setPublishForm] = useState({
     propertyId: 0,
+    spvId: 0,
     fundingGoal: 0,
     fundingClosingDate: "",
     platformCarryPct: 0,
@@ -75,6 +77,12 @@ function FundingCampaignsPage() {
     ...trpc.getProperties.queryOptions({}),
     enabled: !!authToken && isManager,
   });
+
+  const spvsQuery = useQuery({
+    ...trpc.getSPVs.queryOptions({ authToken: authToken ?? "" }),
+    enabled: !!authToken && isManager,
+  });
+  const spvsArr = Array.isArray(spvsQuery.data) ? (spvsQuery.data as any[]) : [];
 
   const proposalsQuery = useQuery({
     ...trpc.getPendingInvestmentProposals.queryOptions({
@@ -129,6 +137,20 @@ function FundingCampaignsPage() {
       return;
     }
     try {
+      // Optional: assign the chosen SPV first. SPV is no longer required to
+      // publish — it can be left blank and assigned later once funds are raised.
+      if (publishForm.spvId) {
+        try {
+          await (trpcClient as any).assignPropertyToSPV.mutate({
+            authToken: authToken ?? "",
+            spvId: publishForm.spvId,
+            propertyId: publishForm.propertyId,
+          });
+        } catch (e: any) {
+          toast.error(e?.message ?? "Could not assign SPV");
+          return;
+        }
+      }
       await (trpcClient as any).publishPropertyForFunding.mutate({
         authToken: authToken ?? "",
         propertyId: publishForm.propertyId,
@@ -144,6 +166,7 @@ function FundingCampaignsPage() {
       setShowPublishForm(false);
       setPublishForm({
         propertyId: 0,
+        spvId: 0,
         fundingGoal: 0,
         fundingClosingDate: "",
         platformCarryPct: 0,
@@ -274,6 +297,7 @@ function FundingCampaignsPage() {
               <div>
                 <label className="mb-1 block text-sm text-gray-500">
                   Funding Goal (R)
+                  <InfoTooltip term="inFundingGoal" />
                 </label>
                 <input
                   type="number"
@@ -291,6 +315,7 @@ function FundingCampaignsPage() {
               <div>
                 <label className="mb-1 block text-sm text-gray-500">
                   Funding Closing Date
+                  <InfoTooltip term="inFundingClosingDate" />
                 </label>
                 <input
                   type="date"
@@ -304,11 +329,38 @@ function FundingCampaignsPage() {
                   className="w-full rounded-lg border border-navy-700 bg-navy-800 px-4 py-2 text-gray-900 focus:border-gold-500 focus:outline-none"
                 />
               </div>
+              <div>
+                <label className="mb-1 block text-sm text-gray-500">
+                  SPV (optional)
+                  <InfoTooltip
+                    title="Special Purpose Vehicle (SPV)"
+                    text="The company that will legally own this property and hold investor equity. You can leave this blank now and assign an SPV later — once funding commitments are in or the money has been raised. Assign it here if the SPV already exists."
+                  />
+                </label>
+                <select
+                  value={publishForm.spvId}
+                  onChange={(e) =>
+                    setPublishForm({
+                      ...publishForm,
+                      spvId: Number(e.target.value),
+                    })
+                  }
+                  className="w-full rounded-lg border border-navy-700 bg-navy-800 px-4 py-2 text-gray-900 focus:border-gold-500 focus:outline-none"
+                >
+                  <option value={0}>Assign later (publish without SPV)</option>
+                  {spvsArr.map((s: any) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}{s.status ? ` — ${s.status}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="mt-4">
               <label className="mb-1 block text-sm text-gray-500">
                 Platform Carry (% of equity)
+                <InfoTooltip term="inPlatformCarry" />
               </label>
               <input
                 type="number"
@@ -338,6 +390,7 @@ function FundingCampaignsPage() {
               <div className="mb-2 flex items-center justify-between">
                 <label className="block text-sm font-medium text-gray-500">
                   Funding Breakdown (must total the funding goal)
+                  <InfoTooltip term="inFundingBreakdown" />
                 </label>
                 <button
                   type="button"

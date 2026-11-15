@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { InfoTooltip, type FinancialTermKey } from "~/components/InfoTooltip";
 import { calculateDevelopmentMetrics, type PropertyDevelopmentInput } from "../financial-calculations";
 
 export type DevelopmentType = "AFFORDABLE_RESALE" | "AFFORDABLE_RENTAL" | "COMMERCIAL_RENTAL";
@@ -86,6 +87,7 @@ type FieldDef = {
   label: string;
   kind?: FieldKind;
   hint?: string;
+  term?: FinancialTermKey;
 };
 
 type Group = {
@@ -97,7 +99,7 @@ const groups: Group[] = [
   {
     title: "Land & Site",
     fields: [
-      { key: "siteAcquisitionCost", label: "Site / Land Acquisition (R)", kind: "money" },
+      { key: "siteAcquisitionCost", label: "Site / Land Acquisition (R)", kind: "money", term: "inLandAcquisitionCost" },
       { key: "landClearingCost", label: "Land Clearing & Earthworks (R)", kind: "money" },
       { key: "infrastructureCost", label: "Internal Services / Infrastructure (R)", kind: "money" },
       { key: "bulkServicesCost", label: "Bulk Services Contribution (R)", kind: "money" },
@@ -107,7 +109,7 @@ const groups: Group[] = [
   {
     title: "Construction & Area",
     fields: [
-      { key: "numberOfUnits", label: "Number of Units", kind: "number", hint: "Saleable / rentable units" },
+      { key: "numberOfUnits", label: "Number of Units", kind: "number", hint: "Saleable / rentable units", term: "inNumberOfUnits" },
       { key: "avgUnitSizeSqm", label: "Average Unit Size (m²)", kind: "area" },
       { key: "constructionCostPerUnit", label: "Construction Cost per Unit (R)", kind: "money" },
       { key: "grossLettableAreaSqm", label: "Gross Lettable Area — GLA (m²)", kind: "area" },
@@ -142,18 +144,18 @@ const groups: Group[] = [
     title: "Finance & Capital Stack",
     fields: [
       { key: "equityAmount", label: "Equity Contribution (R)", kind: "money" },
-      { key: "seniorDebtAmount", label: "Senior Debt / Facility (R)", kind: "money" },
+      { key: "seniorDebtAmount", label: "Senior Debt / Facility (R)", kind: "money", term: "inSeniorDebt" },
       { key: "seniorDebtRate", label: "Debt Interest Rate (% p.a.)", kind: "percent" },
       { key: "financingCosts", label: "Raising / Arrangement Fees (R)", kind: "money" },
-      { key: "holdingCostsPerMonth", label: "Holding Costs per Month (R)", kind: "money" },
-      { key: "contingencyPercentage", label: "Contingency (% of costs)", kind: "percent" },
+      { key: "holdingCostsPerMonth", label: "Holding Costs per Month (R)", kind: "money", term: "inHoldingCosts" },
+      { key: "contingencyPercentage", label: "Contingency (% of costs)", kind: "percent", term: "inContingencyPercent" },
     ],
   },
 ];
 
 // Revenue groups are rendered per development type.
 const resaleRevenue: FieldDef[] = [
-  { key: "sellingPricePerUnit", label: "Selling Price per Unit (R)", kind: "money" },
+  { key: "sellingPricePerUnit", label: "Selling Price per Unit (R)", kind: "money", term: "inExpectedSalePricePerUnit" },
   { key: "preSaleUnits", label: "Pre-sold Units", kind: "number" },
   { key: "preSaleThresholdPercent", label: "Pre-sale Threshold to Draw Debt (%)", kind: "percent" },
   { key: "salesCommissionRate", label: "Sales Commission (% of GDV)", kind: "percent" },
@@ -161,7 +163,7 @@ const resaleRevenue: FieldDef[] = [
 ];
 
 const rentalRevenue: FieldDef[] = [
-  { key: "monthlyRentPerUnit", label: "Monthly Rent per Unit (R)", kind: "money" },
+  { key: "monthlyRentPerUnit", label: "Monthly Rent per Unit (R)", kind: "money", term: "inExpectedRentPerUnit" },
   { key: "vacancyRatePct", label: "Vacancy & Bad Debt (%)", kind: "percent" },
   { key: "annualOperatingExpenses", label: "Annual Operating Expenses (R)", kind: "money" },
   { key: "exitCapRatePct", label: "Market / Exit Cap Rate (%)", kind: "percent", hint: "Used to value the stabilised asset" },
@@ -353,6 +355,7 @@ function FieldInput({
     <div>
       <label htmlFor={def.key} className={LABEL_CLASS}>
         {def.label}
+        {def.term && <InfoTooltip term={def.term} />}
       </label>
       <input
         id={def.key}

@@ -148,6 +148,90 @@ export const FINANCIAL_TERMS = {
     text: "Your own plan for this investment, which can differ from the platform's. For example, if the platform plans to hold for 5 years, you might choose to exit after 3 by selling your shares on the marketplace. Your projected returns adjust to the strategy and hold period you pick.",
     formula: "Return depends on strategy + hold period",
   },
+  // ── Form-input guidance (for the admin/manager filling in the forms) ──────
+  inFundingGoal: {
+    term: "Funding Goal",
+    text: "The total amount of investor capital you want to raise for this property. The funding breakdown lines below must add up to exactly this number. This becomes the target investors fund.",
+    formula: "Funding Goal = sum of all funding breakdown items",
+  },
+  inFundingClosingDate: {
+    term: "Funding Closing Date",
+    text: "The date the raise closes. After this date the campaign stops accepting new commitments. Pick a realistic future date that gives investors enough time to commit.",
+  },
+  inPlatformCarry: {
+    term: "Platform Carry (% of equity)",
+    text: "The slice of equity the platform keeps for free as its reward for packaging the deal. Investors fund the whole goal but own the remainder. Enter 0 if investors should own 100%.",
+    formula: "Investor ownership = 100% − Platform Carry",
+  },
+  inFundingBreakdown: {
+    term: "Funding Breakdown",
+    text: "A line-by-line list of what the money will be spent on (e.g. Land, Construction, Professional Fees, Contingency). The amounts must total the funding goal. Investors see this, so be clear and honest.",
+  },
+  inPurchasePrice: {
+    term: "Purchase Price",
+    text: "What you are paying to buy the property, before any renovation or costs. For a flip this is the acquisition price; it is the biggest input into the profit calculation.",
+  },
+  inRenovationCost: {
+    term: "Renovation Cost",
+    text: "The total budget to fix up / renovate the property before resale. Include materials, labour and a margin for surprises. Under-estimating this is the most common flip mistake.",
+  },
+  inHoldingCosts: {
+    term: "Holding Costs",
+    text: "The running costs of owning the property while you renovate and sell — bond interest, rates, levies, insurance and utilities. The longer the project, the higher these are.",
+  },
+  inClosingCosts: {
+    term: "Closing / Transaction Costs",
+    text: "The once-off costs of buying and selling — transfer duty, conveyancing/legal fees, bond registration and agent commission. Add them so the profit figure is realistic.",
+  },
+  inMonthlyRent: {
+    term: "Monthly Rent",
+    text: "The rent you expect to collect each month from a tenant, at market rate for the area and unit type. This drives the rental yield and the income investors receive.",
+  },
+  inOperatingExpenses: {
+    term: "Operating Expenses",
+    text: "The yearly running costs of the rental — rates, levies, insurance, maintenance, management. Enter the full annual figure; it is deducted from rent to get net income.",
+  },
+  inVacancyRate: {
+    term: "Vacancy Rate (%)",
+    text: "The portion of the year you expect the unit to stand empty between tenants, as a percentage. A realistic 5–10% protects the projection from looking too optimistic.",
+  },
+  inTotalBudget: {
+    term: "Total Development Budget",
+    text: "The all-in cost to complete the development — land, construction (hard costs), professional fees (soft costs), finance and contingency. This is the total capital the project consumes.",
+    formula: "Land + Hard Costs + Soft Costs + Finance + Contingency",
+  },
+  inLandAcquisitionCost: {
+    term: "Land Acquisition Cost",
+    text: "What you pay to secure the land or existing building, including transfer duty and legal costs. The first major outflow in a development.",
+  },
+  inHardCosts: {
+    term: "Hard Costs (Construction)",
+    text: "The physical building costs — materials, labour, groundworks, services. Usually the largest part of a development budget. A QS (quantity surveyor) should sign these off.",
+  },
+  inSoftCosts: {
+    term: "Soft Costs (Professional Fees)",
+    text: "Non-construction costs — architect, engineers, town planner, QS, legal, approvals and council contributions. Typically 10–20% of hard costs.",
+  },
+  inContingencyPercent: {
+    term: "Contingency (%)",
+    text: "A safety buffer, as a percentage of costs, for unexpected overruns. 10% is a common starting point; riskier or greenfield projects warrant more.",
+  },
+  inNumberOfUnits: {
+    term: "Number of Units",
+    text: "How many sellable or rentable units the development delivers (houses, apartments, shops). Revenue is this number times the price or rent per unit.",
+  },
+  inExpectedSalePricePerUnit: {
+    term: "Expected Sale Price per Unit",
+    text: "The price you expect to sell each completed unit for, at market. Total sales revenue is this times the number of units. Be conservative — it drives the headline profit.",
+  },
+  inExpectedRentPerUnit: {
+    term: "Expected Monthly Rent per Unit",
+    text: "For a rental development, the market rent you expect per unit per month once let. Drives the stabilised income and the yield investors earn.",
+  },
+  inSeniorDebt: {
+    term: "Senior Debt",
+    text: "Bank or lender funding that sits ahead of investor equity and is repaid first. Using debt (gearing) can lift equity returns but adds interest cost and risk.",
+  },
 } as const;
 
 export type FinancialTermKey = keyof typeof FINANCIAL_TERMS;

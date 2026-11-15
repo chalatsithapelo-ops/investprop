@@ -12,6 +12,9 @@ import {
   Plus,
   ExternalLink,
   ShieldCheck,
+  Users,
+  Briefcase,
+  Trash2,
   Milestone as MilestoneIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -68,9 +71,46 @@ const DEVELOPMENT_STAGES = [
   "EXITED",
 ] as const;
 
+const PROFESSIONAL_ROLES = [
+  "TOWN_PLANNER",
+  "ARCHITECT",
+  "QUANTITY_SURVEYOR",
+  "CIVIL_ENGINEER",
+  "STRUCTURAL_ENGINEER",
+  "ELECTRICAL_ENGINEER",
+  "MECHANICAL_ENGINEER",
+  "WET_SERVICES_ENGINEER",
+  "ENVIRONMENTAL_SPECIALIST",
+  "LAND_SURVEYOR",
+  "GEOTECHNICAL_ENGINEER",
+  "TRAFFIC_ENGINEER",
+  "FIRE_CONSULTANT",
+  "HEALTH_SAFETY_AGENT",
+  "PROJECT_MANAGER",
+  "CONVEYANCER",
+  "VALUER",
+  "OTHER",
+] as const;
+
+const APPOINTMENT_STATUSES = [
+  "NOT_APPOINTED",
+  "SHORTLISTED",
+  "APPOINTED",
+  "TERMINATED",
+] as const;
+
 type ApprovalType = (typeof APPROVAL_TYPES)[number];
 type ApprovalStatus = (typeof APPROVAL_STATUSES)[number];
 type DevelopmentStage = (typeof DEVELOPMENT_STAGES)[number];
+type ProfessionalRole = (typeof PROFESSIONAL_ROLES)[number];
+type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
+
+const APPT_STATUS_STYLES: Record<AppointmentStatus, string> = {
+  NOT_APPOINTED: "bg-gray-500/15 text-gray-500",
+  SHORTLISTED: "bg-blue-500/15 text-blue-600",
+  APPOINTED: "bg-emerald-500/15 text-emerald-600",
+  TERMINATED: "bg-red-500/15 text-red-600",
+};
 
 const prettify = (s: string) =>
   s
@@ -123,6 +163,14 @@ function DevelopmentManagePage() {
     ...trpc.getProjectReadiness.queryOptions({ authToken: authToken ?? "", propertyId: propId }),
     enabled: !!authToken && Number.isFinite(propId),
   });
+  const professionalsQuery = useQuery({
+    ...trpc.getDevelopmentProfessionals.queryOptions({ authToken: authToken ?? "", propertyId: propId }),
+    enabled: !!authToken && Number.isFinite(propId),
+  });
+  const packQuery = useQuery({
+    ...trpc.getDocumentsPack.queryOptions({ authToken: authToken ?? "", propertyId: propId }),
+    enabled: !!authToken && Number.isFinite(propId),
+  });
 
   const property = propertyQuery.data as any;
   const dev = property?.propertyDevelopment ?? null;
@@ -132,6 +180,9 @@ function DevelopmentManagePage() {
   const approvals = approvalsQuery.data?.approvals ?? [];
   const approvalSummary = approvalsQuery.data?.summary;
   const readiness = readinessQuery.data as any;
+  const professionals = professionalsQuery.data?.professionals ?? [];
+  const professionalsSummary = professionalsQuery.data?.summary;
+  const packDocs = (packQuery.data?.documents ?? []) as { label: string; url: string; uploadedAt: string }[];
 
   // ── Mutations (imperative client, then refetch) ───────────────────────────
   const [savingStage, setSavingStage] = useState(false);
@@ -141,7 +192,13 @@ function DevelopmentManagePage() {
   const fileInputs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const refetchAll = async () => {
-    await Promise.all([approvalsQuery.refetch(), readinessQuery.refetch(), propertyQuery.refetch()]);
+    await Promise.all([
+      approvalsQuery.refetch(),
+      readinessQuery.refetch(),
+      propertyQuery.refetch(),
+      professionalsQuery.refetch(),
+      packQuery.refetch(),
+    ]);
   };
 
   const changeStage = async (stage: DevelopmentStage) => {
@@ -238,6 +295,118 @@ function DevelopmentManagePage() {
       toast.error(e?.message ?? "Could not add approval");
     } finally {
       setAddingApproval(false);
+    }
+  };
+
+  // ── Professional team register ─────────────────────────────────────────────
+  const [proBusyId, setProBusyId] = useState<number | null>(null);
+  const [addingPro, setAddingPro] = useState(false);
+  const [newProRole, setNewProRole] = useState<ProfessionalRole>("ARCHITECT");
+  const [newProFirm, setNewProFirm] = useState("");
+  const [newProContact, setNewProContact] = useState("");
+  const [newProEmail, setNewProEmail] = useState("");
+  const [newProPhone, setNewProPhone] = useState("");
+  const [newProRegBody, setNewProRegBody] = useState("");
+  const [newProRegNo, setNewProRegNo] = useState("");
+  const [newProFee, setNewProFee] = useState<number>(0);
+  const [newProStatus, setNewProStatus] = useState<AppointmentStatus>("NOT_APPOINTED");
+
+  const changeProStatus = async (professionalId: number, status: AppointmentStatus) => {
+    if (!authToken) return;
+    setProBusyId(professionalId);
+    try {
+      await trpcClient.updateDevelopmentProfessional.mutate({ authToken, professionalId, status });
+      toast.success("Appointment updated");
+      await refetchAll();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not update appointment");
+    } finally {
+      setProBusyId(null);
+    }
+  };
+
+  const addProfessional = async () => {
+    if (!authToken) return;
+    setAddingPro(true);
+    try {
+      await trpcClient.createDevelopmentProfessional.mutate({
+        authToken,
+        propertyId: propId,
+        role: newProRole,
+        status: newProStatus,
+        firmName: newProFirm || undefined,
+        contactName: newProContact || undefined,
+        contactEmail: newProEmail || undefined,
+        contactPhone: newProPhone || undefined,
+        registrationBody: newProRegBody || undefined,
+        registrationNo: newProRegNo || undefined,
+        feeAmount: Number.isFinite(newProFee) ? newProFee : 0,
+      });
+      toast.success("Professional added to the team register");
+      setNewProFirm("");
+      setNewProContact("");
+      setNewProEmail("");
+      setNewProPhone("");
+      setNewProRegBody("");
+      setNewProRegNo("");
+      setNewProFee(0);
+      setNewProStatus("NOT_APPOINTED");
+      await refetchAll();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not add professional");
+    } finally {
+      setAddingPro(false);
+    }
+  };
+
+  // ── Standalone due-diligence pack upload ───────────────────────────────────
+  const [packLabel, setPackLabel] = useState("");
+  const [uploadingPack, setUploadingPack] = useState(false);
+  const [removingPackUrl, setRemovingPackUrl] = useState<string | null>(null);
+  const packFileInput = useRef<HTMLInputElement | null>(null);
+
+  const uploadPackDoc = async (file: File) => {
+    if (!authToken) return;
+    if (!packLabel.trim()) {
+      toast.error("Enter a document label first (e.g. MOI, Valuation, Title Deed)");
+      return;
+    }
+    setUploadingPack(true);
+    try {
+      const fileBase64 = await toBase64(file);
+      const res = await trpcClient.uploadFile.mutate({
+        authToken,
+        fileName: file.name,
+        fileType: file.type,
+        fileBase64,
+      });
+      await trpcClient.addDocumentToPack.mutate({
+        authToken,
+        propertyId: propId,
+        label: packLabel.trim(),
+        url: res.publicUrl,
+      });
+      toast.success("Document added to the due-diligence pack");
+      setPackLabel("");
+      await refetchAll();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Upload failed");
+    } finally {
+      setUploadingPack(false);
+    }
+  };
+
+  const removePackDoc = async (url: string) => {
+    if (!authToken) return;
+    setRemovingPackUrl(url);
+    try {
+      await trpcClient.removeDocumentFromPack.mutate({ authToken, propertyId: propId, url });
+      toast.success("Document removed");
+      await refetchAll();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not remove document");
+    } finally {
+      setRemovingPackUrl(null);
     }
   };
 
@@ -602,6 +771,184 @@ function DevelopmentManagePage() {
           )}
         </section>
 
+        {/* Professional team register */}
+        <section className="mb-6 rounded-xl border border-navy-800/50 bg-navy-900/50 p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="text-gold-500" size={18} />
+              <h2 className="text-lg font-semibold text-gray-900">Professional Team Appointments</h2>
+            </div>
+            {professionalsSummary && (
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  professionalsSummary.teamComplete
+                    ? "bg-emerald-500/15 text-emerald-600"
+                    : "bg-amber-500/15 text-amber-600"
+                }`}
+              >
+                {professionalsSummary.appointed} of {professionalsSummary.required} required appointed
+              </span>
+            )}
+          </div>
+
+          {professionals.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-navy-700 py-8 text-center text-sm text-gray-500">
+              No professionals appointed yet. Add the architect, engineers, QS, town planner and other
+              consultants this development needs below.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-navy-800 text-left text-xs uppercase tracking-wide text-gray-500">
+                    <th className="py-2 pr-4 font-medium">Role</th>
+                    <th className="py-2 pr-4 font-medium">Firm / Contact</th>
+                    <th className="py-2 pr-4 font-medium">Registration</th>
+                    <th className="py-2 pr-4 font-medium">Fee</th>
+                    <th className="py-2 pr-4 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {professionals.map((p: any) => (
+                    <tr key={p.id} className="border-b border-navy-800/60">
+                      <td className="py-3 pr-4">
+                        <span className="font-medium text-gray-900">{prettify(p.role)}</span>
+                        {p.isRequired && (
+                          <span className="ml-2 rounded bg-navy-800 px-1.5 py-0.5 text-[10px] text-gray-400">
+                            REQUIRED
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 pr-4 text-gray-400">
+                        {p.firmName || "—"}
+                        {p.contactName || p.contactEmail ? (
+                          <span className="block text-xs text-gray-500">
+                            {[p.contactName, p.contactEmail, p.contactPhone].filter(Boolean).join(" · ")}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="py-3 pr-4 text-gray-400">
+                        {p.registrationBody || "—"}
+                        {p.registrationNo ? (
+                          <span className="block text-xs text-gray-500">{p.registrationNo}</span>
+                        ) : null}
+                      </td>
+                      <td className="py-3 pr-4 text-gray-400">{fmtR(p.feeAmount)}</td>
+                      <td className="py-3 pr-4">
+                        {isManager ? (
+                          <select
+                            value={p.status}
+                            disabled={proBusyId === p.id}
+                            onChange={(e) => changeProStatus(p.id, e.target.value as AppointmentStatus)}
+                            className={`rounded-md border-0 px-2 py-1 text-xs font-medium ${APPT_STATUS_STYLES[p.status as AppointmentStatus]} focus:outline-none`}
+                          >
+                            {APPOINTMENT_STATUSES.map((s) => (
+                              <option key={s} value={s}>
+                                {prettify(s)}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span
+                            className={`rounded-full px-2 py-1 text-xs font-medium ${APPT_STATUS_STYLES[p.status as AppointmentStatus]}`}
+                          >
+                            {prettify(p.status)}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Add professional */}
+          {isManager && (
+            <div className="mt-5 rounded-lg border border-navy-800 bg-navy-950/60 p-4">
+              <p className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-300">
+                <Briefcase size={15} /> Appoint a professional
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <select
+                  value={newProRole}
+                  onChange={(e) => setNewProRole(e.target.value as ProfessionalRole)}
+                  className="rounded-lg border border-navy-700 bg-navy-950 px-3 py-2 text-sm text-gray-200 focus:border-gold-500 focus:outline-none"
+                >
+                  {PROFESSIONAL_ROLES.map((t) => (
+                    <option key={t} value={t}>
+                      {prettify(t)}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={newProFirm}
+                  onChange={(e) => setNewProFirm(e.target.value)}
+                  placeholder="Firm name"
+                  className="rounded-lg border border-navy-700 bg-navy-950 px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:border-gold-500 focus:outline-none"
+                />
+                <input
+                  value={newProContact}
+                  onChange={(e) => setNewProContact(e.target.value)}
+                  placeholder="Contact name"
+                  className="rounded-lg border border-navy-700 bg-navy-950 px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:border-gold-500 focus:outline-none"
+                />
+                <input
+                  value={newProEmail}
+                  onChange={(e) => setNewProEmail(e.target.value)}
+                  placeholder="Contact email"
+                  className="rounded-lg border border-navy-700 bg-navy-950 px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:border-gold-500 focus:outline-none"
+                />
+                <input
+                  value={newProPhone}
+                  onChange={(e) => setNewProPhone(e.target.value)}
+                  placeholder="Contact phone"
+                  className="rounded-lg border border-navy-700 bg-navy-950 px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:border-gold-500 focus:outline-none"
+                />
+                <input
+                  value={newProRegBody}
+                  onChange={(e) => setNewProRegBody(e.target.value)}
+                  placeholder="Reg. body (e.g. SACAP, ECSA)"
+                  className="rounded-lg border border-navy-700 bg-navy-950 px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:border-gold-500 focus:outline-none"
+                />
+                <input
+                  value={newProRegNo}
+                  onChange={(e) => setNewProRegNo(e.target.value)}
+                  placeholder="Reg. number"
+                  className="rounded-lg border border-navy-700 bg-navy-950 px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:border-gold-500 focus:outline-none"
+                />
+                <input
+                  type="number"
+                  value={newProFee || ""}
+                  onChange={(e) => setNewProFee(Number(e.target.value))}
+                  placeholder="Fee (R)"
+                  className="rounded-lg border border-navy-700 bg-navy-950 px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:border-gold-500 focus:outline-none"
+                />
+                <select
+                  value={newProStatus}
+                  onChange={(e) => setNewProStatus(e.target.value as AppointmentStatus)}
+                  className="rounded-lg border border-navy-700 bg-navy-950 px-3 py-2 text-sm text-gray-200 focus:border-gold-500 focus:outline-none"
+                >
+                  {APPOINTMENT_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {prettify(s)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={addProfessional}
+                disabled={addingPro}
+                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-white hover:bg-gold-600 disabled:opacity-60"
+              >
+                {addingPro ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
+                Add professional
+              </button>
+            </div>
+          )}
+        </section>
+
         {/* Due diligence pack */}
         <section className="rounded-xl border border-navy-800/50 bg-navy-900/50 p-6">
           <div className="mb-4 flex items-center gap-2">
@@ -609,12 +956,102 @@ function DevelopmentManagePage() {
             <h2 className="text-lg font-semibold text-gray-900">Due Diligence Pack</h2>
           </div>
           <p className="mb-4 text-sm text-gray-500">
-            Documents attached to each approval item make up the investor-facing due-diligence pack.
-            Upload supporting documents against the relevant consent above.
+            Upload the supporting documents investors review before committing — MOI, valuation, SPV
+            certificate, sale/offer-to-purchase agreement, title deed, zoning certificate, tax clearance,
+            and anything else relevant. Documents attached to a statutory approval below are included
+            automatically.
+          </p>
+
+          {/* Standalone pack uploader */}
+          {isManager && (
+            <div className="mb-5 rounded-lg border border-navy-800 bg-navy-950/60 p-4">
+              <p className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-300">
+                <Upload size={15} /> Upload a document
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  value={packLabel}
+                  onChange={(e) => setPackLabel(e.target.value)}
+                  placeholder="Document label (e.g. MOI, Valuation, Title Deed)"
+                  className="min-w-[260px] flex-1 rounded-lg border border-navy-700 bg-navy-950 px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:border-gold-500 focus:outline-none"
+                />
+                <input
+                  ref={packFileInput}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void uploadPackDoc(f);
+                    e.target.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => packFileInput.current?.click()}
+                  disabled={uploadingPack}
+                  className="inline-flex items-center gap-2 rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-white hover:bg-gold-600 disabled:opacity-60"
+                >
+                  {uploadingPack ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
+                  Choose file &amp; upload
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Uploaded pack documents */}
+          {packDocs.length > 0 && (
+            <ul className="mb-4 divide-y divide-navy-800">
+              {packDocs.map((d) => (
+                <li key={d.url} className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-lg bg-navy-800 p-2">
+                      <FileText className="text-gold-500" size={16} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{d.label}</p>
+                      <p className="text-xs text-gray-500">
+                        Uploaded {new Date(d.uploadedAt).toLocaleDateString("en-ZA")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={d.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-gold-500 hover:text-gold-400"
+                    >
+                      Open <ExternalLink size={12} />
+                    </a>
+                    {isManager && (
+                      <button
+                        type="button"
+                        onClick={() => removePackDoc(d.url)}
+                        disabled={removingPackUrl === d.url}
+                        className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-red-400 disabled:opacity-40"
+                      >
+                        {removingPackUrl === d.url ? (
+                          <Loader2 className="animate-spin" size={12} />
+                        ) : (
+                          <Trash2 size={12} />
+                        )}
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* Approval-linked documents */}
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+            Documents attached to statutory approvals
           </p>
           {ddDocs.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-navy-700 py-8 text-center text-sm text-gray-500">
-              No documents uploaded yet.
+            <p className="rounded-lg border border-dashed border-navy-700 py-6 text-center text-sm text-gray-500">
+              No approval documents uploaded yet.
             </p>
           ) : (
             <ul className="divide-y divide-navy-800">
