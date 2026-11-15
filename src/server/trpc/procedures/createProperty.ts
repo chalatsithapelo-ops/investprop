@@ -169,8 +169,11 @@ export const createProperty = baseProcedure
       },
     });
 
-    // Create related records based on property type
-    if (input.propertyType === "flip" && input.flipType) {
+    // Create related records based on property type.
+    // A flip sub-type is created whenever propertyType is "flip" — even if the
+    // form did not supply an explicit flipType — so manually created flips always
+    // gain a PropertyFlip record (and therefore a Financials tab).
+    if (input.propertyType === "flip") {
       // Build input for calculation
       const flipInput: PropertyFlipInput = {
         purchasePrice: input.purchasePrice || 0,
@@ -200,7 +203,7 @@ export const createProperty = baseProcedure
       await db.propertyFlip.create({
         data: {
           propertyId: property.id,
-          flipType: input.flipType,
+          flipType: input.flipType ?? "RESALE",
           purchasePrice: flipInput.purchasePrice,
           renovationBudget: flipInput.renovationBudget,
           estimatedValue: flipInput.estimatedValue,

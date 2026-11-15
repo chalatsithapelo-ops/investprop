@@ -292,7 +292,7 @@ function PropertyDetailPage() {
           )}
 
           {activeTab === "financials" && (
-            <FinancialsTab property={property} />
+            <FinancialsTab property={property} propertyId={propertyId} />
           )}
 
           {activeTab === "investors" && (
@@ -588,7 +588,7 @@ const pct = (n: number) => `${n.toFixed(1)}%`;
 // Comprehensive Financials Tab
 // ============================================================================
 
-function FinancialsTab({ property }: { property: any }) {
+function FinancialsTab({ property, propertyId }: { property: any; propertyId?: string }) {
   // Derive type from presence of related models (Property model doesn't have a type field)
   const isFlip = !!property.propertyFlip;
   const isRental = !!property.rentalBond;
@@ -1225,14 +1225,49 @@ function FinancialsTab({ property }: { property: any }) {
     );
   }
 
-  // ── Fallback for unknown types ───────────────────────────────────────────
+  // ── Fallback for properties without a financial sub-type yet ──────────────
+  const fbFundingGoal = Number(property.fundingGoal || property.price) || 0;
+  const fbRaised = Number(
+    property.fundingRaised ?? property.amountRaised ?? property.totalRaised ?? 0,
+  );
+  const fbMinInvestment = Number(property.minimumInvestment ?? 0);
+  const canEdit = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"].includes(
+    (useAuthStore.getState().user?.role as string) ?? "",
+  );
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-gray-900">Financial Overview</h3>
-      <MetricCard label="Property Value" value={R(Number(property.price || 0))} color="text-gold-600" />
-      {preferredReturn > 0 && (
-        <MetricCard label="Expected Returns" value={pct(preferredReturn)} color="text-gold-600" />
-      )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <MetricCard label="Property Value" value={R(Number(property.price || 0))} color="text-gold-600" />
+        <MetricCard label="Funding Goal" value={R(fbFundingGoal)} />
+        <MetricCard label="Amount Raised" value={R(fbRaised)} color="text-emerald-600" />
+        {preferredReturn > 0 && (
+          <MetricCard label="Expected Returns" value={pct(preferredReturn)} color="text-gold-600" />
+        )}
+        {fbMinInvestment > 0 && (
+          <MetricCard label="Minimum Investment" value={R(fbMinInvestment)} />
+        )}
+      </div>
+
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <p className="text-sm font-medium text-amber-900">
+          Detailed financials haven&apos;t been added for this property yet.
+        </p>
+        <p className="mt-1 text-sm text-amber-800">
+          {canEdit
+            ? "Open Edit and fill in the Flip / Rental / Development details to populate the full financial breakdown (purchase price, renovation, ARV, expected profit and ROI)."
+            : "A manager still needs to add the full financial breakdown for this property."}
+        </p>
+        {canEdit && propertyId && (
+          <Link
+            to="/properties/$propertyId/edit"
+            params={{ propertyId }}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-white hover:bg-gold-600"
+          >
+            <Edit size={16} /> Add financial details
+          </Link>
+        )}
+      </div>
     </div>
   );
 }

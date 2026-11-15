@@ -144,6 +144,10 @@ export const updateProperty = baseProcedure
       expectedReturnRate: z.number().optional(),
       fundingGoal: z.number().optional(),
       platformCarryPct: z.number().min(0).max(99).optional(),
+      // Sub-type discriminator — lets a type-less property gain a sub-type
+      // record (and therefore a populated Financials tab) when edited.
+      propertyType: z.enum(["flip", "rental", "development"]).optional(),
+      flipType: z.enum(["RENTAL", "RESALE"]).optional(),
     })
   )
   .mutation(async ({ input }) => {
@@ -182,6 +186,28 @@ export const updateProperty = baseProcedure
 
     // Perform updates in a transaction
     await db.$transaction(async (tx) => {
+      // Create a missing sub-type record for a type-less property (e.g. a flip
+      // that was saved without its PropertyFlip row). Only runs when the
+      // property has NO sub-type at all, so a second sub-type is never created.
+      // This lets editing such a property populate its Financials tab.
+      const hasNoSubType =
+        !property.propertyFlip && !property.rentalBond && !property.propertyDevelopment;
+      if (hasNoSubType && input.propertyType === "flip") {
+        const createdFlip = await tx.propertyFlip.create({
+          data: {
+            propertyId: input.propertyId,
+            flipType: input.flipType ?? "RESALE",
+            purchasePrice: input.purchasePrice ?? 0,
+            renovationBudget: input.renovationBudget ?? 0,
+            estimatedValue: input.estimatedValue ?? input.afterRepairValue ?? 0,
+            userId: property.userId,
+          },
+        });
+        // Expose the freshly created record to the flip update block below so it
+        // recalculates metrics from the submitted values.
+        (property as any).propertyFlip = createdFlip;
+      }
+
       // Prepare property update data
       const propertyUpdateData: any = {};
       if (input.title !== undefined) propertyUpdateData.title = input.title;

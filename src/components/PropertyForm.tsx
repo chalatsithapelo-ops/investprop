@@ -338,6 +338,31 @@ export function PropertyForm({ defaultValues, initialData, onSubmit, isLoading, 
       } as any);
       return;
     }
+    if (form.propertyType === "flip") {
+      // Map the simplified flip inputs onto the backend's field names so the
+      // PropertyFlip record is actually created/updated. Without this the
+      // mis-named keys (renovationCost/closingCosts) are silently dropped.
+      onSubmit({
+        ...form,
+        flipType: "RESALE",
+        renovationBudget: form.renovationCost,
+        estimatedValue: form.afterRepairValue,
+        afterRepairValue: form.afterRepairValue,
+        closingCostsPurchase: form.closingCosts,
+        flipFundingGoal: form.fundingGoal,
+      } as any);
+      return;
+    }
+    if (form.propertyType === "rental") {
+      onSubmit({
+        ...form,
+        rentalPurchasePrice: form.price,
+        monthlyRent: form.monthlyRent,
+        vacancyRate: form.vacancyRate,
+        rentalFundingGoal: form.fundingGoal,
+      } as any);
+      return;
+    }
     onSubmit(form);
   }
 
