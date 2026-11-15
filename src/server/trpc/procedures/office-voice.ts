@@ -6,6 +6,7 @@ import { requireFeature } from "~/server/subscriptions/subscription-service";
 import { env } from "~/server/env";
 import { logAIUsage } from "~/server/ai/client";
 import { assertOfficeUser, personas } from "~/server/office/policy";
+import { assertOfficeQuota } from "~/server/office/quota";
 import { chatOffice, ownConversation } from "~/server/office/chat";
 import { audioMimeSchema, decodeAudio, MAX_AUDIO_BYTES } from "~/server/office/audio";
 
@@ -29,7 +30,8 @@ export const officeVoiceTurn = baseProcedure.input(z.object({
 }).strict()).mutation(async ({ input }) => {
   const user = await getAuthenticatedUser(input.authToken);
   assertOfficeUser(user);
-  await requireFeature(user, user.role === "PROPERTY_OWNER" ? "SELLER_AI_VALUATION" : "AI_COPILOT");
+  await requireFeature(user, "AI_OFFICE");
+  await assertOfficeQuota(user); // reject before incurring STT cost
   if (input.conversationId) await ownConversation(user.id, input.conversationId);
   if (env.OFFICE_VOICE_ENABLED !== "true" || !env.OPENAI_API_KEY) {
     throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Voice processing is disabled; use text. Provider and privacy configuration must be approved first." });

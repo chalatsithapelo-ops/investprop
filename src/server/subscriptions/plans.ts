@@ -16,6 +16,7 @@ export type Feature =
   | "DISTRESSED_FULL_ACCESS" // Full distressed finder + AI grades
   | "MARKET_DATA_EXPORT" // Anonymised aggregate market data API
   | "PRIORITY_SUPPORT"
+  | "AI_OFFICE" // AI Property Office research workspace (chat + voice)
   // ─── Seller / landlord (supply side) ───
   | "SELLER_MULTI_LISTING" // List multiple properties for sale concurrently
   | "SELLER_AI_VALUATION" // AI valuation & offer-readiness report
@@ -74,7 +75,7 @@ export const PLAN_CATALOG: Record<SubscriptionTier, PlanDefinition> = {
       "Advanced analytics & on-platform comparable sales",
       "Email support",
     ],
-    capabilities: ["AI_COPILOT", "AI_PORTFOLIO_ADVISOR"],
+    capabilities: ["AI_COPILOT", "AI_PORTFOLIO_ADVISOR", "AI_OFFICE"],
   },
   PRO: {
     tier: "PRO",
@@ -98,6 +99,7 @@ export const PLAN_CATALOG: Record<SubscriptionTier, PlanDefinition> = {
       "DISTRESSED_ALERTS",
       "DISTRESSED_FULL_ACCESS",
       "PRIORITY_SUPPORT",
+      "AI_OFFICE",
     ],
   },
   ENTERPRISE: {
@@ -122,6 +124,7 @@ export const PLAN_CATALOG: Record<SubscriptionTier, PlanDefinition> = {
       "DISTRESSED_FULL_ACCESS",
       "MARKET_DATA_EXPORT",
       "PRIORITY_SUPPORT",
+      "AI_OFFICE",
     ],
   },
   DISTRESSED: {
@@ -157,6 +160,25 @@ export const PLAN_CATALOG: Record<SubscriptionTier, PlanDefinition> = {
     features: [],
     capabilities: [],
   },
+  AI_OFFICE: {
+    tier: "AI_OFFICE",
+    name: "AI Property Office",
+    tagline: "Your property research workspace — grounded in your own records",
+    description:
+      "A standalone AI research office for investors and property owners. Four specialists answer questions on your recorded holdings, distributions, documents and tax sources — with cited evidence, honest gaps and approval-only office tasks. Research only, not financial, tax or legal advice.",
+    monthlyPrice: 299,
+    annualPrice: 2990,
+    rank: 2,
+    standalone: true,
+    features: [
+      "Four AI specialists — Accountant, Tax researcher, Asset analyst & Office assistant",
+      "Grounded in your live records — every answer cites evidence and flags gaps",
+      "Ask by text or voice",
+      "Prepare accountant packs & owner checklists (approval-only)",
+      "Dated, human-reviewed tax source library",
+    ],
+    capabilities: ["AI_OFFICE"],
+  },
 };
 
 export const ALL_TIERS: SubscriptionTier[] = [
@@ -165,6 +187,7 @@ export const ALL_TIERS: SubscriptionTier[] = [
   "PRO",
   "ENTERPRISE",
   "DISTRESSED",
+  "AI_OFFICE",
 ];
 
 export function getPlan(tier: SubscriptionTier): PlanDefinition {

@@ -48,6 +48,6 @@ export const officeSetVoiceLanguage = baseProcedure
 export const officeVoiceAgentSession = baseProcedure.input(auth).mutation(async ({ input }) => {
   const user = await getAuthenticatedUser(input.authToken);
   assertOfficeUser(user);
-  await requireFeature(user, user.role === "PROPERTY_OWNER" ? "SELLER_AI_VALUATION" : "AI_COPILOT");
+  await requireFeature(user, "AI_OFFICE");
   return createVoiceAgentSession(user, input.authToken);
 });

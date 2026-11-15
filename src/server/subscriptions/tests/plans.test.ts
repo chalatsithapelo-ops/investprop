@@ -10,7 +10,7 @@ import {
 
 describe("subscription plan catalog", () => {
   it("defines every tier", () => {
-    expect(ALL_TIERS).toEqual(["FREE", "INVESTOR_PLUS", "PRO", "ENTERPRISE", "DISTRESSED"]);
+    expect(ALL_TIERS).toEqual(["FREE", "INVESTOR_PLUS", "PRO", "ENTERPRISE", "DISTRESSED", "AI_OFFICE"]);
     for (const tier of ALL_TIERS) {
       expect(PLAN_CATALOG[tier]).toBeDefined();
       expect(PLAN_CATALOG[tier].tier).toBe(tier);
@@ -71,5 +71,20 @@ describe("feature gating", () => {
     const ranks = tiers.map((t) => PLAN_CATALOG[t].rank);
     const sorted = [...ranks].sort((a, b) => a - b);
     expect(ranks).toEqual(sorted);
+  });
+
+  it("AI Property Office is unlocked by its standalone tier and bundled into investor tiers", () => {
+    expect(tierHasFeature("AI_OFFICE", "AI_OFFICE")).toBe(true);
+    expect(tierHasFeature("INVESTOR_PLUS", "AI_OFFICE")).toBe(true);
+    expect(tierHasFeature("PRO", "AI_OFFICE")).toBe(true);
+    expect(tierHasFeature("ENTERPRISE", "AI_OFFICE")).toBe(true);
+    expect(tierHasFeature("FREE", "AI_OFFICE")).toBe(false);
+    expect(tierHasFeature("DISTRESSED", "AI_OFFICE")).toBe(false);
+    // standalone SKU sells only the office, nothing else
+    expect(tierHasFeature("AI_OFFICE", "AI_COPILOT")).toBe(false);
+    const office = getPlan("AI_OFFICE");
+    expect(office.standalone).toBe(true);
+    expect(office.monthlyPrice).toBe(299);
+    expect(office.annualPrice).toBe(2990);
   });
 });

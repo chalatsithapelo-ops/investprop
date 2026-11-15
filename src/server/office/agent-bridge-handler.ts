@@ -228,7 +228,7 @@ export default defineEventHandler(async (event) => {
   try {
     const user = await getAuthenticatedUser(authToken);
     assertOfficeUser(user);
-    await requireFeature(user, user.role === "PROPERTY_OWNER" ? "SELLER_AI_VALUATION" : "AI_COPILOT");
+    await requireFeature(user, "AI_OFFICE");
 
     switch (input.action) {
       case "overview": {

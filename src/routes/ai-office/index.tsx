@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowUpRight, BookOpen, Building2, CheckCircle2, ChevronRight,
@@ -80,8 +80,9 @@ function AIOfficePage() {
   const specialist = specialists.find((item) => item.id === persona) ?? specialists[0];
   const requestBusy = turnBusy || chat.isPending || voice.isPending;
   const busy = requestBusy || microphoneBusy;
-  const textEnabled = overview.data?.capabilities.textAI === true;
-  const voiceEnabled = overview.data?.capabilities.voice === true;
+  const entitled = overview.data?.capabilities.entitled !== false;
+  const textEnabled = overview.data?.capabilities.textAI === true && entitled;
+  const voiceEnabled = overview.data?.capabilities.voice === true && entitled;
 
   async function sendTurn(audio?: { audioBase64: string; mimeType: AudioMime }) {
     if (!authToken || !user || turnLock.current || (!audio && !draft.trim())) return;
@@ -141,6 +142,19 @@ function AIOfficePage() {
           </div>
         </header>
         <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950"><ShieldCheck size={20} className="mt-0.5 shrink-0 text-amber-700" /><p><strong>Not financial, tax or legal advice.</strong> This office cannot move money, trade shares, submit tax returns, post accounting entries, certify statements or sign agreements. AI outputs may be incomplete or wrong; consult qualified professionals. Recorded basis is not a market valuation.</p></div>
+
+        {overview.data && !entitled && (
+          <div className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-amber-300 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <Sparkles size={20} className="mt-0.5 shrink-0 text-amber-600" />
+              <div className="max-w-xl">
+                <p className="text-sm font-semibold text-slate-900">Unlock the AI Property Office</p>
+                <p className="mt-1 text-sm leading-relaxed text-slate-600">Subscribe to ask your four specialists by text or voice — every answer grounded in your own records, with cited evidence and honest gaps. You can still browse your live account overview below for free.</p>
+              </div>
+            </div>
+            <Link to="/pricing" className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600">View plans<ArrowUpRight size={16} /></Link>
+          </div>
+        )}
 
         <section aria-label="Live account overview" className="mt-6">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="text-sm font-semibold text-slate-700">Grounded in your account records</h2><button type="button" onClick={() => { void overview.refetch(); void history.refetch(); void sources.refetch(); }} disabled={overview.isFetching} className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 disabled:opacity-50"><RefreshCw size={14} className={overview.isFetching ? "animate-spin" : ""} />Refresh live evidence</button></div>

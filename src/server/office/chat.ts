@@ -6,6 +6,7 @@ import { requireFeature } from "~/server/subscriptions/subscription-service";
 import { getModel, getModelId, runAIWithGuard } from "~/server/ai/client";
 import { loadOfficeContext, officeCapabilities } from "./context";
 import { assertOfficeUser, HISTORY_LIMIT, personas, redactForModel, type OfficeUser } from "./policy";
+import { assertOfficeQuota } from "./quota";
 import { assistantResponseSchema, specialistPrompt, validateAssistantResponse } from "./prompts";
 
 type Loaded = Awaited<ReturnType<typeof loadOfficeContext>>;
@@ -72,7 +73,8 @@ export async function chatOffice(user: OfficeUser, input: { conversationId?: str
   assertOfficeUser(user);
   const persona = personas.parse(input.persona);
   const message = z.string().trim().min(1).max(2000).parse(input.message);
-  await requireFeature(user, user.role === "PROPERTY_OWNER" ? "SELLER_AI_VALUATION" : "AI_COPILOT");
+  await requireFeature(user, "AI_OFFICE");
+  await assertOfficeQuota(user);
   // No creation, context loading or model call until supplied ownership is verified.
   const existing = input.conversationId ? await ownConversation(user.id, input.conversationId) : null;
   reserveTurn(user.id, Date.now());

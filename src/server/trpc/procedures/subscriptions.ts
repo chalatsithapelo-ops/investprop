@@ -30,8 +30,9 @@ const SELF_SERVE_TIERS: SubscriptionTier[] = [
   "PRO",
   "ENTERPRISE",
   "DISTRESSED",
+  "AI_OFFICE",
 ];
-const tierEnum = z.enum(["INVESTOR_PLUS", "PRO", "ENTERPRISE", "DISTRESSED"]);
+const tierEnum = z.enum(["INVESTOR_PLUS", "PRO", "ENTERPRISE", "DISTRESSED", "AI_OFFICE"]);
 const cycleEnum = z.enum(["MONTHLY", "ANNUAL"]);
 
 async function paystackRequest(path: string, method: string, body?: any) {
@@ -478,7 +479,7 @@ export const upsertSubscriptionPlan = baseProcedure
   .input(
     z.object({
       authToken: z.string(),
-      tier: z.enum(["FREE", "INVESTOR_PLUS", "PRO", "ENTERPRISE", "DISTRESSED"]),
+      tier: z.enum(["FREE", "INVESTOR_PLUS", "PRO", "ENTERPRISE", "DISTRESSED", "AI_OFFICE"]),
       name: z.string().min(1).max(60),
       description: z.string().max(300).nullish(),
       monthlyPrice: z.number().min(0).max(1_000_000),

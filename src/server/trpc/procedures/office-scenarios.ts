@@ -9,7 +9,7 @@ const auth = z.object({ authToken: z.string().min(1).max(8192) }).strict();
 async function scenarioUser(authToken: string) {
   const user = await getAuthenticatedUser(authToken);
   assertOfficeUser(user);
-  await requireFeature(user, user.role === "PROPERTY_OWNER" ? "SELLER_AI_VALUATION" : "AI_COPILOT");
+  await requireFeature(user, "AI_OFFICE");
   return user;
 }
 

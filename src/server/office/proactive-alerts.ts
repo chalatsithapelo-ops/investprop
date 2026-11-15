@@ -93,7 +93,7 @@ export async function runOfficeProactiveAlertsCore(opts: { dryRun?: boolean; lim
   let skippedCooldown = 0;
 
   for (const m of members) {
-    const feature = m.role === "PROPERTY_OWNER" ? "SELLER_AI_VALUATION" : "AI_COPILOT";
+    const feature = "AI_OFFICE" as const;
     if (!(await userHasFeature(m.id, m.role as Parameters<typeof userHasFeature>[1], feature))) continue;
     entitled += 1;
 

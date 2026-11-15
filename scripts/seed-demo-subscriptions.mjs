@@ -7,6 +7,8 @@
 //   investor2@demo.com  -> PRO            (Pro)
 //   investor3@demo.com  -> ENTERPRISE     (Enterprise)
 //   investor4@demo.com  -> DISTRESSED     (DistressedDeals SA, standalone) [created if missing]
+//   investor5@demo.com  -> AI_OFFICE      (AI Property Office, standalone)  [created if missing]
+//   owner@demo.com      -> AI_OFFICE      (standalone office for a property owner)
 //
 // Staff (devmanager / pm) bypass all paywalls by role, so they need no sub.
 
@@ -21,6 +23,7 @@ const PRICE = {
   PRO: 799,
   ENTERPRISE: 2499,
   DISTRESSED: 499,
+  AI_OFFICE: 299,
 };
 
 async function activate(userId, tier) {
@@ -81,11 +84,35 @@ async function main() {
     });
   }
 
+  // Ensure a 5th investor account exists to host the standalone AI_OFFICE tier.
+  const inv5 = await db.user.upsert({
+    where: { email: "investor5@demo.com" },
+    update: { password },
+    create: {
+      email: "investor5@demo.com",
+      password,
+      name: "Sipho Khumalo",
+      role: "INVESTOR",
+      emailVerified: true,
+      ficaVerified: true,
+      ficaVerifiedAt: new Date(),
+      updatedAt: new Date(),
+    },
+  });
+  if (!inv5.investorCode) {
+    await db.user.update({
+      where: { id: inv5.id },
+      data: { investorCode: `IP-INV-${String(inv5.id).padStart(5, "0")}` },
+    });
+  }
+
   const assignments = [
     { email: "investor@demo.com", tier: "INVESTOR_PLUS" },
     { email: "investor2@demo.com", tier: "PRO" },
     { email: "investor3@demo.com", tier: "ENTERPRISE" },
     { email: "investor4@demo.com", tier: "DISTRESSED" },
+    { email: "investor5@demo.com", tier: "AI_OFFICE" },
+    { email: "owner@demo.com", tier: "AI_OFFICE" },
   ];
 
   for (const a of assignments) {

@@ -114,6 +114,7 @@ export const officeApi = {
         textAI: z.boolean(),
         voice: z.boolean(),
         regulatedActions: z.literal(false),
+        entitled: z.boolean(),
       }),
       holdings: z.array(z.object({
         propertyId: identifier,

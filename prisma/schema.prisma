@@ -2250,6 +2250,7 @@ enum SubscriptionTier {
   ENTERPRISE
   DISTRESSED // standalone "DistressedDeals SA" product SKU
   SELLER_PRO // standalone seller / landlord product SKU (supply side)
+  AI_OFFICE // standalone "AI Property Office" product SKU (research workspace)
 }
 
 enum SubscriptionStatus {

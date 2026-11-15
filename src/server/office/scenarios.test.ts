@@ -238,7 +238,7 @@ describe("read-only procedure authorisation", () => {
       propertyUpdatedAt: null, propertyCreatedAt: date.toISOString(), values: { interestRate: 10 } });
     expect(mocks.property.mock.calls[1]![0].select?.rentalBond).not.toHaveProperty("tenantEmail");
     expect(r.readOnly).toBe(true);
-    expect(mocks.feature).toHaveBeenCalledWith(user, "AI_COPILOT");
+    expect(mocks.feature).toHaveBeenCalledWith(user, "AI_OFFICE");
   });
   it.each(["PENDING_APPROVAL", "SUSPENDED"])("blocks %s before subscription or evidence reads", async (status) => {
     mocks.auth.mockResolvedValue({ ...user, status });
@@ -257,10 +257,10 @@ describe("read-only procedure authorisation", () => {
     expect(mocks.property).not.toHaveBeenCalled();
     expect(mocks.payouts).not.toHaveBeenCalled();
   });
-  it("owner subscription uses SELLER_AI_VALUATION but owner role alone grants no property access", async () => {
+  it("owner subscription uses AI_OFFICE but owner role alone grants no property access", async () => {
     mocks.auth.mockResolvedValue({ ...user, role: "PROPERTY_OWNER" });
     await expect(caller.officePropertyScenario(input)).rejects.toMatchObject({ code: "FORBIDDEN" });
-    expect(mocks.feature).toHaveBeenCalledWith({ ...user, role: "PROPERTY_OWNER" }, "SELLER_AI_VALUATION");
+    expect(mocks.feature).toHaveBeenCalledWith({ ...user, role: "PROPERTY_OWNER" }, "AI_OFFICE");
     await caller.officeAccountingExceptions({ authToken: "test" });
     expect(mocks.payouts.mock.calls[0]![0].where?.investorId).toBe(7);
   });

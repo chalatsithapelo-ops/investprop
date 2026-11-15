@@ -39,7 +39,7 @@ beforeEach(() => {
 
 describe("office exported procedures and chat", () => {
   it("exports the complete flattened integration surface", () => {
-    expect(Object.keys(office).sort()).toEqual(["officeOverview", "officeConversations", "officeConversation", "officeChat", "officeTasks", "officePrepareTask", "officeApproveTask", "officeCancelTask", "officeTaxSources", "officeCreateTaxSource", "officePublishTaxSource"].sort());
+    expect(Object.keys(office).sort()).toEqual(["officeOverview", "officeConversations", "officeConversation", "officeChat", "officeTasks", "officePrepareTask", "officeApproveTask", "officeCancelTask", "officeAnalyzeDocument", "officeTaxSources", "officeCreateTaxSource", "officePublishTaxSource"].sort());
   });
   it("requires authToken and ACTIVE status for reads", async () => {
     await expect(caller.officeOverview({} as never)).rejects.toMatchObject({ code: "BAD_REQUEST" });
@@ -56,12 +56,12 @@ describe("office exported procedures and chat", () => {
     await expect(caller.officeConversation({ authToken: "valid", conversationId: "foreign" })).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(mock.officeMessage.findMany).not.toHaveBeenCalled();
   });
-  it("gates investors/staff with AI_COPILOT and owners with SELLER_AI_VALUATION", async () => {
+  it("gates all office users with AI_OFFICE", async () => {
     await caller.officeChat({ authToken: "valid", persona: "ACCOUNTANT", message: "Overview" });
-    expect(mock.feature).toHaveBeenLastCalledWith(mock.user, "AI_COPILOT");
+    expect(mock.feature).toHaveBeenLastCalledWith(mock.user, "AI_OFFICE");
     mock.user.id++; mock.user.role = "PROPERTY_OWNER";
     await caller.officeChat({ authToken: "valid", persona: "ADMIN", message: "Documents" });
-    expect(mock.feature).toHaveBeenLastCalledWith(mock.user, "SELLER_AI_VALUATION");
+    expect(mock.feature).toHaveBeenLastCalledWith(mock.user, "AI_OFFICE");
     mock.feature.mockRejectedValueOnce(new Error("not entitled"));
     mock.load.mockClear();
     await expect(caller.officeChat({ authToken: "valid", persona: "ASSET", message: "Holdings" })).rejects.toThrow("not entitled");

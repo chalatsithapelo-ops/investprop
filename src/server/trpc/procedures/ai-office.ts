@@ -8,6 +8,7 @@ import { chatOffice, ownConversation } from "~/server/office/chat";
 import { prepareOfficeTask, approveOfficeTask, cancelOfficeTask } from "~/server/office/tasks";
 import { createOfficeTaxSource, publishOfficeTaxSource, taxSourceDraftSchema } from "~/server/office/sources";
 import { analyzeOfficeDocument, documentAnalysisInput } from "~/server/office/documents";
+import { userHasFeature } from "~/server/subscriptions/subscription-service";
 
 const auth = z.object({ authToken: z.string().min(1).max(8192) }).strict();
 const id = z.string().min(1).max(128);
@@ -17,8 +18,14 @@ async function userFor(authToken: string) {
   return user;
 }
 
-export const officeOverview = baseProcedure.input(auth).query(async ({ input }) =>
-  (await loadOfficeContext(await userFor(input.authToken))).overview);
+export const officeOverview = baseProcedure.input(auth).query(async ({ input }) => {
+  const user = await userFor(input.authToken);
+  const [{ overview }, entitled] = await Promise.all([
+    loadOfficeContext(user),
+    userHasFeature(user.id, user.role, "AI_OFFICE"),
+  ]);
+  return { ...overview, capabilities: { ...overview.capabilities, entitled } };
+});
 
 export const officeConversations = baseProcedure.input(auth).query(async ({ input }) => {
   const user = await userFor(input.authToken);
