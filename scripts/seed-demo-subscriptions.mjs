@@ -7,7 +7,6 @@
 //   investor2@demo.com  -> PRO            (Pro)
 //   investor3@demo.com  -> ENTERPRISE     (Enterprise)
 //   investor4@demo.com  -> DISTRESSED     (DistressedDeals SA, standalone) [created if missing]
-//   owner@demo.com      -> SELLER_PRO     (Seller Pro, standalone)
 //
 // Staff (devmanager / pm) bypass all paywalls by role, so they need no sub.
 
@@ -22,7 +21,6 @@ const PRICE = {
   PRO: 799,
   ENTERPRISE: 2499,
   DISTRESSED: 499,
-  SELLER_PRO: 499,
 };
 
 async function activate(userId, tier) {
@@ -88,7 +86,6 @@ async function main() {
     { email: "investor2@demo.com", tier: "PRO" },
     { email: "investor3@demo.com", tier: "ENTERPRISE" },
     { email: "investor4@demo.com", tier: "DISTRESSED" },
-    { email: "owner@demo.com", tier: "SELLER_PRO" },
   ];
 
   for (const a of assignments) {

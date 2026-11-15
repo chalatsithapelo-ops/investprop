@@ -143,28 +143,19 @@ export const PLAN_CATALOG: Record<SubscriptionTier, PlanDefinition> = {
     ],
     capabilities: ["DISTRESSED_ALERTS", "DISTRESSED_FULL_ACCESS"],
   },
+  // Retired product — no longer sold or listed (not in ALL_TIERS). Kept only so
+  // that any legacy SELLER_PRO subscription row still resolves to a plan.
   SELLER_PRO: {
     tier: "SELLER_PRO",
-    name: "Seller Pro",
-    tagline: "Sell to Investprop faster — and pay a lower fee",
-    description:
-      "A standalone toolkit for sellers and landlords. The lower facilitation fee on a single close can recover a full year of Seller Pro.",
-    monthlyPrice: 499,
-    annualPrice: 4990,
+    name: "Seller Pro (retired)",
+    tagline: "",
+    description: "",
+    monthlyPrice: 0,
+    annualPrice: 0,
     rank: 2,
     standalone: true,
-    features: [
-      "List multiple properties for sale at once",
-      "AI valuation & offer-readiness report",
-      "Priority / fast-tracked proposal review",
-      "Lower seller facilitation fee on close",
-      "Direct line to the acquisitions team",
-    ],
-    capabilities: [
-      "SELLER_MULTI_LISTING",
-      "SELLER_AI_VALUATION",
-      "SELLER_PRIORITY_REVIEW",
-    ],
+    features: [],
+    capabilities: [],
   },
 };
 
@@ -174,7 +165,6 @@ export const ALL_TIERS: SubscriptionTier[] = [
   "PRO",
   "ENTERPRISE",
   "DISTRESSED",
-  "SELLER_PRO",
 ];
 
 export function getPlan(tier: SubscriptionTier): PlanDefinition {

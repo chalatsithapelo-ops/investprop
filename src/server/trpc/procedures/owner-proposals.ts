@@ -10,15 +10,9 @@ import {
   recordPlatformFee,
   computeFeeFromBps,
 } from "~/server/fees/platform-fees";
-import { getEffectiveSubscription } from "~/server/subscriptions/subscription-service";
-import { requireFeature } from "~/server/subscriptions/subscription-service";
-import { tierHasFeature } from "~/server/subscriptions/plans";
 import { generateText } from "ai";
 import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
 import { recordAiPrediction, resolveAiPrediction } from "~/server/ai/prediction-log";
-
-/** Discounted seller facilitation rate for active Seller Pro subscribers. */
-const SELLER_PRO_FACILITATION_BPS = 100; // 1.0% vs the 2.0% standard
 
 // ═══════════════════════════════════════════════════════════════
 //  Owner (seller-side) fee booking helpers.
@@ -66,21 +60,13 @@ export async function bookOwnerAcceptanceFees(proposal: {
     const agreedPrice = proposal.counterOfferAmount ?? proposal.askingPrice;
 
     if (cfg.sellerFacilitationFeeBps > 0 && agreedPrice > 0) {
-      // Active Seller Pro subscribers pay a reduced facilitation fee on close.
-      const ownerSub = await getEffectiveSubscription(proposal.ownerId);
-      const isSellerPro =
-        ownerSub.active && tierHasFeature(ownerSub.tier, "SELLER_MULTI_LISTING");
-      const facilitationBps = isSellerPro
-        ? Math.min(cfg.sellerFacilitationFeeBps, SELLER_PRO_FACILITATION_BPS)
-        : cfg.sellerFacilitationFeeBps;
-
       await recordPlatformFee({
         feeType: "SELLER_FACILITATION",
         sourceType: "OwnerSaleProposal",
         sourceId: proposal.id,
         baseAmount: agreedPrice,
-        feeBps: facilitationBps,
-        description: `Seller facilitation fee${isSellerPro ? " (Seller Pro rate)" : ""} — proposal #${proposal.id}`,
+        feeBps: cfg.sellerFacilitationFeeBps,
+        description: `Seller facilitation fee — proposal #${proposal.id}`,
       });
     }
 
@@ -176,24 +162,6 @@ export const submitSaleProposal = baseProcedure
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
     requireRole(user, ["PROPERTY_OWNER"], "Only property owners can submit sale proposals");
-
-    // Listing cap: Seller Pro subscribers list unlimited properties; everyone
-    // else may keep a single active (PENDING/UNDER_REVIEW) listing at a time.
-    const ownerSub = await getEffectiveSubscription(user.id);
-    const sellerPro =
-      ownerSub.active && tierHasFeature(ownerSub.tier, "SELLER_MULTI_LISTING");
-    if (!sellerPro) {
-      const activeListings = await db.ownerSaleProposal.count({
-        where: { ownerId: user.id, status: { in: ["PENDING", "UNDER_REVIEW"] } },
-      });
-      if (activeListings >= 1) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message:
-            "You already have an active listing. Upgrade to Seller Pro on the Pricing page to list multiple properties at once.",
-        });
-      }
-    }
 
     // Cross-field validation
     if (input.bondStatus === "EXISTING" && (!input.bondOutstanding || input.bondOutstanding <= 0)) {
@@ -317,7 +285,7 @@ export const getMySaleProposals = baseProcedure
     return proposals;
   });
 
-// ─── Seller Pro: AI valuation report for a sale proposal ────────────
+// ─── AI valuation report for a sale proposal ────────────────────
 
 interface SellerValuationShape {
   estimatedValueLow: number;
@@ -358,8 +326,6 @@ export const valuateSaleProposal = baseProcedure
   .input(z.object({ authToken: z.string(), proposalId: z.number(), force: z.boolean().optional() }))
   .mutation(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
-    // Seller Pro feature — staff bypass; everyone else gets an upgrade hint.
-    await requireFeature(user, "SELLER_AI_VALUATION");
 
     const proposal = await db.ownerSaleProposal.findUnique({
       where: { id: input.proposalId },
@@ -539,27 +505,7 @@ export const getSaleProposals = baseProcedure
       },
     });
 
-    // Seller Pro priority review: flag proposals from active Seller Pro owners
-    // and float them to the top of the queue (within their urgency ordering).
-    const ownerIds = [...new Set(proposals.map((p) => p.owner.id))];
-    const sellerProOwnerIds = new Set<number>();
-    if (ownerIds.length > 0) {
-      const now = new Date();
-      const subs = await db.subscription.findMany({
-        where: { userId: { in: ownerIds }, tier: "SELLER_PRO" },
-        select: { userId: true, status: true, trialEndsAt: true, currentPeriodEnd: true },
-      });
-      for (const s of subs) {
-        const trialOk =
-          s.status === "TRIALING" ? !s.trialEndsAt || s.trialEndsAt.getTime() >= now.getTime() : true;
-        const periodOk = !s.currentPeriodEnd || s.currentPeriodEnd.getTime() >= now.getTime();
-        const entitled = (s.status === "ACTIVE" || s.status === "TRIALING") && trialOk && periodOk;
-        if (entitled) sellerProOwnerIds.add(s.userId);
-      }
-    }
-    const annotated = proposals
-      .map((p) => ({ ...p, sellerPro: sellerProOwnerIds.has(p.owner.id) }))
-      .sort((a, b) => Number(b.sellerPro) - Number(a.sellerPro));
+    const annotated = proposals;
 
     // Also get counts per status
     const counts = await db.ownerSaleProposal.groupBy({

@@ -512,13 +512,6 @@ export const mainNavigationLinks: NavigationLink[] = [
     roles: ["PROPERTY_OWNER"],
     description: "Submit and track your property sale proposals",
   },
-  {
-    label: "Seller Pro",
-    to: "/pricing",
-    icon: Sparkles,
-    roles: ["PROPERTY_OWNER"],
-    description: "Multi-listing, AI valuation & priority review for sellers",
-  },
   // ─── Property/Land-into-SPV Partnership (owner brings the asset, we develop) ──
   {
     label: "Partner My Property",

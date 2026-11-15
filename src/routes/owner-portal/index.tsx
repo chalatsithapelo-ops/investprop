@@ -73,7 +73,7 @@ function OwnerPortalPage() {
 
   const [showForm, setShowForm] = useState(false);
 
-  // Seller Pro: on-demand AI valuation reports, keyed by proposal id.
+  // On-demand AI valuation reports, keyed by proposal id.
   const [valuations, setValuations] = useState<Record<number, any>>({});
   const [valuatingId, setValuatingId] = useState<number | null>(null);
 
@@ -135,7 +135,7 @@ function OwnerPortalPage() {
     (p: any) => p.counterOfferAmount != null && p.status === "UNDER_REVIEW"
   );
 
-  // Seller Pro: request an on-demand AI valuation report for a listing.
+  // Request an on-demand AI valuation report for a listing.
   const runValuation = async (proposalId: number, force = false) => {
     setValuatingId(proposalId);
     try {
@@ -327,22 +327,6 @@ function OwnerPortalPage() {
                 </li>
               )}
             </ul>
-            {/* Seller Pro upsell */}
-            <div className="mt-4 flex flex-col items-start justify-between gap-3 rounded-lg border border-gold-200 bg-gold-50 p-4 sm:flex-row sm:items-center">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Selling more than one property?</p>
-                <p className="text-xs text-gray-600">
-                  Seller Pro unlocks multi-listing, an AI valuation report, priority review and a
-                  lower facilitation fee on close.
-                </p>
-              </div>
-              <button
-                onClick={() => navigate({ to: "/pricing" })}
-                className="shrink-0 rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-gold-600"
-              >
-                View Seller Pro
-              </button>
-            </div>
           </div>
         )}
 
@@ -547,7 +531,7 @@ function OwnerPortalPage() {
                         )}
                       </div>
                     </div>
-                    {/* Seller Pro — AI valuation */}
+                    {/* AI valuation */}
                     <div className="mt-4 border-t border-gray-100 pt-3">
                       <button
                         onClick={() => runValuation(proposal.id, Boolean(valuations[proposal.id]))}
@@ -561,7 +545,7 @@ function OwnerPortalPage() {
                         )}
                         {valuations[proposal.id] ? "Refresh AI valuation" : "Get AI valuation"}
                         <span className="rounded bg-white/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">
-                          Seller Pro
+                          AI
                         </span>
                       </button>
                       {valuations[proposal.id] && (
