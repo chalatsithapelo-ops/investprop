@@ -396,7 +396,7 @@ function PropertyDetailPage() {
                         if (!amount || amount <= 0) { toast.error("Please enter a valid amount"); return; }
                         try {
                           await trpcClient.createBudgetEntry.mutate({ authToken: authToken!, propertyId: Number(propertyId), category: budgetForm.category, description: budgetForm.description.trim(), amount });
-                          toast.success("Budget entry added — pending approval");
+                          toast.success("Budget entry added");
                           setBudgetForm({ category: "", description: "", amount: "" });
                           setShowBudgetForm(false);
                           await queryClient.invalidateQueries({ queryKey: trpc.getPropertyById.queryKey() });

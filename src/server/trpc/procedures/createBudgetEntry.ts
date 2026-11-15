@@ -58,9 +58,8 @@ export const createBudgetEntry = baseProcedure
       });
     }
 
-    // Maker-checker: a budget posting is created PENDING and has NO effect on
-    // spend/commitment until a DIFFERENT manager approves it (segregation of
-    // duties). This prevents one person creating and actioning expenditure.
+    // Budget postings by managers go live immediately (APPROVED) — no separate
+    // approval step. The recording manager is the approver of record.
     const budgetEntry = await db.budgetEntry.create({
       data: {
         propertyId: input.propertyId,
@@ -73,33 +72,16 @@ export const createBudgetEntry = baseProcedure
         milestoneId: input.milestoneId,
         dateRecorded: input.dateRecorded ? new Date(input.dateRecorded) : new Date(),
         recordedById: user.id,
-        approvalStatus: "PENDING",
+        approvalStatus: "APPROVED",
+        approvedById: user.id,
+        approvedAt: new Date(),
       },
     });
-
-    // Notify the OTHER managers/admins so a second person can approve it.
-    const approvers = await db.user.findMany({
-      where: {
-        role: { in: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "ADMIN"] },
-        id: { not: user.id },
-      },
-      select: { id: true },
-    });
-    for (const a of approvers) {
-      createNotification(
-        a.id,
-        "Budget entry awaiting approval",
-        `${user.name} logged a R${input.amount.toLocaleString("en-ZA")} ${input.entryType.toLowerCase()} on "${property.title}" (${input.category}). Please review and approve.`,
-        "INFO",
-        "PROPERTY",
-        input.propertyId
-      );
-    }
 
     return {
       success: true,
       budgetEntry,
-      pendingApproval: true,
+      pendingApproval: false,
     };
   });
 
