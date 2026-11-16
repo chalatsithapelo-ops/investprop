@@ -1172,6 +1172,103 @@ export const getDevelopmentDueDiligence = baseProcedure
   });
 
 // ============================================================================
+// Generic property due-diligence pack — professional team, statutory approvals
+// and labelled supporting documents for ANY property type (flip, rental or
+// development). Development opportunities also expose the richer economics via
+// getDevelopmentDueDiligence; this is the type-agnostic pack used by flip and
+// rental opportunities on web and mobile.
+// ============================================================================
+
+export const getPropertyDueDiligence = baseProcedure
+  .input(z.object({ authToken: z.string(), propertyId: z.number() }))
+  .query(async ({ input }) => {
+    const user = await getAuthenticatedUser(input.authToken);
+    const property = await db.property.findUnique({
+      where: { id: input.propertyId },
+      select: {
+        id: true,
+        isPublished: true,
+        documentsPackUrls: true,
+        propertyDevelopment: { select: { id: true } },
+        propertyFlip: { select: { id: true } },
+        rentalBond: { select: { id: true } },
+      },
+    });
+    if (!property) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Property not found" });
+    }
+
+    const isManager = (MANAGER_ROLES as readonly string[]).includes(user.role);
+    if (!property.isPublished && !isManager) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "This opportunity is not yet published",
+      });
+    }
+
+    const [approvals, professionals] = await Promise.all([
+      db.developmentApproval.findMany({
+        where: { propertyId: input.propertyId },
+        orderBy: { createdAt: "asc" },
+      }),
+      db.developmentProfessional.findMany({
+        where: { propertyId: input.propertyId },
+        orderBy: { role: "asc" },
+      }),
+    ]);
+
+    const documentsPack = normalisePack(property.documentsPackUrls);
+
+    // Nothing captured yet — the UI hides the pack when this is null.
+    if (professionals.length === 0 && approvals.length === 0 && documentsPack.length === 0) {
+      return null;
+    }
+
+    const requiredApprovals = approvals.filter((a) => a.isRequired);
+    const requiredProfessionals = professionals.filter((p) => p.isRequired);
+    const propertyType = property.propertyDevelopment
+      ? "development"
+      : property.propertyFlip
+        ? "flip"
+        : property.rentalBond
+          ? "rental"
+          : "property";
+
+    return {
+      propertyType,
+      professionals: professionals.map((p) => ({
+        role: p.role,
+        firmName: p.firmName,
+        status: p.status,
+        isRequired: p.isRequired,
+        registrationBody: p.registrationBody,
+      })),
+      professionalsSummary: {
+        total: professionals.length,
+        required: requiredProfessionals.length,
+        appointed: requiredProfessionals.filter((p) => p.status === "APPOINTED").length,
+        outstanding: requiredProfessionals.filter((p) => p.status !== "APPOINTED").length,
+      },
+      approvals: approvals.map((a) => ({
+        type: a.type,
+        status: a.status,
+        authority: a.authority,
+        reference: a.reference,
+        isRequired: a.isRequired,
+        targetDate: a.targetDate,
+        documentUrl: a.documentUrl,
+      })),
+      approvalsSummary: {
+        total: approvals.length,
+        required: requiredApprovals.length,
+        approved: requiredApprovals.filter((a) => a.status === "APPROVED").length,
+        outstanding: requiredApprovals.filter((a) => a.status !== "APPROVED").length,
+      },
+      documentsPack,
+    };
+  });
+
+// ============================================================================
 // Standalone due-diligence pack — labelled documents stored on the property
 // (MOI, valuation, SPV certificate, sale agreement, title deed, etc.) that are
 // NOT tied to a specific statutory approval. Managers upload/remove; any

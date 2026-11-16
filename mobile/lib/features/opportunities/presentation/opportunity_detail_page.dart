@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../config/theme.dart';
 import '../../../core/format.dart';
+import '../../../core/projected_statements.dart';
 import '../../../widgets/async_value_widget.dart';
 import '../../ai/presentation/match_score_card.dart';
 import '../data/opportunities_repository.dart';
@@ -12,6 +13,8 @@ import '../domain/opportunity.dart';
 import 'development_due_diligence_panel.dart';
 import 'investment_analysis_panel.dart';
 import 'opportunity_card.dart';
+import 'projected_statements_panel.dart';
+import 'property_due_diligence_panel.dart';
 
 class OpportunityDetailPage extends ConsumerWidget {
   const OpportunityDetailPage({super.key, required this.id});
@@ -56,6 +59,16 @@ class _Detail extends ConsumerWidget {
     final dueDiligence = opportunity.strategy == DealStrategy.development
         ? ref.watch(developmentDueDiligenceProvider(opportunity.id)).valueOrNull
         : null;
+    // Flip & rental opportunities expose a type-agnostic pack (team, approvals,
+    // documents); developments use the richer economics pack above.
+    final propertyDd = opportunity.strategy != DealStrategy.development
+        ? ref.watch(propertyDueDiligenceProvider(opportunity.id)).valueOrNull
+        : null;
+    final statements = buildStatementsFromInputs(
+      flip: opportunity.flipInput,
+      rental: opportunity.rentalInput,
+      development: opportunity.developmentInput,
+    );
     return CustomScrollView(
       slivers: [
         SliverAppBar(
@@ -137,6 +150,14 @@ class _Detail extends ConsumerWidget {
                 ],
                 if (dueDiligence != null) ...[
                   DevelopmentDueDiligencePanel(dd: dueDiligence),
+                  const SizedBox(height: 16),
+                ],
+                if (propertyDd != null) ...[
+                  PropertyDueDiligencePanel(dd: propertyDd),
+                  const SizedBox(height: 16),
+                ],
+                if (statements != null) ...[
+                  ProjectedStatementsPanel(data: statements),
                   const SizedBox(height: 16),
                 ],
                 OutlinedButton.icon(

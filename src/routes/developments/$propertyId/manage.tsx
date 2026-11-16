@@ -161,7 +161,10 @@ function DevelopmentManagePage() {
   });
   const readinessQuery = useQuery({
     ...trpc.getProjectReadiness.queryOptions({ authToken: authToken ?? "", propertyId: propId }),
-    enabled: !!authToken && Number.isFinite(propId),
+    enabled:
+      !!authToken &&
+      Number.isFinite(propId) &&
+      !!(propertyQuery.data as any)?.propertyDevelopment,
   });
   const professionalsQuery = useQuery({
     ...trpc.getDevelopmentProfessionals.queryOptions({ authToken: authToken ?? "", propertyId: propId }),
@@ -428,15 +431,13 @@ function DevelopmentManagePage() {
     );
   }
 
-  if (!dev) {
+  if (!property) {
     return (
       <div className="min-h-screen bg-navy-950">
         <Navbar />
         <div className="mx-auto max-w-5xl px-4 py-16 text-center">
           <AlertTriangle className="mx-auto mb-3 text-amber-500" size={40} />
-          <p className="text-lg font-medium text-gray-300">
-            This property is not a greenfield development, so there is no approvals pack to manage.
-          </p>
+          <p className="text-lg font-medium text-gray-300">Property not found.</p>
           <Link to="/developments" className="mt-4 inline-block text-gold-500 hover:text-gold-400">
             ← Back to developments
           </Link>
@@ -454,10 +455,11 @@ function DevelopmentManagePage() {
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
         <Link
-          to="/developments"
+          to="/properties/$propertyId"
+          params={{ propertyId: String(propId) }}
           className="mb-4 inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gold-500"
         >
-          <ArrowLeft size={16} /> Back to developments
+          <ArrowLeft size={16} /> Back to property
         </Link>
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -466,10 +468,12 @@ function DevelopmentManagePage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {dev.projectName ?? property.title} — Approvals & Due Diligence
+                {dev?.projectName ?? property.title} — Due Diligence &amp; Team
               </h1>
               <p className="mt-1 text-sm text-gray-500">
-                Report approval progress, track the development process and upload the due-diligence pack.
+                {dev
+                  ? "Report approval progress, track the development process and upload the due-diligence pack."
+                  : "Appoint the professional team, track approvals and consents, and upload the due-diligence pack."}
               </p>
             </div>
           </div>
@@ -482,6 +486,8 @@ function DevelopmentManagePage() {
           </Link>
         </div>
 
+        {dev && (
+          <>
         {/* Readiness summary */}
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Gross Development Value" value={fmtR(readiness?.grossDevelopmentValue)} />
@@ -585,6 +591,8 @@ function DevelopmentManagePage() {
             </div>
           )}
         </section>
+          </>
+        )}
 
         {/* Approvals tracker */}
         <section className="mb-6 rounded-xl border border-navy-800/50 bg-navy-900/50 p-6">

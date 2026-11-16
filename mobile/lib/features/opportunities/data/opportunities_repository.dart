@@ -4,6 +4,7 @@ import '../../../core/api/trpc_client.dart';
 import '../../../core/providers.dart';
 import '../domain/development_due_diligence.dart';
 import '../domain/opportunity.dart';
+import '../domain/property_due_diligence.dart';
 
 class OpportunitiesRepository {
   OpportunitiesRepository(this._client);
@@ -42,6 +43,20 @@ class OpportunitiesRepository {
     }
     return null;
   }
+
+  /// Type-agnostic due-diligence pack (professional team, approvals, supporting
+  /// documents) for flip & rental opportunities. Returns null when nothing has
+  /// been captured yet (the server returns null).
+  Future<PropertyDueDiligence?> fetchPropertyDueDiligence(int propertyId) async {
+    final data = await _client.query(
+      'getPropertyDueDiligence',
+      input: {'propertyId': propertyId},
+    );
+    if (data is Map) {
+      return PropertyDueDiligence.fromJson(Map<String, dynamic>.from(data));
+    }
+    return null;
+  }
 }
 
 final opportunitiesRepositoryProvider = Provider<OpportunitiesRepository>((
@@ -73,4 +88,11 @@ final opportunityByIdProvider = FutureProvider.autoDispose
 final developmentDueDiligenceProvider = FutureProvider.autoDispose
     .family<DevelopmentDueDiligence?, int>((ref, id) async {
       return ref.watch(opportunitiesRepositoryProvider).fetchDueDiligence(id);
+    });
+
+final propertyDueDiligenceProvider = FutureProvider.autoDispose
+    .family<PropertyDueDiligence?, int>((ref, id) async {
+      return ref
+          .watch(opportunitiesRepositoryProvider)
+          .fetchPropertyDueDiligence(id);
     });

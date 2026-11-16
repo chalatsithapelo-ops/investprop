@@ -143,15 +143,14 @@ function PropertyDetailPage() {
           </Link>
           {isManager && (
             <div className="flex items-center gap-2">
-              {property.propertyDevelopment && (
-                <Link
-                  to="/developments/$propertyId/manage"
-                  params={{ propertyId }}
-                  className="flex items-center gap-2 rounded-lg border border-gold-400 bg-white px-4 py-2 text-sm font-medium text-gold-700 hover:bg-gold-50"
-                >
-                  <ClipboardCheck size={16} /> Manage Development
-                </Link>
-              )}
+              <Link
+                to="/developments/$propertyId/manage"
+                params={{ propertyId }}
+                className="flex items-center gap-2 rounded-lg border border-gold-400 bg-white px-4 py-2 text-sm font-medium text-gold-700 hover:bg-gold-50"
+              >
+                <ClipboardCheck size={16} />{" "}
+                {property.propertyDevelopment ? "Manage Development" : "Manage DD & Team"}
+              </Link>
               <Link
                 to="/properties/$propertyId/edit"
                 params={{ propertyId }}

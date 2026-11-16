@@ -163,6 +163,19 @@ function OpportunityDetailPage() {
   const property = propertyQuery.data as any;
   const shareInfo = shareInfoQuery.data as any;
 
+  // Generic due-diligence pack (professional team, approvals, supporting docs)
+  // for flip & rental opportunities. Development opportunities use the richer
+  // economics pack (`dd`) above, so this only runs for non-developments.
+  const isDevelopmentOpportunity = !!property?.propertyDevelopment;
+  const propDdQuery = useQuery({
+    ...trpc.getPropertyDueDiligence.queryOptions({
+      authToken: authToken ?? "",
+      propertyId: Number(opportunityId),
+    }),
+    enabled: !!authToken && !!opportunityId && !!property && !isDevelopmentOpportunity,
+  });
+  const propDd: any = propDdQuery.data ?? null;
+
   const allTermsAccepted = Object.values(termsAccepted).every(Boolean);
   const remainingTerms =
     5 - Object.values(termsAccepted).filter(Boolean).length;
@@ -702,6 +715,9 @@ function OpportunityDetailPage() {
 
             {/* Development Due-Diligence Pack */}
             {dd && <DevelopmentDueDiligence dd={dd} />}
+
+            {/* Due-Diligence Pack (flip / rental) */}
+            {!dd && propDd && <PropertyDueDiligence dd={propDd} />}
 
             {/* Share Info */}
             {aggregatedShareInfo && (
@@ -1567,6 +1583,121 @@ function DdGate({ label, pass }: { label: string; pass: boolean }) {
     >
       {pass ? <CheckCircle size={14} /> : <AlertTriangle size={14} />}
       {label}
+    </div>
+  );
+}
+
+// Type-agnostic due-diligence pack for flip & rental opportunities — the
+// professional team, statutory approvals/consents and supporting documents,
+// without the greenfield development economics.
+function PropertyDueDiligence({ dd }: { dd: any }) {
+  return (
+    <div className="rounded-xl border border-navy-800/50 bg-navy-900/50 p-6">
+      <div className="mb-1 flex items-center gap-2">
+        <Landmark className="h-5 w-5 text-gold-500" />
+        <h2 className="text-lg font-semibold text-gray-900">Due Diligence Pack</h2>
+      </div>
+      <p className="mb-5 text-sm text-gray-500">
+        The professional team, statutory approvals and supporting documents
+        underpinning this opportunity.
+      </p>
+
+      {/* Professional team */}
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
+        <Building2 size={15} className="text-gold-500" /> Professional Team
+        <span className="ml-1 rounded-full bg-navy-800/40 px-2 py-0.5 text-[11px] font-medium text-gray-400">
+          {dd.professionalsSummary.appointed}/{dd.professionalsSummary.required} appointed
+        </span>
+      </h3>
+      {dd.professionals.length === 0 ? (
+        <p className="mb-6 rounded-lg border border-dashed border-navy-700 bg-navy-800/20 p-3 text-xs text-gray-400">
+          No professional appointments recorded yet.
+        </p>
+      ) : (
+        <ul className="mb-6 divide-y divide-navy-800/50 rounded-lg border border-navy-800/50 bg-navy-900/30">
+          {dd.professionals.map((p: any, i: number) => (
+            <li key={i} className="flex items-center justify-between gap-3 p-3 text-sm">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-gray-900">
+                  {titleCase(p.role)}
+                  {p.isRequired && <span className="ml-1 text-[10px] text-gold-600">• required</span>}
+                </p>
+                <p className="truncate text-xs text-gray-500">
+                  {p.firmName || "To be appointed"}
+                  {p.registrationBody ? ` · ${p.registrationBody}` : ""}
+                </p>
+              </div>
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${DD_APPOINTMENT_BADGE[p.status] ?? "bg-navy-700/40 text-gray-400"}`}>
+                {titleCase(p.status)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Statutory approvals */}
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
+        <FileText size={15} className="text-gold-500" /> Approvals &amp; Consents
+        <span className="ml-1 rounded-full bg-navy-800/40 px-2 py-0.5 text-[11px] font-medium text-gray-400">
+          {dd.approvalsSummary.approved}/{dd.approvalsSummary.required} approved
+        </span>
+      </h3>
+      {dd.approvals.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-navy-700 bg-navy-800/20 p-3 text-xs text-gray-400">
+          No approvals recorded yet.
+        </p>
+      ) : (
+        <ul className="divide-y divide-navy-800/50 rounded-lg border border-navy-800/50 bg-navy-900/30">
+          {dd.approvals.map((a: any, i: number) => (
+            <li key={i} className="flex items-center justify-between gap-3 p-3 text-sm">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-gray-900">
+                  {titleCase(a.type)}
+                  {a.isRequired && <span className="ml-1 text-[10px] text-gold-600">• required</span>}
+                </p>
+                <p className="truncate text-xs text-gray-500">
+                  {a.authority || "Authority t.b.c."}
+                  {a.targetDate ? ` · target ${new Date(a.targetDate).toLocaleDateString("en-ZA")}` : ""}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {a.documentUrl && (
+                  <a href={a.documentUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-gold-500 px-2 py-1 text-[11px] font-medium text-gold-600 hover:bg-gold-50">
+                    View
+                  </a>
+                )}
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${DD_APPROVAL_BADGE[a.status] ?? "bg-navy-700/40 text-gray-400"}`}>
+                  {titleCase(a.status)}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Supporting documents pack */}
+      {Array.isArray(dd.documentsPack) && dd.documentsPack.length > 0 && (
+        <>
+          <h3 className="mb-3 mt-6 flex items-center gap-2 text-sm font-semibold text-gray-700">
+            <FileText size={15} className="text-gold-500" /> Supporting Documents
+          </h3>
+          <ul className="divide-y divide-navy-800/50 rounded-lg border border-navy-800/50 bg-navy-900/30">
+            {dd.documentsPack.map((d: any, i: number) => (
+              <li key={i} className="flex items-center justify-between gap-3 p-3 text-sm">
+                <p className="truncate font-medium text-gray-900">{d.label}</p>
+                <a
+                  href={d.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shrink-0 rounded-lg border border-gold-500 px-2 py-1 text-[11px] font-medium text-gold-600 hover:bg-gold-50"
+                >
+                  View
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
   );
 }
