@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../config/env.dart';
 import '../../../config/theme.dart';
 import '../../../core/format.dart';
 import '../domain/development_due_diligence.dart';
@@ -165,6 +167,13 @@ class DevelopmentDueDiligencePanel extends StatelessWidget {
                   statusColor: _approvalColor(a.status),
                 ),
               ),
+            const SizedBox(height: 16),
+
+            _SectionLabel('Supporting documents'),
+            if (dd.documentsPack.isEmpty)
+              const _EmptyNote('No supporting documents uploaded yet.')
+            else
+              ...dd.documentsPack.map((d) => _DocumentRow(doc: d)),
           ],
         ),
       ),
@@ -536,3 +545,68 @@ class _EmptyNote extends StatelessWidget {
     );
   }
 }
+
+class _DocumentRow extends StatelessWidget {
+  const _DocumentRow({required this.doc});
+
+  final DdDocument doc;
+
+  Future<void> _open(BuildContext context) async {
+    if (doc.url.isEmpty) return;
+    final full = doc.url.startsWith('http') ? doc.url : '${Env.apiBaseUrl}${doc.url}';
+    final launched = await launchUrl(
+      Uri.parse(full),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the document.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: () => _open(context),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.navy.withValues(alpha: 0.02),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.description_outlined,
+                size: 18,
+                color: AppColors.gold,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  doc.label,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.open_in_new,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

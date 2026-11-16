@@ -576,7 +576,7 @@ DevelopmentCalculations calculateDevelopmentMetrics(
     totalCosts: totalCosts,
     profitMargin: profitMargin,
     costPerUnit: costPerUnit,
-    preSalePercentage: preSalePercentage,
+    preSalePercentage: 0, // Not applicable for rental developments
     contingencyAmount: contingencyAmount,
     annualGrossRentalIncome: annualGrossRentalIncome,
     noi: noi,

@@ -18,6 +18,7 @@ class DevelopmentDueDiligence {
     required this.professionalsSummary,
     required this.approvals,
     required this.approvalsSummary,
+    required this.documentsPack,
   });
 
   final String projectName;
@@ -30,6 +31,7 @@ class DevelopmentDueDiligence {
   final DdCountSummary professionalsSummary;
   final List<DdApproval> approvals;
   final DdCountSummary approvalsSummary;
+  final List<DdDocument> documentsPack;
 
   factory DevelopmentDueDiligence.fromJson(Map<String, dynamic> j) {
     List<T> list<T>(dynamic raw, T Function(Map<String, dynamic>) f) =>
@@ -61,8 +63,26 @@ class DevelopmentDueDiligence {
       approvalsSummary: DdCountSummary.fromJson(
         Map<String, dynamic>.from(j['approvalsSummary'] as Map? ?? {}),
       ),
+      documentsPack: list(j['documentsPack'], DdDocument.fromJson),
     );
   }
+}
+
+/// A labelled supporting document in the due-diligence pack (MOI, valuation,
+/// SPV certificate, sale agreement, title deed, etc.). Mirrors the web app's
+/// "Supporting Documents" list.
+class DdDocument {
+  DdDocument({required this.label, required this.url, required this.uploadedAt});
+
+  final String label;
+  final String url;
+  final String uploadedAt;
+
+  factory DdDocument.fromJson(Map<String, dynamic> j) => DdDocument(
+    label: asString(j['label'], 'Document'),
+    url: asString(j['url']),
+    uploadedAt: asString(j['uploadedAt']),
+  );
 }
 
 class DdEconomics {
