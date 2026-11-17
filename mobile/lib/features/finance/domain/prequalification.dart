@@ -45,8 +45,11 @@ class PrequalResult {
     required this.band,
     required this.qualifies,
     this.notes,
+    this.id,
   });
 
+  /// Present only after saving, not on a live preview.
+  final int? id;
   final double maxInstalment;
   final double maxBondAmount;
   final double maxPropertyPrice;
@@ -59,7 +62,28 @@ class PrequalResult {
   final String? notes;
 
   factory PrequalResult.fromJson(Map<String, dynamic> json) {
+    // A calculation is flat. Do not silently interpret an API envelope or an
+    // invalid response as a valid zero-valued affordability estimate.
+    for (final key in [
+      'maxInstalment',
+      'maxBondAmount',
+      'maxPropertyPrice',
+      'estimatedInstalment',
+      'loanToValue',
+      'annualInterestRate',
+      'loanTermYears',
+    ]) {
+      final value = json[key];
+      if (value is! num || !value.isFinite) {
+        throw const FormatException('Invalid prequalification response.');
+      }
+    }
+    if (json['qualifies'] is! bool ||
+        !['STRONG', 'MODERATE', 'WEAK'].contains(json['band'])) {
+      throw const FormatException('Invalid prequalification response.');
+    }
     return PrequalResult(
+      id: json['id'] == null ? null : asInt(json['id']),
       maxInstalment: asDouble(json['maxInstalment']),
       maxBondAmount: asDouble(json['maxBondAmount']),
       maxPropertyPrice: asDouble(json['maxPropertyPrice']),
@@ -84,9 +108,25 @@ class Prequalification {
     required this.band,
     required this.qualifies,
     required this.createdAt,
+    this.propertyId,
+    this.grossMonthlyIncome = 0,
+    this.monthlyExpenses = 0,
+    this.existingDebtRepayments = 0,
+    this.depositAmount = 0,
+    this.propertyPrice = 0,
+    this.annualInterestRate = 11.75,
+    this.loanTermYears = 20,
   });
 
   final int id;
+  final int? propertyId;
+  final double grossMonthlyIncome;
+  final double monthlyExpenses;
+  final double existingDebtRepayments;
+  final double depositAmount;
+  final double propertyPrice;
+  final double annualInterestRate;
+  final int loanTermYears;
   final double maxBondAmount;
   final double maxPropertyPrice;
   final double estimatedInstalment;
@@ -97,6 +137,18 @@ class Prequalification {
   factory Prequalification.fromJson(Map<String, dynamic> json) {
     return Prequalification(
       id: asInt(json['id']),
+      propertyId: json['propertyId'] == null ? null : asInt(json['propertyId']),
+      grossMonthlyIncome: asDouble(json['grossMonthlyIncome']),
+      monthlyExpenses: asDouble(json['monthlyExpenses']),
+      existingDebtRepayments: asDouble(json['existingDebtRepayments']),
+      depositAmount: asDouble(json['depositAmount']),
+      propertyPrice: asDouble(json['propertyPrice']),
+      annualInterestRate: json['annualInterestRate'] == null
+          ? 11.75
+          : asDouble(json['annualInterestRate']),
+      loanTermYears: json['loanTermYears'] == null
+          ? 20
+          : asInt(json['loanTermYears']),
       maxBondAmount: asDouble(json['maxBondAmount']),
       maxPropertyPrice: asDouble(json['maxPropertyPrice']),
       estimatedInstalment: asDouble(json['estimatedInstalment']),

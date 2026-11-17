@@ -1,0 +1,22 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build corrected Flutter release",
+			"type": "shell",
+			"command": "C:\\flutter\\bin\\flutter.bat",
+			"options": {
+				"cwd": "${workspaceFolder}/mobile"
+			},
+			"args": [
+				"build",
+				"apk",
+				"--release",
+				"--target=lib/main.dart"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

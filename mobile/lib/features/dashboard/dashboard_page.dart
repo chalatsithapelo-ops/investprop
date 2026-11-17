@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../config/build_info.dart';
@@ -39,6 +40,10 @@ class DashboardPage extends ConsumerWidget {
             SliverAppBar(
               pinned: true,
               backgroundColor: AppColors.navy,
+              leading: const Padding(
+                padding: EdgeInsets.only(left: 12),
+                child: _AppBarLogo(),
+              ),
               title: Text('Hi, ${_firstName(user?.name)}'),
               actions: const [_BuildBadge()],
             ),
@@ -64,6 +69,28 @@ class DashboardPage extends ConsumerWidget {
                     const SizedBox(height: 16),
                     _MarketQuickAction(
                       onTap: () => context.push('/portfolio/marketplace'),
+                    ),
+                    const SizedBox(height: 12),
+                    Card(
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.account_balance_outlined),
+                            title: const Text('Home-loan prequalification'),
+                            subtitle: const Text(
+                              'Check affordability and apply to major banks',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => context.push('/profile/prequalify'),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.folder_outlined),
+                            title: const Text('My home-loan applications'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => context.push('/profile/home-loan'),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 24),
                     Row(
@@ -157,6 +184,10 @@ class _OwnerDashboard extends ConsumerWidget {
             SliverAppBar(
               pinned: true,
               backgroundColor: AppColors.navy,
+              leading: const Padding(
+                padding: EdgeInsets.only(left: 12),
+                child: _AppBarLogo(),
+              ),
               title: Text('Hi, ${_first(user?.name)}'),
               actions: const [_BuildBadge()],
             ),
@@ -369,6 +400,28 @@ class _BuildBadge extends StatelessWidget {
   }
 }
 
+class _AppBarLogo extends StatelessWidget {
+  const _AppBarLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        height: 34,
+        width: 34,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: SvgPicture.asset(
+          'assets/investprop-icon.svg',
+          semanticsLabel: 'InvestProp',
+        ),
+      ),
+    );
+  }
+}
 
 class _OwnerDealTile extends StatelessWidget {
   const _OwnerDealTile({required this.proposal});

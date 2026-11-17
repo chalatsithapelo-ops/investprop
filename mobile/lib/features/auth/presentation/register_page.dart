@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../config/theme.dart';
@@ -73,6 +74,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Center(
+                  child: SvgPicture.asset(
+                    'assets/investprop-logo.svg',
+                    width: 220,
+                    semanticsLabel: 'InvestProp',
+                  ),
+                ),
+                const SizedBox(height: 20),
                 const Text(
                   'Join InvestProp',
                   style: TextStyle(
@@ -109,8 +118,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     ),
                   ],
                   selected: {_role},
-                  onSelectionChanged: (s) =>
-                      setState(() => _role = s.first),
+                  onSelectionChanged: (s) => setState(() => _role = s.first),
                 ),
                 const SizedBox(height: 20),
                 TextFormField(
@@ -163,7 +171,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   onFieldSubmitted: (_) => _submit(),
                   decoration: InputDecoration(
                     labelText: 'Password',
-                    helperText: 'At least 8 characters, with a letter and a digit',
+                    helperText:
+                        'At least 8 characters, with a letter and a digit',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(

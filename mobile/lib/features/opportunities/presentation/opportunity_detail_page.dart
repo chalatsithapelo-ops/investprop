@@ -8,13 +8,13 @@ import '../../../core/format.dart';
 import '../../../core/projected_statements.dart';
 import '../../../widgets/async_value_widget.dart';
 import '../../ai/presentation/match_score_card.dart';
+import '../../auth/application/auth_controller.dart';
 import '../data/opportunities_repository.dart';
 import '../domain/opportunity.dart';
-import 'development_due_diligence_panel.dart';
 import 'investment_analysis_panel.dart';
 import 'opportunity_card.dart';
 import 'projected_statements_panel.dart';
-import 'property_due_diligence_panel.dart';
+import 'due_diligence_section.dart';
 
 class OpportunityDetailPage extends ConsumerWidget {
   const OpportunityDetailPage({super.key, required this.id});
@@ -31,7 +31,15 @@ class OpportunityDetailPage extends ConsumerWidget {
       body: AsyncValueView(
         value: opportunity,
         onRetry: () => ref.invalidate(opportunityByIdProvider(id)),
-        data: (opp) => _Detail(opportunity: opp),
+        data: (opp) => RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(opportunityByIdProvider(id));
+            ref.invalidate(developmentDueDiligenceProvider(id));
+            ref.invalidate(propertyDueDiligenceProvider(id));
+            await ref.read(opportunityByIdProvider(id).future);
+          },
+          child: _Detail(opportunity: opp),
+        ),
       ),
       bottomNavigationBar: canInvest
           ? SafeArea(
@@ -56,20 +64,16 @@ class _Detail extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dueDiligence = opportunity.strategy == DealStrategy.development
-        ? ref.watch(developmentDueDiligenceProvider(opportunity.id)).valueOrNull
-        : null;
-    // Flip & rental opportunities expose a type-agnostic pack (team, approvals,
-    // documents); developments use the richer economics pack above.
-    final propertyDd = opportunity.strategy != DealStrategy.development
-        ? ref.watch(propertyDueDiligenceProvider(opportunity.id)).valueOrNull
-        : null;
+    final isManager = ref.watch(authControllerProvider).user?.isManager == true;
+    final ddKey = GlobalKey();
+    final statementsKey = GlobalKey();
     final statements = buildStatementsFromInputs(
       flip: opportunity.flipInput,
       rental: opportunity.rentalInput,
       development: opportunity.developmentInput,
     );
     return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverAppBar(
           pinned: true,
@@ -140,6 +144,64 @@ class _Detail extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 20),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    ActionChip(
+                      avatar: const Icon(Icons.tune, size: 18),
+                      label: const Text('Scenario sensitivity'),
+                      onPressed: () => context.push(
+                        '/investment-scenarios/${opportunity.id}',
+                      ),
+                    ),
+                    ActionChip(
+                      avatar: const Icon(Icons.fact_check_outlined, size: 18),
+                      label: const Text('DD, team & approvals'),
+                      onPressed: () => Scrollable.ensureVisible(
+                        ddKey.currentContext!,
+                        duration: const Duration(milliseconds: 350),
+                      ),
+                    ),
+                    ActionChip(
+                      avatar: const Icon(Icons.insert_chart_outlined, size: 18),
+                      label: const Text('Financial statements'),
+                      onPressed: () => Scrollable.ensureVisible(
+                        statementsKey.currentContext!,
+                        duration: const Duration(milliseconds: 350),
+                      ),
+                    ),
+                  ],
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => context.push(
+                    Uri(
+                      path: '/profile/prequalify',
+                      queryParameters: {
+                        'propertyId': '${opportunity.id}',
+                        'propertyPrice': '${opportunity.price}',
+                      },
+                    ).toString(),
+                  ),
+                  icon: const Icon(Icons.account_balance_outlined),
+                  label: const Text('Home-loan prequalification'),
+                ),
+                if (isManager)
+                  FilledButton.icon(
+                    onPressed: () async {
+                      await context.push(
+                        '/property-due-diligence/${opportunity.id}/manage',
+                      );
+                      ref.invalidate(
+                        developmentDueDiligenceProvider(opportunity.id),
+                      );
+                      ref.invalidate(
+                        propertyDueDiligenceProvider(opportunity.id),
+                      );
+                    },
+                    icon: const Icon(Icons.edit_document),
+                    label: const Text('Manage DD & team'),
+                  ),
+                const SizedBox(height: 16),
                 _MetricsGrid(opportunity: opportunity),
                 const SizedBox(height: 20),
                 _FundingSection(opportunity: opportunity),
@@ -148,18 +210,29 @@ class _Detail extends ConsumerWidget {
                   InvestmentAnalysisPanel(opportunity: opportunity),
                   const SizedBox(height: 16),
                 ],
-                if (dueDiligence != null) ...[
-                  DevelopmentDueDiligencePanel(dd: dueDiligence),
-                  const SizedBox(height: 16),
-                ],
-                if (propertyDd != null) ...[
-                  PropertyDueDiligencePanel(dd: propertyDd),
-                  const SizedBox(height: 16),
-                ],
-                if (statements != null) ...[
-                  ProjectedStatementsPanel(data: statements),
-                  const SizedBox(height: 16),
-                ],
+                Container(
+                  key: ddKey,
+                  child: DueDiligenceSection(
+                    propertyId: opportunity.id,
+                    isDevelopment:
+                        opportunity.strategy == DealStrategy.development,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  key: statementsKey,
+                  child: statements != null
+                      ? ProjectedStatementsPanel(data: statements)
+                      : const Card(
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text(
+                              'Projected Financial Statements\nFinancial inputs have not yet been captured for this property.',
+                            ),
+                          ),
+                        ),
+                ),
+                const SizedBox(height: 16),
                 OutlinedButton.icon(
                   onPressed: () => context.push(
                     '/opportunities/${opportunity.id}/calculator',
@@ -372,15 +445,20 @@ class _FundingSection extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.gold.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: AppColors.gold.withValues(alpha: 0.4),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.pie_chart_outline,
-                          size: 16, color: AppColors.gold),
+                      const Icon(
+                        Icons.pie_chart_outline,
+                        size: 16,
+                        color: AppColors.gold,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'Platform carry ${Fmt.percent(opportunity.platformCarryPct)}',

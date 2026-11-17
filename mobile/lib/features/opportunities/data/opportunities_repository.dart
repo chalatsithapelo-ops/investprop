@@ -73,15 +73,6 @@ final opportunitiesProvider = FutureProvider.autoDispose<List<Opportunity>>((
 
 final opportunityByIdProvider = FutureProvider.autoDispose
     .family<Opportunity, int>((ref, id) async {
-      final cached = ref.watch(opportunitiesProvider).valueOrNull;
-      if (cached != null) {
-        for (final o in cached) {
-          // Only reuse the cached record when it already carries the strategy
-          // sub-records needed for the investment-analysis panel; otherwise
-          // fetch the full property by id.
-          if (o.id == id && o.hasAnalysis) return o;
-        }
-      }
       return ref.watch(opportunitiesRepositoryProvider).fetchById(id);
     });
 

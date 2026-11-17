@@ -19,8 +19,8 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "InvestProp";
   const options = {
     body: payload.body || "",
-    icon: "/investprop-mark.svg",
-    badge: "/investprop-mark.svg",
+    icon: "/investprop-icon.svg",
+    badge: "/investprop-icon.svg",
     tag: payload.tag || undefined,
     renotify: Boolean(payload.tag),
     data: { url: payload.url || "/", ...(payload.data || {}) },

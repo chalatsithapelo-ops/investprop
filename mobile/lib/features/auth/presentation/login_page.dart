@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../config/theme.dart';
@@ -128,10 +129,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     setState(() => _obscure = !_obscure),
                               ),
                             ),
-                            validator: (v) =>
-                                (v == null || v.isEmpty)
-                                    ? 'Password is required'
-                                    : null,
+                            validator: (v) => (v == null || v.isEmpty)
+                                ? 'Password is required'
+                                : null,
                           ),
                           const SizedBox(height: 24),
                           ElevatedButton(
@@ -151,8 +151,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
-                              onPressed: () =>
-                                  context.push('/forgot-password'),
+                              onPressed: () => context.push('/forgot-password'),
                               child: const Text('Forgot password?'),
                             ),
                           ),
@@ -194,26 +193,12 @@ class _BrandHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Container(
-          height: 64,
-          width: 64,
-          decoration: BoxDecoration(
-            color: AppColors.gold,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Icon(Icons.apartment, color: AppColors.navy, size: 34),
+        SvgPicture.asset(
+          'assets/investprop-logo-light.svg',
+          width: 260,
+          semanticsLabel: 'InvestProp',
         ),
-        const SizedBox(height: 16),
-        const Text(
-          'InvestProp',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 12),
         const Text(
           'Fractional property investment',
           style: TextStyle(color: Colors.white70),

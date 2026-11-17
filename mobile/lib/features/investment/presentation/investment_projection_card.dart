@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../config/theme.dart';
+import '../../../core/api/api_exception.dart';
 import '../../../core/format.dart';
 import '../../../widgets/info_tooltip.dart';
 import '../data/investment_repository.dart';
@@ -34,6 +35,8 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
   Timer? _debounce;
   InvestmentProjection? _projection;
   bool _loading = false;
+  String? _error;
+  int _request = 0;
 
   @override
   void initState() {
@@ -44,7 +47,9 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
   @override
   void didUpdateWidget(covariant ProjectionCard old) {
     super.didUpdateWidget(old);
-    if (old.amount != widget.amount || old.config != widget.config) {
+    if (old.propertyId != widget.propertyId ||
+        old.amount != widget.amount ||
+        old.config != widget.config) {
       _schedule();
     }
   }
@@ -57,15 +62,26 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
 
   void _schedule() {
     _debounce?.cancel();
+    _request++;
+    _error = null;
     if (widget.amount <= 0) {
-      setState(() => _projection = null);
+      setState(() {
+        _projection = null;
+        _loading = false;
+      });
       return;
     }
+    _loading = true;
+    _projection = null;
     _debounce = Timer(const Duration(milliseconds: 450), _load);
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    final request = ++_request;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final c = widget.config;
       final p = await ref
@@ -82,13 +98,23 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
             stressUpPct: c.stressUpPct,
             holdingType: c.holdingType,
           );
-      if (!mounted) return;
+      if (!mounted || request != _request) return;
+      if (p == null) {
+        throw StateError('Missing projection data');
+      }
       setState(() => _projection = p);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _projection = null);
+    } catch (error) {
+      if (!mounted || request != _request) return;
+      setState(() {
+        _projection = null;
+        _error = error is ApiException
+            ? error.message
+            : 'Could not load your investment projection. Please try again.';
+      });
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && request == _request) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -117,11 +143,13 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
                 color: AppColors.goldDark,
               ),
               const SizedBox(width: 6),
-              const Text(
-                'Your Investment Projection',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.goldDark,
+              const Expanded(
+                child: Text(
+                  'Your Investment Projection',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.goldDark,
+                  ),
                 ),
               ),
               const InfoTip(term: 'investorStrategy'),
@@ -271,6 +299,14 @@ class _ProjectionCardState extends ConsumerState<ProjectionCard> {
               ),
             ),
 
+          if (_error != null) ...[
+            Text(_error!, style: const TextStyle(color: AppColors.danger)),
+            TextButton.icon(
+              onPressed: _load,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry projection'),
+            ),
+          ],
           if (p != null) _ScenarioTable(projection: p),
         ],
       ),
@@ -615,48 +651,56 @@ class _ScenarioTable extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            children: [
-              const _HeaderRow(),
-              _Row(
-                label: 'Net payout',
-                term: 'netProceeds',
-                down: Fmt.money(d.netProceeds),
-                base: Fmt.money(b.netProceeds),
-                up: Fmt.money(u.netProceeds),
+        LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: constraints.maxWidth < 560 ? 560 : constraints.maxWidth,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  children: [
+                    const _HeaderRow(),
+                    _Row(
+                      label: 'Net payout',
+                      term: 'netProceeds',
+                      down: Fmt.money(d.netProceeds),
+                      base: Fmt.money(b.netProceeds),
+                      up: Fmt.money(u.netProceeds),
+                    ),
+                    _Row(
+                      label: 'Net profit',
+                      down: Fmt.money(d.netProfit),
+                      base: Fmt.money(b.netProfit),
+                      up: Fmt.money(u.netProfit),
+                      downNeg: d.netProfit < 0,
+                      baseNeg: b.netProfit < 0,
+                    ),
+                    _Row(
+                      label: 'Equity multiple',
+                      term: 'moic',
+                      down: '${d.moic.toStringAsFixed(2)}×',
+                      base: '${b.moic.toStringAsFixed(2)}×',
+                      up: '${u.moic.toStringAsFixed(2)}×',
+                    ),
+                    _Row(
+                      label: 'Annualised',
+                      term: 'annualisedReturn',
+                      down: Fmt.percent(d.annualisedReturn),
+                      base: Fmt.percent(b.annualisedReturn),
+                      up: Fmt.percent(u.annualisedReturn),
+                      downNeg: d.annualisedReturn < 0,
+                      baseNeg: b.annualisedReturn < 0,
+                      last: true,
+                    ),
+                  ],
+                ),
               ),
-              _Row(
-                label: 'Net profit',
-                down: Fmt.money(d.netProfit),
-                base: Fmt.money(b.netProfit),
-                up: Fmt.money(u.netProfit),
-                downNeg: d.netProfit < 0,
-                baseNeg: b.netProfit < 0,
-              ),
-              _Row(
-                label: 'Equity multiple',
-                term: 'moic',
-                down: '${d.moic.toStringAsFixed(2)}×',
-                base: '${b.moic.toStringAsFixed(2)}×',
-                up: '${u.moic.toStringAsFixed(2)}×',
-              ),
-              _Row(
-                label: 'Annualised',
-                term: 'annualisedReturn',
-                down: Fmt.percent(d.annualisedReturn),
-                base: Fmt.percent(b.annualisedReturn),
-                up: Fmt.percent(u.annualisedReturn),
-                downNeg: d.annualisedReturn < 0,
-                baseNeg: b.annualisedReturn < 0,
-                last: true,
-              ),
-            ],
+            ),
           ),
         ),
         const SizedBox(height: 6),

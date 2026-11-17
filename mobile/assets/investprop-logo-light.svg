@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="368" viewBox="20 19.33 1080 368" role="img" aria-label="InvestProp">
+  <g transform="translate(55 38)">
+    <path d="M18 82 150 12 282 82 150 145Z" fill="#4B6B16"/>
+    <path d="M18 82 150 145 150 281 18 218Z" fill="#BF9F15"/>
+    <path d="M150 145 282 82 282 218 150 281Z" fill="#E6C74B"/>
+    <path d="M11 85 150 8 289 85" fill="none" stroke="#2A430B" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M92 174 124 189 124 254 92 239Z" fill="#FFF1A8"/>
+    <path d="M92 174 78 181 78 246 92 239Z" fill="#38550E"/>
+    <path d="M150 294 236 329 64 329Z" fill="#38550E"/>
+  </g>
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <text x="388" y="191" font-size="130" font-weight="700" letter-spacing="-4"><tspan fill="#FFFFFF">Invest</tspan><tspan fill="#E6C74B">Prop</tspan></text>
+    <path d="M392 224H520" stroke="#E6C74B" stroke-width="5"/>
+    <text x="391" y="274" font-size="36" fill="#CBD5B5">Inclusive AI property Investmenting</text>
+  </g>
+  <path d="M730 39 C733 56 738 61 755 64 C738 67 733 72 730 89 C727 72 722 67 705 64 C722 61 727 56 730 39Z" fill="#E6C74B"/>
+  <path d="M763 42 C764.5 49 767 51.5 774 53 C767 54.5 764.5 57 763 64 C761.5 57 759 54.5 752 53 C759 51.5 761.5 49 763 42Z" fill="#9CC04A"/>
+</svg>

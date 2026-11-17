@@ -22,6 +22,7 @@ import '../features/finance/presentation/prequalification_page.dart';
 import '../features/finance/presentation/referral_services_page.dart';
 import '../features/governance/presentation/distributions_voting_page.dart';
 import '../features/investment/presentation/invest_page.dart';
+import '../features/investment/presentation/scenario_sensitivity_page.dart';
 import '../features/land_partnership/presentation/land_partnership_page.dart';
 import '../features/ledger/presentation/share_ledger_page.dart';
 import '../features/marketplace/domain/marketplace_models.dart';
@@ -34,6 +35,7 @@ import '../features/notifications/presentation/notifications_page.dart';
 import '../features/office/presentation/office_page.dart';
 import '../features/opportunities/presentation/opportunities_page.dart';
 import '../features/opportunities/presentation/opportunity_detail_page.dart';
+import '../features/opportunities/presentation/manage_due_diligence_page.dart';
 import '../features/opportunities/presentation/financing_calculator_page.dart';
 import '../features/opportunities/domain/opportunity.dart';
 import '../features/owner/presentation/owner_portal_page.dart';
@@ -170,6 +172,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       // view. Pushing the branch route `/opportunities/:id` from a root page
       // leaves the StatefulShell inactive and renders a blank screen, so we
       // reuse OpportunityDetailPage via this dedicated root route instead.
+      GoRoute(
+        path: '/property-due-diligence/:id/manage',
+        parentNavigatorKey: _rootKey,
+        builder: (_, state) => ManageDueDiligencePage(
+          propertyId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+      ),
+      GoRoute(
+        path: '/investment-scenarios/:id',
+        parentNavigatorKey: _rootKey,
+        builder: (_, state) => ScenarioSensitivityPage(
+          propertyId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+      ),
       GoRoute(
         path: '/property-financials/:id',
         parentNavigatorKey: _rootKey,
@@ -390,7 +406,21 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'prequalify',
                     parentNavigatorKey: _rootKey,
-                    builder: (_, __) => const PrequalificationPage(),
+                    builder: (_, state) {
+                      final id = int.tryParse(
+                        state.uri.queryParameters['propertyId'] ?? '',
+                      );
+                      final price = double.tryParse(
+                        state.uri.queryParameters['propertyPrice'] ?? '',
+                      );
+                      return PrequalificationPage(
+                        propertyId: id != null && id > 0 ? id : null,
+                        propertyPrice:
+                            price != null && price.isFinite && price >= 0
+                            ? price
+                            : null,
+                      );
+                    },
                   ),
                   GoRoute(
                     path: 'preferences',

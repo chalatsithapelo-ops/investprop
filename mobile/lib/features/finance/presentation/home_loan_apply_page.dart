@@ -35,7 +35,8 @@ class HomeLoanApplyPage extends ConsumerStatefulWidget {
   const HomeLoanApplyPage({super.key, this.prefill});
 
   /// Optional prefill passed from the prequalification screen:
-  /// {bondAmount, propertyPrice, deposit, grossIncome, instalment}.
+  /// {bondAmount, propertyPrice, deposit, grossIncome, instalment,
+  /// annualInterestRate, loanTermYears, propertyId?, prequalificationId?}.
   final Map<String, dynamic>? prefill;
 
   @override
@@ -50,6 +51,7 @@ class _HomeLoanApplyPageState extends ConsumerState<HomeLoanApplyPage> {
   final List<PendingDoc> _docs = [];
   bool _consent = false;
   bool _submitting = false;
+  bool _picking = false;
 
   double _d(String key) {
     final v = widget.prefill?[key];
@@ -62,7 +64,7 @@ class _HomeLoanApplyPageState extends ConsumerState<HomeLoanApplyPage> {
     super.initState();
     final bond = _d('bondAmount');
     _bondAmount = TextEditingController(
-      text: bond > 0 ? bond.toStringAsFixed(0) : '',
+      text: bond > 0 ? bond.toStringAsFixed(2) : '',
     );
   }
 
@@ -77,54 +79,66 @@ class _HomeLoanApplyPageState extends ConsumerState<HomeLoanApplyPage> {
       double.tryParse(_bondAmount.text.trim().replaceAll(',', '')) ?? 0;
 
   Future<void> _pickDoc() async {
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Take a photo'),
-              onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from gallery'),
-              onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (source == null) return;
+    if (_submitting || _picking) return;
+    if (_docs.length >= 20) {
+      _snack('You can attach up to 20 documents.', error: true);
+      return;
+    }
+    setState(() => _picking = true);
+    final docType = _docType;
     try {
-      final picker = ImagePicker();
-      final file = await picker.pickImage(
-        source: source,
-        maxWidth: 2400,
-        imageQuality: 85,
-      );
-      if (file == null) return;
-      final bytes = await file.readAsBytes();
-      if (bytes.length > _maxFileBytes) {
-        _snack('That file is larger than 5 MB.', error: true);
-        return;
-      }
-      // Lazy base64 to avoid blocking; encode on submit via repository.
-      final b64 = _encode(bytes);
-      setState(() {
-        _docs.add(
-          PendingDoc(
-            docType: _docType,
-            fileName: file.name,
-            mime: _mimeForExtension(file.name),
-            base64: b64,
+      final source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        builder: (ctx) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Take a photo'),
+                onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Choose from gallery'),
+                onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+              ),
+            ],
           ),
+        ),
+      );
+      if (source == null || !mounted) return;
+      try {
+        final picker = ImagePicker();
+        final file = await picker.pickImage(
+          source: source,
+          maxWidth: 2400,
+          imageQuality: 85,
         );
-      });
-    } catch (_) {
-      _snack('Could not add that document.', error: true);
+        if (file == null) return;
+        final bytes = await file.readAsBytes();
+        if (!mounted) return;
+        if (bytes.length > _maxFileBytes) {
+          _snack('That file is larger than 5 MB.', error: true);
+          return;
+        }
+        // Lazy base64 to avoid blocking; encode on submit via repository.
+        final b64 = _encode(bytes);
+        setState(() {
+          _docs.add(
+            PendingDoc(
+              docType: docType,
+              fileName: file.name,
+              mime: _mimeForExtension(file.name),
+              base64: b64,
+            ),
+          );
+        });
+      } catch (_) {
+        _snack('Could not add that document.', error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _picking = false);
     }
   }
 
@@ -134,7 +148,10 @@ class _HomeLoanApplyPageState extends ConsumerState<HomeLoanApplyPage> {
   }
 
   Future<void> _submit() async {
-    if (_requestedBond <= 0) {
+    if (_submitting || _picking) return;
+    if (!_requestedBond.isFinite ||
+        _requestedBond <= 0 ||
+        _requestedBond > 1000000000) {
       _snack('Enter the bond amount you want to apply for.', error: true);
       return;
     }
@@ -142,18 +159,41 @@ class _HomeLoanApplyPageState extends ConsumerState<HomeLoanApplyPage> {
       _snack('Please consent to sharing your application.', error: true);
       return;
     }
+    if (_phone.text.trim().length > 40) {
+      _snack('Contact number must be at most 40 characters.', error: true);
+      return;
+    }
+    final assumptions = PrequalInput(
+      grossMonthlyIncome: _d('grossIncome'),
+      propertyPrice: _d('propertyPrice'),
+      depositAmount: _d('deposit'),
+      annualInterestRate: widget.prefill?['annualInterestRate'] == null
+          ? 11.75
+          : _d('annualInterestRate'),
+      loanTermYears: widget.prefill?['loanTermYears'] == null
+          ? 20
+          : _d('loanTermYears').toInt(),
+    );
+    if (assumptions.validationError != null) {
+      _snack(assumptions.validationError!, error: true);
+      return;
+    }
+    final bond = _requestedBond;
+    final phone = _phone.text.trim();
+    final docs = List<PendingDoc>.of(_docs);
     setState(() => _submitting = true);
     try {
       final repo = ref.read(financeRepositoryProvider);
 
       // Upload each document first, then attach its URL.
       final uploaded = <Map<String, String>>[];
-      for (final doc in _docs) {
+      for (final doc in docs) {
         final url = await repo.uploadFile(
           fileName: doc.fileName,
           fileType: doc.mime,
           base64: doc.base64,
         );
+        if (!mounted) return;
         uploaded.add({
           'docType': doc.docType.wire,
           'fileName': doc.fileName,
@@ -162,13 +202,19 @@ class _HomeLoanApplyPageState extends ConsumerState<HomeLoanApplyPage> {
       }
 
       await repo.submitApplication(
-        requestedBondAmount: _requestedBond,
+        requestedBondAmount: bond,
         consentShareData: _consent,
+        propertyId: _d('propertyId') > 0 ? _d('propertyId').toInt() : null,
+        prequalificationId: _d('prequalificationId') > 0
+            ? _d('prequalificationId').toInt()
+            : null,
         propertyPrice: _d('propertyPrice') > 0 ? _d('propertyPrice') : null,
         depositAmount: _d('deposit') > 0 ? _d('deposit') : null,
         grossMonthlyIncome: _d('grossIncome') > 0 ? _d('grossIncome') : null,
-        estimatedInstalment: _d('instalment') > 0 ? _d('instalment') : null,
-        applicantPhone: _phone.text.trim(),
+        estimatedInstalment: assumptions.monthlyInstalmentForBond(bond),
+        annualInterestRate: assumptions.annualInterestRate,
+        loanTermYears: assumptions.loanTermYears,
+        applicantPhone: phone,
         documents: uploaded,
       );
 
@@ -224,149 +270,159 @@ class _HomeLoanApplyPageState extends ConsumerState<HomeLoanApplyPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Apply to all major banks')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Text(
-            'One application, submitted to Standard Bank, ABSA, FNB, Nedbank '
-            'and Investec through our registered bond-originator partner. '
-            "It's free — the winning bank pays the originator. You then pick "
-            'the best offer.',
-            style: TextStyle(color: AppColors.textSecondary, height: 1.5),
-          ),
-          const SizedBox(height: 20),
-          TextFormField(
-            controller: _bondAmount,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-            ],
-            decoration: const InputDecoration(
-              labelText: 'Bond amount to apply for',
-              prefixText: 'R ',
+      body: AbsorbPointer(
+        absorbing: _submitting || _picking,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            const Text(
+              'One application, submitted to Standard Bank, ABSA, FNB, Nedbank '
+              'and Investec through our registered bond-originator partner. '
+              "It's free — the winning bank pays the originator. You then pick "
+              'the best offer.',
+              style: TextStyle(color: AppColors.textSecondary, height: 1.5),
             ),
-          ),
-          const SizedBox(height: 14),
-          TextFormField(
-            controller: _phone,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(
-              labelText: 'Contact number (optional)',
-              prefixIcon: Icon(Icons.phone_outlined),
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Supporting documents',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'The banks need your latest payslips and 3 months’ bank statements. '
-            'Photograph or upload them here (max 5 MB each).',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<HomeLoanDocType>(
-                  value: _docType,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Document type'),
-                  items: HomeLoanDocType.values
-                      .map(
-                        (t) => DropdownMenuItem(
-                          value: t,
-                          child: Text(t.label, overflow: TextOverflow.ellipsis),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) =>
-                      setState(() => _docType = v ?? HomeLoanDocType.other),
-                ),
+            const SizedBox(height: 20),
+            TextFormField(
+              controller: _bondAmount,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
               ),
-              const SizedBox(width: 12),
-              SizedBox(
-                height: 56,
-                child: OutlinedButton.icon(
-                  onPressed: _submitting ? null : _pickDoc,
-                  icon: const Icon(Icons.attach_file),
-                  label: const Text('Add'),
-                ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
+              decoration: const InputDecoration(
+                labelText: 'Bond amount to apply for',
+                prefixText: 'R ',
               ),
-            ],
-          ),
-          if (_docs.isNotEmpty) ...[
+            ),
+            const SizedBox(height: 14),
+            TextFormField(
+              controller: _phone,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Contact number (optional)',
+                prefixIcon: Icon(Icons.phone_outlined),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Supporting documents',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'The banks need your latest payslips and 3 months’ bank statements. '
+              'Photograph or upload them here (max 5 MB each).',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
             const SizedBox(height: 12),
-            ..._docs.asMap().entries.map((e) {
-              final i = e.key;
-              final doc = e.value;
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: const Icon(
-                    Icons.description_outlined,
-                    color: AppColors.navy,
-                  ),
-                  title: Text(
-                    doc.docType.label,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<HomeLoanDocType>(
+                    value: _docType,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Document type',
                     ),
-                  ),
-                  subtitle: Text(
-                    doc.fileName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    onPressed: () => setState(() => _docs.removeAt(i)),
+                    items: HomeLoanDocType.values
+                        .map(
+                          (t) => DropdownMenuItem(
+                            value: t,
+                            child: Text(
+                              t.label,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) =>
+                        setState(() => _docType = v ?? HomeLoanDocType.other),
                   ),
                 ),
-              );
-            }),
-          ],
-          const SizedBox(height: 16),
-          CheckboxListTile(
-            value: _consent,
-            onChanged: (v) => setState(() => _consent = v ?? false),
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-            title: const Text(
-              'I consent to InvestProp sharing my application and documents '
-              'with a registered bond originator so they can apply to the '
-              'banks on my behalf (POPIA).',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                const SizedBox(width: 12),
+                SizedBox(
+                  height: 56,
+                  child: OutlinedButton.icon(
+                    onPressed: _submitting ? null : _pickDoc,
+                    icon: const Icon(Icons.attach_file),
+                    label: const Text('Add'),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          ElevatedButton(
-            onPressed: _submitting ? null : _submit,
-            child: _submitting
-                ? const SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
+            if (_docs.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              ..._docs.asMap().entries.map((e) {
+                final i = e.key;
+                final doc = e.value;
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: const Icon(
+                      Icons.description_outlined,
+                      color: AppColors.navy,
                     ),
-                  )
-                : const Text('Submit application'),
-          ),
-          const SizedBox(height: 10),
-          const Center(
-            child: Text(
-              'Indicative only — the banks make the final credit decision.',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    title: Text(
+                      doc.docType.label,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    subtitle: Text(
+                      doc.fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => setState(() => _docs.removeAt(i)),
+                    ),
+                  ),
+                );
+              }),
+            ],
+            const SizedBox(height: 16),
+            CheckboxListTile(
+              value: _consent,
+              onChanged: (v) => setState(() => _consent = v ?? false),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: const Text(
+                'I consent to InvestProp sharing my application and documents '
+                'with a registered bond originator so they can apply to the '
+                'banks on my behalf (POPIA).',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: _submitting ? null : _submit,
+              child: _submitting
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Submit application'),
+            ),
+            const SizedBox(height: 10),
+            const Center(
+              child: Text(
+                'Indicative only — the banks make the final credit decision.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

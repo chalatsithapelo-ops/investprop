@@ -15,7 +15,10 @@ import '../domain/prequalification.dart';
 /// credit approval. A qualifying result can flow into a real multi-bank
 /// application on the next screen.
 class PrequalificationPage extends ConsumerStatefulWidget {
-  const PrequalificationPage({super.key});
+  const PrequalificationPage({super.key, this.propertyId, this.propertyPrice});
+
+  final int? propertyId;
+  final double? propertyPrice;
 
   @override
   ConsumerState<PrequalificationPage> createState() =>
@@ -28,12 +31,74 @@ class _PrequalificationPageState extends ConsumerState<PrequalificationPage> {
   final _debt = TextEditingController();
   final _deposit = TextEditingController();
   final _propertyPrice = TextEditingController();
+  final _rate = TextEditingController(text: '11.75');
+  final _term = TextEditingController(text: '20');
 
   Timer? _debounce;
   PrequalResult? _result;
   bool _loading = false;
   bool _consent = false;
   bool _saving = false;
+  bool _historyLoading = true;
+  String? _historyError;
+  String? _previewError;
+  int _revision = 0;
+  int _request = 0;
+  int? _propertyId;
+  int? _savedId;
+
+  @override
+  void initState() {
+    super.initState();
+    _propertyId = widget.propertyId;
+    if (widget.propertyPrice != null) {
+      _propertyPrice.text = widget.propertyPrice.toString();
+    }
+    unawaited(_loadHistory());
+  }
+
+  Future<void> _loadHistory() async {
+    final revision = _revision;
+    setState(() {
+      _historyLoading = true;
+      _historyError = null;
+    });
+    try {
+      final history = await ref
+          .read(financeRepositoryProvider)
+          .myPrequalifications();
+      if (!mounted || revision != _revision || _saving) return;
+      if (history.isNotEmpty) {
+        final latest = history.first;
+        final input = PrequalInput.fromSaved(
+          latest,
+          propertyPrice: widget.propertyPrice,
+        );
+        _income.text = input.grossMonthlyIncome.toString();
+        _expenses.text = input.monthlyExpenses.toString();
+        _debt.text = input.existingDebtRepayments.toString();
+        _deposit.text = input.depositAmount.toString();
+        _propertyPrice.text = input.propertyPrice.toString();
+        _rate.text = input.annualInterestRate.toString();
+        _term.text = input.loanTermYears.toString();
+        // A new property context must never inherit the old property's ID.
+        _propertyId =
+            widget.propertyId ??
+            (widget.propertyPrice == null ? latest.propertyId : null);
+        if ((widget.propertyId == null ||
+                widget.propertyId == latest.propertyId) &&
+            (widget.propertyPrice == null ||
+                widget.propertyPrice == latest.propertyPrice)) {
+          _savedId = latest.id;
+        }
+        unawaited(_loadPreview());
+      }
+    } catch (e) {
+      if (mounted) setState(() => _historyError = _message(e));
+    } finally {
+      if (mounted) setState(() => _historyLoading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -43,11 +108,14 @@ class _PrequalificationPageState extends ConsumerState<PrequalificationPage> {
     _debt.dispose();
     _deposit.dispose();
     _propertyPrice.dispose();
+    _rate.dispose();
+    _term.dispose();
     super.dispose();
   }
 
-  double _num(TextEditingController c) =>
-      double.tryParse(c.text.trim().replaceAll(',', '')) ?? 0;
+  double _num(TextEditingController c) => c.text.trim().isEmpty
+      ? 0
+      : double.tryParse(c.text.trim().replaceAll(',', '')) ?? double.nan;
 
   double get _grossIncome => _num(_income);
 
@@ -57,32 +125,62 @@ class _PrequalificationPageState extends ConsumerState<PrequalificationPage> {
     existingDebtRepayments: _num(_debt),
     depositAmount: _num(_deposit),
     propertyPrice: _num(_propertyPrice),
+    annualInterestRate: _num(_rate),
+    loanTermYears: int.tryParse(_term.text.trim()) ?? 0,
   );
 
   void _onChanged() {
     _debounce?.cancel();
-    if (_grossIncome <= 0) {
-      setState(() => _result = null);
+    _revision++;
+    _request++;
+    setState(() {
+      _savedId = null;
+      _result = null;
+      _loading = false;
+      _previewError = _input.validationError;
+    });
+    if (_grossIncome <= 0 || _previewError != null) {
       return;
     }
     _debounce = Timer(const Duration(milliseconds: 500), _loadPreview);
   }
 
   Future<void> _loadPreview() async {
-    setState(() => _loading = true);
+    final input = _input;
+    if (input.validationError != null || input.grossMonthlyIncome <= 0) return;
+    final request = ++_request;
+    setState(() {
+      _loading = true;
+      _previewError = null;
+    });
     try {
-      final result = await ref.read(financeRepositoryProvider).preview(_input);
-      if (!mounted) return;
+      final result = await ref.read(financeRepositoryProvider).preview(input);
+      if (!mounted || request != _request) return;
       setState(() => _result = result);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _result = null);
+    } catch (e) {
+      if (!mounted || request != _request) return;
+      setState(() {
+        _result = null;
+        _previewError = _message(e);
+      });
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && request == _request) setState(() => _loading = false);
     }
   }
 
+  String _message(Object error) => error is ApiException
+      ? error.message
+      : error is FormatException
+      ? error.message
+      : error.toString().replaceFirst('Bad state: ', '');
+
   Future<void> _save() async {
+    if (_saving) return;
+    final input = _input;
+    if (input.validationError != null) {
+      _snack(input.validationError!, error: true);
+      return;
+    }
     if (_grossIncome <= 0) {
       _snack('Enter your gross monthly income first.', error: true);
       return;
@@ -91,13 +189,29 @@ class _PrequalificationPageState extends ConsumerState<PrequalificationPage> {
       _snack('Please tick the consent box to save your result.', error: true);
       return;
     }
-    setState(() => _saving = true);
+    _debounce?.cancel();
+    _request++;
+    final revision = _revision;
+    setState(() {
+      _saving = true;
+      _loading = false;
+    });
     try {
       final result = await ref
           .read(financeRepositoryProvider)
-          .submitPrequalification(input: _input, consent: _consent);
+          .submitPrequalification(
+            input: input,
+            consent: _consent,
+            propertyId: _propertyId,
+          );
       if (!mounted) return;
-      setState(() => _result = result);
+      if (revision == _revision) {
+        setState(() {
+          _result = result;
+          _savedId = result.id;
+          _previewError = null;
+        });
+      }
       ref.invalidate(myPrequalificationsProvider);
       _snack('Prequalification saved.');
     } on ApiException catch (e) {
@@ -135,6 +249,17 @@ class _PrequalificationPageState extends ConsumerState<PrequalificationPage> {
             style: TextStyle(color: AppColors.textSecondary, height: 1.5),
           ),
           const SizedBox(height: 20),
+          if (_historyLoading) const LinearProgressIndicator(),
+          if (_historyError != null) ...[
+            Text(
+              'Saved results could not be loaded: $_historyError',
+              style: const TextStyle(color: AppColors.danger),
+            ),
+            TextButton(
+              onPressed: _loadHistory,
+              child: const Text('Retry saved results'),
+            ),
+          ],
           _MoneyField(
             controller: _income,
             label: 'Gross monthly income (before tax)',
@@ -164,11 +289,46 @@ class _PrequalificationPageState extends ConsumerState<PrequalificationPage> {
             label: 'Target property price (optional)',
             onChanged: (_) => _onChanged(),
           ),
+          const SizedBox(height: 14),
+          _MoneyField(
+            controller: _rate,
+            label: 'Annual interest rate (%)',
+            prefix: '',
+            onChanged: (_) => _onChanged(),
+          ),
+          const SizedBox(height: 14),
+          _MoneyField(
+            controller: _term,
+            label: 'Loan term (years, 1–40)',
+            prefix: '',
+            onChanged: (_) => _onChanged(),
+          ),
           const SizedBox(height: 24),
+          if (_previewError != null) ...[
+            Text(
+              _previewError!,
+              style: const TextStyle(color: AppColors.danger),
+            ),
+            TextButton(
+              onPressed: _loading ? null : _loadPreview,
+              child: const Text('Retry estimate'),
+            ),
+          ],
+          if (_savedId != null)
+            const Text(
+              'Saved prequalification loaded. Your estimate is indicative, not a credit approval.',
+            ),
           if (_loading && result == null)
             const Center(child: CircularProgressIndicator())
           else if (result != null)
-            _ResultCard(result: result),
+            _ResultCard(
+              result: result,
+              hasPropertyPrice: _num(_propertyPrice) > 0,
+            )
+          else if (_previewError == null)
+            const Text(
+              'Enter your gross monthly income to see your indicative estimate.',
+            ),
           const SizedBox(height: 20),
           CheckboxListTile(
             value: _consent,
@@ -197,18 +357,20 @@ class _PrequalificationPageState extends ConsumerState<PrequalificationPage> {
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: () => context.push(
-              '/profile/home-loan/apply',
-              extra: {
-                'bondAmount': result?.maxBondAmount ?? 0,
-                'propertyPrice': _num(_propertyPrice),
-                'deposit': _num(_deposit),
-                'grossIncome': _grossIncome,
-                'instalment': _num(_propertyPrice) > 0
-                    ? (result?.estimatedInstalment ?? 0)
-                    : (result?.maxInstalment ?? 0),
-              },
-            ),
+            onPressed:
+                _saving ||
+                    _loading ||
+                    result == null ||
+                    _input.requestedBondAmount(result) <= 0
+                ? null
+                : () => context.push(
+                    '/profile/home-loan/apply',
+                    extra: _input.applicationPrefill(
+                      result,
+                      propertyId: _propertyId,
+                      prequalificationId: _savedId,
+                    ),
+                  ),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.navy,
               side: const BorderSide(color: AppColors.navy),
@@ -231,9 +393,10 @@ class _PrequalificationPageState extends ConsumerState<PrequalificationPage> {
 }
 
 class _ResultCard extends StatelessWidget {
-  const _ResultCard({required this.result});
+  const _ResultCard({required this.result, required this.hasPropertyPrice});
 
   final PrequalResult result;
+  final bool hasPropertyPrice;
 
   @override
   Widget build(BuildContext context) {
@@ -246,15 +409,17 @@ class _ResultCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Text(
-                  'Indicative result',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: AppColors.textPrimary,
+                const Expanded(
+                  child: Text(
+                    'Indicative result',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -285,9 +450,24 @@ class _ResultCard extends StatelessWidget {
               value: Fmt.money(result.maxPropertyPrice),
             ),
             _Row(
-              label: 'Monthly instalment',
-              value: '${Fmt.money(result.estimatedInstalment)} /mo',
+              label: 'Max affordable instalment',
+              value: '${Fmt.money(result.maxInstalment)} /mo',
             ),
+            if (hasPropertyPrice) ...[
+              _Row(
+                label: 'Instalment for this deal',
+                value: '${Fmt.money(result.estimatedInstalment)} /mo',
+              ),
+              _Row(
+                label: 'Loan-to-value',
+                value: Fmt.percent(result.loanToValue),
+              ),
+              Text(
+                result.qualifies
+                    ? 'This deal looks affordable on your income.'
+                    : 'This deal looks stretched. Consider a bigger deposit or lower price.',
+              ),
+            ],
             _Row(
               label: 'Interest rate',
               value: Fmt.percent(result.annualInterestRate, decimals: 2),
@@ -323,12 +503,21 @@ class _Row extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: AppColors.textSecondary)),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         ],
@@ -342,11 +531,13 @@ class _MoneyField extends StatelessWidget {
     required this.controller,
     required this.label,
     required this.onChanged,
+    this.prefix = 'R ',
   });
 
   final TextEditingController controller;
   final String label;
   final ValueChanged<String> onChanged;
+  final String prefix;
 
   @override
   Widget build(BuildContext context) {
@@ -355,7 +546,7 @@ class _MoneyField extends StatelessWidget {
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
       onChanged: onChanged,
-      decoration: InputDecoration(labelText: label, prefixText: 'R '),
+      decoration: InputDecoration(labelText: label, prefixText: prefix),
     );
   }
 }

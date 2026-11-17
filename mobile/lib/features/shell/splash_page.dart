@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../config/theme.dart';
 
@@ -7,15 +8,19 @@ class SplashPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: AppColors.navy,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.apartment, color: AppColors.gold, size: 56),
-            SizedBox(height: 20),
-            SizedBox(
+            SvgPicture.asset(
+              'assets/investprop-logo-light.svg',
+              width: 240,
+              semanticsLabel: 'InvestProp',
+            ),
+            const SizedBox(height: 28),
+            const SizedBox(
               height: 26,
               width: 26,
               child: CircularProgressIndicator(

@@ -20,7 +20,16 @@ class HomeLoanApplicationsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final apps = ref.watch(myHomeLoanApplicationsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('My home-loan applications')),
+      appBar: AppBar(
+        title: const Text('My home-loan applications'),
+        actions: [
+          IconButton(
+            tooltip: 'Get prequalified',
+            icon: const Icon(Icons.calculate_outlined),
+            onPressed: () => context.push('/profile/prequalify'),
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(myHomeLoanApplicationsProvider.future),
         child: AsyncValueView<List<HomeLoanApplication>>(
