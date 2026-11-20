@@ -776,6 +776,72 @@ model ComplianceReport {
   @@index([status])
 }
 
+/// Corrective Action Plan (CAP) item — a tracked remediation task, usually
+/// raised from an audit finding, owned to resolution. The compliance officer's
+/// core working tool for closing FSCA/FICA gaps.
+model ComplianceAction {
+  id          Int       @id @default(autoincrement())
+  title       String
+  area        String // e.g. "AML / FICA", "Licensing", "SPV governance"
+  severity    String    @default("MATERIAL") // BLOCKER | MATERIAL | RECOMMENDED
+  sourceRef   String? // originating audit finding ref (e.g. "F1"), null for ad-hoc
+  status      String    @default("OPEN") // OPEN | IN_PROGRESS | RESOLVED | ACCEPTED_RISK
+  owner       String? // responsible person / team (free text)
+  dueDate     DateTime?
+  note        String?   @db.Text
+  createdById Int
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+
+  @@index([status])
+  @@index([severity])
+}
+
+/// Regulatory obligations calendar — recurring FSCA / FICA / POPIA / SARS
+/// deadlines the compliance officer must track (annual compliance report, FIC
+/// risk-management programme review, PI cover renewal, levies, training, etc.).
+model ComplianceObligation {
+  id              Int       @id @default(autoincrement())
+  title           String
+  regulation      String // e.g. "FAIS", "FICA s42", "POPIA", "FSCA levies"
+  frequency       String    @default("ANNUAL") // ANNUAL | SEMI_ANNUAL | QUARTERLY | MONTHLY | ONCE
+  nextDueDate     DateTime
+  responsible     String?
+  notes           String?   @db.Text
+  lastCompletedAt DateTime?
+  active          Boolean   @default(true)
+  createdById     Int
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
+
+  @@index([nextDueDate])
+  @@index([active])
+}
+
+/// Compliance register — complaints (TCF Outcome 6), breaches, POPIA data
+/// incidents, FIC suspicious-transaction reports (STR) and conflicts of
+/// interest, with authority-reporting and resolution tracking.
+model ComplianceCase {
+  id                  Int       @id @default(autoincrement())
+  caseType            String // COMPLAINT | BREACH | DATA_INCIDENT | STR | CONFLICT
+  title               String
+  description         String    @db.Text
+  severity            String    @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  status              String    @default("OPEN") // OPEN | INVESTIGATING | REPORTED | RESOLVED | CLOSED
+  subjectName         String? // investor / party involved
+  reportedToAuthority String? // e.g. "FIC", "Information Regulator", "FSCA", "None"
+  raisedAt            DateTime  @default(now())
+  dueDate             DateTime?
+  closedAt            DateTime?
+  createdById         Int
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @default(now()) @updatedAt
+
+  @@index([caseType])
+  @@index([status])
+}
+
 // Office records are self-scoped, including for staff. Events are appended with task writes.
 model OfficeConversation {
   id        String          @id @default(cuid())

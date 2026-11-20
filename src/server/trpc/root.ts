@@ -224,6 +224,12 @@ import { getAllInvestmentsOverview, getPeopleDirectory } from "~/server/trpc/pro
 import { getComplianceAudit, generateComplianceReport, getComplianceReports, acknowledgeComplianceReport } from "~/server/trpc/procedures/compliance-officer";
 // Conveyancer — transfer / registration queue
 import { getConveyancingQueue, updateConveyancingMatter } from "~/server/trpc/procedures/conveyancing";
+// Compliance registers — corrective actions, obligations calendar, case register
+import {
+  getComplianceActions, upsertComplianceAction, deleteComplianceAction,
+  getComplianceObligations, upsertComplianceObligation, completeComplianceObligation, seedDefaultObligations,
+  getComplianceCases, upsertComplianceCase,
+} from "~/server/trpc/procedures/compliance-registers";
 export const appRouter = createTRPCRouter({
   officeOverview, officeConversations, officeConversation, officeChat,
   officeTasks, officePrepareTask, officeApproveTask, officeCancelTask,
@@ -241,6 +247,15 @@ export const appRouter = createTRPCRouter({
   acknowledgeComplianceReport,
   getConveyancingQueue,
   updateConveyancingMatter,
+  getComplianceActions,
+  upsertComplianceAction,
+  deleteComplianceAction,
+  getComplianceObligations,
+  upsertComplianceObligation,
+  completeComplianceObligation,
+  seedDefaultObligations,
+  getComplianceCases,
+  upsertComplianceCase,
   register,
   login,
   logout,
