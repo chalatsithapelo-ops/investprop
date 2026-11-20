@@ -46,8 +46,9 @@ function DashboardPage() {
     if (!hasHydrated) return;
     if (!user || !authToken) navigate({ to: "/login" });
     if (user?.role === "CONTRACTOR") navigate({ to: "/contractor-portal" });
-    if (user?.role === "BOND_ORIGINATOR" || user?.role === "CONVEYANCER")
-      navigate({ to: "/partner-portal" });
+    if (user?.role === "BOND_ORIGINATOR") navigate({ to: "/partner-portal" });
+    if (user?.role === "CONVEYANCER") navigate({ to: "/conveyancer-portal" });
+    if (user?.role === "COMPLIANCE_OFFICER") navigate({ to: "/compliance" });
   }, [user, authToken, hasHydrated]);
 
   // Contractors should never see the general dashboard
@@ -56,8 +57,17 @@ function DashboardPage() {
     return null;
   }
   // External referral partners work their own queue, not the investor dashboard
-  if (user?.role === "BOND_ORIGINATOR" || user?.role === "CONVEYANCER") {
+  if (user?.role === "BOND_ORIGINATOR") {
     window.location.href = "/partner-portal";
+    return null;
+  }
+  if (user?.role === "CONVEYANCER") {
+    window.location.href = "/conveyancer-portal";
+    return null;
+  }
+  // Compliance officers go straight to the compliance portal
+  if (user?.role === "COMPLIANCE_OFFICER") {
+    window.location.href = "/compliance";
     return null;
   }
 

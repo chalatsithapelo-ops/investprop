@@ -15,7 +15,7 @@ export const Route = createFileRoute("/admin/")({
   component: AdminPage,
 });
 
-type AssignableRole = "INVESTOR" | "DEVELOPMENT_MANAGER" | "PROJECT_MANAGER" | "PROPERTY_OWNER" | "CONTRACTOR";
+type AssignableRole = "INVESTOR" | "DEVELOPMENT_MANAGER" | "PROJECT_MANAGER" | "PROPERTY_OWNER" | "CONTRACTOR" | "BOND_ORIGINATOR" | "CONVEYANCER" | "COMPLIANCE_OFFICER";
 
 function AdminPage() {
   const trpc = useTRPC();
@@ -53,6 +53,9 @@ function AdminPage() {
   const isAdmin = user?.role === "ADMIN";
 
   const adminTools: { label: string; to: string; icon: typeof Shield; desc: string; adminOnly: boolean }[] = [
+    { label: "All Investments", to: "/admin/investments", icon: DollarSign, desc: "Who invested in what property, for how much", adminOnly: false },
+    { label: "People Directory", to: "/admin/directory", icon: Users, desc: "Investors, owners, conveyancers, bond originators & compliance", adminOnly: false },
+    { label: "Compliance Portal", to: "/compliance", icon: ShieldCheck, desc: "FSCA / FICA audit & reports (Refuge Financial Services)", adminOnly: false },
     { label: "Subscriptions", to: "/admin/subscriptions", icon: CreditCard, desc: "SaaS plans, MRR, Paystack sync & recent payments", adminOnly: false },
     { label: "Platform Revenue", to: "/admin/revenue", icon: DollarSign, desc: "Every platform fee earned & fee-rate tuning", adminOnly: false },
     { label: "Referral Partners", to: "/admin/referrals", icon: BadgeDollarSign, desc: "Partners & commission ledger", adminOnly: false },
@@ -423,6 +426,9 @@ function AdminPage() {
                   <option value="DEVELOPMENT_MANAGER">Development Manager</option>
                   <option value="PROJECT_MANAGER">Project Manager</option>
                   <option value="CONTRACTOR">Contractor</option>
+                  <option value="BOND_ORIGINATOR">Bond Originator</option>
+                  <option value="CONVEYANCER">Conveyancer</option>
+                  <option value="COMPLIANCE_OFFICER">Compliance Officer</option>
                 </select>
               </div>
             </div>
@@ -554,6 +560,9 @@ function AdminPage() {
                   <option value="PROJECT_MANAGER">Project Manager</option>
                   <option value="PROPERTY_OWNER">Property Owner</option>
                   <option value="CONTRACTOR">Contractor</option>
+                  <option value="BOND_ORIGINATOR">Bond Originator</option>
+                  <option value="CONVEYANCER">Conveyancer</option>
+                  <option value="COMPLIANCE_OFFICER">Compliance Officer</option>
                   {isAdmin && <option value="ADMIN">Admin</option>}
                 </select>
               </div>

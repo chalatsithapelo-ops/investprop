@@ -22,6 +22,9 @@ export const userRoleSchema = z.enum([
   "PROJECT_MANAGER",
   "PROPERTY_OWNER",
   "CONTRACTOR",
+  "BOND_ORIGINATOR",
+  "CONVEYANCER",
+  "COMPLIANCE_OFFICER",
 ]);
 
 // Property validation schemas

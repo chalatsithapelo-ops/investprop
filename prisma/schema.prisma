@@ -749,6 +749,31 @@ model User {
   officeConversations        OfficeConversation[]
   officeTasks                OfficeTask[]
   officeActionEvents         OfficeActionEvent[]
+  complianceReports          ComplianceReport[]       @relation("ComplianceReportAuthor")
+}
+
+/// Compliance Officer report — a point-in-time FSCA/accounting audit snapshot
+/// authored by a COMPLIANCE_OFFICER (or staff) and delivered to the Admin team.
+model ComplianceReport {
+  id             Int      @id @default(autoincrement())
+  authorId       Int
+  title          String
+  reportType     String   @default("FSCA_AUDIT") // FSCA_AUDIT | FICA_REVIEW | AML_REVIEW | FINANCIAL_REVIEW | AD_HOC
+  periodStart    DateTime?
+  periodEnd      DateTime?
+  summary        String   @db.Text
+  findings       Json // [{ ref, area, severity (BLOCKER|MATERIAL|RECOMMENDED|PASS), status, note }]
+  metrics        Json? // snapshot of key compliance metrics at generation time
+  overallScore   Float    @default(0) // 0–100 readiness/compliance score
+  status         String   @default("SUBMITTED") // DRAFT | SUBMITTED | ACKNOWLEDGED
+  acknowledgedAt DateTime?
+  acknowledgedById Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+  author         User     @relation("ComplianceReportAuthor", fields: [authorId], references: [id])
+
+  @@index([authorId, createdAt])
+  @@index([status])
 }
 
 // Office records are self-scoped, including for staff. Events are appended with task writes.
@@ -1996,6 +2021,7 @@ enum UserRole {
   CONTRACTOR
   BOND_ORIGINATOR // external referral partner: submits bank offers on home-loan applications
   CONVEYANCER // external referral partner: handles transfer / registration
+  COMPLIANCE_OFFICER // FSCA-aligned compliance officer: audits the platform, generates reports for Admin
   ADMIN
 }
 

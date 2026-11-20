@@ -218,6 +218,12 @@ import { officeVoiceTurn } from "~/server/trpc/procedures/office-voice";
 import { officeVoiceAgentStatus, officeVoiceAgentSession, officeSetVoiceLanguage } from "~/server/trpc/procedures/office-voice-session";
 import { officePropertyScenario, officeAccountingExceptions } from "~/server/trpc/procedures/office-scenarios";
 import { getVoiceAgentOps } from "~/server/trpc/procedures/admin-voice-ops";
+// Admin oversight — platform-wide investments + people directory
+import { getAllInvestmentsOverview, getPeopleDirectory } from "~/server/trpc/procedures/admin-oversight";
+// Compliance Officer — FSCA audit engine + reports
+import { getComplianceAudit, generateComplianceReport, getComplianceReports, acknowledgeComplianceReport } from "~/server/trpc/procedures/compliance-officer";
+// Conveyancer — transfer / registration queue
+import { getConveyancingQueue, updateConveyancingMatter } from "~/server/trpc/procedures/conveyancing";
 export const appRouter = createTRPCRouter({
   officeOverview, officeConversations, officeConversation, officeChat,
   officeTasks, officePrepareTask, officeApproveTask, officeCancelTask,
@@ -227,6 +233,14 @@ export const appRouter = createTRPCRouter({
   officeVoiceAgentStatus, officeVoiceAgentSession, officeSetVoiceLanguage,
   officePropertyScenario, officeAccountingExceptions,
   getVoiceAgentOps,
+  getAllInvestmentsOverview,
+  getPeopleDirectory,
+  getComplianceAudit,
+  generateComplianceReport,
+  getComplianceReports,
+  acknowledgeComplianceReport,
+  getConveyancingQueue,
+  updateConveyancingMatter,
   register,
   login,
   logout,

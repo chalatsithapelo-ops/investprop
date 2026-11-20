@@ -266,6 +266,14 @@ export type DevelopmentCalculations = {
   derivedProfit?: number;
   /** ROI derived from derivedProfit ÷ total cost. */
   derivedROI?: number;
+  /** Output VAT (15%) embedded in the GDV when sold by a VAT vendor (new-build residential). */
+  outputVat?: number;
+  /** Net development value after output VAT is remitted to SARS. */
+  netOfVatDevelopmentValue?: number;
+  /** Conservative profit after output VAT — the cash the project actually keeps if VAT-registered. */
+  derivedProfitAfterVat?: number;
+  /** ROI on cost after output VAT. */
+  derivedROIAfterVat?: number;
   /** Annualised return over the development timeline (IRR-equivalent for a single in→out). */
   annualisedROI?: number;
   // Rental-specific calculations (only for AFFORDABLE_RENTAL and COMMERCIAL_RENTAL)
@@ -868,6 +876,15 @@ export function calculateDevelopmentMetrics(
     const derivedROI = totalCosts > 0 ? (derivedProfit / totalCosts) * 100 : 0;
     const annualisedROI = calculateAnnualisedReturn(derivedProfit, totalCosts, timelineMonths);
 
+    // New-build residential sold by a VAT vendor carries 15% output VAT (not
+    // transfer duty). The GDV is treated as VAT-inclusive, so the project only
+    // keeps the net-of-VAT consideration. Surface this so the headline profit
+    // is never overstated for a VAT-registered developer.
+    const outputVat = extractVat(grossDevelopmentValue);
+    const netOfVatDevelopmentValue = grossDevelopmentValue - outputVat;
+    const derivedProfitAfterVat = netOfVatDevelopmentValue - totalCosts;
+    const derivedROIAfterVat = totalCosts > 0 ? (derivedProfitAfterVat / totalCosts) * 100 : 0;
+
     const profitMargin = grossDevelopmentValue > 0
       ? (derivedProfit / grossDevelopmentValue) * 100
       : 0;
@@ -881,6 +898,10 @@ export function calculateDevelopmentMetrics(
       grossDevelopmentValue,
       derivedProfit,
       derivedROI,
+      outputVat,
+      netOfVatDevelopmentValue,
+      derivedProfitAfterVat,
+      derivedROIAfterVat,
       annualisedROI,
     };
   } else {

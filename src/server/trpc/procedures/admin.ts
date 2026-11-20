@@ -18,7 +18,7 @@ const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 export const getAllUsers = adminProcedure
   .input(
     z.object({
-      role: z.enum(["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "CONTRACTOR", "ADMIN", "ALL"]).default("ALL"),
+      role: z.enum(["INVESTOR", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "PROPERTY_OWNER", "CONTRACTOR", "BOND_ORIGINATOR", "CONVEYANCER", "COMPLIANCE_OFFICER", "ADMIN", "ALL"]).default("ALL"),
       page: z.number().int().positive().default(1),
       limit: z.number().int().positive().max(500).default(20),
       search: z.string().optional(),

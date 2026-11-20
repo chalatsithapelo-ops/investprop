@@ -132,6 +132,9 @@ function LoginPage() {
               { email: 'pm@demo.com', role: 'Project Manager', color: 'bg-purple-100 text-purple-700' },
               { email: 'owner@demo.com', role: 'Property Owner', color: 'bg-amber-100 text-amber-700' },
               { email: 'contractor@demo.com', role: 'Contractor', color: 'bg-gray-100 text-gray-700' },
+              { email: 'conveyancer@demo.com', role: 'Conveyancer', color: 'bg-blue-100 text-blue-700' },
+              { email: 'originator@demo.com', role: 'Bond Originator', color: 'bg-teal-100 text-teal-700' },
+              { email: 'compliance@demo.com', role: 'Compliance Officer', color: 'bg-rose-100 text-rose-700' },
             ].map((account) => (
               <button
                 key={account.email}

@@ -139,6 +139,21 @@ export const mainNavigationLinks: NavigationLink[] = [
     to: "/partner-portal",
     icon: Landmark,
     roles: ["BOND_ORIGINATOR", "CONVEYANCER"],
+    description: "Bond-originator application queue and partner referral leads",
+  },
+  {
+    label: "Conveyancer Portal",
+    to: "/conveyancer-portal",
+    icon: Scale,
+    roles: ["CONVEYANCER"],
+    description: "Transfer & registration matters through the Deeds Office pipeline",
+  },
+  {
+    label: "Compliance Portal",
+    to: "/compliance",
+    icon: ShieldCheck,
+    roles: ["COMPLIANCE_OFFICER", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "ADMIN"],
+    description: "FSCA / FICA / POPIA audit of the platform with reports for the admin team",
   },
   {
     label: "Investment Opportunities",
@@ -240,6 +255,20 @@ export const mainNavigationLinks: NavigationLink[] = [
     icon: Users,
     roles: ["DEVELOPMENT_MANAGER", "ADMIN"],
     description: "Per-manager delivery scorecards for internal oversight",
+  },
+  {
+    label: "All Investments",
+    to: "/admin/investments",
+    icon: DollarSign,
+    roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "ADMIN", "COMPLIANCE_OFFICER"],
+    description: "Who invested in what property, for how much — platform-wide",
+  },
+  {
+    label: "People Directory",
+    to: "/admin/directory",
+    icon: Users,
+    roles: ["DEVELOPMENT_MANAGER", "PROJECT_MANAGER", "ADMIN", "COMPLIANCE_OFFICER"],
+    description: "All investors, owners, conveyancers, bond originators & compliance",
   },
   {
     label: "Audit Log",
