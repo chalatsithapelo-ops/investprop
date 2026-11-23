@@ -305,6 +305,9 @@ function SubmitForm({ onDone }: { onDone: () => void }) {
   const trpcClient = useTRPCClient();
   const authToken = useAuthStore((s) => s.token);
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [docs, setDocs] = useState<{ kind: string; url: string; name: string }[]>([]);
   const [f, setF] = useState<Record<string, any>>({
     province: "Gauteng",
     bondStatus: "NONE",
@@ -315,6 +318,48 @@ function SubmitForm({ onDone }: { onDone: () => void }) {
   const set = (k: string, v: any) => setF((prev) => ({ ...prev, [k]: v }));
 
   const num = (v: any) => (v === "" || v == null ? undefined : Number(v));
+
+  const uploadOne = async (file: File): Promise<string> => {
+    const reader = new FileReader();
+    const base64: string = await new Promise((resolve) => {
+      reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
+      reader.readAsDataURL(file);
+    });
+    const result = await (trpcClient as any).uploadFile.mutate({
+      authToken: authToken ?? "",
+      fileName: file.name,
+      fileType: file.type,
+      fileBase64: base64,
+    });
+    return result.publicUrl as string;
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setUploading(true);
+    try {
+      const uploaded: string[] = [];
+      for (const file of files) {
+        try { uploaded.push(await uploadOne(file)); } catch (err: any) { toast.error(`${file.name}: ${err?.message ?? "upload failed"}`); }
+      }
+      setImageUrls((prev) => [...prev, ...uploaded]);
+      if (uploaded.length > 0) toast.success(`Uploaded ${uploaded.length} image(s)`);
+    } finally { setUploading(false); e.target.value = ""; }
+  };
+
+  const handleDocUpload = async (kind: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadOne(file);
+      setDocs((prev) => [...prev, { kind, url, name: file.name }]);
+      toast.success(`${kind.replace(/_/g, " ")} uploaded`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Upload failed");
+    } finally { setUploading(false); e.target.value = ""; }
+  };
 
   const submit = async () => {
     if (!popia) {
@@ -355,6 +400,8 @@ function SubmitForm({ onDone }: { onDone: () => void }) {
         proposedUnits: num(f.proposedUnits),
         estimatedGDV: num(f.estimatedGDV),
         estimatedBuildCost: num(f.estimatedBuildCost),
+        imageUrls: imageUrls.length ? imageUrls : undefined,
+        documentUrls: docs.length ? docs : undefined,
         popiaConsent: true,
       });
       toast.success("Your property has been submitted for a development partnership.");
@@ -509,6 +556,71 @@ function SubmitForm({ onDone }: { onDone: () => void }) {
         <Input label="Estimated end value / GDV (R)" k="estimatedGDV" type="number" />
         <Input label="Estimated build / renovation cost (R)" k="estimatedBuildCost" type="number" />
       </Section>
+
+      {/* Property photos */}
+      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h3 className="mb-1 text-sm font-semibold uppercase tracking-wider text-gray-500">Property photos</h3>
+        <p className="mb-3 text-xs text-gray-500">
+          Add photos of the land / building — boundaries, street frontage, any existing structures. Max 5 MB per image.
+        </p>
+        <input type="file" accept="image/*" multiple onChange={handleImageUpload} disabled={uploading} className="text-sm" />
+        {uploading && <p className="mt-2 text-xs text-gray-400">Uploading…</p>}
+        {imageUrls.length > 0 && (
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {imageUrls.map((u, i) => (
+              <div key={i} className="relative">
+                <img src={u} alt="" className="h-24 w-full rounded-md object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setImageUrls((p) => p.filter((_, idx) => idx !== i))}
+                  className="absolute right-1 top-1 rounded-full bg-red-500 px-2 text-xs font-bold text-white"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Supporting documents */}
+      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h3 className="mb-1 text-sm font-semibold uppercase tracking-wider text-gray-500">Supporting documents</h3>
+        <p className="mb-3 text-xs text-gray-500">
+          Upload PDFs / images. Title deed + ID are needed before an agreement can be prepared (FICA / Alienation of Land Act).
+        </p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            { kind: "TITLE_DEED", label: "Title Deed", req: true },
+            { kind: "ID", label: "ID / Entity registration (all owners)", req: true },
+            { kind: "RATES_ACCOUNT", label: "Latest Rates Account", req: false },
+            { kind: "BOND_STATEMENT", label: "Bond Statement", req: f.bondStatus === "EXISTING" },
+            { kind: "SURVEY_DIAGRAM", label: "SG Diagram / Survey", req: false },
+            { kind: "ZONING_CERTIFICATE", label: "Zoning Certificate", req: false },
+            { kind: "BUILDING_PLANS", label: "Building Plans", req: false },
+            { kind: "OTHER", label: "Other (valuation, approvals, …)", req: false },
+          ].map((d) => (
+            <div key={d.kind} className="rounded-md border border-dashed border-gray-300 bg-white p-3">
+              <label className="text-xs font-medium text-gray-700">
+                {d.label} {d.req && <span className="text-red-400">*</span>}
+              </label>
+              <input
+                type="file"
+                accept="application/pdf,image/*"
+                onChange={(e) => handleDocUpload(d.kind, e)}
+                disabled={uploading}
+                className="mt-1 block w-full text-xs"
+              />
+              {docs.filter((x) => x.kind === d.kind).map((x, i) => (
+                <div key={i} className="mt-2 flex items-center justify-between rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-700">
+                  <span className="truncate">✓ {x.name}</span>
+                  <button type="button" onClick={() => setDocs((p) => p.filter((y) => y !== x))} className="ml-2 text-red-500">×</button>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <label className="flex items-start gap-3">

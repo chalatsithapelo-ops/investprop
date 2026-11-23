@@ -17,6 +17,7 @@ import {
   Handshake,
   Ban,
   Mail,
+  FileText,
 } from "lucide-react";
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
@@ -273,6 +274,33 @@ function LandPartnershipsQueuePage() {
                   </div>
 
                   <p className="mt-3 text-sm text-gray-600">{lp.landDescription}</p>
+
+                  {Array.isArray(lp.imageUrls) && lp.imageUrls.length > 0 && (
+                    <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                      {lp.imageUrls.map((u: string, i: number) => (
+                        <a key={i} href={u} target="_blank" rel="noreferrer">
+                          <img src={u} alt="" className="h-20 w-full rounded-md object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+
+                  {Array.isArray(lp.documentUrls) && lp.documentUrls.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {lp.documentUrls.map((d: any, i: number) => (
+                        <a
+                          key={i}
+                          href={d.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                        >
+                          <FileText size={12} /> {(d.kind ?? "DOC").replace(/_/g, " ")}
+                          {d.name ? `: ${d.name}` : ""}
+                        </a>
+                      ))}
+                    </div>
+                  )}
 
                   {(lp.bondStatus === "EXISTING" || lp.ratesStatus === "ARREARS") && (
                     <div className="mt-2 flex flex-wrap gap-3 text-xs">
