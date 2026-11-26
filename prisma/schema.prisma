@@ -2144,6 +2144,8 @@ model OwnerSaleProposal {
   conditionRating    PropertyCondition  @default(GOOD)
   estimatedRenoCost  Float?
   coOwners           String? // Free-text list of additional registered owners
+  // ─── Rental financial performance & renovation projections (owner-supplied) ───
+  financials         Json? // RentalFinancialsInput: current rent, occupancy, opex, reno budget, projected rent, lease terms
   // ─── Engagement-specific deal terms (per EngagementType) ───
   desiredEquityPct    Float? // JOINT_VENTURE — % equity the owner wants to retain in the SPV
   desiredRentback     Float? // LEASE_BACK — monthly rent the owner is willing to pay post-sale
@@ -2241,6 +2243,8 @@ model LandPartnership {
   proposedUnits         Int?
   estimatedGDV          Float? // Gross development value
   estimatedBuildCost    Float?
+  // ── Rental financial performance & renovation projections (owner-supplied) ──
+  financials            Json? // RentalFinancialsInput: current rent, occupancy, opex, reno budget, projected rent, lease terms
   // ── Equity split ──
   ownerEquityPct        Float                 @default(20)
   platformEquityPct     Float                 @default(80)

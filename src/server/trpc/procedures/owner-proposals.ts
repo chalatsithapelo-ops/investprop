@@ -13,6 +13,29 @@ import {
 import { generateText } from "ai";
 import { getModel, getModelId, runAIWithGuard, safeParseJson } from "~/server/ai/client";
 import { recordAiPrediction, resolveAiPrediction } from "~/server/ai/prediction-log";
+import { rentalFinancialsSchema } from "~/server/trpc/schemas/rental-financials";
+import {
+  computeRentalProjections,
+  hasRentalFinancials,
+  type RentalFinancialsInput,
+} from "~/financial-calculations";
+
+/**
+ * Attach computed rental projections to a sale proposal when the owner supplied
+ * financial performance. Yields are measured against the asking price (falling
+ * back to market value). Returns the row unchanged with `projections: null`
+ * when no meaningful financials were provided.
+ */
+function withSaleProjections<
+  T extends { financials?: unknown; askingPrice?: number | null; marketValue?: number | null },
+>(proposal: T): T & { projections: ReturnType<typeof computeRentalProjections> | null } {
+  const financials = (proposal.financials ?? null) as RentalFinancialsInput | null;
+  if (!hasRentalFinancials(financials)) {
+    return { ...proposal, projections: null };
+  }
+  const baseValue = proposal.askingPrice || proposal.marketValue || 0;
+  return { ...proposal, projections: computeRentalProjections(financials!, baseValue) };
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  Owner (seller-side) fee booking helpers.
@@ -125,6 +148,8 @@ export const submitSaleProposal = baseProcedure
           "TITLE_DEED", "ID", "RATES_ACCOUNT", "BOND_STATEMENT", "LEASE", "OTHER",
           "ZONING_CERTIFICATE", "SURVEY_DIAGRAM", "BUILDING_PLANS",
           "ENVIRONMENTAL_APPROVAL", "GEOTECH", "SERVICES_CONFIRMATION",
+          "INCOME_STATEMENT", "RENT_ROLL", "MUNICIPAL_ACCOUNTS", "UTILITY_ACCOUNTS",
+          "MANAGEMENT_ACCOUNTS", "TAX_CLEARANCE", "COMPLIANCE_CERTIFICATE", "INSURANCE_SCHEDULE",
         ]),
         url: z.string(),
         name: z.string(),
@@ -143,6 +168,7 @@ export const submitSaleProposal = baseProcedure
       conditionRating: z.enum(["EXCELLENT", "GOOD", "FAIR", "NEEDS_RENOVATION", "DISTRESSED"]).default("GOOD"),
       estimatedRenoCost: z.number().min(0).optional(),
       coOwners: z.string().optional(),
+      financials: rentalFinancialsSchema,
       // Engagement-specific deal terms (only relevant for the chosen engagementType)
       desiredEquityPct: z.number().min(0).max(100).optional(),
       desiredRentback: z.number().min(0).optional(),
@@ -208,6 +234,7 @@ export const submitSaleProposal = baseProcedure
         conditionRating: input.conditionRating,
         estimatedRenoCost: input.estimatedRenoCost,
         coOwners: input.coOwners,
+        financials: (input.financials ?? null) as any,
         desiredEquityPct: input.desiredEquityPct,
         desiredRentback: input.desiredRentback,
         desiredLeaseMonths: input.desiredLeaseMonths,
@@ -282,7 +309,7 @@ export const getMySaleProposals = baseProcedure
       },
     });
 
-    return proposals;
+    return proposals.map(withSaleProjections);
   });
 
 // ─── AI valuation report for a sale proposal ────────────────────
@@ -505,7 +532,7 @@ export const getSaleProposals = baseProcedure
       },
     });
 
-    const annotated = proposals;
+    const annotated = proposals.map(withSaleProjections);
 
     // Also get counts per status
     const counts = await db.ownerSaleProposal.groupBy({

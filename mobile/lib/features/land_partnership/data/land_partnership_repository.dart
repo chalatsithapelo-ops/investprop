@@ -40,6 +40,9 @@ class LandPartnershipInput {
     this.proposedUnits,
     this.estimatedGdv,
     this.estimatedBuildCost,
+    this.imageUrls,
+    this.documentUrls,
+    this.financials,
   });
 
   final String ownerFullName;
@@ -73,6 +76,9 @@ class LandPartnershipInput {
   final int? proposedUnits;
   final double? estimatedGdv;
   final double? estimatedBuildCost;
+  final List<String>? imageUrls;
+  final List<Map<String, String>>? documentUrls;
+  final Map<String, dynamic>? financials;
 
   bool _has(String? v) => v != null && v.isNotEmpty;
 
@@ -109,6 +115,10 @@ class LandPartnershipInput {
     if (proposedUnits != null) 'proposedUnits': proposedUnits,
     if (estimatedGdv != null) 'estimatedGDV': estimatedGdv,
     if (estimatedBuildCost != null) 'estimatedBuildCost': estimatedBuildCost,
+    if (imageUrls != null && imageUrls!.isNotEmpty) 'imageUrls': imageUrls,
+    if (documentUrls != null && documentUrls!.isNotEmpty)
+      'documentUrls': documentUrls,
+    if (financials != null) 'financials': financials,
   };
 }
 
@@ -128,6 +138,22 @@ class LandPartnershipRepository {
 
   Future<void> submit(LandPartnershipInput input) async {
     await _client.mutation('submitLandPartnership', input: input.toInput());
+  }
+
+  /// Uploads a file (base64, no data-URI prefix) and returns its public URL.
+  Future<String> uploadFile({
+    required String fileName,
+    required String fileType,
+    required String base64,
+  }) async {
+    final data = await _client.mutation(
+      'uploadFile',
+      input: {'fileName': fileName, 'fileType': fileType, 'fileBase64': base64},
+    );
+    if (data is Map && data['publicUrl'] != null) {
+      return data['publicUrl'].toString();
+    }
+    throw StateError('Upload failed. Please try again.');
   }
 
   Future<void> sign({

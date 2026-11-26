@@ -11,6 +11,32 @@ import {
   type LandPartnershipForAgreement,
   type PlatformParty,
 } from "~/server/land-partnership/agreement";
+import { rentalFinancialsSchema } from "~/server/trpc/schemas/rental-financials";
+import {
+  computeRentalProjections,
+  hasRentalFinancials,
+  type RentalFinancialsInput,
+} from "~/financial-calculations";
+
+/**
+ * Attach computed rental projections to a land-partnership record when the
+ * owner supplied financial performance. Yields are measured against the
+ * estimated land value (falling back to municipal value).
+ */
+function withLandProjections<
+  T extends {
+    financials?: unknown;
+    estimatedLandValue?: number | null;
+    municipalValue?: number | null;
+  },
+>(lp: T): T & { projections: ReturnType<typeof computeRentalProjections> | null } {
+  const financials = (lp.financials ?? null) as RentalFinancialsInput | null;
+  if (!hasRentalFinancials(financials)) {
+    return { ...lp, projections: null };
+  }
+  const baseValue = lp.estimatedLandValue || lp.municipalValue || 0;
+  return { ...lp, projections: computeRentalProjections(financials!, baseValue) };
+}
 
 // Roles permitted to review / countersign / form SPVs for land partnerships.
 const MANAGER_ROLES = ["ADMIN", "DEVELOPMENT_MANAGER", "PROJECT_MANAGER"] as const;
@@ -119,6 +145,7 @@ export const submitLandPartnership = baseProcedure
         )
         .optional(),
       imageUrls: z.array(z.string()).optional(),
+      financials: rentalFinancialsSchema,
       popiaConsent: z.literal(true, {
         errorMap: () => ({
           message: "You must consent to POPIA processing of your information",
@@ -191,6 +218,7 @@ export const submitLandPartnership = baseProcedure
         estimatedBuildCost: input.estimatedBuildCost,
         documentUrls: (input.documentUrls ?? []) as any,
         imageUrls: (input.imageUrls ?? []) as any,
+        financials: (input.financials ?? null) as any,
         popiaConsent: input.popiaConsent,
         ownerEquityPct: 20,
         platformEquityPct: 80,
@@ -233,11 +261,12 @@ export const getMyLandPartnerships = baseProcedure
   .query(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
     requireRole(user, ["PROPERTY_OWNER"], "Only property owners can view their land partnerships");
-    return db.landPartnership.findMany({
+    const rows = await db.landPartnership.findMany({
       where: { ownerId: user.id },
       orderBy: { createdAt: "desc" },
       include: { reviewedBy: { select: { name: true } }, spv: { select: { name: true, registrationNumber: true, status: true } } },
     });
+    return rows.map(withLandProjections);
   });
 
 // ─── Get one land partnership (owner or manager) ────────────────────
@@ -261,7 +290,7 @@ export const getLandPartnershipById = baseProcedure
     if (lp.ownerId !== user.id && !isManager) {
       throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this record" });
     }
-    return lp;
+    return withLandProjections(lp);
   });
 
 // ─── Manager queue: all land partnerships ───────────────────────────
@@ -289,7 +318,7 @@ export const getAllLandPartnerships = baseProcedure
   .query(async ({ input }) => {
     const user = await getAuthenticatedUser(input.authToken);
     requireRole(user, [...MANAGER_ROLES], "Only managers can view the land partnership queue");
-    return db.landPartnership.findMany({
+    const rows = await db.landPartnership.findMany({
       where: input.status ? { status: input.status } : undefined,
       orderBy: { createdAt: "desc" },
       include: {
@@ -298,6 +327,7 @@ export const getAllLandPartnerships = baseProcedure
         spv: { select: { name: true, registrationNumber: true, status: true } },
       },
     });
+    return rows.map(withLandProjections);
   });
 
 // ─── Review / approve (Manager) — generates the agreement ───────────

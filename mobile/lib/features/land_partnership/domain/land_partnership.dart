@@ -1,4 +1,5 @@
 import '../../../core/format.dart';
+import '../../../core/rental_financials.dart';
 
 /// Status of a land-into-SPV development partnership as it moves through the
 /// lifecycle. Mirrors the server `LandPartnershipStatus` enum.
@@ -82,6 +83,7 @@ class LandPartnership {
     required this.agreementContent,
     required this.spvName,
     required this.createdAt,
+    this.financials,
   });
 
   final int id;
@@ -100,6 +102,7 @@ class LandPartnership {
   final String? agreementContent;
   final String? spvName;
   final DateTime? createdAt;
+  final RentalFinancials? financials;
 
   factory LandPartnership.fromJson(Map<String, dynamic> j) {
     final spv = j['spv'];
@@ -124,6 +127,7 @@ class LandPartnership {
       agreementContent: j['agreementContent']?.toString(),
       spvName: spv is Map ? spv['name']?.toString() : null,
       createdAt: asDate(j['createdAt']),
+      financials: RentalFinancials.fromJson(j['financials']),
     );
   }
 }

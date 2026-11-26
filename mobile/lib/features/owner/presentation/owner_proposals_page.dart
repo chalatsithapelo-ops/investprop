@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../config/theme.dart';
 import '../../../core/format.dart';
+import '../../../core/rental_financials.dart';
 import '../../../widgets/async_value_widget.dart';
+import '../../../widgets/rental_financials_section.dart';
 import '../data/owner_repository.dart';
 import '../domain/sale_proposal.dart';
 
@@ -271,6 +273,15 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
           ],
           if (p.hasPendingCounterOffer) _counterOffer(p),
           if (p.status != SaleProposalStatus.withdrawn) _valuationSection(p),
+          if (p.financials != null && p.financials!.hasData) ...[
+            const SizedBox(height: 12),
+            RentalProjectionsCard(
+              projections: computeRentalProjections(
+                p.financials!,
+                p.askingPrice,
+              ),
+            ),
+          ],
           if (p.canWithdraw && !p.hasPendingCounterOffer) ...[
             const SizedBox(height: 12),
             Align(

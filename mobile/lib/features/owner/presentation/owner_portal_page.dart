@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../config/theme.dart';
 import '../../../core/format.dart';
+import '../../../widgets/rental_financials_section.dart';
 import '../../auth/application/auth_controller.dart';
 import '../data/owner_repository.dart';
 import '../domain/sale_proposal.dart';
@@ -101,6 +102,7 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
 
   final List<_PickedImage> _images = [];
   final List<_PickedDoc> _documents = [];
+  final _financials = RentalFinancialsController();
 
   @override
   void dispose() {
@@ -129,6 +131,7 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
     ]) {
       c.dispose();
     }
+    _financials.dispose();
     super.dispose();
   }
 
@@ -302,6 +305,7 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
         contactEmail: _contactEmail.text.trim(),
         imageUrls: imageUrls,
         documents: docs,
+        financials: _financials.toInput(),
       );
 
       await repo.submit(input);
@@ -475,6 +479,11 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
                 ),
               ],
             ]),
+            const SizedBox(height: 8),
+            RentalFinancialsSection(
+              controller: _financials,
+              baseValue: _num(_askingPrice) ?? _num(_marketValue) ?? 0,
+            ),
             _section('Photos', [
               Wrap(
                 spacing: 8,
@@ -530,6 +539,8 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
                           items: (() {
                             final kinds = OwnerOptions.documentKindsFor(
                               _engagement,
+                              incomeProducing:
+                                  _financials.isIncomeProducing.value,
                             );
                             // Keep a previously-chosen kind selectable even if the
                             // engagement later changes away from a development type.

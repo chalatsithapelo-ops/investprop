@@ -23,6 +23,13 @@ import {
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import {
+  RentalFinancialsSection,
+  RentalProjectionsCard,
+  toRentalFinancialsInput,
+  EMPTY_RENTAL_FINANCIALS,
+  type RentalFinancialsValue,
+} from "~/components/RentalFinancialsSection";
 
 export const Route = createFileRoute("/land-partnership/")({
   component: LandPartnershipPage,
@@ -239,6 +246,12 @@ function LandPartnershipPage() {
                     </p>
                   )}
 
+                  {lp.projections && (
+                    <div className="mt-4">
+                      <RentalProjectionsCard projections={lp.projections} />
+                    </div>
+                  )}
+
                   <div className="mt-4 flex flex-wrap gap-2">
                     {lp.status === "AGREEMENT_READY" && (
                       <button
@@ -315,6 +328,9 @@ function SubmitForm({ onDone }: { onDone: () => void }) {
     intendedStrategy: "DEVELOP",
   });
   const [popia, setPopia] = useState(false);
+  const [financials, setFinancials] = useState<RentalFinancialsValue>(
+    EMPTY_RENTAL_FINANCIALS,
+  );
   const set = (k: string, v: any) => setF((prev) => ({ ...prev, [k]: v }));
 
   const num = (v: any) => (v === "" || v == null ? undefined : Number(v));
@@ -402,6 +418,7 @@ function SubmitForm({ onDone }: { onDone: () => void }) {
         estimatedBuildCost: num(f.estimatedBuildCost),
         imageUrls: imageUrls.length ? imageUrls : undefined,
         documentUrls: docs.length ? docs : undefined,
+        financials: toRentalFinancialsInput(financials),
         popiaConsent: true,
       });
       toast.success("Your property has been submitted for a development partnership.");
@@ -557,6 +574,13 @@ function SubmitForm({ onDone }: { onDone: () => void }) {
         <Input label="Estimated build / renovation cost (R)" k="estimatedBuildCost" type="number" />
       </Section>
 
+      {/* Rental financial performance & projections */}
+      <RentalFinancialsSection
+        value={financials}
+        onChange={setFinancials}
+        baseValue={num(f.estimatedLandValue) || num(f.municipalValue) || 0}
+      />
+
       {/* Property photos */}
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h3 className="mb-1 text-sm font-semibold uppercase tracking-wider text-gray-500">Property photos</h3>
@@ -620,6 +644,43 @@ function SubmitForm({ onDone }: { onDone: () => void }) {
             </div>
           ))}
         </div>
+
+        {/* Rental due-diligence pack — only for income-producing properties */}
+        {financials.isIncomeProducing && (
+          <div className="mt-4 border-t border-gray-200 pt-4">
+            <h4 className="mb-1 text-sm font-semibold text-gray-700">Rental Due-Diligence Pack</h4>
+            <p className="mb-3 text-xs text-gray-500">
+              For income-producing buildings these let us verify the financials faster. Upload whatever you have — none are mandatory to submit.
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {[
+                { kind: "INCOME_STATEMENT", label: "Income / Expense Statement" },
+                { kind: "RENT_ROLL", label: "Rent Roll / Tenant Schedule" },
+                { kind: "MANAGEMENT_ACCOUNTS", label: "Management Accounts" },
+                { kind: "MUNICIPAL_ACCOUNTS", label: "Municipal Accounts" },
+                { kind: "UTILITY_ACCOUNTS", label: "Utility Accounts" },
+                { kind: "INSURANCE_SCHEDULE", label: "Insurance Schedule" },
+              ].map((d) => (
+                <div key={d.kind} className="rounded-md border border-dashed border-gray-300 bg-white p-3">
+                  <label className="text-xs font-medium text-gray-700">{d.label}</label>
+                  <input
+                    type="file"
+                    accept="application/pdf,image/*"
+                    onChange={(e) => handleDocUpload(d.kind, e)}
+                    disabled={uploading}
+                    className="mt-1 block w-full text-xs"
+                  />
+                  {docs.filter((x) => x.kind === d.kind).map((x, i) => (
+                    <div key={i} className="mt-2 flex items-center justify-between rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-700">
+                      <span className="truncate">✓ {x.name}</span>
+                      <button type="button" onClick={() => setDocs((p) => p.filter((y) => y !== x))} className="ml-2 text-red-500">×</button>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">

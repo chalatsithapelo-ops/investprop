@@ -1,4 +1,5 @@
 import '../../../core/format.dart';
+import '../../../core/rental_financials.dart';
 
 /// Status of an owner's sale proposal as it moves through review.
 enum SaleProposalStatus { pending, underReview, accepted, rejected, withdrawn }
@@ -74,6 +75,7 @@ class SaleProposal {
     required this.createdAt,
     this.valuation,
     this.valuatedAt,
+    this.financials,
   });
 
   final int id;
@@ -96,6 +98,7 @@ class SaleProposal {
   final DateTime? createdAt;
   final SaleValuation? valuation;
   final DateTime? valuatedAt;
+  final RentalFinancials? financials;
 
   bool get hasPendingCounterOffer =>
       counterOfferAmount != null &&
@@ -140,6 +143,7 @@ class SaleProposal {
       createdAt: asDate(json['createdAt']),
       valuation: SaleValuation.fromJson(json['aiValuation']),
       valuatedAt: asDate(json['aiValuatedAt']),
+      financials: RentalFinancials.fromJson(json['financials']),
     );
   }
 }
@@ -261,15 +265,32 @@ class OwnerOptions {
     'SERVICES_CONFIRMATION',
   ];
 
+  /// Rental due-diligence documents, offered for income-producing properties.
+  static const rentalDocumentKinds = [
+    'INCOME_STATEMENT',
+    'RENT_ROLL',
+    'MANAGEMENT_ACCOUNTS',
+    'MUNICIPAL_ACCOUNTS',
+    'UTILITY_ACCOUNTS',
+    'INSURANCE_SCHEDULE',
+    'COMPLIANCE_CERTIFICATE',
+    'TAX_CLEARANCE',
+  ];
+
   static bool isDevelopmentEngagement(String engagement) =>
       engagement == 'JOINT_VENTURE' || engagement == 'DEVELOPMENT_PARTNERSHIP';
 
   /// Document kinds available for the given engagement — development docs are
-  /// appended for JV / development-partnership proposals.
-  static List<String> documentKindsFor(String engagement) =>
-      isDevelopmentEngagement(engagement)
-      ? [...documentKinds, ...developmentDocumentKinds]
-      : [...documentKinds];
+  /// appended for JV / development-partnership proposals, and rental
+  /// due-diligence docs when the property is income-producing.
+  static List<String> documentKindsFor(
+    String engagement, {
+    bool incomeProducing = false,
+  }) => [
+    ...documentKinds,
+    if (isDevelopmentEngagement(engagement)) ...developmentDocumentKinds,
+    if (incomeProducing) ...rentalDocumentKinds,
+  ];
 
   static String label(String raw) => raw
       .split('_')

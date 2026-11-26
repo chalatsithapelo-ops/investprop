@@ -1904,3 +1904,166 @@ export function calculatePrequalification(
     loanTermYears: term,
   };
 }
+
+// ============================================================================
+// Owner Rental Financial Performance & Renovation Projections
+// ============================================================================
+
+/**
+ * Owner-supplied financial performance for an income-producing property
+ * (typically a rental building the owner wants to renovate for higher rent).
+ * All monetary values are in ZAR; monthly unless the field name says annual.
+ * Every field is optional so partial submissions still render a projection.
+ */
+export type RentalFinancialsInput = {
+  /** Owner flagged the property as income-producing / rental. */
+  isIncomeProducing?: boolean;
+  /** Number of lettable units (flats/shops/rooms). */
+  numberOfUnits?: number;
+  /** Current occupancy as a percentage (0–100). */
+  occupancyRate?: number;
+  /** Current total gross rent across all units, per month. */
+  currentMonthlyRent?: number;
+  // ── Monthly operating expenses ──
+  ratesMonthly?: number;
+  leviesMonthly?: number;
+  insuranceMonthly?: number;
+  managementMonthly?: number;
+  maintenanceMonthly?: number;
+  utilitiesMonthly?: number;
+  otherOpexMonthly?: number;
+  // ── Renovation / capex ──
+  renovationBudget?: number;
+  renovationMonths?: number;
+  // ── Post-renovation projection ──
+  projectedMonthlyRent?: number;
+  projectedOccupancyRate?: number;
+  // ── Current lease ──
+  leaseTermMonths?: number;
+  leaseEscalationPct?: number;
+  leaseExpiry?: string;
+};
+
+/** One income scenario (current or post-renovation). */
+export type RentalScenario = {
+  grossAnnualRent: number;
+  vacancyRate: number;
+  vacancyLoss: number;
+  effectiveGrossIncome: number;
+  annualOperatingExpenses: number;
+  noi: number;
+  grossYield: number;
+  netYield: number;
+  monthlyNetCashFlow: number;
+};
+
+/** Computed current vs post-renovation projections for an owner's rental. */
+export type RentalProjections = {
+  /** Value the current yields are measured against (asking / estimated value). */
+  baseValue: number;
+  /** Stabilised value the projected yields are measured against (base + reno). */
+  stabilisedValue: number;
+  current: RentalScenario;
+  projected: RentalScenario;
+  renovationBudget: number;
+  renovationMonths: number;
+  /** Annual NOI gained by renovating (projected − current). */
+  noiUpliftAnnual: number;
+  /** Projected NOI ÷ (base value + renovation budget). */
+  yieldOnCostProjected: number;
+  /** Annual NOI uplift ÷ renovation budget, as a percentage. */
+  returnOnRenovation: number;
+};
+
+/** True when the owner supplied enough to render a meaningful projection. */
+export function hasRentalFinancials(f?: RentalFinancialsInput | null): boolean {
+  if (!f) return false;
+  return Boolean(
+    f.isIncomeProducing ||
+      (f.currentMonthlyRent ?? 0) > 0 ||
+      (f.projectedMonthlyRent ?? 0) > 0,
+  );
+}
+
+/**
+ * Compute current and post-renovation rental projections from owner-supplied
+ * figures. Pure and defensive — missing fields default to 0 / full occupancy so
+ * a partial submission still yields a sensible picture.
+ *
+ * @param f - Owner financial performance inputs
+ * @param baseValue - Property value the current yields are measured against
+ *                    (owner proposal asking price, or land estimated value)
+ */
+export function computeRentalProjections(
+  f: RentalFinancialsInput,
+  baseValue: number,
+): RentalProjections {
+  const monthlyOpex =
+    (f.ratesMonthly ?? 0) +
+    (f.leviesMonthly ?? 0) +
+    (f.insuranceMonthly ?? 0) +
+    (f.managementMonthly ?? 0) +
+    (f.maintenanceMonthly ?? 0) +
+    (f.utilitiesMonthly ?? 0) +
+    (f.otherOpexMonthly ?? 0);
+  const annualOpex = monthlyOpex * 12;
+
+  const scenario = (
+    monthlyRent: number,
+    occupancyRate: number,
+    value: number,
+  ): RentalScenario => {
+    const grossAnnualRent = Math.max(0, monthlyRent) * 12;
+    const occ =
+      occupancyRate > 0 ? Math.min(occupancyRate, 100) : monthlyRent > 0 ? 100 : 0;
+    const vacancyRate = 100 - occ;
+    const vacancyLoss = grossAnnualRent * (vacancyRate / 100);
+    const effectiveGrossIncome = grossAnnualRent - vacancyLoss;
+    const noi = effectiveGrossIncome - annualOpex;
+    const grossYield = value > 0 ? (grossAnnualRent / value) * 100 : 0;
+    const netYield = value > 0 ? (noi / value) * 100 : 0;
+    return {
+      grossAnnualRent,
+      vacancyRate,
+      vacancyLoss,
+      effectiveGrossIncome,
+      annualOperatingExpenses: annualOpex,
+      noi,
+      grossYield,
+      netYield,
+      monthlyNetCashFlow: noi / 12,
+    };
+  };
+
+  const base = Math.max(0, baseValue);
+  const reno = Math.max(0, f.renovationBudget ?? 0);
+  const stabilisedValue = base + reno;
+
+  const current = scenario(
+    f.currentMonthlyRent ?? 0,
+    f.occupancyRate ?? 0,
+    base,
+  );
+  const projected = scenario(
+    f.projectedMonthlyRent ?? f.currentMonthlyRent ?? 0,
+    f.projectedOccupancyRate ?? f.occupancyRate ?? 0,
+    stabilisedValue,
+  );
+
+  const noiUpliftAnnual = projected.noi - current.noi;
+  const yieldOnCostProjected =
+    stabilisedValue > 0 ? (projected.noi / stabilisedValue) * 100 : 0;
+  const returnOnRenovation = reno > 0 ? (noiUpliftAnnual / reno) * 100 : 0;
+
+  return {
+    baseValue: base,
+    stabilisedValue,
+    current,
+    projected,
+    renovationBudget: reno,
+    renovationMonths: f.renovationMonths ?? 0,
+    noiUpliftAnnual,
+    yieldOnCostProjected,
+    returnOnRenovation,
+  };
+}

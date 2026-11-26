@@ -1,11 +1,74 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../config/theme.dart';
 import '../../../core/format.dart';
+import '../../../core/rental_financials.dart';
 import '../../../widgets/async_value_widget.dart';
+import '../../../widgets/rental_financials_section.dart';
 import '../data/land_partnership_repository.dart';
 import '../domain/land_partnership.dart';
+
+const _maxFileBytes = 5 * 1024 * 1024;
+
+/// Supporting document kinds owners can attach to a land-partnership submission.
+const _landDocKinds = <String, String>{
+  'TITLE_DEED': 'Title deed',
+  'ID': 'ID / passport',
+  'RATES_ACCOUNT': 'Rates account',
+  'BOND_STATEMENT': 'Bond statement',
+  'SURVEY_DIAGRAM': 'Survey diagram',
+  'ZONING_CERTIFICATE': 'Zoning certificate',
+  'BUILDING_PLANS': 'Building plans',
+  'INCOME_STATEMENT': 'Income / expense statement',
+  'RENT_ROLL': 'Rent roll / tenant schedule',
+  'MANAGEMENT_ACCOUNTS': 'Management accounts',
+  'MUNICIPAL_ACCOUNTS': 'Municipal accounts',
+  'UTILITY_ACCOUNTS': 'Utility accounts',
+  'INSURANCE_SCHEDULE': 'Insurance schedule',
+  'OTHER': 'Other',
+};
+
+String _mimeForExtension(String? ext) {
+  switch ((ext ?? '').toLowerCase()) {
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'webp':
+      return 'image/webp';
+    case 'gif':
+      return 'image/gif';
+    default:
+      return 'image/jpeg';
+  }
+}
+
+String _extensionOf(String path) {
+  final dot = path.lastIndexOf('.');
+  return dot >= 0 ? path.substring(dot + 1) : 'jpg';
+}
+
+class _PickedFile {
+  const _PickedFile({
+    required this.name,
+    required this.mime,
+    required this.base64,
+  });
+  final String name;
+  final String mime;
+  final String base64;
+}
+
+class _PickedDoc {
+  _PickedDoc({required this.kind, required this.file});
+  String kind;
+  final _PickedFile file;
+}
 
 /// "Partner My Property" — owners contribute their property or land into a
 /// ring-fenced SPV in exchange for 20% equity, review and e-sign the
@@ -362,6 +425,15 @@ class _LandCardState extends ConsumerState<_LandCard> {
                 style: const TextStyle(color: AppColors.danger),
               ),
             ],
+            if (p.financials != null && p.financials!.hasData) ...[
+              const SizedBox(height: 12),
+              RentalProjectionsCard(
+                projections: computeRentalProjections(
+                  p.financials!,
+                  p.estimatedLandValue ?? 0,
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -577,6 +649,10 @@ class _SubmitLandPageState extends ConsumerState<_SubmitLandPage> {
   bool _popia = false;
   bool _busy = false;
 
+  final List<_PickedFile> _images = [];
+  final List<_PickedDoc> _documents = [];
+  final _financials = RentalFinancialsController();
+
   static const _provinces = [
     'Gauteng',
     'Western Cape',
@@ -608,11 +684,70 @@ class _SubmitLandPageState extends ConsumerState<_SubmitLandPage> {
     ]) {
       c.dispose();
     }
+    _financials.dispose();
     super.dispose();
   }
 
   double? _num(TextEditingController c) =>
       c.text.trim().isEmpty ? null : double.tryParse(c.text.trim());
+
+  Future<_PickedFile?> _pickImage() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return null;
+    try {
+      final file = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 2400,
+        imageQuality: 85,
+      );
+      if (file == null) return null;
+      final bytes = await file.readAsBytes();
+      if (bytes.length > _maxFileBytes) {
+        _toast('Files must be 5 MB or smaller.');
+        return null;
+      }
+      final ext = _extensionOf(file.name);
+      return _PickedFile(
+        name: file.name,
+        mime: file.mimeType ?? _mimeForExtension(ext),
+        base64: base64Encode(bytes),
+      );
+    } catch (_) {
+      _toast('Could not capture the image. Please try again.');
+      return null;
+    }
+  }
+
+  Future<void> _addImage() async {
+    final img = await _pickImage();
+    if (img != null) setState(() => _images.add(img));
+  }
+
+  Future<void> _addDocument() async {
+    final img = await _pickImage();
+    if (img != null) {
+      setState(() => _documents.add(_PickedDoc(kind: 'TITLE_DEED', file: img)));
+    }
+  }
 
   Future<void> _submit() async {
     if (!(_form.currentState?.validate() ?? false)) return;
@@ -622,34 +757,56 @@ class _SubmitLandPageState extends ConsumerState<_SubmitLandPage> {
     }
     setState(() => _busy = true);
     try {
-      await ref
-          .read(landPartnershipRepositoryProvider)
-          .submit(
-            LandPartnershipInput(
-              ownerFullName: _ownerName.text.trim(),
-              ownerIdNumber: _ownerId.text.trim(),
-              ownerPhone: _ownerPhone.text.trim(),
-              ownerEmail: _ownerEmail.text.trim(),
-              landTitle: _landTitle.text.trim(),
-              landDescription: _landDescription.text.trim(),
-              address: _address.text.trim(),
-              city: _city.text.trim(),
-              province: _province,
-              bondStatus: _bondStatus,
-              ratesStatus: _ratesStatus,
-              intendedStrategy: _strategy,
-              erfSize: _num(_erfSize),
-              estimatedLandValue: _num(_estLandValue),
-              estimatedGdv: _num(_estGdv),
-              bondOutstanding: _bondStatus == 'EXISTING'
-                  ? _num(_bondOutstanding)
-                  : null,
-              ratesArrears: _ratesStatus == 'ARREARS'
-                  ? _num(_ratesArrears)
-                  : null,
-              popiaConsent: true,
-            ),
-          );
+      final repo = ref.read(landPartnershipRepositoryProvider);
+      // Upload any attached photos and documents first.
+      final imageUrls = <String>[];
+      for (final img in _images) {
+        final url = await repo.uploadFile(
+          fileName: img.name,
+          fileType: img.mime,
+          base64: img.base64,
+        );
+        imageUrls.add(url);
+      }
+      final documentUrls = <Map<String, String>>[];
+      for (final d in _documents) {
+        final url = await repo.uploadFile(
+          fileName: d.file.name,
+          fileType: d.file.mime,
+          base64: d.file.base64,
+        );
+        documentUrls.add({'kind': d.kind, 'url': url, 'name': d.file.name});
+      }
+
+      await repo.submit(
+        LandPartnershipInput(
+          ownerFullName: _ownerName.text.trim(),
+          ownerIdNumber: _ownerId.text.trim(),
+          ownerPhone: _ownerPhone.text.trim(),
+          ownerEmail: _ownerEmail.text.trim(),
+          landTitle: _landTitle.text.trim(),
+          landDescription: _landDescription.text.trim(),
+          address: _address.text.trim(),
+          city: _city.text.trim(),
+          province: _province,
+          bondStatus: _bondStatus,
+          ratesStatus: _ratesStatus,
+          intendedStrategy: _strategy,
+          erfSize: _num(_erfSize),
+          estimatedLandValue: _num(_estLandValue),
+          estimatedGdv: _num(_estGdv),
+          bondOutstanding: _bondStatus == 'EXISTING'
+              ? _num(_bondOutstanding)
+              : null,
+          ratesArrears: _ratesStatus == 'ARREARS'
+              ? _num(_ratesArrears)
+              : null,
+          popiaConsent: true,
+          imageUrls: imageUrls.isEmpty ? null : imageUrls,
+          documentUrls: documentUrls.isEmpty ? null : documentUrls,
+          financials: _financials.toInput(),
+        ),
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -754,6 +911,95 @@ class _SubmitLandPageState extends ConsumerState<_SubmitLandPage> {
               _estGdv,
               'Estimated end value / GDV (R)',
               keyboard: TextInputType.number,
+            ),
+            RentalFinancialsSection(
+              controller: _financials,
+              baseValue: _num(_estLandValue) ?? 0,
+            ),
+            _section('Photos'),
+            const Text(
+              'Add photos of the property / land to support your submission.',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (var i = 0; i < _images.length; i++)
+                  Chip(
+                    label: Text(
+                      _images[i].name,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onDeleted: () => setState(() => _images.removeAt(i)),
+                  ),
+                ActionChip(
+                  avatar: const Icon(Icons.add_a_photo_outlined, size: 18),
+                  label: const Text('Add photo'),
+                  onPressed: _busy ? null : _addImage,
+                ),
+              ],
+            ),
+            _section('Supporting documents'),
+            const Text(
+              'Attach the title deed, ID, rates account, bond statement, survey '
+              'diagram, zoning certificate or building plans.',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 8),
+            for (var i = 0; i < _documents.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _documents[i].kind,
+                        isDense: true,
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                        items: _landDocKinds.entries
+                            .map(
+                              (e) => DropdownMenuItem(
+                                value: e.key,
+                                child: Text(e.value),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (v) => setState(
+                          () => _documents[i].kind = v ?? _documents[i].kind,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _documents[i].file.name,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () =>
+                          setState(() => _documents.removeAt(i)),
+                    ),
+                  ],
+                ),
+              ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: _busy ? null : _addDocument,
+                icon: const Icon(Icons.attach_file, size: 18),
+                label: const Text('Add document'),
+              ),
             ),
             const SizedBox(height: 8),
             CheckboxListTile(

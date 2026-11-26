@@ -24,6 +24,7 @@ import {
 import { Navbar } from "~/components/Navbar";
 import { useTRPC, useTRPCClient } from "~/trpc/react";
 import { useAuthStore } from "~/stores/authStore";
+import { RentalProjectionsCard } from "~/components/RentalFinancialsSection";
 import { downloadLOI as downloadLOIPdf, downloadOTP as downloadOTPPdf } from "~/utils/generate-investor-pdf";
 
 export const Route = createFileRoute("/sale-proposals/")({
@@ -469,6 +470,10 @@ function SaleProposalsPage() {
                               </div>
                             )}
                           </div>
+
+                          {(proposal as any).projections && (
+                            <RentalProjectionsCard projections={(proposal as any).projections} />
+                          )}
                         </div>
 
                         {/* Sidebar */}

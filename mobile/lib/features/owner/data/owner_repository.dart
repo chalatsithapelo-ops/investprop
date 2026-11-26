@@ -42,6 +42,7 @@ class SaleProposalInput {
     this.contactEmail,
     this.imageUrls = const [],
     this.documents = const [],
+    this.financials,
   });
 
   final String title;
@@ -78,6 +79,7 @@ class SaleProposalInput {
   final String? contactEmail;
   final List<String> imageUrls;
   final List<ProposalDocument> documents;
+  final Map<String, dynamic>? financials;
 
   Map<String, dynamic> toInput() => {
     'title': title,
@@ -119,6 +121,7 @@ class SaleProposalInput {
     if (imageUrls.isNotEmpty) 'imageUrls': imageUrls,
     if (documents.isNotEmpty)
       'documentUrls': documents.map((d) => d.toJson()).toList(),
+    if (financials != null) 'financials': financials,
   };
 }
 
