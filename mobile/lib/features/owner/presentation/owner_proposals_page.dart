@@ -25,7 +25,7 @@ class OwnerProposalsPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.landscape_outlined),
             tooltip: 'Partner my property',
-            onPressed: () => context.go('/land-partnership'),
+            onPressed: () => context.push('/land-partnership'),
           ),
           IconButton(
             icon: const Icon(Icons.add),

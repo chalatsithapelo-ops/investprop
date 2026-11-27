@@ -619,7 +619,7 @@ class _OwnerPortalPageState extends ConsumerState<OwnerPortalPage> {
   /// until the sale closes; the assessment pack is credited back on close.
   Widget _partnerMyPropertyBanner(BuildContext context) {
     return InkWell(
-      onTap: () => context.go('/land-partnership'),
+      onTap: () => context.push('/land-partnership'),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),

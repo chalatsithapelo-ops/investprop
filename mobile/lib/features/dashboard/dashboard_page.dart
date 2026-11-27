@@ -243,7 +243,7 @@ class _OwnerDashboard extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     InkWell(
-                      onTap: () => context.go('/land-partnership'),
+                      onTap: () => context.push('/land-partnership'),
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
                         width: double.infinity,
